@@ -1,1 +1,0 @@
-from cyrk import cyrk_ode

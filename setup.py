@@ -1,32 +1,40 @@
-from setuptools import setup, find_packages
-from setuptools.extension import Extension
+import os
 
-from version import version
-ext = Extension('cyrk', sources=[os.path.join('CyRK', 'cyrk.pyx')])
+from setuptools import setup, Extension
+from setuptools.command.build_ext import build_ext
 
-# Import Cython
-try:
-    from Cython.Build import cythonize
-except:
-    raise ImportError('Cython not found and is required to build CyRK.')
-    
-# Import numpy
-try:
-    import numpy as np
-except:
-    raise ImportError('Numpy not found and is required to build CyRK.')
+# Find long description
+long_description = ''
+with open("README.md", 'r') as f:
+    long_description = f.read()
+
+# Find version number
+version = ''
+with open("version.txt", 'r') as f:
+    for line in f:
+        if 'version =' in line:
+            version = line.split('=')[-1].strip()
 
 # Dependencies
 install_requires = [
-    'numpy>=1.23'
+    'numpy>=1.1,<1.23.0',
+    'numba>=0.55'
 ]
 
 # Find Cython files and turn them into c code. Must have numpy installed in order to find its c headers.
-ext_modules = cythonize(
-    [
-        Extension('CyRK', [os.path.join('CyRK', 'cyrk.pyx')], include_dirs=[np.get_include()])
-    ]
-)
+ext_modules = [Extension('CyRK.cyrk', [os.path.join('CyRK', '_cyrk.pyx')])]
+
+class BuildExtCmd(build_ext):
+    def run(self):
+        import numpy as np
+        self.include_dirs.append(np.get_include())
+        super().run()
+
+    def finalize_options(self):
+        from Cython.Build import cythonize
+        self.distribution.ext_modules = cythonize(self.distribution.ext_modules,
+                                                  compiler_directives={'language_level' : "3"})
+        super().finalize_options()
 
 setup(
     name='CyRK',
@@ -34,13 +42,16 @@ setup(
     description='Runge-Kutta ODE Integrator Implemented in Cython and Numba.',
     author='Joe P. Renaud',
     author_email='joe.p.renaud@gmail.com',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     url='https://github.com/jrenaud90/CyRK',
     setup_requires=[
         # Setuptools 18.0 properly handles Cython extensions.
         'setuptools>=18.0',
-        'numpy>=1.23',
+        'numpy>=1.1,<1.23.0',
         'cython>=0.29',
     ],
     ext_modules=ext_modules,
-    install_requires=install_requires
+    install_requires=install_requires,
+    cmdclass={"build_ext": BuildExtCmd}
 )
