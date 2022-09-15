@@ -1,16 +1,20 @@
 import os
 
-from setuptools import setup, Extension
+from setuptools import setup, find_packages
+from setuptools.extension import Extension
 from setuptools.command.build_ext import build_ext
+
+# Find CyRK Directory
+dir_path = os.path.dirname(os.path.realpath(__file__))
 
 # Find long description
 long_description = ''
-with open("README.md", 'r') as f:
+with open(os.path.join(dir_path, "README.md"), 'r') as f:
     long_description = f.read()
 
 # Find version number
 version = ''
-with open("version.txt", 'r') as f:
+with open(os.path.join(dir_path, "version.txt"), 'r') as f:
     for line in f:
         if 'version =' in line:
             version = line.split('=')[-1].strip()
@@ -53,5 +57,6 @@ setup(
     ],
     ext_modules=ext_modules,
     install_requires=install_requires,
-    cmdclass={"build_ext": BuildExtCmd}
+    cmdclass={"build_ext": BuildExtCmd},
+    packages=find_packages()
 )
