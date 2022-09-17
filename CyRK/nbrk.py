@@ -3,6 +3,8 @@ from typing import Tuple
 import numpy as np
 from numba import njit
 
+from .dop_coefficients import A as A_DOP, B as B_DOP, C as C_DOP, E3 as E3_DOP, E5 as E5_DOP, D as D_DOP, N_STAGES as N_STAGES_DOP, N_STAGES_EXTENDED as N_STAGES_EXTENDED_DOP, ORDER as ORDER_DOP, ERROR_ESTIMATOR_ORDER as ERROR_ESTIMATOR_ORDER_DOP
+
 # Multiply steps computed from asymptotic behaviour of errors by this.
 SAFETY = 0.9
 
@@ -103,10 +105,17 @@ def nbrk_ode(
         The type of RK method used for integration
             0 = RK23
             1 = RK45
-            # TODO NotImplemented 2 = DOP
+            2 = DOP853
     t_eval : np.ndarray = None
         If provided, then the function will interpolate the integration results to provide them at the
             requested t-steps.
+
+     References
+    ----------
+    .. [1] E. Hairer, S. P. Norsett G. Wanner, "Solving Ordinary Differential
+           Equations I: Nonstiff Problems", Sec. II.
+    .. [2] `Page with original Fortran code of DOP853
+            <http://www.unige.ch/~hairer/software.html>`_.
 
     Returns
     -------
@@ -141,7 +150,7 @@ def nbrk_ode(
     # Determine RK constants
     if rk_method == 0:
         # RK23 Method
-        rk_order = RK23_order
+        rk_order    = RK23_order
         error_order = RK23_error_estimator_order
         rk_n_stages = RK23_n_stages
         C = RK23_C
@@ -149,9 +158,12 @@ def nbrk_ode(
         B = RK23_B
         E = RK23_E
         P = RK23_P
-    else:
+
+        # Initialize RK-K variable
+        K = np.empty((rk_n_stages + 1, y_size), dtype=dtype)
+    elif rk_method == 1:
         # RK45 Method
-        rk_order = RK45_order
+        rk_order    = RK45_order
         error_order = RK45_error_estimator_order
         rk_n_stages = RK45_n_stages
         C = RK45_C
@@ -159,6 +171,32 @@ def nbrk_ode(
         B = RK45_B
         E = RK45_E
         P = RK45_P
+
+        # Initialize RK-K variable
+        K = np.empty((rk_n_stages + 1, y_size), dtype=dtype)
+    else:
+        # DOP853
+        rk_order    = ORDER_DOP
+        error_order = ERROR_ESTIMATOR_ORDER_DOP
+        rk_n_stages = N_STAGES_DOP
+        A       = A_DOP[:rk_n_stages, :rk_n_stages]
+        B       = B_DOP
+        C       = C_DOP[:rk_n_stages]
+        E3      = E3_DOP
+        E5      = E5_DOP
+        D       = D_DOP
+        A_EXTRA = A_DOP[rk_n_stages + 1:]
+        C_EXTRA = C_DOP[rk_n_stages + 1:]
+
+        E3      = np.asarray(E3, dtype=dtype)
+        E5      = np.asarray(E5, dtype=dtype)
+        D       = np.asarray(D, dtype=dtype)
+        A_EXTRA = np.asarray(A_EXTRA, dtype=dtype)
+        C_EXTRA = np.asarray(C_EXTRA, dtype=dtype)
+
+        # Initialize RK-K variable
+        K_extended = np.empty((N_STAGES_EXTENDED_DOP, y_size), dtype=dtype)
+        K = K_extended[:rk_n_stages+1, :]
 
     # Recast some constants into the correct dtype so they can be used with y.
     A = np.asarray(A, dtype=dtype)
@@ -215,9 +253,6 @@ def nbrk_ode(
             # Step size can not exceed bounds
             raise Exception
         step_size = first_step
-
-    # Initialize RK-K variable
-    K = np.empty((rk_n_stages + 1, y_size), dtype=dtype)
 
     # Main integration loop
     message = 'Running...'
@@ -282,7 +317,22 @@ def nbrk_ode(
 
             # Check how well this step performed
             scale = atol + np.maximum(np.abs(y_now), np.abs(y_new)) * rtol
-            error_norm = _norm(np.dot(K.T, E) * step / scale)
+
+            if rk_method == 2:
+                # DOP853 error estimation
+                err5 = np.dot(K.T, E5) / scale
+                err3 = np.dot(K.T, E3) / scale
+                err5_norm_2 = np.linalg.norm(err5)**2
+                err3_norm_2 = np.linalg.norm(err3)**2
+                if err5_norm_2 == 0 and err3_norm_2 == 0:
+                    error_norm = 0.0
+                else:
+                    denom = err5_norm_2 + 0.01 * err3_norm_2
+                    error_norm = step_size * err5_norm_2 / np.sqrt(denom * y_size)
+
+            else:
+                # RK23/RK45 Error estimation
+                error_norm = _norm(np.dot(K.T, E) * step / scale)
 
             if error_norm < 1.:
                 # The error is low! Let's update this step for the next time loop

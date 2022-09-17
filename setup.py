@@ -14,14 +14,25 @@ with open(os.path.join(dir_path, "README.md"), 'r') as f:
 
 # Find version number
 version = ''
-with open(os.path.join(dir_path, "version.txt"), 'r') as f:
+with open(os.path.join(dir_path, "CyRK", "_version.py"), 'r') as f:
     for line in f:
         if 'version =' in line:
-            version = line.split('=')[-1].strip()
+            version = line.split('=')[-1].strip().replace("'", '')
 
 # Dependencies
 install_requires = [
-    'numpy>=1.1,<1.23.0',
+    'setuptools>=18.0',
+    'numpy==1.21.5',
+    'numba>=0.55'
+]
+
+requirements = [
+    # Setuptools 18.0 properly handles Cython extensions.
+    'setuptools>=18.0',
+    'numba==0.55.1',
+    'numpy==1.21.5',
+    'llvmlite==0.38.0',
+    'cython>=0.29',
     'numba>=0.55'
 ]
 
@@ -49,14 +60,8 @@ setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/jrenaud90/CyRK',
-    setup_requires=[
-        # Setuptools 18.0 properly handles Cython extensions.
-        'setuptools>=18.0',
-        'numpy>=1.1,<1.23.0',
-        'cython>=0.29',
-    ],
+    setup_requires=requirements,
     ext_modules=ext_modules,
     install_requires=install_requires,
-    cmdclass={"build_ext": BuildExtCmd},
-    packages=find_packages()
+    cmdclass={"build_ext": BuildExtCmd}
 )
