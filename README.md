@@ -5,7 +5,7 @@ _Version: 0.0.1 Alpha_
 
 CyRK provides fast ODE integration while still allowing for differential equations written in Python. 
 
-CyRK's numba implementation is 13-25x faster than scipy's solve_ivp function. The cython implementation is about 20x
+CyRK's numba (njit-safe) implementation is 13-25x faster than scipy's solve_ivp function. The cython implementation is about 20x
 faster. The cython function is also largely pre-compiled which avoids most of the initial performance hit found
 with the numba version.
 
