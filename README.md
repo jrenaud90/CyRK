@@ -9,7 +9,7 @@ CyRK's numba implementation is 13-25x faster than scipy's solve_ivp function. Th
 faster. The cython function is also largely pre-compiled which avoids most of the initial performance hit found
 with the numba version.
 
-![CyRK Performance](CyRK_SciPy_Compare-v0-0-1-dev4.png)
+![CyRK Performance](CyRK_SciPy_Compare_v0-0-1-dev4.png)
 
 ## Installation
 In order to install `CyRK` you must have the [numpy](https://numpy.org/) and [cython](https://cython.org/) 
@@ -26,6 +26,15 @@ This will create a dynamic (editable) link to the CyRK directory so that future 
 ### Installation Troubleshooting
 
 TBD
+
+### Development and Testing Dependencies
+
+If you intend to work on CyRK's code base you will want to install the following dependencies in order to run CyRK's
+test suite.
+
+`conda install pytest scipy matplotlib jupyter`
+
+`conda install` can be replaced with `pip install` if you perfer.
 
 ## Using CyRK
 CyRK's API is similar to SciPy's solve_ivp function. A differential equation can be defined in python such as:
@@ -92,10 +101,14 @@ The solver will then interpolate the results to fit this array.
   - `1` - "RK45" Explicit Runge-Kutta method of order 5(4).
   - `2` - "DOP853" Explicit Runge-Kutta method of order 8.
 
-### Limitations
+### Limitations and Known Issues
 
-- Right now the cython version only allows for complex-valued y-values.
-- Absolute tolerance can only be passed as a single value (same for all y's).
+- [Issue 1](https://github.com/jrenaud90/CyRK/issues/1): Absolute tolerance can only be passed as a single value
+(same for all y's).
+- [Issue 3](https://github.com/jrenaud90/CyRK/issues/3): Right now the cython version only allows for complex-valued
+y-values.
+- [Issue 5](https://github.com/jrenaud90/CyRK/issues/5): The numba solver is worse than the pure python scipy solver at
+large timespans (high integration times).
 
 ## Citing CyRK
 
