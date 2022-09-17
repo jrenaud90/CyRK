@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        group: [ 1, 2, 3 ]
+        group: [ 1 ]
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python 3.9
@@ -46,7 +46,7 @@ jobs:
           python -m pip install -e . -v
 
       - name: Run pytest
-        run: python -m pytest --cov=CyRK --splits 3 --group ${{ matrix.group }}
+        run: python -m pytest --cov=CyRK --splits 1 --group ${{ matrix.group }}
       - name: Upload coverage
         uses: actions/upload-artifact@v3
         with:
