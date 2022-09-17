@@ -237,13 +237,13 @@ def test_accuracy():
     p_diff_2 = 2. * (scipy_solution.y[1] - y_results[1]) / (y_results[1] + scipy_solution.y[1])
 
     # Check the accuracy of the results
-    import matplotlib.pyplot as plt
-    fig, ax = plt.subplots()
-    # ax.plot(time_domain, y_results[0], 'r', label='CyRK')
-    # ax.plot(scipy_solution.t, scipy_solution.y[0], 'b', label='SciPy')
-    ax.plot(time_domain, p_diff_1)
-    ax.plot(time_domain, p_diff_2)
-    plt.show()
+    # import matplotlib.pyplot as plt
+    # fig, ax = plt.subplots()
+    # # ax.plot(time_domain, y_results[0], 'r', label='CyRK')
+    # # ax.plot(scipy_solution.t, scipy_solution.y[0], 'b', label='SciPy')
+    # ax.plot(time_domain, p_diff_1)
+    # ax.plot(time_domain, p_diff_2)
+    # plt.show()
 
     # TODO: This is not a great result but I think it is due to the interpolation
     assert np.all(p_diff_1 < check_rtol)
