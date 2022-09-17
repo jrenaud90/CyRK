@@ -23,7 +23,7 @@ with open(os.path.join(dir_path, "CyRK", "_version.py"), 'r') as f:
 install_requires = [
     'setuptools>=18.0',
     'numpy==1.21.5',
-    'numba>=0.55'
+    'numba==0.55.1'
 ]
 
 requirements = [
@@ -33,7 +33,6 @@ requirements = [
     'numpy==1.21.5',
     'llvmlite==0.38.0',
     'cython>=0.29',
-    'numba>=0.55'
 ]
 
 # Find Cython files and turn them into c code. Must have numpy installed in order to find its c headers.
