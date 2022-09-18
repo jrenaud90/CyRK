@@ -36,7 +36,7 @@ jobs:
       - name: Build package
         run: python -m build -w
       - name: Save wheel for later upload
-        uses: actions/upload-artifacts@v2
+        uses: actions/upload-artifacts@v3
         with:
           name: python-package-distributions
           path: dist
@@ -65,7 +65,7 @@ jobs:
       - name: Build package
         run: python -m build -w
       - name: Save wheel for later upload
-        uses: actions/upload-artifacts@v2
+        uses: actions/upload-artifacts@v3
         with:
           name: python-package-distributions
           path: dist
@@ -90,7 +90,7 @@ jobs:
     - name: Build sdist
       run: python -m build --sdist
     - name: Download all the dists
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: python-package-distributions
         path: dist/
