@@ -20,20 +20,17 @@ with open(os.path.join(dir_path, "CyRK", "_version.py"), 'r') as f:
             version = line.split('=')[-1].strip().replace("'", '')
 
 # Dependencies
-install_requires = [
+setup_requirements = [
     'setuptools>=18.0',
     'numpy==1.21.5',
-    'numba==0.55.1',
     'cython>=0.29.32'
     ]
 
 requirements = [
     # Setuptools 18.0 properly handles Cython extensions.
-    'setuptools>=18.0',
-    'numba==0.55.1',
-    'numpy==1.21.5',
-    'llvmlite==0.38.0',
-    'cython>=0.29.32'
+    'numba>=0.55.1',
+    'numpy>=1.21.0,<1.23',
+    'llvmlite>=0.38.0'
     ]
 
 # Meta Data
@@ -57,9 +54,15 @@ classifiers = [
     ]
 
 # Find Cython files and turn them into c code. Must have numpy installed in order to find its c headers.
-ext_modules = [Extension('CyRK_cy', [os.path.join('CyRK', '_cyrk.pyx')])]
+ext_modules = [
+    Extension('CyRK.cy.cyrk',
+              sources=[os.path.join('CyRK', 'cy', '_cyrk.pyx')],
+              include_dirs=[os.path.join('CyRK', 'cy')]
+              )
+    ]
 
 
+# Create a build ext class that waits until setup dependencies are installed before cythonizing and building c-code
 class BuildExtCmd(build_ext):
 
     def run(self):
@@ -88,9 +91,10 @@ setup(
     url='https://github.com/jrenaud90/CyRK',
     repository="https://github.com/jrenaud90/CyRK/",
     python_requires=">=3.7",
-    setup_requires=requirements,
+    setup_requires=setup_requirements,
     ext_modules=ext_modules,
-    install_requires=install_requires,
+    install_requires=requirements,
     cmdclass={"build_ext": BuildExtCmd},
-    packages=find_packages('CyRK')
+    packages=find_packages(),
+    package_data={"CyRK.cy": ["_cyrk.pyx"]},
     )

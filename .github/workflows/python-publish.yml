@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 jobs:
-  deploy-ubuntu:
+  deploy-ubuntu-37:
 
     runs-on: ubuntu-latest
 
@@ -25,11 +25,11 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v3
       with:
-        python-version: '3.x'
+        python-version: '3.7'
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install scipy==1.7.3 numpy==1.21.5 numba==0.56.2 cython>=0.29.32
+        python -m pip install --upgrade build
     - name: Install package
       run: |
         python -m pip install . -v
@@ -40,8 +40,83 @@ jobs:
       with:
         user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}
+
+  deploy-ubuntu-38:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.8'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade build
+      - name: Install package
+        run: |
+          python -m pip install . -v
+      - name: Build package
+        run: python -m build -w
+      - name: Publish package
+        uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+  deploy-ubuntu-39:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade build
+      - name: Install package
+        run: |
+          python -m pip install . -v
+      - name: Build package
+        run: python -m build -w
+      - name: Publish package
+        uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+  deploy-ubuntu-310:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade build
+      - name: Install package
+        run: |
+          python -m pip install . -v
+      - name: Build package
+        run: python -m build -w
+      - name: Publish package
+        uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
     
-  deploy-windows:
+  deploy-windows-37:
 
     runs-on: windows-latest
 
@@ -50,11 +125,11 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v3
       with:
-        python-version: '3.x'
+        python-version: '3.7'
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install scipy==1.7.3 numpy==1.21.5 numba==0.56.2 cython>=0.29.32
+        python -m pip install --upgrade build
     - name: Install package
       run: |
         python -m pip install . -v
@@ -65,8 +140,87 @@ jobs:
       with:
         user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}
+
+  deploy-windows-38-sdist:
+
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.8'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade build
+      - name: Install package
+        run: |
+          python -m pip install . -v
+      - name: Build package
+        run: |
+          python -m build -w
+          python -m build --sdist
+      - name: Publish package
+        uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+  deploy-windows-39:
+
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade build
+      - name: Install package
+        run: |
+          python -m pip install . -v
+      - name: Build package
+        run: |
+          python -m build -w
+          python -m build --sdist
+      - name: Publish package
+        uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+  deploy-windows-310:
+
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade build
+      - name: Install package
+        run: |
+          python -m pip install . -v
+      - name: Build package
+        run: python -m build -w
+      - name: Publish package
+        uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
   
-  deploy-macos:
+  deploy-macos-37:
 
     runs-on: macos-latest
 
@@ -75,11 +229,11 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v3
       with:
-        python-version: '3.x'
+        python-version: '3.7'
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install scipy==1.7.3 numpy==1.21.5 numba==0.56.2 cython>=0.29.32
+        python -m pip install --upgrade build
     - name: Install package
       run: |
         python -m pip install . -v
@@ -90,3 +244,78 @@ jobs:
       with:
         user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}
+
+  deploy-macos-38:
+
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.8'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade build
+      - name: Install package
+        run: |
+          python -m pip install . -v
+      - name: Build package
+        run: python -m build -w
+      - name: Publish package
+        uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+  deploy-macos-39:
+
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade build
+      - name: Install package
+        run: |
+          python -m pip install . -v
+      - name: Build package
+        run: python -m build -w
+      - name: Publish package
+        uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+  deploy-macos-310:
+
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade build
+      - name: Install package
+        run: |
+          python -m pip install . -v
+      - name: Build package
+        run: python -m build -w
+      - name: Publish package
+        uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}

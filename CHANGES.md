@@ -2,4 +2,9 @@
 
 ## 2022 - September
 
-### Initial Alpha Version Launched!
+### v0.1.1 - Alpha
+
+- Corrected issues with installation
+- Improved GitHub workflows
+
+### Initial Beta Version 0.1.0 Launched!
