@@ -23,7 +23,7 @@ jobs:
           python -m pip install . -v
 
       - name: Run pytest
-        run: pytest -v --timeout=300 .\Tests\
+        run: pytest -v --timeout=300 ./Tests/
 
   test-p38:
     runs-on: macos-latest
@@ -42,7 +42,7 @@ jobs:
           python -m pip install . -v
 
       - name: Run pytest
-        run: pytest -v --timeout=300 .\Tests\
+        run: pytest -v --timeout=300 ./Tests/
 
   test-p39:
     runs-on: macos-latest
@@ -61,7 +61,7 @@ jobs:
           python -m pip install . -v
 
       - name: Run pytest
-        run: pytest -v --timeout=300 .\Tests\
+        run: pytest -v --timeout=300 ./Tests/
 
   test-p310:
     runs-on: macos-latest
@@ -80,4 +80,4 @@ jobs:
           python -m pip install . -v
 
       - name: Run pytest
-        run: pytest -v --timeout=300 .\Tests\
+        run: pytest -v --timeout=300 ./Tests/
