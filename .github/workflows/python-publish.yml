@@ -101,7 +101,7 @@ jobs:
         password: ${{ secrets.PYPI_API_TOKEN }}
 
     - name: Publish to Conda
-      uses: maxibor/conda-package-publish-action@v1.3
+      uses: fcakyon/conda-publish-action@v1.3
       with:
         subDir: 'conda'
         AnacondaToken: ${{ secrets.ANACONDA_TOKEN }}
