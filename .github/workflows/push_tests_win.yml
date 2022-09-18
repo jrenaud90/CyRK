@@ -42,9 +42,9 @@ jobs:
           python -m pip install . -v
 
       - name: Run pytest
-        run: python -m pytest --cov=./
+        run: python -m pytest --cov=./Tests --cov-report=xml
       - name: Upload coverage to Codecov
-        uses: actions/upload-artifact@v3
+        uses: codecov/codecov-action@v3
         with:
           directory: ./coverage/reports/
           env_vars: OS,PYTHON
