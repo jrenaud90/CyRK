@@ -4,7 +4,7 @@
 <a href="https://codecov.io/gh/jrenaud90/CyRK" ><img src="https://codecov.io/gh/jrenaud90/CyRK/branch/main/graph/badge.svg?token=MK2PqcNGET" alt="Code Coverage"/></a>
 <a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml/badge.svg?branch=main" alt="Windows Tests" /></a>
 <a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_mac.yml/badge.svg?branch=main" alt="MacOS Tests" /></a>
-<a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests.yml/badge.svg?branch=main" alt="Ubuntu Tests" /></a>
+<a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_ubun.yml/badge.svg?branch=main" alt="Ubuntu Tests" /></a>
 </div>
 
 ---
@@ -23,20 +23,24 @@ with the numba version.
 ![CyRK Performance](CyRK_SciPy_Compare_v0-0-1-dev4.png)
 
 ## Installation
-In order to install `CyRK` you must have the [numpy](https://numpy.org/) and [cython](https://cython.org/) 
-packages installed (CyRK will attempt to install these if they are not present). 
-It is recommended you pre-install these in an [Anaconda](https://www.anaconda.com/products/distribution) environment.
 
-Once you are ready to install: clone or download the CyRK package, navigate to the directory containing 
-CyRK's `setup.py` file, and run the command:
+It is recommended you use an [Anaconda](https://www.anaconda.com/products/distribution) environment.
 
-`python -m pip install -e . -v`
+To install simply open a terminal (in administrator mode if using Windows) and call:
+
+`pip install CyRK`
 
 This will create a dynamic (editable) link to the CyRK directory so that future updates can be more easily installed.
 
+During installation, CyRK will attempt to install Cython and Numpy in order to compile the cython code (unless
+installation is happening via a pre-compiled wheel). After the files have been compiled, cython will be uninstalled and
+CyRK's runtime dependencies (see setup.py for the latest list) will be installed instead.
+
 ### Installation Troubleshooting
 
-TBD
+*There are currently no reported installation issues.
+If you run into one please [report it](https://github.com/jrenaud90/CyRK/issues). We will work on a fix and/or add
+workaround information here.* 
 
 ### Development and Testing Dependencies
 
@@ -45,7 +49,7 @@ test suite.
 
 `conda install pytest scipy matplotlib jupyter`
 
-`conda install` can be replaced with `pip install` if you perfer.
+`conda install` can be replaced with `pip install` if you prefer.
 
 ## Using CyRK
 CyRK's API is similar to SciPy's solve_ivp function. A differential equation can be defined in python such as:
