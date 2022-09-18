@@ -25,7 +25,7 @@ install_requires = [
     'numpy==1.21.5',
     'numba==0.55.1',
     'cython>=3.0.0a11'
-]
+    ]
 
 requirements = [
     # Setuptools 18.0 properly handles Cython extensions.
@@ -34,12 +34,34 @@ requirements = [
     'numpy==1.21.5',
     'llvmlite==0.38.0',
     'cython>=3.0.0a11',
-]
+    ]
+
+# Meta Data
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Cython",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Natural Language :: English",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Physics"
+    ]
 
 # Find Cython files and turn them into c code. Must have numpy installed in order to find its c headers.
 ext_modules = [Extension('CyRK_cy', [os.path.join('CyRK', '_cyrk.pyx')])]
 
+
 class BuildExtCmd(build_ext):
+
     def run(self):
         import numpy as np
         self.include_dirs.append(np.get_include())
@@ -47,9 +69,12 @@ class BuildExtCmd(build_ext):
 
     def finalize_options(self):
         from Cython.Build import cythonize
-        self.distribution.ext_modules = cythonize(self.distribution.ext_modules,
-                                                  compiler_directives={'language_level' : "3"})
+        self.distribution.ext_modules = cythonize(
+            self.distribution.ext_modules,
+            compiler_directives={'language_level': "3"}
+            )
         super().finalize_options()
+
 
 setup(
     name='CyRK',
@@ -59,10 +84,13 @@ setup(
     author_email='joe.p.renaud@gmail.com',
     long_description=long_description,
     long_description_content_type='text/markdown',
+    classifiers=classifiers,
     url='https://github.com/jrenaud90/CyRK',
+    repository="https://github.com/jrenaud90/CyRK/",
+    python_requires=">=3.7",
     setup_requires=requirements,
     ext_modules=ext_modules,
     install_requires=install_requires,
     cmdclass={"build_ext": BuildExtCmd},
     packages=find_packages('CyRK')
-)
+    )
