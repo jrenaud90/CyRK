@@ -47,7 +47,7 @@ jobs:
           python -m pip install . -v
 
       - name: Run pytest
-        run: python -m pytest -s -v
+        run: python -m pytest -v --timeout=300
 
   test-39:
     runs-on: ubuntu-latest
@@ -66,7 +66,7 @@ jobs:
           python -m pip install . -v
 
       - name: Run pytest
-        run: python -m pytest -s -v
+        run: python -m pytest -v --timeout=300
 
   test-310:
     runs-on: ubuntu-latest
@@ -85,7 +85,7 @@ jobs:
           python -m pip install . -v
 
       - name: Run pytest
-        run: python -m pytest -s -v
+        run: python -m pytest -v --timeout=300
 
   test-38:
     runs-on: ubuntu-latest
@@ -104,7 +104,7 @@ jobs:
           python -m pip install . -v
 
       - name: Run pytest
-        run: python -m pytest --cov=CyRK -s -v
+        run: python -m pytest --cov=CyRK -v --timeout=300
       - name: Upload coverage
         uses: actions/upload-artifact@v3
         with:

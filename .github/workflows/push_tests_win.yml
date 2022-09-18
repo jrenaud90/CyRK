@@ -23,7 +23,7 @@ jobs:
           python -m pip install . -v
 
       - name: Run pytest
-        run: python -m pytest
+        run: python -m pytest -v --timeout=300
 
   test-38-with-coverage:
     runs-on: windows-latest
@@ -42,7 +42,7 @@ jobs:
           python -m pip install . -v
 
       - name: Run pytest
-        run: python -m pytest --cov=./Tests --cov-report=xml
+        run: python -m pytest --cov=./Tests --cov-report=xml -v --timeout=300
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
@@ -71,7 +71,7 @@ jobs:
           python -m pip install . -v
 
       - name: Run pytest
-        run: python -m pytest
+        run: python -m pytest -v --timeout=300
 
   test-310:
     runs-on: windows-latest
@@ -90,4 +90,4 @@ jobs:
           python -m pip install . -v
 
       - name: Run pytest
-        run: python -m pytest
+        run: python -m pytest -v --timeout=300
