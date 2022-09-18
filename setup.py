@@ -24,7 +24,7 @@ install_requires = [
     'setuptools>=18.0',
     'numpy==1.21.5',
     'numba==0.55.1',
-    'cython>=3.0.0a11'
+    'cython>=0.29.32'
     ]
 
 requirements = [
@@ -33,7 +33,7 @@ requirements = [
     'numba==0.55.1',
     'numpy==1.21.5',
     'llvmlite==0.38.0',
-    'cython>=3.0.0a11',
+    'cython>=0.29.32'
     ]
 
 # Meta Data
