@@ -1,5 +1,3 @@
-
-
 def test_package():
     """Check if all the functions can be imported. """
 

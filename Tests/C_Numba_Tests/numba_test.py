@@ -4,12 +4,14 @@ from numba import njit
 
 from CyRK import nbrk_ode
 
+
 @njit
 def diffeq_args(t, y, a, b):
     dy = np.zeros_like(y)
     dy[0] = (1. - a * y[1]) * y[0]
     dy[1] = (b * y[0] - 1.) * y[1]
     return dy
+
 
 @njit
 def diffeq(t, y):
@@ -18,10 +20,12 @@ def diffeq(t, y):
     dy[1] = (0.02 * y[0] - 1.) * y[1]
     return dy
 
+
 initial_conds = np.asarray((20., 20.), dtype=np.complex128)
 time_span = (0., 20.)
 rtol = 1.0e-7
 atol = 1.0e-8
+
 
 def test_basic_integration():
     """Check that the numba solver is able to run with its default arguments"""
@@ -105,6 +109,7 @@ def test_first_step():
     assert type(success) == bool
     assert success
     assert type(message) == str
+
 
 def test_rk23():
     """Check that the numba solver is able to run using the RK23 method """
@@ -192,6 +197,7 @@ def test_teval():
     assert success
     assert type(message) == str
 
+
 def test_args():
     """Check that the numba solver is able to run with user provided additional diffeq arguments """
 
@@ -211,6 +217,7 @@ def test_args():
     assert type(success) == bool
     assert success
     assert type(message) == str
+
 
 def test_accuracy():
     """Check that the numba solver is able to reproduce SciPy's results with reasonable accuracy """

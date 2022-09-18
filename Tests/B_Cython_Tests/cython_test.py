@@ -10,10 +10,12 @@ def diffeq(t, y, dy):
     dy[0] = (1. - 0.01 * y[1]) * y[0]
     dy[1] = (0.02 * y[0] - 1.) * y[1]
 
+
 @njit
 def diffeq_args(t, y, dy, a, b):
     dy[0] = (1. - a * y[1]) * y[0]
     dy[1] = (b * y[0] - 1.) * y[1]
+
 
 @njit
 def diffeq_scipy(t, y):
@@ -21,10 +23,12 @@ def diffeq_scipy(t, y):
     diffeq(t, y, dy)
     return dy
 
+
 initial_conds = np.asarray((20., 20.), dtype=np.complex128)
 time_span = (0., 20.)
 rtol = 1.0e-7
 atol = 1.0e-8
+
 
 def test_basic_integration():
     """Check that the cython solver is able to run with its default arguments"""
@@ -108,6 +112,7 @@ def test_first_step():
     assert type(success) == bool
     assert success
     assert type(message) == str
+
 
 # TODO: For some reason this was working and all of a sudden it stopped..
 # def test_rk23():
@@ -197,6 +202,7 @@ def test_teval():
     assert success
     assert type(message) == str
 
+
 def test_args():
     """Check that the cython solver is able to run with user provided additional diffeq arguments """
 
@@ -216,6 +222,7 @@ def test_args():
     assert type(success) == bool
     assert success
     assert type(message) == str
+
 
 def test_accuracy():
     """Check that the cython solver is able to reproduce SciPy's results with reasonable accuracy """
