@@ -1,3 +1,32 @@
+[project]
+license = {file = "LICENSE.txt"}
+readme = "README.md"
+requires-python = ">=3.7"
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Cython",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Natural Language :: English",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Physics"
+]
+
+repository = "https://github.com/jrenaud90/CyRK/"
+
+[tool.poetry]
+readme = "README.md"
+
 [build-system]
 requires = ["setuptools>=18.0", "wheel", "numpy==1.21.5", "cython>=3.0.0a11"]
 build-backend = "setuptools.build_meta"

@@ -64,5 +64,5 @@ setup(
     ext_modules=ext_modules,
     install_requires=install_requires,
     cmdclass={"build_ext": BuildExtCmd},
-    packages=find_packages()
+    packages=find_packages('CyRK')
 )
