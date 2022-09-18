@@ -3,7 +3,7 @@
 
 name: Windows Tests
 
-on: push
+on: [push, pull_request]
 
 jobs:
   test-37:
@@ -25,7 +25,7 @@ jobs:
       - name: Run pytest
         run: python -m pytest
 
-  test-38cv:
+  test-38-with-coverage:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
@@ -42,12 +42,17 @@ jobs:
           python -m pip install . -v
 
       - name: Run pytest
-        run: python -m pytest --cov=CyRK
-      - name: Upload coverage
+        run: python -m pytest --cov=./
+      - name: Upload coverage to Codecov
         uses: actions/upload-artifact@v3
         with:
+          directory: ./coverage/reports/
+          env_vars: OS,PYTHON
+          fail_ci_if_error: true
+          flags: unittests
+          path_to_write_report: ./coverage/codecov_report.txt
+          verbose: true
           name: coverage
-          path: .coverage
 
   test-39:
     runs-on: windows-latest
@@ -86,30 +91,3 @@ jobs:
 
       - name: Run pytest
         run: python -m pytest
-
-  # Combine and upload coverage reports.
-  coverage:
-    needs: test-38cv
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.8
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install pytest pytest-cov scipy==1.7.3 numpy==1.21.5 numba==0.56.2 cython>=0.29.32 coverage
-      - name: Install package
-        run: |
-          python -m pip install . -v
-      - name: Download all artifacts
-        # Downloads coverage1, coverage2, etc.
-        uses: actions/download-artifact@v3
-      - name: Run coverage
-        run: |
-          coverage combine coverage*/.coverage*
-          coverage report --fail-under=50
-          coverage xml
-      - uses: codecov/codecov-action@v3.0.0
