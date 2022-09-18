@@ -24,7 +24,7 @@ install_requires = [
     'setuptools>=18.0',
     'numpy==1.21.5',
     'numba==0.55.1',
-    'cython==3.0.0a11'
+    'cython>=3.0.0a11'
 ]
 
 requirements = [
@@ -33,11 +33,11 @@ requirements = [
     'numba==0.55.1',
     'numpy==1.21.5',
     'llvmlite==0.38.0',
-    'cython==3.0.0a11',
+    'cython>=3.0.0a11',
 ]
 
 # Find Cython files and turn them into c code. Must have numpy installed in order to find its c headers.
-ext_modules = [Extension('CyRK.cyrk', [os.path.join('CyRK', '_cyrk.pyx')])]
+ext_modules = [Extension('CyRK_cy', [os.path.join('CyRK', '_cyrk.pyx')])]
 
 class BuildExtCmd(build_ext):
     def run(self):
@@ -63,5 +63,6 @@ setup(
     setup_requires=requirements,
     ext_modules=ext_modules,
     install_requires=install_requires,
-    cmdclass={"build_ext": BuildExtCmd}
+    cmdclass={"build_ext": BuildExtCmd},
+    packages=find_packages()
 )

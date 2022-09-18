@@ -6,8 +6,8 @@ name: CyRK Push Tests - Windows
 on: push
 
 jobs:
-  test-37:
-    runs-on: windows-latest
+  test-p37:
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python 3.7
@@ -25,8 +25,8 @@ jobs:
       - name: Run pytest
         run: python -m pytest
 
-  test-38:
-    runs-on: windows-latest
+  test-p38:
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python 3.8
@@ -44,8 +44,8 @@ jobs:
       - name: Run pytest
         run: python -m pytest
 
-  test-39:
-    runs-on: windows-latest
+  test-p39:
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python 3.9
@@ -63,8 +63,8 @@ jobs:
       - name: Run pytest
         run: python -m pytest
 
-  test-310:
-    runs-on: windows-latest
+  test-p310:
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python 3.10
