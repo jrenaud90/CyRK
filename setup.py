@@ -22,7 +22,7 @@ with open(os.path.join(dir_path, "CyRK", "_version.py"), 'r') as f:
 # Dependencies
 setup_requirements = [
     'setuptools>=18.0',
-    'numpy==1.21.5',
+    'numpy>=1.21.0,<1.23',
     'cython>=0.29.32'
     ]
 
@@ -72,10 +72,12 @@ class BuildExtCmd(build_ext):
 
     def finalize_options(self):
         from Cython.Build import cythonize
+        print('!-- Cythonizing CyRK')
         self.distribution.ext_modules = cythonize(
             self.distribution.ext_modules,
             compiler_directives={'language_level': "3"}
             )
+        print('!-- Finished Cythonizing CyRK')
         super().finalize_options()
 
 
