@@ -6,14 +6,22 @@ name: Windows Tests
 on: [push, pull_request, workflow_dispatch]
 
 jobs:
-  test-37:
+  test-windows:
+    name: Test CyRK on Windows
     runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version:
+          - "3.7"
+          - "3.8"
+          # Skip 3.9 since we will perform coverage on it later
+          - "3.10"
     steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python 3.7
-        uses: actions/setup-python@v2.2.2
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3
         with:
-          python-version: 3.7
+          python-version: ${{ matrix.python-version }}
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
@@ -25,14 +33,15 @@ jobs:
       - name: Run pytest
         run: pytest -v --timeout=300 .\Tests\
 
-  test-38-with-coverage:
+  test-39-with-coverage:
+    name: Test Python 3.9 and Upload Coverage Report
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v2.2.2
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v3
         with:
-          python-version: 3.8
+          python-version: 3.9
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
@@ -51,41 +60,3 @@ jobs:
           flags: unittests
           verbose: true
           name: coverage
-
-  test-39:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v2.2.2
-        with:
-          python-version: 3.9
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install pytest pytest-timeout scipy>=1.7.3
-      - name: Install package
-        run: |
-          python -m pip install . -v
-
-      - name: Run pytest
-        run: pytest -v --timeout=300 .\Tests\
-
-  test-310:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python "3.10"
-        uses: actions/setup-python@v2.2.2
-        with:
-          python-version: "3.10"
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install pytest pytest-timeout scipy>=1.7.3
-      - name: Install package
-        run: |
-          python -m pip install . -v
-
-      - name: Run pytest
-        run: pytest -v --timeout=300 .\Tests\

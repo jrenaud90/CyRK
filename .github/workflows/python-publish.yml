@@ -99,10 +99,10 @@ jobs:
       with:
         user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}
-
-    - name: Publish to Conda
-      uses: fcakyon/conda-publish-action@v1.3
-      with:
-        subDir: 'conda'
-        AnacondaToken: ${{ secrets.ANACONDA_TOKEN }}
-        platforms: 'win osx linux'
+#
+#    - name: Publish to Conda
+#      uses: fcakyon/conda-publish-action@v1.3
+#      with:
+#        subDir: 'conda'
+#        AnacondaToken: ${{ secrets.ANACONDA_TOKEN }}
+#        platforms: 'win osx linux'

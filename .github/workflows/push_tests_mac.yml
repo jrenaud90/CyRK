@@ -6,71 +6,23 @@ name: MacOS Tests
 on: [push, workflow_dispatch]
 
 jobs:
-  test-p37:
+
+  test-macos:
+    name: Test CyRK on MacOS
     runs-on: macos-latest
+    strategy:
+      matrix:
+        python-version:
+          - "3.7"
+          - "3.8"
+          - "3.9"
+          - "3.10"
     steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python 3.7
-        uses: actions/setup-python@v2.2.2
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3
         with:
-          python-version: 3.7
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install pytest pytest-timeout scipy>=1.7.3
-      - name: Install package
-        run: |
-          python -m pip install . -v
-
-      - name: Run pytest
-        run: pytest -v --timeout=300 ./Tests/
-
-  test-p38:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v2.2.2
-        with:
-          python-version: 3.8
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install pytest pytest-timeout scipy>=1.7.3
-      - name: Install package
-        run: |
-          python -m pip install . -v
-
-      - name: Run pytest
-        run: pytest -v --timeout=300 ./Tests/
-
-  test-p39:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v2.2.2
-        with:
-          python-version: 3.9
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install pytest pytest-timeout scipy>=1.7.3
-      - name: Install package
-        run: |
-          python -m pip install . -v
-
-      - name: Run pytest
-        run: pytest -v --timeout=300 ./Tests/
-
-  test-p310:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python "3.10"
-        uses: actions/setup-python@v2.2.2
-        with:
-          python-version: "3.10"
+          python-version: ${{ matrix.python-version }}
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
