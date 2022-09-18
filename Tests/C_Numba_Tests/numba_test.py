@@ -19,7 +19,7 @@ def diffeq(t, y):
     return dy
 
 initial_conds = np.asarray((20., 20.), dtype=np.complex128)
-time_span = (0., 50.)
+time_span = (0., 20.)
 rtol = 1.0e-7
 atol = 1.0e-8
 
