@@ -1,6 +1,6 @@
-# ignore cython build files
-*.c
-*.cpp
+
+# Ignore coverage files
+.coverage
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
