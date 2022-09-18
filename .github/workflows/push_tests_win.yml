@@ -42,11 +42,11 @@ jobs:
           python -m pip install . -v
 
       - name: Run pytest
-        run: python -m pytest --cov=./Tests --cov-report=xml -v --timeout=300
+        run: python -m pytest --cov=. --cov-report=xml -v --timeout=300
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
-          directory: .coverage
+          directory: coverage.xml
           env_vars: OS,PYTHON
           fail_ci_if_error: true
           flags: unittests
