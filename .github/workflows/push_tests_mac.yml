@@ -3,7 +3,7 @@
 
 name: MacOS Tests
 
-on: push
+on: [push, workflow_dispatch]
 
 jobs:
   test-p37:
