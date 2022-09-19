@@ -14,11 +14,13 @@
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
 
-CyRK provides fast ODE integration while still allowing for differential equations written in Python. 
+CyRK provides fast integration tools to solve systems of ODEs with adaptive time stepping. CyRK can accept differential equation functions 
+that are written in pure Python or njited numba, speeding up development time. The purpose of this package is to provide some of the 
+functionality of [scipy's solve_ivp](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html) with improved performance.
 
-CyRK's numba (njit-safe) implementation is 13-25x faster than scipy's solve_ivp function. The cython implementation is about 20x
-faster. The cython function is also largely pre-compiled which avoids most of the initial performance hit found
-with the numba version.
+CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is 10-25x faster than scipy's solve_ivp function (except for very long integrations). 
+The [cython](https://cython.org/) implementation is about 20x faster. The cython function is also largely pre-compiled which avoids most of the 
+initial performance hit found with using the numba version.
 
 ![CyRK Performance](CyRK_SciPy_Compare_v0-0-1-dev4.png)
 
@@ -30,11 +32,9 @@ To install simply open a terminal (in administrator mode if using Windows) and c
 
 `pip install CyRK`
 
-This will create a dynamic (editable) link to the CyRK directory so that future updates can be more easily installed.
-
-During installation, CyRK will attempt to install Cython and Numpy in order to compile the cython code (unless
-installation is happening via a pre-compiled wheel). After the files have been compiled, cython will be uninstalled and
-CyRK's runtime dependencies (see setup.py for the latest list) will be installed instead.
+If not installing from a wheel, CyRK will attempt to install Cython and Numpy in order to compile the cython code. 
+After the files have been compiled, cython will be uninstalled and CyRK's runtime dependencies 
+(see setup.py for the latest list) will be installed instead.
 
 ### Installation Troubleshooting
 
