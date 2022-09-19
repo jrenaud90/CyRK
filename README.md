@@ -1,5 +1,6 @@
 # CyRK
 <div style="text-align: center;">
+<a href="https://doi.org/10.5281/zenodo.7093267"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.7093267.svg" alt="DOI"></a>
 <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.7|3.8|3.9|3.10-blue" alt="Python Version 3.7-3.10" /></a>
 <a href="https://codecov.io/gh/jrenaud90/CyRK" ><img src="https://codecov.io/gh/jrenaud90/CyRK/branch/main/graph/badge.svg?token=MK2PqcNGET" alt="Code Coverage"/></a>
 <a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml/badge.svg?branch=main" alt="Windows Tests" /></a>
@@ -128,11 +129,15 @@ large timespans (high integration times).
 ## Citing CyRK
 
 It is great to see CyRK used in other software or in scientific studies. We ask that you cite back to CyRK's 
-[GitHub](https://github.com/jrenaud90/CyRK) website so more users learn about this package.
+[GitHub](https://github.com/jrenaud90/CyRK) website so interested parties can learn about this package. 
+
+Renaud, Joe P. (2022). CyRK - ODE Integrator Implemented in Cython and Numba (0.1.2). Zenodo. https://doi.org/10.5281/zenodo.7093267
 
 In addition to citing CyRK, please consider citing SciPy and its references for the specific Runge-Kutta model that
 was used in your work. CyRK is largely an adaptation of SciPy's functionality.
 Find more details [here](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html).
+
+Pauli Virtanen, Ralf Gommers, Travis E. Oliphant, Matt Haberland, Tyler Reddy, David Cournapeau, Evgeni Burovski, Pearu Peterson, Warren Weckesser, Jonathan Bright, Stéfan J. van der Walt, Matthew Brett, Joshua Wilson, K. Jarrod Millman, Nikolay Mayorov, Andrew R. J. Nelson, Eric Jones, Robert Kern, Eric Larson, CJ Carey, İlhan Polat, Yu Feng, Eric W. Moore, Jake VanderPlas, Denis Laxalde, Josef Perktold, Robert Cimrman, Ian Henriksen, E.A. Quintero, Charles R Harris, Anne M. Archibald, Antônio H. Ribeiro, Fabian Pedregosa, Paul van Mulbregt, and SciPy 1.0 Contributors. (2020) SciPy 1.0: Fundamental Algorithms for Scientific Computing in Python. Nature Methods, 17(3), 261-272.
 
 ## Contribute to CyRK
 CyRK is open-source and is distributed under the Creative Commons Attribution-ShareAlike 4.0 International license. 
