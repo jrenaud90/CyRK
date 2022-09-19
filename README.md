@@ -1,6 +1,6 @@
 # CyRK
 <div style="text-align: center;">
-<a href="https://doi.org/10.5281/zenodo.7093267"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.7093267.svg" alt="DOI"></a>
+<a href="https://doi.org/10.5281/zenodo.7093266"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.7093266.svg" alt="DOI"></a>
 <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.7|3.8|3.9|3.10-blue" alt="Python Version 3.7-3.10" /></a>
 <a href="https://codecov.io/gh/jrenaud90/CyRK" ><img src="https://codecov.io/gh/jrenaud90/CyRK/branch/main/graph/badge.svg?token=MK2PqcNGET" alt="Code Coverage"/></a>
 <a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml/badge.svg?branch=main" alt="Windows Tests" /></a>
@@ -131,7 +131,7 @@ large timespans (high integration times).
 It is great to see CyRK used in other software or in scientific studies. We ask that you cite back to CyRK's 
 [GitHub](https://github.com/jrenaud90/CyRK) website so interested parties can learn about this package. 
 
-Renaud, Joe P. (2022). CyRK - ODE Integrator Implemented in Cython and Numba (0.1.2). Zenodo. https://doi.org/10.5281/zenodo.7093267
+Renaud, Joe P. (2022). CyRK - ODE Integrator Implemented in Cython and Numba (0.1.2). Zenodo. https://doi.org/10.5281/zenodo.7093266
 
 In addition to citing CyRK, please consider citing SciPy and its references for the specific Runge-Kutta model that
 was used in your work. CyRK is largely an adaptation of SciPy's functionality.
