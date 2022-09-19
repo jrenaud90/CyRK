@@ -287,7 +287,6 @@ def cyrk_ode(
     global RK23_C, RK23_B, RK23_E, RK23_A
     global RK45_C, RK45_B, RK45_E, RK45_A
 
-
     complex_type = np.complex128
     float_type = np.float64
 
@@ -566,7 +565,6 @@ def cyrk_ode(
                 K_view[0, i] = dydt_old_view[i]
 
             for s in range(1, len_c):
-
                 c = C[s]
                 time_ = t_new + c * step
 
@@ -610,13 +608,10 @@ def cyrk_ode(
 
                 # Dot Product (K, E5) / scale and Dot Product (K, E3) * step / scale
                 for i in range(y_size):
-
                     # Check how well this step performed.
                     scale_view[i] = atol + max(abs(y_old_view[i]), abs(y_new_view[i])) * rtol
 
                     for j in range(rk_n_stages_plus1):
-
-
                         if j == 0:
                             # Initialize
                             E5_tmp_view[i] = 0.
@@ -721,14 +716,11 @@ def cyrk_ode(
     y_results_T = np.empty(result_size, dtype=complex_type, order='C')
     time_domain = np.empty(len_t, dtype=float_type, order='C')
 
+    # To match the format that scipy follows, we will take the transpose of y.
     for j in range(y_size):
         for i in range(len_t):
             time_domain[i] = time_domain_list[i]
             y_results_T[j, i] =  y_results_list[i][j]
-
-
-    # To match the format that scipy follows, we will take the transpose of y.
-
 
     if len_teval > 0:
         # User only wants data at specific points.

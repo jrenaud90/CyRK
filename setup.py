@@ -21,13 +21,13 @@ with open(os.path.join(dir_path, "CyRK", "_version.py"), 'r') as f:
 
 # Dependencies
 setup_requirements = [
+    # Setuptools 18.0 properly handles Cython extensions.
     'setuptools>=18.0',
     'numpy>=1.21.0,<1.23',
     'cython>=0.29.32'
     ]
 
 requirements = [
-    # Setuptools 18.0 properly handles Cython extensions.
     'numba>=0.55.1',
     'numpy>=1.21.0,<1.23',
     'llvmlite>=0.38.0'
