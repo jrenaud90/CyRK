@@ -76,7 +76,7 @@ def _norm(x):
     return np.linalg.norm(x) / np.sqrt(x.size)
 
 
-@njit(cache=False)
+@njit(cache=True)
 def nbrk_ode(
     diffeq: callable, t_span: Tuple[float, float], y0: np.ndarray, args: tuple = tuple(),
     rtol: float = 1.e-6, atol: float = 1.e-8,
@@ -317,7 +317,8 @@ def nbrk_ode(
                 K[s] = np.asarray(diffeq(t_now + c * step, y_now + dy, *args), dtype=dtype)
                 s += 1
 
-            y_new = y_now + step * np.dot(K[:-1].T, B)
+            K_ = np.ascontiguousarray(K[:-1].T)
+            y_new = y_now + step * np.dot(K_, B)
             dydt_new = np.asarray(diffeq(t_now + step, y_new, *args), dtype=dtype)
             K[-1] = dydt_new
 
