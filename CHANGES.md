@@ -2,6 +2,11 @@
 
 ## 2022 - September
 
+### v0.1.2 - Alpha
+
+- Made the calling argument for the numba solver more consistent with the cython one by letting first_step==0 be
+equivalent to == None
+
 ### v0.1.1 - Alpha
 
 - Corrected issues with installation

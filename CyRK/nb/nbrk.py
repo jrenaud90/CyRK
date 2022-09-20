@@ -220,7 +220,19 @@ def nbrk_ode(
     t_now = t_start
     y_now = np.asarray(y0)
     dydt_now = np.asarray(diffeq(t_now, y_now, *args), dtype=dtype)
-    if first_step is None:
+    first_step_found = False
+    if first_step is not None:
+        if first_step < 0.:
+            # Step size must be a positive number
+            raise Exception
+        elif first_step > np.abs(t_end - t_start):
+            # Step size can not exceed bounds
+            raise Exception
+        elif first_step != 0.:
+            step_size = first_step
+            first_step_found = True
+
+    if not first_step_found:
         # Select an initial step size based on the differential equation.
         # .. [1] E. Hairer, S. P. Norsett G. Wanner, "Solving Ordinary Differential
         #        Equations I: Nonstiff Problems", Sec. II.4.
@@ -247,14 +259,6 @@ def nbrk_ode(
                 h1 = (0.01 / max(d1, d2))**error_expo
 
             step_size = min(100. * h0, h1)
-    else:
-        if first_step <= 0.:
-            # Step size must be a positive number
-            raise Exception
-        elif first_step > np.abs(t_end - t_start):
-            # Step size can not exceed bounds
-            raise Exception
-        step_size = first_step
 
     # Main integration loop
     message = 'Running...'

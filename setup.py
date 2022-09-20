@@ -17,7 +17,7 @@ version = ''
 with open(os.path.join(dir_path, "CyRK", "_version.py"), 'r') as f:
     for line in f:
         if 'version =' in line:
-            version = line.split('=')[-1].strip().replace("'", '')
+            version = line.split('=')[-1].strip().replace("'", '').replace('"', '')
 
 # Dependencies
 setup_requirements = [
