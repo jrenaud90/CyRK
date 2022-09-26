@@ -71,12 +71,12 @@ RK45_P = np.array(
     )
 
 
-@njit(cache=True)
+@njit(cache=False)
 def _norm(x):
     return np.linalg.norm(x) / np.sqrt(x.size)
 
 
-@njit(cache=True)
+@njit(cache=False)
 def nbrk_ode(
     diffeq: callable, t_span: Tuple[float, float], y0: np.ndarray, args: tuple = tuple(),
     rtol: float = 1.e-6, atol: float = 1.e-8,
