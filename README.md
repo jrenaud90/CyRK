@@ -16,7 +16,7 @@
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
 
 CyRK provides fast integration tools to solve systems of ODEs with adaptive time stepping. CyRK can accept differential equation functions 
-that are written in pure Python or njited numba, speeding up development time. The purpose of this package is to provide some of the 
+that are written in pure Python or njited numba, speeding up development time. The purpose of this package is to provide some 
 functionality of [scipy's solve_ivp](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html) with improved performance.
 
 CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is 10-25x faster than scipy's solve_ivp function (except for very long integrations). 
