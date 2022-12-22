@@ -24,7 +24,7 @@ CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is 10-
 The [cython](https://cython.org/) implementation is about 20x faster. The cython function is also largely pre-compiled which avoids most of the 
 initial performance hit found with using the numba version.
 
-![CyRK Performance](CyRK_SciPy_Compare_v0-1-3a0.png)
+<img style="text-align: center" src="https://raw.githubusercontent.com/jrenaud90/CyRK/main/Benchmarks/CyRK_SciPy_Compare_v0-1-3a0.png" alt="CyRK Performance" />
 
 ## Installation
 
@@ -135,6 +135,8 @@ The solver will then interpolate the results to fit this array.
 (same for all y's).
 - [Issue 3](https://github.com/jrenaud90/CyRK/issues/3): Right now the cython version only allows for complex-valued
 y-values.
+- [Issue 5](https://github.com/jrenaud90/CyRK/issues/5): The numba solver is worse than the pure python scipy solver at
+large timespans (high integration times).
 
 ## Citing CyRK
 
