@@ -10,6 +10,8 @@
 - Increased the lower limit on `numpy` package version (to fix issue [7](https://github.com/jrenaud90/CyRK/issues/7)) and removed the upper limit version.
 - Removed python 3.7 as a supported version. 
 - Updated graphic in readme.
+- Converted over to using `pyproject.toml` instead of `setup.py`
+  - removed `version.py` from project folder.
 
 ### v0.1.2 - Alpha
 

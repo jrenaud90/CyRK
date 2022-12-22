@@ -1,6 +1,7 @@
 # Find Version Number
-from ._version import version
-__version__ = version
+import importlib.metadata
+__version__ = importlib.metadata.version("CyRK")
+version = __version__
 
 # Import numba solver
 from .nb.nbrk import nbrk_ode

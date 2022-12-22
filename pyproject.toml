@@ -1,0 +1,79 @@
+[project]
+
+name='CyRK'
+version = '0.1.3a1'
+description='Runge-Kutta ODE Integrator Implemented in Cython and Numba.'
+authors= [
+    {name = 'Joe P. Renaud', email = 'joe.p.renaud@gmail.com'}
+    ]
+
+requires-python = ">=3.8,<=3.10"
+dependencies = [
+    'numba>=0.54.1',
+    'numpy>=1.22',
+    'scipy>=1.9.3'
+]
+license = {file = "LICENSE.txt"}
+readme = "README.md"
+# repository = "https://github.com/jrenaud90/CyRK/"
+keywords = [
+    'Scientific Computing',
+    'Runge-Kutta',
+    'Numerical Integration',
+    'ODEs',
+    'Ordinary Differential Equations',
+    'cython',
+    'numba',
+    'Integration'
+]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Cython",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Natural Language :: English",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Physics"
+]
+
+[project.optional-dependencies]
+dev = [
+    "jupyter",
+    "matplotlib",
+    "pytest"
+]
+
+[build-system]
+requires = [
+    # Setuptools 18.0 properly handles Cython extensions.
+    'setuptools>=18.0',
+    'numpy>=1.22',
+    'cython>=0.29.30',
+    'wheel>=0.38'
+]
+
+[tool.setuptools]
+py-modules = ["_build_cyrk"]
+
+[tool.setuptools.packages]
+find = {}
+
+[tool.setuptools.cmdclass]
+build_py = "_build_cyrk.build_cyrk"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -v"
+testpaths = [
+    "Tests"
+]
+timeout = 300
