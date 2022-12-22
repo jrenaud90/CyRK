@@ -57,11 +57,13 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install --upgrade build
       - name: Build package
-        run: python -m build -w
+        run: |
+          python -c "import os; os.makedirs('wheelhouse')"
+          python -m build -w wheelhouse
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
-          path: /*.whl
+          path: wheelhouse/*.whl
 
   upload_all:
     name: Upload wheels to PyPI
