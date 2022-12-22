@@ -10,7 +10,7 @@
 
 ---
 
-<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.1.1 Alpha-orange" alt="CyRK Version 0.0.1 Alpha" /></a>
+<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.1.3 Alpha-orange" alt="CyRK Version 0.1.3 Alpha" /></a>
 
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
@@ -61,7 +61,7 @@ from numba import njit
 # For even more speed up you can use numba's njit to compile the diffeq
 @njit
 def diffeq(t, y):
-    dy = list()
+    dy = np.empty_like(y)
     dy[0] = (1. - 0.01 * y[1]) * y[0]
     dy[1] = (0.02 * y[0] - 1.) * y[1]
     return dy
