@@ -7,7 +7,7 @@ authors= [
     {name = 'Joe P. Renaud', email = 'joe.p.renaud@gmail.com'}
     ]
 
-requires-python = ">=3.8,<=3.10"
+requires-python = ">=3.8,<3.11"
 dependencies = [
     'numba>=0.54.1',
     'numpy>=1.22',
