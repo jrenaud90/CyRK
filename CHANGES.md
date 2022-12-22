@@ -9,6 +9,7 @@
 - Added `SciPy` dependency that was missing (required for numba integrator).
 - Increased the lower limit on `numpy` package version (to fix issue [7](https://github.com/jrenaud90/CyRK/issues/7)) and removed the upper limit version.
 - Removed python 3.7 as a supported version. 
+- Updated graphic in readme.
 
 ### v0.1.2 - Alpha
 

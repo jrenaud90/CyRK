@@ -23,7 +23,7 @@ CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is 10-
 The [cython](https://cython.org/) implementation is about 20x faster. The cython function is also largely pre-compiled which avoids most of the 
 initial performance hit found with using the numba version.
 
-![CyRK Performance](CyRK_SciPy_Compare_v0-0-1-dev4.png)
+![CyRK Performance](CyRK_SciPy_Compare_v0-1-3a0.png)
 
 ## Installation
 
