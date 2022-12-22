@@ -1,6 +1,10 @@
 # CyRK - Change Log
 
-## 2022 - September
+## 2022 - December
+
+### v0.2.0 - Alpha
+
+- Fixed warning during numba integration about contiguous arrays.
 
 ### v0.1.3 - Alpha
 
@@ -12,6 +16,8 @@
 - Updated graphic in readme.
 - Converted over to using `pyproject.toml` instead of `setup.py`
   - removed `version.py` from project folder.
+
+## 2022 - September
 
 ### v0.1.2 - Alpha
 

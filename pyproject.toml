@@ -1,7 +1,7 @@
 [project]
 
 name='CyRK'
-version = '0.1.3a1'
+version = '0.2.0dev0'
 description='Runge-Kutta ODE Integrator Implemented in Cython and Numba.'
 authors= [
     {name = 'Joe P. Renaud', email = 'joe.p.renaud@gmail.com'}
@@ -44,6 +44,10 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
     "Topic :: Scientific/Engineering :: Physics"
 ]
+
+[project.urls]
+"Homepage" = "https://github.com/jrenaud90/CyRK"
+"Bug Tracker" = "https://github.com/jrenaud90/CyRK/issues"
 
 [project.optional-dependencies]
 dev = [
