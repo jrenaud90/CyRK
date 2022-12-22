@@ -30,6 +30,12 @@ rtol = 1.0e-7
 atol = 1.0e-8
 
 
+def test_cyrk_test():
+    """Check that the builtin test function for the cyrk integrator is working"""
+
+    from CyRK import test_cyrk
+    test_cyrk()
+
 def test_basic_integration():
     """Check that the cython solver is able to run with its default arguments"""
 
