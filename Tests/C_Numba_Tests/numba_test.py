@@ -27,6 +27,13 @@ rtol = 1.0e-7
 atol = 1.0e-8
 
 
+def test_nbrk_test():
+    """Check that the builtin test function for the nbrk integrator is working"""
+
+    from CyRK import test_nbrk
+    test_nbrk()
+
+
 def test_basic_integration():
     """Check that the numba solver is able to run with its default arguments"""
 

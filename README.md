@@ -1,33 +1,34 @@
 # CyRK
 <div style="text-align: center;">
 <a href="https://doi.org/10.5281/zenodo.7093266"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.7093266.svg" alt="DOI"></a>
-<a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.7|3.8|3.9|3.10-blue" alt="Python Version 3.7-3.10" /></a>
+<a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.8|3.9|3.10-blue" alt="Python Version 3.8-3.10" /></a>
 <a href="https://codecov.io/gh/jrenaud90/CyRK" ><img src="https://codecov.io/gh/jrenaud90/CyRK/branch/main/graph/badge.svg?token=MK2PqcNGET" alt="Code Coverage"/></a>
 <a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml/badge.svg?branch=main" alt="Windows Tests" /></a>
 <a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_mac.yml/badge.svg?branch=main" alt="MacOS Tests" /></a>
-<a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_ubun.yml/badge.svg?branch=main" alt="Ubuntu Tests" /></a>
+
+[//]: # (<a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_ubun.yml/badge.svg?branch=main" alt="Ubuntu Tests" /></a>)
 </div>
 
 ---
 
-<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.1.1 Alpha-orange" alt="CyRK Version 0.0.1 Alpha" /></a>
+<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.1.3 Alpha-orange" alt="CyRK Version 0.1.3 Alpha" /></a>
 
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
 
 CyRK provides fast integration tools to solve systems of ODEs with adaptive time stepping. CyRK can accept differential equation functions 
-that are written in pure Python or njited numba, speeding up development time. The purpose of this package is to provide some of the 
+that are written in pure Python or njited numba, speeding up development time. The purpose of this package is to provide some 
 functionality of [scipy's solve_ivp](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html) with improved performance.
 
 CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is 10-25x faster than scipy's solve_ivp function (except for very long integrations). 
 The [cython](https://cython.org/) implementation is about 20x faster. The cython function is also largely pre-compiled which avoids most of the 
 initial performance hit found with using the numba version.
 
-![CyRK Performance](CyRK_SciPy_Compare_v0-0-1-dev4.png)
+![CyRK Performance](CyRK_SciPy_Compare_v0-1-3a0.png)
 
 ## Installation
 
-It is recommended you use an [Anaconda](https://www.anaconda.com/products/distribution) environment.
+It is recommended you use an [Anaconda](https://www.anaconda.com/products/distribution) environment. CyRK has been tested on Python 3.8--3.10
 
 To install simply open a terminal (in administrator mode if using Windows) and call:
 
@@ -35,7 +36,18 @@ To install simply open a terminal (in administrator mode if using Windows) and c
 
 If not installing from a wheel, CyRK will attempt to install Cython and Numpy in order to compile the cython code. 
 After the files have been compiled, cython will be uninstalled and CyRK's runtime dependencies 
-(see setup.py for the latest list) will be installed instead.
+(see the pyproject.toml file for the latest list) will be installed instead.
+
+CyRK requires the `cython` and `numpy` packages during installation. The `numpy`, `numba`, and `scipy` packages are required for runtime.
+
+A new installation of CyRK can be tested quickly by running the following from a python console.
+```python
+from CyRK import test_cyrk, test_nbrk
+test_cyrk()
+# You will hopefully see the message "CyRK's cyrk_ode was tested successfully."
+test_nbrk()
+# You will hopefully see the message "CyRK's nbrk_ode was tested successfully."
+```
 
 ### Installation Troubleshooting
 
@@ -60,8 +72,8 @@ import numpy as np
 from numba import njit
 # For even more speed up you can use numba's njit to compile the diffeq
 @njit
-def diffeq(t, y):
-    dy = list()
+def diffeq_nb(t, y):
+    dy = np.empty_like(y)
     dy[0] = (1. - 0.01 * y[1]) * y[0]
     dy[1] = (0.02 * y[0] - 1.) * y[1]
     return dy
@@ -77,7 +89,7 @@ The ODE can then be solved using the numba function by calling CyRK's `nbrk_ode`
 ```python
 from CyRK import nbrk_ode
 time_domain, y_results, success, message = \
-    nbrk_ode(diffeq, time_span, initial_conds, rk_method=1, rtol=rtol, atol=atol)
+    nbrk_ode(diffeq_nb, time_span, initial_conds, rk_method=1, rtol=rtol, atol=atol)
 ```
 
 To call the cython version of the integrator you need to slightly edit the differential equation so that it does not
@@ -85,7 +97,7 @@ return the derivative. Instead, the output is passed as an input argument (a np.
 
 ```python
 @njit
-def diffeq(t, y, dy):
+def diffeq_cy(t, y, dy):
     dy[0] = (1. - 0.01 * y[1]) * y[0]
     dy[1] = (0.02 * y[0] - 1.) * y[1]
 ```
@@ -95,7 +107,7 @@ You can then call the ODE solver in a similar fashion as the numba version.
 ```python
 from CyRK import cyrk_ode
 time_domain, y_results, success, message = \
-    cyrk_ode(diffeq, time_span, initial_conds, rk_method=1, rtol=rtol, atol=atol)
+    cyrk_ode(diffeq_cy, time_span, initial_conds, rk_method=1, rtol=rtol, atol=atol)
 ```
 
 ### Optional Inputs
@@ -123,15 +135,13 @@ The solver will then interpolate the results to fit this array.
 (same for all y's).
 - [Issue 3](https://github.com/jrenaud90/CyRK/issues/3): Right now the cython version only allows for complex-valued
 y-values.
-- [Issue 5](https://github.com/jrenaud90/CyRK/issues/5): The numba solver is worse than the pure python scipy solver at
-large timespans (high integration times).
 
 ## Citing CyRK
 
 It is great to see CyRK used in other software or in scientific studies. We ask that you cite back to CyRK's 
 [GitHub](https://github.com/jrenaud90/CyRK) website so interested parties can learn about this package. 
 
-Renaud, Joe P. (2022). CyRK - ODE Integrator Implemented in Cython and Numba (0.1.2). Zenodo. https://doi.org/10.5281/zenodo.7093266
+Renaud, Joe P. (2022). CyRK - ODE Integrator Implemented in Cython and Numba. Zenodo. https://doi.org/10.5281/zenodo.7093266
 
 In addition to citing CyRK, please consider citing SciPy and its references for the specific Runge-Kutta model that
 was used in your work. CyRK is largely an adaptation of SciPy's functionality.

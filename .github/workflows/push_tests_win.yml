@@ -12,7 +12,6 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - "3.7"
           - "3.8"
           # Skip 3.9 since we will perform coverage on it later
           - "3.10"
@@ -51,12 +50,12 @@ jobs:
           python -m pip install . -v
 
       - name: Run pytest
-        run: pytest -v --cov=. --cov-report=xml --timeout=300 .\Tests\
+        run: pytest -v --cov=.\CyRK --cov-report=xml --timeout=300 .\Tests\
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
           env_vars: OS,PYTHON
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           flags: unittests
           verbose: true
           name: coverage
