@@ -7,3 +7,6 @@ from .nb.nbrk import nbrk_ode
 
 # Import cython solver
 from CyRK.cy.cyrk import cyrk_ode
+
+# Import test functions
+from ._test import test_cyrk, test_nbrk

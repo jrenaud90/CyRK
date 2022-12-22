@@ -5,6 +5,7 @@
 ### v0.1.3 - Alpha
 
 - Fixed a broken example in the readme documentation.
+- Added better quick tests for both the numba and cython versions.
 
 ### v0.1.2 - Alpha
 

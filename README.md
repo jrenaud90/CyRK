@@ -37,6 +37,15 @@ If not installing from a wheel, CyRK will attempt to install Cython and Numpy in
 After the files have been compiled, cython will be uninstalled and CyRK's runtime dependencies 
 (see setup.py for the latest list) will be installed instead.
 
+A new installation of CyRK can be tested quickly by running the following from a python console.
+```python
+from CyRK import test_cyrk, test_nbrk
+test_cyrk()
+# You will hopefully see the message "CyRK's cyrk_ode was tested successfully."
+test_nbrk()
+# You will hopefully see the message "CyRK's nbrk_ode was tested successfully."
+```
+
 ### Installation Troubleshooting
 
 *There are currently no reported installation issues.
