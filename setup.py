@@ -29,7 +29,8 @@ setup_requirements = [
 
 requirements = [
     'numba>=0.54.1',
-    'numpy>=1.20.3,<1.23'
+    'numpy>=1.22',
+    'scipy>=1.9.3'
     ]
 
 # Meta Data
@@ -91,7 +92,7 @@ setup(
     classifiers=classifiers,
     url='https://github.com/jrenaud90/CyRK',
     repository="https://github.com/jrenaud90/CyRK/",
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     setup_requires=setup_requirements,
     ext_modules=ext_modules,
     install_requires=requirements,

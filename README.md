@@ -1,7 +1,7 @@
 # CyRK
 <div style="text-align: center;">
 <a href="https://doi.org/10.5281/zenodo.7093266"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.7093266.svg" alt="DOI"></a>
-<a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.7|3.8|3.9|3.10-blue" alt="Python Version 3.7-3.10" /></a>
+<a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.8|3.9|3.10-blue" alt="Python Version 3.8-3.10" /></a>
 <a href="https://codecov.io/gh/jrenaud90/CyRK" ><img src="https://codecov.io/gh/jrenaud90/CyRK/branch/main/graph/badge.svg?token=MK2PqcNGET" alt="Code Coverage"/></a>
 <a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml/badge.svg?branch=main" alt="Windows Tests" /></a>
 <a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_mac.yml/badge.svg?branch=main" alt="MacOS Tests" /></a>
@@ -27,7 +27,7 @@ initial performance hit found with using the numba version.
 
 ## Installation
 
-It is recommended you use an [Anaconda](https://www.anaconda.com/products/distribution) environment.
+It is recommended you use an [Anaconda](https://www.anaconda.com/products/distribution) environment. CyRK has been tested on Python 3.8--3.10
 
 To install simply open a terminal (in administrator mode if using Windows) and call:
 
@@ -36,6 +36,8 @@ To install simply open a terminal (in administrator mode if using Windows) and c
 If not installing from a wheel, CyRK will attempt to install Cython and Numpy in order to compile the cython code. 
 After the files have been compiled, cython will be uninstalled and CyRK's runtime dependencies 
 (see setup.py for the latest list) will be installed instead.
+
+CyRK requires the `cython` and `numpy` packages during installation. The `numpy`, `numba`, and `scipy` packages are required for runtime.
 
 A new installation of CyRK can be tested quickly by running the following from a python console.
 ```python
