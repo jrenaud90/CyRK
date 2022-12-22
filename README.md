@@ -36,7 +36,7 @@ To install simply open a terminal (in administrator mode if using Windows) and c
 
 If not installing from a wheel, CyRK will attempt to install Cython and Numpy in order to compile the cython code. 
 After the files have been compiled, cython will be uninstalled and CyRK's runtime dependencies 
-(see setup.py for the latest list) will be installed instead.
+(see the pyproject.toml file for the latest list) will be installed instead.
 
 CyRK requires the `cython` and `numpy` packages during installation. The `numpy`, `numba`, and `scipy` packages are required for runtime.
 
@@ -72,7 +72,7 @@ import numpy as np
 from numba import njit
 # For even more speed up you can use numba's njit to compile the diffeq
 @njit
-def diffeq(t, y):
+def diffeq_nb(t, y):
     dy = np.empty_like(y)
     dy[0] = (1. - 0.01 * y[1]) * y[0]
     dy[1] = (0.02 * y[0] - 1.) * y[1]
@@ -89,7 +89,7 @@ The ODE can then be solved using the numba function by calling CyRK's `nbrk_ode`
 ```python
 from CyRK import nbrk_ode
 time_domain, y_results, success, message = \
-    nbrk_ode(diffeq, time_span, initial_conds, rk_method=1, rtol=rtol, atol=atol)
+    nbrk_ode(diffeq_nb, time_span, initial_conds, rk_method=1, rtol=rtol, atol=atol)
 ```
 
 To call the cython version of the integrator you need to slightly edit the differential equation so that it does not
@@ -97,7 +97,7 @@ return the derivative. Instead, the output is passed as an input argument (a np.
 
 ```python
 @njit
-def diffeq(t, y, dy):
+def diffeq_cy(t, y, dy):
     dy[0] = (1. - 0.01 * y[1]) * y[0]
     dy[1] = (0.02 * y[0] - 1.) * y[1]
 ```
@@ -107,7 +107,7 @@ You can then call the ODE solver in a similar fashion as the numba version.
 ```python
 from CyRK import cyrk_ode
 time_domain, y_results, success, message = \
-    cyrk_ode(diffeq, time_span, initial_conds, rk_method=1, rtol=rtol, atol=atol)
+    cyrk_ode(diffeq_cy, time_span, initial_conds, rk_method=1, rtol=rtol, atol=atol)
 ```
 
 ### Optional Inputs
@@ -135,15 +135,13 @@ The solver will then interpolate the results to fit this array.
 (same for all y's).
 - [Issue 3](https://github.com/jrenaud90/CyRK/issues/3): Right now the cython version only allows for complex-valued
 y-values.
-- [Issue 5](https://github.com/jrenaud90/CyRK/issues/5): The numba solver is worse than the pure python scipy solver at
-large timespans (high integration times).
 
 ## Citing CyRK
 
 It is great to see CyRK used in other software or in scientific studies. We ask that you cite back to CyRK's 
 [GitHub](https://github.com/jrenaud90/CyRK) website so interested parties can learn about this package. 
 
-Renaud, Joe P. (2022). CyRK - ODE Integrator Implemented in Cython and Numba (0.1.2). Zenodo. https://doi.org/10.5281/zenodo.7093266
+Renaud, Joe P. (2022). CyRK - ODE Integrator Implemented in Cython and Numba. Zenodo. https://doi.org/10.5281/zenodo.7093266
 
 In addition to citing CyRK, please consider citing SciPy and its references for the specific Runge-Kutta model that
 was used in your work. CyRK is largely an adaptation of SciPy's functionality.
