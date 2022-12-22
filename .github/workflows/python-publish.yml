@@ -93,7 +93,7 @@ jobs:
         name: python-package-distributions
         path: dist/
     - name: Publish all wheels to PyPI
-      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+      # if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         user: __token__
