@@ -4,7 +4,21 @@
 
 ### v0.2.0 - Alpha
 
-- Fixed warning during numba integration about contiguous arrays.
+Bug Fixes
+- Fixed issues with the metadata provided by pyproject.toml.
+- `cyrk_ode` fixes
+  - Fixed bug that was causing the ubuntu slowdown and likely other errors
+  - Added a `cabs` absolute value function to ensure that complex numbers are being properly handled when `abs()` is called.
+- `nbrk_ode` fixes
+  - Fixed warning during numba integration about contiguous arrays.
+
+Performance Improvements
+- `cyrk_ode` improvements
+  - Integrator now selects an output message based on the status code rather than building a string during the integration loop.
+  - Switched the loop order for the final list to ndarray conversion. Before the time domain was being redundantly built y_size times.
+
+Other Changes
+- pyproject.toml provides more constrained package list rather than an open search.
 
 ### v0.1.3 - Alpha
 
