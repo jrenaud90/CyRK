@@ -33,6 +33,6 @@ class build_cyrk(_build_py):
         self.distribution.ext_modules = cythonize(
                 self.distribution.ext_modules,
                 compiler_directives={'language_level': "3"},
-                include_path = ['.', np.get_include()]
+                include_path=['.', np.get_include()]
                 )
         print('!-- Finished Cythonizing CyRK')

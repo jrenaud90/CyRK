@@ -15,7 +15,6 @@ dependencies = [
 ]
 license = {file = "LICENSE.txt"}
 readme = "README.md"
-# repository = "https://github.com/jrenaud90/CyRK/"
 keywords = [
     'Scientific Computing',
     'Runge-Kutta',

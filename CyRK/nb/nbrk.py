@@ -384,7 +384,7 @@ def nbrk_ode(
         dydt_now = dydt_new
 
         # Save data
-        time_domain.append(t_now)cd .
+        time_domain.append(t_now)
 
         # Numba does not support np.stack(x) if x is a list. So we have to continuously hstack as we go.
         y_new_array = y_now.reshape(1, y_size)
