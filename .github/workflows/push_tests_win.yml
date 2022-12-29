@@ -6,14 +6,14 @@ name: Windows Tests
 on: [push, pull_request, workflow_dispatch]
 
 jobs:
-  test-windows:
+  test-win:
     name: Test CyRK on Windows
     runs-on: windows-latest
     strategy:
       matrix:
         python-version:
           - "3.8"
-          # Skip 3.9 since we will perform coverage on it later
+          - "3.9"
           - "3.10"
     steps:
       - uses: actions/checkout@v3
@@ -30,32 +30,4 @@ jobs:
           python -m pip install . -v
 
       - name: Run pytest
-        run: pytest -v --timeout=300 .\Tests\
-
-  test-39-with-coverage:
-    name: Test Python 3.9 and Upload Coverage Report
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v3
-        with:
-          python-version: 3.9
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install pytest pytest-timeout pytest-cov scipy>=1.7.3
-      - name: Install package
-        run: |
-          python -m pip install . -v
-
-      - name: Run pytest
-        run: pytest -v --cov=.\CyRK --cov-report=xml --timeout=300 .\Tests\
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          env_vars: OS,PYTHON
-          fail_ci_if_error: false
-          flags: unittests
-          verbose: true
-          name: coverage
+        run: pytest -v --timeout=300 ./Tests/

@@ -41,7 +41,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # TODO: Skip ubuntu until issue figured out # ubuntu-latest
         os: [windows-latest, macOS-latest]
         pyvers: ["3.8", "3.9", "3.10"]
 

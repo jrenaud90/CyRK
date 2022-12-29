@@ -1,8 +1,6 @@
 """ Commands to build the cython extensions of CyRK (a hack to work with pyproject.toml) """
 import os
-
 from setuptools.extension import Extension
-
 from setuptools.command.build_py import build_py as _build_py
 
 
@@ -23,10 +21,10 @@ class build_cyrk(_build_py):
         # Add cyrk to ext_modules list
         self.distribution.ext_modules.append(
                 Extension(
-                    'CyRK.cy.cyrk',
-                    sources=[os.path.join('CyRK', 'cy', '_cyrk.pyx')],
-                    include_dirs=[os.path.join('CyRK', 'cy'), np.get_include()]
-                    )
+                        'CyRK.cy.cyrk',
+                        sources=[os.path.join('CyRK', 'cy', '_cyrk.pyx')],
+                        include_dirs=[os.path.join('CyRK', 'cy'), np.get_include()]
+                        )
                 )
 
         # Add cythonize ext_modules

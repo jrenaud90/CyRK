@@ -19,6 +19,7 @@ Performance Improvements
 
 Other Changes
 - pyproject.toml provides more constrained package list rather than an open search.
+- Added back ubuntu tests and publishes to GitHub workflows.
 
 ### v0.1.3 - Alpha
 
