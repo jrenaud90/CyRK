@@ -27,7 +27,7 @@ jobs:
           python -m pip install . -v
 
       - name: Run pytest
-        run: pytest -v --timeout=300 .\Tests\
+        run: pytest -v --timeout=300 Tests/
 
   test-39-with-coverage:
     name: Test Python 3.9 and Upload Coverage Report

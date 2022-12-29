@@ -31,4 +31,4 @@ jobs:
           python -m pip install . -v
 
       - name: Run pytest
-        run: pytest -v --timeout=300 ./Tests/
+        run: pytest -v --timeout=300 Tests/
