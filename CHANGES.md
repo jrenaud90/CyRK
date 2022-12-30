@@ -14,6 +14,7 @@ Bug Fixes
   - Added a `cabs` absolute value function to ensure that complex numbers are being properly handled when `abs()` is called.
 - `nbrk_ode` fixes
   - Fixed warning during numba integration about contiguous arrays.
+  - Fixed issue where variable was referenced before assignment when using nbrk's DOP853
 
 Performance Improvements
 - `cyrk_ode` improvements

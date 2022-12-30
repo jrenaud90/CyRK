@@ -158,7 +158,7 @@ def nbrk_ode(
         C = RK23_C
         A = RK23_A
         B = RK23_B
-        E = RK23_E
+        E = np.asarray(RK23_E, dtype=dtype)
         P = RK23_P
 
         # Initialize RK-K variable
@@ -171,7 +171,7 @@ def nbrk_ode(
         C = RK45_C
         A = RK45_A
         B = RK45_B
-        E = RK45_E
+        E = np.asarray(RK45_E, dtype=dtype)
         P = RK45_P
 
         # Initialize RK-K variable
@@ -203,7 +203,6 @@ def nbrk_ode(
     # Recast some constants into the correct dtype so they can be used with y.
     A = np.asarray(A, dtype=dtype)
     B = np.asarray(B, dtype=dtype)
-    E = np.asarray(E, dtype=dtype)
 
     error_expo = 1. / (error_order + 1.)
 
