@@ -4,6 +4,7 @@
 
 In-Progress:
 - Fixing wheel distribution: [issue 9](https://github.com/jrenaud90/CyRK/issues/9)
+- Coverage is not working.
 
 ### v0.2.0 - Alpha
 

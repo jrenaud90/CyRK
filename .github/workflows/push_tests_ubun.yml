@@ -47,7 +47,7 @@ jobs:
           python -m pip install . -v
 
       - name: Run pytest
-        run: python -m pytest -v --cov-config=.coveragerc --cov=CyRK Tests/
+        run: pytest -v --cov=CyRK Tests/
         env:
           # Disable numba so that njited functions can have their coverage checked.
           NUMBA_DISABLE_JIT: 1
