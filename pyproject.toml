@@ -80,3 +80,6 @@ addopts = "-ra -v"
 testpaths = [
     "Tests"
 ]
+
+[tool.cibuildwheel]
+build = "*"
