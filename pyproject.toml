@@ -80,4 +80,3 @@ addopts = "-ra -v"
 testpaths = [
     "Tests"
 ]
-timeout = 300

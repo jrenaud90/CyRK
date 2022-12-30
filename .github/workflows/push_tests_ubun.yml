@@ -21,13 +21,13 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest pytest-timeout
+          python -m pip install pytest
       - name: Install package
         run: |
           python -m pip install . -v
 
       - name: Run pytest
-        run: pytest -v --timeout=300 Tests/
+        run: pytest -v Tests/
 
   test-39-with-coverage:
     name: Test Python 3.9 and Upload Coverage Report
