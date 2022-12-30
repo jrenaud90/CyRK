@@ -19,11 +19,11 @@ CyRK provides fast integration tools to solve systems of ODEs with adaptive time
 that are written in pure Python or njited numba, speeding up development time. The purpose of this package is to provide some 
 functionality of [scipy's solve_ivp](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html) with improved performance.
 
-CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is 10-25x faster than scipy's solve_ivp function (except for very long integrations). 
-The [cython](https://cython.org/) implementation is about 20x faster. The cython function is also largely pre-compiled which avoids most of the 
+CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is 8-20x faster than scipy's solve_ivp function (except for very long integrations). 
+The [cython](https://cython.org/) implementation is 5-20x faster. The cython function is also largely pre-compiled which avoids most of the 
 initial performance hit found with using the numba version.
 
-<img style="text-align: center" src="https://raw.githubusercontent.com/jrenaud90/CyRK/main/Benchmarks/CyRK_SciPy_Compare_v0-1-3a0.png" alt="CyRK Performance" />
+<img style="text-align: center" src="https://raw.githubusercontent.com/jrenaud90/CyRK/main/Benchmarks/CyRK_SciPy_Compare_v0-2-0-dev1.png" alt="CyRK Performance" />
 
 ## Installation
 
