@@ -50,9 +50,11 @@ test_nbrk()
 
 ### Installation Troubleshooting
 
-*There are currently no reported installation issues.
-If you run into one please [report it](https://github.com/jrenaud90/CyRK/issues). We will work on a fix and/or add
-workaround information here.* 
+*Please [report](https://github.com/jrenaud90/CyRK/issues) installation issues. We will work on a fix and/or add workaround information here.* 
+
+> Due to [issue 9](https://github.com/jrenaud90/CyRK/issues/9), it is reccomended that you use the flag `--no-binary`, e.g.,
+> `pip install CyRK --no-binary="CyRK"`,
+> to ensure that CyRK's cython code is compiled correctly (rather than pulled from a potentially broken cache).
 
 ### Development and Testing Dependencies
 
