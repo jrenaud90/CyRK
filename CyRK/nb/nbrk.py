@@ -158,7 +158,7 @@ def nbrk_ode(
         C = RK23_C
         A = RK23_A
         B = RK23_B
-        E = RK23_E
+        E = np.asarray(RK23_E, dtype=dtype)
         P = RK23_P
 
         # Initialize RK-K variable
@@ -171,7 +171,7 @@ def nbrk_ode(
         C = RK45_C
         A = RK45_A
         B = RK45_B
-        E = RK45_E
+        E = np.asarray(RK45_E, dtype=dtype)
         P = RK45_P
 
         # Initialize RK-K variable
@@ -198,12 +198,11 @@ def nbrk_ode(
 
         # Initialize RK-K variable
         K_extended = np.empty((N_STAGES_EXTENDED_DOP, y_size), dtype=dtype)
-        K = K_extended[:rk_n_stages + 1, :]
+        K = np.ascontiguousarray(K_extended[:rk_n_stages + 1, :])
 
     # Recast some constants into the correct dtype so they can be used with y.
     A = np.asarray(A, dtype=dtype)
     B = np.asarray(B, dtype=dtype)
-    E = np.asarray(E, dtype=dtype)
 
     error_expo = 1. / (error_order + 1.)
 
@@ -314,7 +313,9 @@ def nbrk_ode(
                 K_ = np.ascontiguousarray(K[:s].T)
                 a_ = np.ascontiguousarray(a[:s])
                 dy = np.dot(K_, a_) * step
-                K[s] = np.asarray(diffeq(t_now + c * step, y_now + dy, *args), dtype=dtype)
+                K[s] = np.ascontiguousarray(
+                        np.asarray(diffeq(t_now + c * step, y_now + dy, *args), dtype=dtype)
+                        )
                 s += 1
 
             K_ = np.ascontiguousarray(K[:-1].T)
@@ -327,8 +328,9 @@ def nbrk_ode(
 
             if rk_method == 2:
                 # DOP853 error estimation
-                err5 = np.dot(K.T, E5) / scale
-                err3 = np.dot(K.T, E3) / scale
+                KT_contig = np.ascontiguousarray(K.T)
+                err5 = np.dot(KT_contig, E5) / scale
+                err3 = np.dot(KT_contig, E3) / scale
                 err5_norm_2 = np.linalg.norm(err5)**2
                 err3_norm_2 = np.linalg.norm(err3)**2
                 if err5_norm_2 == 0 and err3_norm_2 == 0:

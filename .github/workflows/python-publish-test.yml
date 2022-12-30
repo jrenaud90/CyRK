@@ -6,13 +6,9 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: Build and Upload to PyPI
+name: Build and Upload to Test PyPI
 
-on:
-  workflow_dispatch:
-  release:
-    types:
-      - published
+on: [workflow_dispatch]
 
 jobs:
   make_sdist:
@@ -34,14 +30,15 @@ jobs:
         - uses: actions/upload-artifact@v3
           with:
             path: dist/*.tar.gz
-# TODO: Disabling wheels for now until [issue 9](https://github.com/jrenaud90/CyRK/issues/9) is resolved.
+
+#  TODO: Disabling wheels for now until [issue 9](https://github.com/jrenaud90/CyRK/issues/9) is resolved.
 #  build_wheels:
 #    name: Build wheels on ${{ matrix.os }} for Python ${{ matrix.pyvers }}
 #    runs-on: ${{ matrix.os }}
 #    strategy:
 #      fail-fast: false
 #      matrix:
-#        os: [windows-latest, macOS-latest]
+#        os: [windows-latest, macOS-latest, ubuntu-latest]
 #        pyvers: ["3.8", "3.9", "3.10"]
 #
 #    steps:
@@ -62,7 +59,7 @@ jobs:
 #          path: dist/*.whl
 
   upload_all:
-    name: Upload wheels to PyPI
+    name: Upload wheels to Test PyPI
 #    TODO: See above
 #   needs: [ build_wheels, make_sdist ]
     needs: [ make_sdist ]
@@ -77,4 +74,5 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@v1.6.4
         with:
           user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
+          password: ${{ secrets.TESTPYPI_API_TOKEN }}
+          repository_url: https://test.pypi.org/legacy/

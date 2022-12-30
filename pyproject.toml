@@ -1,7 +1,7 @@
 [project]
 
 name='CyRK'
-version = '0.1.3a3'
+version = '0.2.0a0'
 description='Runge-Kutta ODE Integrator Implemented in Cython and Numba.'
 authors= [
     {name = 'Joe P. Renaud', email = 'joe.p.renaud@gmail.com'}
@@ -13,9 +13,8 @@ dependencies = [
     'numpy>=1.22',
     'scipy>=1.9.3'
 ]
-license = {file = "LICENSE.txt"}
+license = {file = "LICENSE.md"}
 readme = "README.md"
-# repository = "https://github.com/jrenaud90/CyRK/"
 keywords = [
     'Scientific Computing',
     'Runge-Kutta',
@@ -45,6 +44,10 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Physics"
 ]
 
+[project.urls]
+"Homepage" = "https://github.com/jrenaud90/CyRK"
+"Bug Tracker" = "https://github.com/jrenaud90/CyRK/issues"
+
 [project.optional-dependencies]
 dev = [
     "jupyter",
@@ -54,18 +57,19 @@ dev = [
 
 [build-system]
 requires = [
-    # Setuptools 18.0 properly handles Cython extensions.
-    'setuptools>=18.0',
+    'setuptools>=64.0.0',
     'numpy>=1.22',
     'cython>=0.29.30',
     'wheel>=0.38'
 ]
+build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 py-modules = ["_build_cyrk"]
-
-[tool.setuptools.packages]
-find = {}
+include-package-data = true
+packages = ["CyRK",
+            "CyRK.cy",
+            "CyRK.nb"]
 
 [tool.setuptools.cmdclass]
 build_py = "_build_cyrk.build_cyrk"
@@ -76,4 +80,3 @@ addopts = "-ra -v"
 testpaths = [
     "Tests"
 ]
-timeout = 300

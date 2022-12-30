@@ -1,6 +1,30 @@
 # CyRK - Change Log
 
-## 2022 - September
+## 2022 - December
+
+In-Progress:
+- Fixing wheel distribution: [issue 9](https://github.com/jrenaud90/CyRK/issues/9)
+- Coverage is not working.
+
+### v0.2.0 - Alpha
+
+Bug Fixes
+- Fixed issues with the metadata provided by pyproject.toml.
+- `cyrk_ode` fixes
+  - Fixed bug that was causing the ubuntu slowdown and likely other errors
+  - Added a `cabs` absolute value function to ensure that complex numbers are being properly handled when `abs()` is called.
+- `nbrk_ode` fixes
+  - Fixed warning during numba integration about contiguous arrays.
+  - Fixed issue where variable was referenced before assignment when using nbrk's DOP853
+
+Performance Improvements
+- `cyrk_ode` improvements
+  - Integrator now selects an output message based on the status code rather than building a string during the integration loop.
+  - Switched the loop order for the final list to ndarray conversion. Before the time domain was being redundantly built y_size times.
+
+Other Changes
+- pyproject.toml provides more constrained package list rather than an open search.
+- Added back ubuntu tests and publishes to GitHub workflows.
 
 ### v0.1.3 - Alpha
 
@@ -12,6 +36,8 @@
 - Updated graphic in readme.
 - Converted over to using `pyproject.toml` instead of `setup.py`
   - removed `version.py` from project folder.
+
+## 2022 - September
 
 ### v0.1.2 - Alpha
 

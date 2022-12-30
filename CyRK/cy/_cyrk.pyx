@@ -4,11 +4,22 @@ cimport numpy as np
 from libc.math cimport sqrt
 from cpython cimport array
 
-
 from numpy.core.multiarray import (interp as compiled_interp, interp_complex as compiled_interp_complex
     )
 
 np.import_array()
+
+from libc.math cimport sqrt, fabs
+
+
+@cython.cdivision(True)
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef double cabs(double complex value) nogil:
+    cdef double v_real = value.real
+    cdef double v_imag = value.imag
+    return sqrt(v_real * v_real + v_imag * v_imag)
+
 
 # Multiply steps computed from asymptotic behaviour of errors by this.
 cdef double SAFETY = 0.9
@@ -290,18 +301,19 @@ def cyrk_ode(
     complex_type = np.complex128
     float_type = np.float64
 
-    cdef unsigned int y_size
+    cdef int y_size
     # y-array
     y0 = np.asarray(y0)
     y_size = y0.size
     dtype = y0.dtype
 
     cdef list time_domain_list, y_results_list
-    cdef str message, rejected_message
-    cdef (unsigned int, unsigned int) K_size, result_size, reduced_result_size
+    cdef str message
+    cdef (int, int) K_size, result_size, reduced_result_size
     cdef bint success, step_accepted, step_rejected, step_error = False
-    cdef unsigned int s, i, j, rk_order, error_order, rk_n_stages, rk_n_stages_plus1, len_c, len_t, \
+    cdef int rk_order, error_order, rk_n_stages, rk_n_stages_plus1, len_c, len_t, \
         len_teval, rk_n_stages_extended
+    cdef int s, i, j
     cdef int status
     cdef double t_start, t_end, t_delta, t_delta_abs, t_init_step, \
         error_expo, error_norm, error_norm5, error_norm3, error_denom, error_norm3_abs, error_norm5_abs, error_norm_abs, \
@@ -324,7 +336,7 @@ def cyrk_ode(
     t_start = t_span[0]
     t_end = t_span[1]
     t_delta = t_end - t_start
-    t_delta_abs = abs(t_delta)
+    t_delta_abs = fabs(t_delta)
     if t_delta >= 0.:
         direction = 1.
     else:
@@ -344,15 +356,51 @@ def cyrk_ode(
     y_results_list = [y0]
 
     # Initialize arrays
-    scale              = np.empty(y_size, dtype=float_type)
-    y_init_step        = np.empty(y_size, dtype=complex_type)
-    y_new              = np.empty(y_size, dtype=complex_type)
-    y_old              = np.empty(y_size, dtype=complex_type)
-    dydt_new           = np.empty(y_size, dtype=complex_type)
-    dydt_old           = np.empty(y_size, dtype=complex_type)
-    dydt_init_step     = np.empty(y_size, dtype=complex_type)
-    y_tmp              = np.empty(y_size, dtype=complex_type)
-    diffeq_out         = np.empty(y_size, dtype=complex_type)
+    scale = np.empty(
+        y_size,
+        dtype=float_type,
+        order='C'
+    )
+    y_init_step = np.empty(
+        y_size,
+        dtype=complex_type,
+        order='C'
+    )
+    y_new          = np.empty(
+        y_size,
+        dtype=complex_type,
+        order='C'
+    )
+    y_old          = np.empty(
+        y_size,
+        dtype=complex_type,
+        order='C'
+    )
+    dydt_new       = np.empty(
+        y_size,
+        dtype=complex_type,
+        order='C'
+    )
+    dydt_old       = np.empty(
+        y_size,
+        dtype=complex_type,
+        order='C'
+    )
+    dydt_init_step = np.empty(
+        y_size,
+        dtype=complex_type,
+        order='C'
+    )
+    y_tmp          = np.empty(
+        y_size,
+        dtype=complex_type,
+        order='C'
+    )
+    diffeq_out     = np.empty(
+        y_size,
+        dtype=complex_type,
+        order='C'
+    )
 
     # Setup memoryviews
     scale_view              = scale
@@ -383,7 +431,11 @@ def cyrk_ode(
         E = RK23_E
         len_c = RK23_LEN_C
 
-        E_tmp = np.zeros(y_size, dtype=complex_type)
+        E_tmp = np.empty(
+            y_size,
+            dtype=complex_type,
+            order='C'
+        )
         E_tmp_view = E_tmp
 
     elif rk_method == 1:
@@ -397,7 +449,11 @@ def cyrk_ode(
         E = RK45_E
         len_c = RK45_LEN_C
 
-        E_tmp = np.zeros(y_size, dtype=complex_type)
+        E_tmp = np.empty(
+            y_size,
+            dtype=complex_type,
+            order='C'
+        )
         E_tmp_view = E_tmp
 
     else:
@@ -413,8 +469,16 @@ def cyrk_ode(
         E5 = DOP_E5
         len_c = DOP_LEN_C
 
-        E3_tmp = np.zeros(y_size, dtype=complex_type)
-        E5_tmp = np.zeros(y_size, dtype=complex_type)
+        E3_tmp = np.empty(
+            y_size,
+            dtype=complex_type,
+            order='C'
+        )
+        E5_tmp = np.empty(
+            y_size,
+            dtype=complex_type,
+            order='C'
+        )
         E3_tmp_view = E3_tmp
         E5_tmp_view = E5_tmp
 
@@ -454,10 +518,10 @@ def cyrk_ode(
             d0 = 0.
             d1 = 0.
             for i in range(y_size):
-                scale_view[i] = atol + abs(y_old_view[i]) * rtol
+                scale_view[i] = atol + cabs(y_old_view[i]) * rtol
 
-                d0_abs = abs(y_old_view[i] / scale_view[i])
-                d1_abs = abs(dydt_old_view[i] / scale_view[i])
+                d0_abs = cabs(y_old_view[i] / scale_view[i])
+                d1_abs = cabs(dydt_old_view[i] / scale_view[i])
                 d0 += (d0_abs * d0_abs)
                 d1 += (d1_abs * d1_abs)
 
@@ -484,7 +548,7 @@ def cyrk_ode(
             # Find the norm for d2
             d2 = 0.
             for i in range(y_size):
-                d2_abs = abs( (dydt_init_step_view[i] - dydt_old_view[i]) / scale_view[i] )
+                d2_abs = cabs( (dydt_init_step_view[i] - dydt_old_view[i]) / scale_view[i] )
                 d2 += (d2_abs * d2_abs)
 
             d2 = sqrt(d2) / (h0 * y_size_sqrt)
@@ -507,13 +571,16 @@ def cyrk_ode(
     # Initialize RK-K variable
     rk_n_stages_plus1 = rk_n_stages + 1
     K_size = (rk_n_stages_plus1, y_size)
-    K = np.zeros(K_size, dtype=complex_type)
+    K = np.zeros(
+        K_size,
+        dtype=complex_type,
+        order='C'
+    )
 
     # Setup K memoryviews
     K_view = K
 
     # Main integration loop
-    message = 'Running...'
     # # Time Loop
     len_t = 1  # There is an initial condition provided so the time length is already 1
     while status == 0:
@@ -521,7 +588,6 @@ def cyrk_ode(
         if t_new == t_end or y_size == 0:
             t_old = t_end
             t_new = t_end
-            message = 'Finished'
             status = 1
             break
 
@@ -538,14 +604,13 @@ def cyrk_ode(
         step_accepted = False
         step_rejected = False
         step_error = False
-        rejected_message = 'Proper step size not found.'
 
         # # Step Loop
         while not step_accepted:
 
             if step_size < min_step:
                 step_error = True
-                rejected_message = 'Required step size is less than spacing between numbers.'
+                status = -1
                 break
 
             # Move time forward for this particular step size
@@ -558,7 +623,7 @@ def cyrk_ode(
 
             # Correct the step if we were at the end of integration
             step = t_new - t_old
-            step_size = abs(step)
+            step_size = fabs(step)
 
             # Calculate derivative using RK method
             for i in range(y_size):
@@ -588,12 +653,13 @@ def cyrk_ode(
                     K_view[s, i] = diffeq_out_view[i]
 
             # Dot Product (K, B) * step
-            for j in range(rk_n_stages_plus1):
+            for j in range(rk_n_stages):
+                # We do not use rk_n_stages_plus1 here because we are chopping off the last row of K to match
+                #  the shape of B.
                 for i in range(y_size):
                     if j == 0:
                         # Initialize
                         y_new_view[i] = y_old_view[i]
-
                     y_new_view[i] = y_new_view[i] + (K_view[j, i] * B[j] * step)
 
             diffeq(
@@ -609,7 +675,7 @@ def cyrk_ode(
                 # Dot Product (K, E5) / scale and Dot Product (K, E3) * step / scale
                 for i in range(y_size):
                     # Check how well this step performed.
-                    scale_view[i] = atol + max(abs(y_old_view[i]), abs(y_new_view[i])) * rtol
+                    scale_view[i] = atol + max(cabs(y_old_view[i]), cabs(y_new_view[i])) * rtol
 
                     for j in range(rk_n_stages_plus1):
                         if j == 0:
@@ -631,8 +697,8 @@ def cyrk_ode(
 
                 # Perform summation
                 for i in range(y_size):
-                    error_norm5_abs = abs(E5_tmp_view[i])
-                    error_norm3_abs = abs(E3_tmp_view[i])
+                    error_norm5_abs = cabs(E5_tmp_view[i])
+                    error_norm3_abs = cabs(E3_tmp_view[i])
 
                     error_norm5 += (error_norm5_abs * error_norm5_abs)
                     error_norm3 += (error_norm3_abs * error_norm3_abs)
@@ -651,7 +717,7 @@ def cyrk_ode(
                 for i in range(y_size):
 
                     # Check how well this step performed.
-                    scale_view[i] = atol + max(abs(y_old_view[i]), abs(y_new_view[i])) * rtol
+                    scale_view[i] = atol + max(cabs(y_old_view[i]), cabs(y_new_view[i])) * rtol
 
                     for j in range(rk_n_stages_plus1):
 
@@ -665,7 +731,7 @@ def cyrk_ode(
                         K_scale = K_view[j, i] / scale_view[i]
                         E_tmp_view[i] = E_tmp_view[i] + (K_scale * E[j] * step)
 
-                    error_norm_abs = abs(E_tmp_view[i])
+                    error_norm_abs = cabs(E_tmp_view[i])
                     error_norm += (error_norm_abs * error_norm_abs)
                 error_norm = sqrt(error_norm) / y_size_sqrt
 
@@ -690,10 +756,13 @@ def cyrk_ode(
                 step_size = step_size * max(MIN_FACTOR, SAFETY * error_norm**-error_expo)
                 step_rejected = True
 
-        if not step_accepted or step_error:
+        if not step_accepted:
+            # Issue with step convergence
+            status = -2
+            break
+        elif step_error:
             # Issue with step convergence
             status = -1
-            message = 'Error in step size calculation:\n' + rejected_message
             break
 
         # End of step loop. Update the _now variables
@@ -713,14 +782,23 @@ def cyrk_ode(
 
     # Create numpy arrays for the output
     result_size = (y_size, len_t)
-    y_results_T = np.empty(result_size, dtype=complex_type, order='C')
-    time_domain = np.empty(len_t, dtype=float_type, order='C')
+    y_results_T = np.empty(
+        result_size,
+        dtype=complex_type,
+        order='C'
+    )
+    time_domain = np.empty(
+        len_t,
+        dtype=float_type,
+        order='C'
+    )
 
     # To match the format that scipy follows, we will take the transpose of y.
-    for j in range(y_size):
-        for i in range(len_t):
-            time_domain[i] = time_domain_list[i]
-            y_results_T[j, i] =  y_results_list[i][j]
+    for i in range(len_t):
+        time_domain[i] = time_domain_list[i]
+        for j in range(y_size):
+            # To match the format that scipy follows, we will take the transpose of y.
+            y_results_T[j, i] = y_results_list[i][j]
 
     if len_teval > 0:
         # User only wants data at specific points.
@@ -728,17 +806,32 @@ def cyrk_ode(
         #   Instead we use an interpolation.
         # OPT: this could be done inside the actual loop for performance gains.
         reduced_result_size = (y_size, len_teval)
-        y_results_reduced = np.empty(reduced_result_size, dtype=np.complex128)
+        y_results_reduced = np.empty(
+            reduced_result_size,
+            dtype=complex_type,
+            order='C'
+        )
+        y_result_timeslice = np.empty(
+                len_t,
+                dtype=complex_type,
+                order='C'
+            )
         y_results_reduced_view = y_results_reduced
 
         for j in range(y_size):
             # np.interp only works on 1D arrays so we must loop through each of the variables:
-            y_result_timeslice = y_results_T[j, :]
+            # # Set timeslice equal to the time values at this y_j
+            for i in range(len_t):
+                y_result_timeslice[i] = y_results_T[j, i]
+
+            # Perform numerical interpolation
             y_result_temp = compiled_interp_complex(
                 t_eval,
                 time_domain,
                 y_result_timeslice
             )
+
+            # Store result.
             for i in range(len_teval):
                 y_results_reduced_view[j, i] = y_result_temp[i]
 
@@ -746,7 +839,13 @@ def cyrk_ode(
         y_results_T = y_results_reduced
         time_domain = t_eval
 
+    message = 'Not Defined.'
     if status == 1:
         success = True
+        message = 'Integration finished with no issue.'
+    elif status == -1:
+        message = 'Error in step size calculation: Required step size is less than spacing between numbers.'
+    elif status < -2:
+        message = 'Integration Failed.'
 
     return time_domain, y_results_T, success, message

@@ -4,14 +4,13 @@
 <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.8|3.9|3.10-blue" alt="Python Version 3.8-3.10" /></a>
 <a href="https://codecov.io/gh/jrenaud90/CyRK" ><img src="https://codecov.io/gh/jrenaud90/CyRK/branch/main/graph/badge.svg?token=MK2PqcNGET" alt="Code Coverage"/></a>
 <a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml/badge.svg?branch=main" alt="Windows Tests" /></a>
-<a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_mac.yml/badge.svg?branch=main" alt="MacOS Tests" /></a>
-
-[//]: # (<a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_ubun.yml/badge.svg?branch=main" alt="Ubuntu Tests" /></a>)
+<a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_mac.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_mac.yml/badge.svg?branch=main" alt="MacOS Tests" /></a>
+<a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_ubun.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_ubun.yml/badge.svg?branch=main" alt="Ubuntu Tests" /></a>
 </div>
 
 ---
 
-<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.1.3 Alpha-orange" alt="CyRK Version 0.1.3 Alpha" /></a>
+<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.2.0 Alpha-orange" alt="CyRK Version 0.1.3 Alpha" /></a>
 
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
@@ -20,11 +19,11 @@ CyRK provides fast integration tools to solve systems of ODEs with adaptive time
 that are written in pure Python or njited numba, speeding up development time. The purpose of this package is to provide some 
 functionality of [scipy's solve_ivp](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html) with improved performance.
 
-CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is 10-25x faster than scipy's solve_ivp function (except for very long integrations). 
-The [cython](https://cython.org/) implementation is about 20x faster. The cython function is also largely pre-compiled which avoids most of the 
+CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is 8-20x faster than scipy's solve_ivp function (except for very long integrations). 
+The [cython](https://cython.org/) implementation is 5-20x faster. The cython function is also largely pre-compiled which avoids most of the 
 initial performance hit found with using the numba version.
 
-<img style="text-align: center" src="https://raw.githubusercontent.com/jrenaud90/CyRK/main/Benchmarks/CyRK_SciPy_Compare_v0-1-3a0.png" alt="CyRK Performance" />
+<img style="text-align: center" src="https://raw.githubusercontent.com/jrenaud90/CyRK/main/Benchmarks/CyRK_SciPy_Compare_v0-2-0-dev1.png" alt="CyRK Performance" />
 
 ## Installation
 
