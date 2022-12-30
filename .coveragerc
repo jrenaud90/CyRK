@@ -1,0 +1,4 @@
+[run]
+omit =
+    Tests/*
+    CyRK/cy/_cyrk.pyx
