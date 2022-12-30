@@ -24,7 +24,7 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest pytest-timeout scipy>=1.7.3
+          python -m pip install pytest pytest-timeout
       - name: Install package
         run: |
           python -m pip install . -v
