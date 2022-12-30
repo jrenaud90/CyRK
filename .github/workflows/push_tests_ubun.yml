@@ -47,7 +47,7 @@ jobs:
           python -m pip install . -v
 
       - name: Run pytest
-        run: python -m pytest -v --cov=CyRK Tests/
+        run: pytest -v --cov=CyRK Tests/
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
