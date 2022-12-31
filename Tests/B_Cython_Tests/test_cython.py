@@ -25,7 +25,8 @@ def diffeq_scipy(t, y):
 
 
 initial_conds = np.asarray((20., 20.), dtype=np.complex128)
-time_span = (0., 20.)
+time_span = (0., 10.)
+time_span_large = (0., 1000.)
 rtol = 1.0e-7
 atol = 1.0e-8
 
@@ -120,34 +121,72 @@ def test_first_step():
     assert type(message) == str
 
 
-# TODO: For some reason this was working and all of a sudden it stopped..
-# def test_rk23():
-#     """Check that the cython solver is able to run using the RK23 method """
-#
-#     time_domain, y_results, success, message = \
-#         cyrk_ode(diffeq, time_span, initial_conds, rk_method=0, rtol=1.0e-9, atol=1.0e-10)
-#
-#     # Check that the ndarrays make sense
-#     assert type(time_domain) == np.ndarray
-#     assert time_domain.dtype == np.float64
-#     assert y_results.dtype == np.complex128
-#     import pdb; pdb.set_trace()
-#     assert time_domain.size > 1
-#     assert time_domain.size == y_results[0].size
-#     assert len(y_results.shape) == 2
-#     assert y_results[0].size == y_results[1].size
-#
-#     # Check that the other output makes sense
-#     assert type(success) == bool
-#     assert success
-#     assert type(message) == str
+def test_rk23():
+    """Check that the cython solver is able to run using the RK23 method """
 
+    time_domain, y_results, success, message = \
+        cyrk_ode(diffeq, time_span, initial_conds, rk_method=0, rtol=1.0e-9, atol=1.0e-10)
+
+    # Check that the ndarrays make sense
+    assert type(time_domain) == np.ndarray
+    assert time_domain.dtype == np.float64
+    assert y_results.dtype == np.complex128
+    assert time_domain.size > 1
+    assert time_domain.size == y_results[0].size
+    assert len(y_results.shape) == 2
+    assert y_results[0].size == y_results[1].size
+
+    # Check that the other output makes sense
+    assert type(success) == bool
+    assert success
+    assert type(message) == str
+
+
+def test_rk23_large_end_value():
+    """Check that the cython solver is able to run using the RK23 method. Using a larger ending time value """
+
+    time_domain, y_results, success, message = \
+        cyrk_ode(diffeq, time_span_large, initial_conds, rk_method=0, rtol=1.0e-9, atol=1.0e-10)
+
+    # Check that the ndarrays make sense
+    assert type(time_domain) == np.ndarray
+    assert time_domain.dtype == np.float64
+    assert y_results.dtype == np.complex128
+    assert time_domain.size > 1
+    assert time_domain.size == y_results[0].size
+    assert len(y_results.shape) == 2
+    assert y_results[0].size == y_results[1].size
+
+    # Check that the other output makes sense
+    assert type(success) == bool
+    assert success
+    assert type(message) == str
 
 def test_rk45():
     """Check that the cython solver is able to run using the RK45 method """
 
     time_domain, y_results, success, message = \
         cyrk_ode(diffeq, time_span, initial_conds, rk_method=1)
+
+    # Check that the ndarrays make sense
+    assert type(time_domain) == np.ndarray
+    assert time_domain.dtype == np.float64
+    assert y_results.dtype == np.complex128
+    assert time_domain.size > 1
+    assert time_domain.size == y_results[0].size
+    assert len(y_results.shape) == 2
+    assert y_results[0].size == y_results[1].size
+
+    # Check that the other output makes sense
+    assert type(success) == bool
+    assert success
+    assert type(message) == str
+
+def test_rk45_large_end_value():
+    """Check that the cython solver is able to run using the RK45 method. Using a larger ending time value """
+
+    time_domain, y_results, success, message = \
+        cyrk_ode(diffeq, time_span_large, initial_conds, rk_method=1)
 
     # Check that the ndarrays make sense
     assert type(time_domain) == np.ndarray
@@ -184,6 +223,25 @@ def test_dop853():
     assert success
     assert type(message) == str
 
+def test_dop853_large_end_value():
+    """Check that the cython solver is able to run using the DOP853 method. Using a larger ending time value """
+
+    time_domain, y_results, success, message = \
+        cyrk_ode(diffeq, time_span_large, initial_conds, rk_method=2)
+
+    # Check that the ndarrays make sense
+    assert type(time_domain) == np.ndarray
+    assert time_domain.dtype == np.float64
+    assert y_results.dtype == np.complex128
+    assert time_domain.size > 1
+    assert time_domain.size == y_results[0].size
+    assert len(y_results.shape) == 2
+    assert y_results[0].size == y_results[1].size
+
+    # Check that the other output makes sense
+    assert type(success) == bool
+    assert success
+    assert type(message) == str
 
 def test_teval():
     """Check that the cython solver is able to run using a user provided t_eval """
@@ -234,7 +292,7 @@ def test_accuracy():
     """Check that the cython solver is able to reproduce SciPy's results with reasonable accuracy """
 
     # Accuracy check tolerances
-    check_rtol = 2.
+    check_rtol = 1.0
 
     # Scipy
     scipy_solution = solve_ivp(diffeq_scipy, time_span, initial_conds, method='RK45', rtol=rtol, atol=atol)
@@ -251,8 +309,8 @@ def test_accuracy():
     assert y_results[0].size == scipy_solution.y[0].size
     assert y_results[1].size == scipy_solution.y[1].size
 
-    p_diff_1 = 2. * (scipy_solution.y[0] - y_results[0]) / (y_results[0] + scipy_solution.y[0])
-    p_diff_2 = 2. * (scipy_solution.y[1] - y_results[1]) / (y_results[1] + scipy_solution.y[1])
+    p_diff_1 = 2. * np.abs((scipy_solution.y[0] - y_results[0]) / (y_results[0] + scipy_solution.y[0]))
+    p_diff_2 = 2. * np.abs((scipy_solution.y[1] - y_results[1]) / (y_results[1] + scipy_solution.y[1]))
 
     # Check the accuracy of the results
     # import matplotlib.pyplot as plt
