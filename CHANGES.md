@@ -6,11 +6,19 @@ In-Progress:
 - Fixing wheel distribution: [issue 9](https://github.com/jrenaud90/CyRK/issues/9)
 - Coverage is not working.
 
+#### v0.2.3 - Alpha
+
+Bug Fixes
+- `cyrk_ode` fixes
+  - Bug in doubling up on the time step in the final inter-step diffeq calculation.
+
 #### v0.2.2 - Alpha
+
 Other Changes
 - Added a performance tracking package to measure CyRK's performance over time and versions.
 
 #### v0.2.1 - Alpha
+
 New Features
 - Added helper functions `from CyRK import nb2cy, cy2nb` which convert differential equation argument signatures between the formats required for cyrk and nbrk ode solvers.
 

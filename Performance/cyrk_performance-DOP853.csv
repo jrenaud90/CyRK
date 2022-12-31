@@ -2,3 +2,4 @@
 ,, Small Time,,,, Large Time,,,, Small Time,,,, Large Time,,,, Small Time,,,, Large Time,,,
 CyRK Version, Run-on Date, cython (avg), cython (std), numba  (avg), numba  (std), cython (avg), cython (std), numba  (avg), numba  (std), cython (avg), cython (std), numba  (avg), numba  (std), cython (avg), cython (std), numba  (avg), numba  (std), cython (avg), cython (std), numba  (avg), numba  (std), cython (avg), cython (std), numba  (avg), numba  (std)
 0.2.1a0.dev0, 31/12/2022 15:21:10, 1.5837, 0.0081, 0.8945, 0.0392, 15.8694, 0.1702, 9.6743, 0.1036, 24.8788, 0.0677, 0.4353, 0.0074, 232.5440, 1.1732, 4.4031, 0.0836, 2.8695, 0.0574, 1.3854, 0.0210, 38.8336, 0.7142, 21.9622, 0.4943
+0.2.3a0.dev0, 31/12/2022 18:41:00, 1.5431, 0.0132, 0.8627, 0.0014, 15.4372, 0.0262, 9.4255, 0.0454, 0.7515, 0.0018, 0.4287, 0.0004, 7.3106, 0.0345, 4.3350, 0.0093, 2.7506, 0.0024, 1.3585, 0.0056, 38.0653, 0.0182, 21.3523, 0.0206
