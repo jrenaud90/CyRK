@@ -10,10 +10,6 @@ In-Progress:
 New Features
 - Added helper functions `from CyRK import nb2cy, cy2nb` which convert differential equation argument signatures between the formats required for cyrk and nbrk ode solvers.
 
-Bug Fixes
-
-Performance Improvements
-
 Other Changes
 - Added back some commented out tests that were left over from the bug fixed in v0.2.0.
 - Added tests to check that performs both cyrk and nbrk integrations on larger time domains.
