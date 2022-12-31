@@ -1,7 +1,7 @@
 [project]
 
 name='CyRK'
-version = '0.2.1'
+version = '0.2.2'
 description='Runge-Kutta ODE Integrator Implemented in Cython and Numba.'
 authors= [
     {name = 'Joe P. Renaud', email = 'joe.p.renaud@gmail.com'}
@@ -52,7 +52,8 @@ classifiers = [
 dev = [
     "jupyter",
     "matplotlib",
-    "pytest"
+    "pytest",
+    "timeit"
 ]
 
 [build-system]
