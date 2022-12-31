@@ -1,4 +1,5 @@
-from setuptools import Extension,setup,numpy
+import numpy
+from setuptools import Extension, setup
 
 setup(
     ext_modules=[
