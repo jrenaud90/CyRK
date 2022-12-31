@@ -4,6 +4,6 @@ setup(
     ext_modules=[
         Extension(
             name='_cyrk.c',
-            sources='CyRK/cy/_cyrk.c')
+            sources=['CyRK/cy/_cyrk.c'])
     ]
 )
