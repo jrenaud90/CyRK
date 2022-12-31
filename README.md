@@ -103,6 +103,23 @@ def diffeq_cy(t, y, dy):
     dy[1] = (0.02 * y[0] - 1.) * y[1]
 ```
 
+Alternatively, you can use CyRK's conversion helper functions to automatically convert between numba/scipy and cyrk
+function calls.
+
+```python
+from CyRK import nb2cy, cy2nb
+
+@njit
+def diffeq_nb(t, y):
+    dy = np.empty_like(y)
+    dy[0] = (1. - 0.01 * y[1]) * y[0]
+    dy[1] = (0.02 * y[0] - 1.) * y[1]
+    return dy
+
+diffeq_cy = nb2cy(diffeq_nb, use_njit=True)
+diffeq_nb2 = cy2nb(diffeq_cy, use_njit=True)
+```
+
 You can then call the ODE solver in a similar fashion as the numba version.
 
 ```python
