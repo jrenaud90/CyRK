@@ -83,5 +83,4 @@ testpaths = [
 ]
 
 [tool.cibuildwheel]
-before-build = "pip install numpy cython"
 build = "*"
