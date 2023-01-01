@@ -1,0 +1,5 @@
+(all times in ms),, Lotkavolterra,,,,,,,, Pendulum,,,,,,,, Lorenz,,,,,,,
+,, Small Time,,,, Large Time,,,, Small Time,,,, Large Time,,,, Small Time,,,, Large Time,,,
+CyRK Version, Run-on Date, cython (avg), cython (std), numba  (avg), numba  (std), cython (avg), cython (std), numba  (avg), numba  (std), cython (avg), cython (std), numba  (avg), numba  (std), cython (avg), cython (std), numba  (avg), numba  (std), cython (avg), cython (std), numba  (avg), numba  (std), cython (avg), cython (std), numba  (avg), numba  (std)
+0.2.1a0.dev0, 31/12/2022 15:19:25, 7.6345, 0.2150, 8.0442, 0.0879, 75.2701, 1.0116, 363.1304, 3.0165, 18.5526, 0.4067, 4.6902, 0.1262, 174.0980, 1.4268, 181.2945, 2.1964, 9.1913, 0.1643, 9.9573, 0.1582, 163.3332, 1.1517, 6529.7657, 359.9193
+0.2.3a0.dev0, 31/12/2022 18:39:24, 10.1302, 1.7416, 9.1980, 1.2931, 81.3014, 3.2325, 360.8610, 3.4365, 4.8770, 0.0577, 4.5720, 0.0125, 48.3967, 0.1338, 187.2402, 2.2239, 9.1004, 0.0762, 9.4556, 0.0633, 161.9380, 0.9592, 4913.1165, 68.3312

@@ -631,7 +631,7 @@ def cyrk_ode(
 
             for s in range(1, len_c):
                 c = C[s]
-                time_ = t_new + c * step
+                time_ = t_old + c * step
 
                 # Dot Product (K, a) * step
                 for j in range(s):
@@ -663,7 +663,7 @@ def cyrk_ode(
                     y_new_view[i] = y_new_view[i] + (K_view[j, i] * B[j] * step)
 
             diffeq(
-                t_new + step,
+                t_new,
                 y_new,
                 dydt_new,
                 *args
