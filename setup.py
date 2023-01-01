@@ -1,11 +1,13 @@
-import numpy
+import os
+
+import numpy as np
 from setuptools import Extension, setup
 
 setup(
     ext_modules=[
         Extension(
-            name='_cyrk.c',
-            sources=['CyRK/cy/_cyrk.c'],
-            include_dirs=[numpy.get_include()])
+            name='CyRK.cy.cyrk',
+            sources=['CyRK/cy/_cyrk.pyx'],
+            include_dirs=[os.path.join('CyRK', 'cy'), np.get_include()])
     ]
 )
