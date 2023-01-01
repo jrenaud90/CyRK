@@ -44,7 +44,7 @@ jobs:
 
   check_dist:
     name: Check dist
-    needs: [build_wheels]
+    needs: [make_sdist,build_wheels]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/download-artifact@v3
