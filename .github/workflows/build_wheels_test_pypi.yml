@@ -56,7 +56,7 @@ jobs:
 
   upload_all:
     name: Upload wheels to Test PyPI
-    needs: [build_wheels, make_sdist]
+    needs: [build_wheels, make_sdist, check_dist]
     runs-on: ubuntu-latest
     # if: github.event_name == 'release' && github.event.action == 'published'
     steps:
