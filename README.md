@@ -10,7 +10,7 @@
 
 ---
 
-<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.2.0 Alpha-orange" alt="CyRK Version 0.1.3 Alpha" /></a>
+<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.3.0 Alpha-orange" alt="CyRK Version 0.3.0 Alpha" /></a>
 
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
