@@ -1,10 +1,19 @@
 # CyRK - Change Log
 
-## 2022 - December
+## 2023 - January
 
 In-Progress:
-- Fixing wheel distribution: [issue 9](https://github.com/jrenaud90/CyRK/issues/9)
 - Coverage is not working.
+
+### v0.3.0 - Alpha
+
+Bug Fixes
+- Fixed issue in precompiled wheel distribution ([issue 9](https://github.com/jrenaud90/CyRK/issues/9)). (Fix made by [Caroline Russell](https://github.com/cerrussell))
+
+Other Changes
+- Updated CI workflows to utilize `cibuildwheel` for building binary wheels.
+
+## 2022 - December
 
 #### v0.2.3 - Alpha
 
