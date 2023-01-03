@@ -5,7 +5,7 @@
 In-Progress:
 - Coverage is not working.
 
-### v0.3.0 - Alpha
+#### v0.2.4 - Alpha
 
 Bug Fixes
 - Fixed issue in precompiled wheel distribution ([issue 9](https://github.com/jrenaud90/CyRK/issues/9)). (Fix made by [Caroline Russell](https://github.com/cerrussell))
