@@ -10,7 +10,7 @@
 
 ---
 
-<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.2.0 Alpha-orange" alt="CyRK Version 0.1.3 Alpha" /></a>
+<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.3.0 Alpha-orange" alt="CyRK Version 0.3.0 Alpha" /></a>
 
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
@@ -23,7 +23,7 @@ CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is 8-2
 The [cython](https://cython.org/) implementation is 5-20x faster. The cython function is also largely pre-compiled which avoids most of the 
 initial performance hit found with using the numba version.
 
-<img style="text-align: center" src="https://raw.githubusercontent.com/jrenaud90/CyRK/main/Benchmarks/CyRK_SciPy_Compare_v0-2-0-dev1.png" alt="CyRK Performance" />
+<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_v0-2-3a0-dev0.png" alt="CyRK Performance" />
 
 ## Installation
 
@@ -170,6 +170,8 @@ Find more details [here](https://docs.scipy.org/doc/scipy/reference/generated/sc
 Pauli Virtanen, Ralf Gommers, Travis E. Oliphant, Matt Haberland, Tyler Reddy, David Cournapeau, Evgeni Burovski, Pearu Peterson, Warren Weckesser, Jonathan Bright, Stéfan J. van der Walt, Matthew Brett, Joshua Wilson, K. Jarrod Millman, Nikolay Mayorov, Andrew R. J. Nelson, Eric Jones, Robert Kern, Eric Larson, CJ Carey, İlhan Polat, Yu Feng, Eric W. Moore, Jake VanderPlas, Denis Laxalde, Josef Perktold, Robert Cimrman, Ian Henriksen, E.A. Quintero, Charles R Harris, Anne M. Archibald, Antônio H. Ribeiro, Fabian Pedregosa, Paul van Mulbregt, and SciPy 1.0 Contributors. (2020) SciPy 1.0: Fundamental Algorithms for Scientific Computing in Python. Nature Methods, 17(3), 261-272.
 
 ## Contribute to CyRK
+_Please look [here](https://github.com/jrenaud90/CyRK/graphs/contributors) for an up-to-date list of contributors to the CyRK package._
+
 CyRK is open-source and is distributed under the Creative Commons Attribution-ShareAlike 4.0 International license. 
 You are welcome to fork this repository and make any edits with attribution back to this project (please see the 
 `Citing CyRK` section).
