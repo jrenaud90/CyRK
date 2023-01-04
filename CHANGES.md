@@ -17,6 +17,7 @@ Performance Improvements
 
 Other Changes
 - Helper functions now have an additional optional kwarg `cache_njit` which is set to `False` but can be toggled to enable njit caching.
+- Fixed issue in function timing calculation used in the benchmark plot.
 
 #### v0.2.4 - Alpha
 
