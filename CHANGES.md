@@ -5,6 +5,11 @@
 In-Progress:
 - Coverage is not working.
 
+### v0.3.0 - Alpha
+
+Other Changes
+- helper functions now have an additional optional kwarg `cache_njit` which is set to `False` but can be toggled to enable njit caching.
+
 #### v0.2.4 - Alpha
 
 Bug Fixes

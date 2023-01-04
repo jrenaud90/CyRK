@@ -10,7 +10,7 @@ lotkavolterra_time_span_1 = (0., 15.)
 lotkavolterra_time_span_2 = (0., 150.)
 
 
-@njit
+@njit(cache=True)
 def lotkavolterra_nb(t, y, a, b, c, d):
 
     y0 = y[0]
@@ -21,4 +21,4 @@ def lotkavolterra_nb(t, y, a, b, c, d):
     return dy
 
 
-lotkavolterra_cy = nb2cy(lotkavolterra_nb)
+lotkavolterra_cy = nb2cy(lotkavolterra_nb, use_njit=True, cache_njit=True)

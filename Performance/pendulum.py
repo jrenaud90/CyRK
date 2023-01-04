@@ -11,7 +11,7 @@ pendulum_time_span_1 = (0., 10.)
 pendulum_time_span_2 = (0., 100.)
 
 
-@njit
+@njit(cache=True)
 def pendulum_nb(t, y, l, m, g):
 
     # External torque
@@ -25,4 +25,4 @@ def pendulum_nb(t, y, l, m, g):
     return dy
 
 
-pendulum_cy = nb2cy(pendulum_nb)
+pendulum_cy = nb2cy(pendulum_nb, use_njit=True, cache_njit=True)
