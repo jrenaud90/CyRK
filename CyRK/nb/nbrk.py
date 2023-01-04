@@ -138,8 +138,8 @@ def nbrk_ode(
     y_size = y0.size
     y_size_sqrt = np.sqrt(y_size)
     dtype = y0.dtype
-    time_domain = [t_start]
-    y_results = [y0]
+    time_domain_list = [t_start]
+    y_result_list = [y0]
 
     # Integrator Status Codes
     #   0  = Running
@@ -471,21 +471,21 @@ def nbrk_ode(
             dydt_old[i] = dydt_new[i]
 
         # Save data
-        time_domain.append(t_new)
+        time_domain_list.append(t_new)
 
         # Numba does not support np.stack(x) if x is a list. So we have to continuously hstack as we go.
         #         y_new_array = y_now.reshape(1, y_size)
-        y_results.append(np.copy(y_new))
+        y_result_list.append(np.copy(y_new))
 
-    time_domain = np.asarray(time_domain, dtype=np.float64)
-    t_size = time_domain.size
+    t_size = len(time_domain_list)
 
     # To match the format that scipy follows, we will take the transpose of y.
-    y_result_array = np.empty((y_size, t_size), dtype=dtype)
+    time_domain = np.empty(t_size, dtype=np.float64)
+    y_results = np.empty((y_size, t_size), dtype=dtype)
     for t_i in range(t_size):
+        time_domain[t_i] = time_domain_list[t_i]
         for y_i in range(y_size):
-            y_result_array[y_i, t_i] = y_results[t_i][y_i]
-    y_results = y_result_array
+            y_results[y_i, t_i] = y_result_list[t_i][y_i]
 
     if t_eval.size > 0:
         # User only wants data at specific points.
