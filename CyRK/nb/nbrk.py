@@ -8,15 +8,19 @@ from CyRK.nb.dop_coefficients import (
     N_STAGES as N_STAGES_DOP, N_STAGES_EXTENDED as N_STAGES_EXTENDED_DOP, ORDER as ORDER_DOP,
     ERROR_ESTIMATOR_ORDER as ERROR_ESTIMATOR_ORDER_DOP)
 
+# Optimizations
+EMPTY_ARR = np.empty(0, dtype=np.float64)
+EPS = np.finfo(np.float64).eps
+EPS_10 = 10. * EPS
+EPS_100 = 100. * EPS
+INF = np.inf
+
+# Diffeq Solver Settings
 # Multiply steps computed from asymptotic behaviour of errors by this.
 SAFETY = 0.9
 
 MIN_FACTOR = 0.2  # Minimum allowed decrease in a step size.
 MAX_FACTOR = 10.  # Maximum allowed increase in a step size.
-
-EPS = np.finfo(np.float64).eps
-EPS_10 = 10. * EPS
-EPS_100 = 100. * EPS
 
 RK23_order = 3
 RK23_error_estimator_order = 2
@@ -77,8 +81,8 @@ RK45_P = np.array(
 def nbrk_ode(
         diffeq: callable, t_span: Tuple[float, float], y0: np.ndarray, args: tuple = tuple(),
         rtol: float = 1.e-6, atol: float = 1.e-8,
-        max_step: float = np.inf, first_step: float = None,
-        rk_method: int = 1, t_eval: np.ndarray = np.empty(0, dtype=np.float64)
+        max_step: float = INF, first_step: float = None,
+        rk_method: int = 1, t_eval: np.ndarray = EMPTY_ARR
         ):
     """ A Numba-safe Rugge-Kutta Integrator based on Scipy's solve_ivp RK integrator.
 
@@ -133,7 +137,7 @@ def nbrk_ode(
     t_start = t_span[0]
     t_end = t_span[1]
     direction = np.sign(t_end - t_start) if t_end != t_start else 1
-    direction_inf = direction * np.inf
+    direction_inf = direction * INF
     y0 = np.asarray(y0)
     y_size = y0.size
     y_size_sqrt = np.sqrt(y_size)
@@ -158,7 +162,8 @@ def nbrk_ode(
         A = RK23_A
         B = RK23_B
         E = np.asarray(RK23_E, dtype=dtype)
-        P = RK23_P
+        # TODO: Used in dense output calculation. Not needed until that is implemented.
+        # P = RK23_P
 
         # Initialize RK-K variable
         K = np.empty((rk_n_stages_plus1, y_size), dtype=dtype)
@@ -172,7 +177,8 @@ def nbrk_ode(
         A = RK45_A
         B = RK45_B
         E = np.asarray(RK45_E, dtype=dtype)
-        P = RK45_P
+        # TODO: Used in dense output calculation. Not needed until that is implemented.
+        # P = RK45_P
 
         # Initialize RK-K variable
         K = np.empty((rk_n_stages_plus1, y_size), dtype=dtype)
@@ -185,23 +191,18 @@ def nbrk_ode(
         A = A_DOP[:rk_n_stages, :rk_n_stages]
         B = B_DOP
         C = C_DOP[:rk_n_stages]
-        E3 = E3_DOP
-        E5 = E5_DOP
-        D = D_DOP
-        A_EXTRA = A_DOP[rk_n_stages + 1:]
-        C_EXTRA = C_DOP[rk_n_stages + 1:]
-
-        E3 = np.asarray(E3, dtype=dtype)
-        E5 = np.asarray(E5, dtype=dtype)
-        D = np.asarray(D, dtype=dtype)
-        A_EXTRA = np.asarray(A_EXTRA, dtype=dtype)
-        C_EXTRA = np.asarray(C_EXTRA, dtype=dtype)
+        E3 = np.asarray(E3_DOP, dtype=dtype)
+        E5 = np.asarray(E5_DOP, dtype=dtype)
+        # TODO: Used in dense output calculation. Not needed until that is implemented.
+        # D = np.asarray(D_DOP, dtype=dtype)
+        # A_EXTRA = np.asarray(A_DOP[rk_n_stages + 1:], dtype=dtype)
+        # C_EXTRA = np.asarray(C_DOP[rk_n_stages + 1:], dtype=dtype)
 
         # Initialize RK-K variable
         K_extended = np.empty((N_STAGES_EXTENDED_DOP, y_size), dtype=dtype)
         K = np.ascontiguousarray(K_extended[:rk_n_stages_plus1, :])
 
-    # Recast some constants into the correct dtype so they can be used with y.
+    # Recast some constants into the correct dtype, so they can be used with y0.
     A = np.asarray(A, dtype=dtype)
     B = np.asarray(B, dtype=dtype)
 
@@ -252,7 +253,7 @@ def nbrk_ode(
         # .. [1] E. Hairer, S. P. Norsett G. Wanner, "Solving Ordinary Differential
         #        Equations I: Nonstiff Problems", Sec. II.4.
         if y_size == 0:
-            step_size = np.inf
+            step_size = INF
         else:
 
             # Take the norm of d0 and d1
