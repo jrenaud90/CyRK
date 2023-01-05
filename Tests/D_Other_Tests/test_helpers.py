@@ -114,6 +114,7 @@ def test_nb2cy_args():
     assert np.all(p_diff_1_nb < check_rtol)
     assert np.all(p_diff_2_nb < check_rtol)
 
+
 def test_cy2nb_noargs():
     """ Test converting a cyrk diffeq into a numba/scipy one with no additional arguments. """
 
@@ -189,6 +190,7 @@ def test_cy2nb_args():
     assert np.all(p_diff_1_nb < check_rtol)
     assert np.all(p_diff_2_nb < check_rtol)
 
+
 def test_cy2nb_cache_njit():
     """ Test converting a cyrk diffeq into a numba/scipy with njit cacheing on. """
 
@@ -225,6 +227,7 @@ def test_cy2nb_cache_njit():
     p_diff_2_nb = 2. * np.abs((y_results_nb_conv[1] - y_results_nb[1]) / (y_results_nb_conv[1] + y_results_nb[1]))
     assert np.all(p_diff_1_nb < check_rtol)
     assert np.all(p_diff_2_nb < check_rtol)
+
 
 def test_nb2cy_cache_njit():
     """ Test converting a scipy diffeq into a cyrk with njit cacheing on. """
