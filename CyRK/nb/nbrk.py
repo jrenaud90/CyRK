@@ -73,7 +73,7 @@ RK45_P = np.array(
             [0, 40617522 / 29380423, -110615467 / 29380423, 69997945 / 29380423]], order='C'
         )
 
-@njit(cache=False)
+@njit(cache=False, fastmath=True)
 def nbrk_ode(
         diffeq: callable, t_span: Tuple[float, float], y0: np.ndarray, args: tuple = tuple(),
         rtol: float = 1.e-6, atol: float = 1.e-8,
@@ -234,7 +234,9 @@ def nbrk_ode(
 
     # Find first step size
     first_step_found = False
+    min_step = EPS_10
     if first_step is not None:
+        step_size = max_step
         if first_step < 0.:
             # Step size must be a positive number
             raise Exception
@@ -289,19 +291,15 @@ def nbrk_ode(
             else:
                 h1 = (0.01 / max(d1, d2))**error_expo
 
-            step_size = min(100. * h0, h1)
+            step_size = max(min_step, min(100. * h0, h1))
 
-    min_step = EPS_10
     # Main integration loop
-    message = 'Running...'
-
     # # Time Loop
     while status == 0:
 
         if t_new == t_end or y_size == 0:
             t_old = t_end
             t_new = t_end
-            message = 'Finished'
             status = 1
             break
 
@@ -317,13 +315,11 @@ def nbrk_ode(
         step_accepted = False
         step_rejected = False
         step_error = False
-        rejected_message = 'Proper step size not found.'
         # # Step Loop
         while not step_accepted:
 
             if step_size < min_step:
                 step_error = True
-                rejected_message = 'Required step size is less than spacing between numbers.'
                 break
 
             # Move time forward for this particular step size
@@ -460,7 +456,6 @@ def nbrk_ode(
         if not step_accepted or step_error:
             # Issue with step convergence
             status = -1
-            message = 'Error in step size calculation:\n' + rejected_message
             break
 
         # End of step loop. Update the _now variables
@@ -501,5 +496,13 @@ def nbrk_ode(
         time_domain = t_eval
 
     success = status == 1
+    if status == 1:
+        message = 'Integration finished.'
+    elif status == 0:
+        message = 'Integration interrupted.'
+    elif status == -1:
+        message = 'Error in step size calculation:\n\tRequired step size is less than spacing between numbers.'
+    else:
+        message = 'An unknown integration error occurred.'
 
     return time_domain, y_results, success, message

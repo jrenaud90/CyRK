@@ -13,7 +13,8 @@ Bug Fixes:
     - This fixes [issue 5](https://github.com/jrenaud90/CyRK/issues/5).
 
 Performance Improvements
-- `nbrk_ode` is about 200% faster on small time-spans and over 30x+ faster on large timespans.
+- Various improvements to `nbrk_ode` make it about 200% faster on small time-spans and over 30x+ faster on large timespans.
+- Improvements to `cyrk_ode` provided a modest (~5%) performance increase.
 
 Other Changes
 - Helper functions now have an additional optional kwarg `cache_njit` which is set to `False` but can be toggled to enable njit caching.
