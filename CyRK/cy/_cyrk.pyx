@@ -1,7 +1,6 @@
 import cython
 import numpy as np
 cimport numpy as np
-from libc.math cimport sqrt
 from cpython cimport array
 
 from numpy.core.multiarray import (interp as compiled_interp, interp_complex as compiled_interp_complex

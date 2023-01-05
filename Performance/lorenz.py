@@ -11,7 +11,7 @@ lorenz_time_span_1 = (0., 10.)
 lorenz_time_span_2 = (0., 100.)
 
 
-@njit
+@njit(cache=True)
 def lorenz_nb(t, y, a, b, c):
 
     y0 = y[0]
@@ -24,4 +24,4 @@ def lorenz_nb(t, y, a, b, c):
     return dy
 
 
-lorenz_cy = nb2cy(lorenz_nb)
+lorenz_cy = nb2cy(lorenz_nb, use_njit=True, cache_njit=True)

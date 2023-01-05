@@ -15,29 +15,27 @@
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
 
-CyRK provides fast integration tools to solve systems of ODEs with adaptive time stepping. CyRK can accept differential equation functions 
+CyRK provides fast integration tools to solve systems of ODEs using an adaptive time stepping scheme. CyRK can accept differential equation functions 
 that are written in pure Python or njited numba, speeding up development time. The purpose of this package is to provide some 
 functionality of [scipy's solve_ivp](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html) with improved performance.
 
-CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is 8-20x faster than scipy's solve_ivp function (except for very long integrations). 
+Currently, CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is 10-100x faster than scipy's solve_ivp function. 
 The [cython](https://cython.org/) implementation is 5-20x faster. The cython function is also largely pre-compiled which avoids most of the 
 initial performance hit found with using the numba version.
 
-<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_v0-2-3a0-dev0.png" alt="CyRK Performance" />
+<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_v0-3-0.png" alt="CyRK Performance" />
 
 ## Installation
 
 It is recommended you use an [Anaconda](https://www.anaconda.com/products/distribution) environment. CyRK has been tested on Python 3.8--3.10
 
-To install simply open a terminal (in administrator mode if using Windows) and call:
+To install simply open a terminal and call:
 
 `pip install CyRK`
 
-If not installing from a wheel, CyRK will attempt to install Cython and Numpy in order to compile the cython code. 
+If not installing from a wheel, CyRK will attempt to install `Cython` and `Numpy` in order to compile the cython code. 
 After the files have been compiled, cython will be uninstalled and CyRK's runtime dependencies 
 (see the pyproject.toml file for the latest list) will be installed instead.
-
-CyRK requires the `cython` and `numpy` packages during installation. The `numpy`, `numba`, and `scipy` packages are required for runtime.
 
 A new installation of CyRK can be tested quickly by running the following from a python console.
 ```python
@@ -50,11 +48,10 @@ test_nbrk()
 
 ### Installation Troubleshooting
 
-*Please [report](https://github.com/jrenaud90/CyRK/issues) installation issues. We will work on a fix and/or add workaround information here.* 
+*Please [report](https://github.com/jrenaud90/CyRK/issues) installation issues. We will work on a fix and/or add workaround information here.*
 
-> Due to [issue 9](https://github.com/jrenaud90/CyRK/issues/9), it is reccomended that you use the flag `--no-binary`, e.g.,
-> `pip install CyRK --no-binary="CyRK"`,
-> to ensure that CyRK's cython code is compiled correctly (rather than pulled from a potentially broken cache).
+If you see a "Can not load module: CyRK.cy" or similar error then the cython extensions likely did not compile during installation. Try running `pip install CyRK --no-binary="CyRK"` 
+to force python to recompile the cython extensions locally (rather than via a prebuilt wheel).
 
 ### Development and Testing Dependencies
 

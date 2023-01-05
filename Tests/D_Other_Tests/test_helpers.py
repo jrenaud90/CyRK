@@ -114,6 +114,7 @@ def test_nb2cy_args():
     assert np.all(p_diff_1_nb < check_rtol)
     assert np.all(p_diff_2_nb < check_rtol)
 
+
 def test_cy2nb_noargs():
     """ Test converting a cyrk diffeq into a numba/scipy one with no additional arguments. """
 
@@ -186,5 +187,81 @@ def test_cy2nb_args():
     # # Converted vs. nbrk
     p_diff_1_nb = 2. * np.abs((y_results_nb_conv[0] - y_results_nb[0]) / (y_results_nb_conv[0] + y_results_nb[0]))
     p_diff_2_nb = 2. * np.abs((y_results_nb_conv[1] - y_results_nb[1]) / (y_results_nb_conv[1] + y_results_nb[1]))
+    assert np.all(p_diff_1_nb < check_rtol)
+    assert np.all(p_diff_2_nb < check_rtol)
+
+
+def test_cy2nb_cache_njit():
+    """ Test converting a cyrk diffeq into a numba/scipy with njit cacheing on. """
+
+    # Accuracy check tolerances
+    check_rtol = 0.1
+
+    # First calculate the result of an integration using nbrk.
+    time_domain_nb, y_results_nb, success_nb, message_nb = \
+        nbrk_ode(diffeq_scipy, time_span, initial_conds, t_eval=t_eval)
+    assert success_nb
+
+    # Perform a cyrk integration using the diffeq that was written for cyrk
+    time_domain_cy, y_results_cy, success_cy, message_cy = \
+        cyrk_ode(diffeq_cy, time_span, initial_conds, t_eval=t_eval)
+    assert success_cy
+
+    # Perform the function conversion
+    diffeq_nb_converted = cy2nb(diffeq_cy, cache_njit=True)
+
+    # Use this function to recalculate using cyrk
+    time_domain_nb_conv, y_results_nb_conv, success_nb_conv, message_nb_conv = \
+        nbrk_ode(diffeq_nb_converted, time_span, initial_conds, t_eval=t_eval)
+    assert success_nb_conv
+
+    # Check that the results match
+    # # Converted vs. hardcoded
+    p_diff_1_cy = 2. * np.abs((y_results_nb_conv[0] - y_results_cy[0]) / (y_results_nb_conv[0] + y_results_cy[0]))
+    p_diff_2_cy = 2. * np.abs((y_results_nb_conv[1] - y_results_cy[1]) / (y_results_nb_conv[1] + y_results_cy[1]))
+    assert np.all(p_diff_1_cy < check_rtol)
+    assert np.all(p_diff_2_cy < check_rtol)
+
+    # # Converted vs. nbrk
+    p_diff_1_nb = 2. * np.abs((y_results_nb_conv[0] - y_results_nb[0]) / (y_results_nb_conv[0] + y_results_nb[0]))
+    p_diff_2_nb = 2. * np.abs((y_results_nb_conv[1] - y_results_nb[1]) / (y_results_nb_conv[1] + y_results_nb[1]))
+    assert np.all(p_diff_1_nb < check_rtol)
+    assert np.all(p_diff_2_nb < check_rtol)
+
+
+def test_nb2cy_cache_njit():
+    """ Test converting a scipy diffeq into a cyrk with njit cacheing on. """
+
+    # Accuracy check tolerances
+    check_rtol = 0.1
+
+    # First calculate the result of an integration using nbrk.
+    time_domain_nb, y_results_nb, success_nb, message_nb = \
+        nbrk_ode(diffeq_scipy, time_span, initial_conds, t_eval=t_eval)
+    assert success_nb
+
+    # Perform a cyrk integration using the diffeq that was written for cyrk
+    time_domain_cy, y_results_cy, success_cy, message_cy = \
+        cyrk_ode(diffeq_cy, time_span, initial_conds, t_eval=t_eval)
+    assert success_cy
+
+    # Perform the function conversion
+    diffeq_cy_converted = nb2cy(diffeq_scipy, cache_njit=True)
+
+    # Use this function to recalculate using cyrk
+    time_domain_cy_conv, y_results_cy_conv, success_cy_conv, message_cy_conv = \
+        cyrk_ode(diffeq_cy_converted, time_span, initial_conds, t_eval=t_eval)
+    assert success_cy_conv
+
+    # Check that the results match
+    # # Converted vs. hardcoded
+    p_diff_1_cy = 2. * np.abs((y_results_cy_conv[0] - y_results_cy[0]) / (y_results_cy_conv[0] + y_results_cy[0]))
+    p_diff_2_cy = 2. * np.abs((y_results_cy_conv[1] - y_results_cy[1]) / (y_results_cy_conv[1] + y_results_cy[1]))
+    assert np.all(p_diff_1_cy < check_rtol)
+    assert np.all(p_diff_2_cy < check_rtol)
+
+    # # Converted vs. nbrk
+    p_diff_1_nb = 2. * np.abs((y_results_cy_conv[0] - y_results_nb[0]) / (y_results_cy_conv[0] + y_results_nb[0]))
+    p_diff_2_nb = 2. * np.abs((y_results_cy_conv[1] - y_results_nb[1]) / (y_results_cy_conv[1] + y_results_nb[1]))
     assert np.all(p_diff_1_nb < check_rtol)
     assert np.all(p_diff_2_nb < check_rtol)

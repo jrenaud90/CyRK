@@ -5,6 +5,21 @@
 In-Progress:
 - Coverage is not working.
 
+### v0.3.0 - Alpha
+
+Bug Fixes:
+- `nbrk_ode` fixes
+  - Improved the storage of results during integration, greatly reducing memory usage. This provides a massive increase in performance when dealing with large time spans that previously required the processor to search outside its cache during integration.
+    - This fixes [issue 5](https://github.com/jrenaud90/CyRK/issues/5).
+
+Performance Improvements
+- Various improvements to `nbrk_ode` make it about 200% faster on small time-spans and over 30x+ faster on large timespans.
+- Improvements to `cyrk_ode` provided a modest (~5%) performance increase.
+
+Other Changes
+- Helper functions now have an additional optional kwarg `cache_njit` which is set to `False` but can be toggled to enable njit caching.
+- Fixed issue in function timing calculation used in the benchmark plot.
+
 #### v0.2.4 - Alpha
 
 Bug Fixes
