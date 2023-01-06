@@ -2,8 +2,11 @@
 
 ## 2023 - January
 
-In-Progress:
-- Coverage is not working.
+
+#### v0.3.1 - Alpha
+
+Performance
+- Minor performance improvements to `cyrk_ode`
 
 ### v0.3.0 - Alpha
 

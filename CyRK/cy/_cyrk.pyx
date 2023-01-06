@@ -317,14 +317,14 @@ def cyrk_ode(
     cdef double t_start, t_end, t_delta, t_delta_abs, t_init_step, \
         error_expo, error_norm, error_norm5, error_norm3, error_denom, error_norm3_abs, error_norm5_abs, error_norm_abs, \
         direction, h0_direction, d0, d1, d2, h0, h1, step_size, time_, min_step, step_factor, c, \
-        d0_abs, d1_abs, d2_abs, y_size_sqrt, y_size_dbl
+        d0_abs, d1_abs, d2_abs, y_size_sqrt, y_size_dbl, scale
     cdef double complex K_scale
-    cdef np.ndarray[np.float64_t, ndim=1] scale, time_domain
+    cdef np.ndarray[np.float64_t, ndim=1] time_domain
     cdef np.ndarray[np.complex128_t, ndim=1] y_new, y_old, y_tmp, y_init_step, dydt_new, dydt_old, dydt_init_step, \
         diffeq_out, y_result_temp, E_tmp, y_result_timeslice, \
         E3_tmp, E5_tmp
     cdef np.ndarray[np.complex128_t, ndim=2] y_results, y_results_reduced, K
-    cdef double[:] scale_view, C
+    cdef double[:] C
     cdef double complex[:]  y_init_step_view, y_new_view, \
         y_old_view, dydt_new_view, dydt_old_view, dydt_init_step_view, y_tmp_view, diffeq_out_view, \
         E_tmp_view, B, E, E3, E5, E3_tmp_view, E5_tmp_view
@@ -355,11 +355,6 @@ def cyrk_ode(
     y_results_list = [y0]
 
     # Initialize arrays
-    scale = np.empty(
-        y_size,
-        dtype=float_type,
-        order='C'
-    )
     y_init_step = np.empty(
         y_size,
         dtype=complex_type,
@@ -402,7 +397,6 @@ def cyrk_ode(
     )
 
     # Setup memoryviews
-    scale_view              = scale
     y_init_step_view        = y_init_step
     y_new_view              = y_new
     y_old_view              = y_old
@@ -517,10 +511,10 @@ def cyrk_ode(
             d0 = 0.
             d1 = 0.
             for i in range(y_size):
-                scale_view[i] = atol + cabs(y_old_view[i]) * rtol
+                scale = atol + cabs(y_old_view[i]) * rtol
 
-                d0_abs = cabs(y_old_view[i] / scale_view[i])
-                d1_abs = cabs(dydt_old_view[i] / scale_view[i])
+                d0_abs = cabs(y_old_view[i] / scale)
+                d1_abs = cabs(dydt_old_view[i] / scale)
                 d0 += (d0_abs * d0_abs)
                 d1 += (d1_abs * d1_abs)
 
@@ -547,7 +541,9 @@ def cyrk_ode(
             # Find the norm for d2
             d2 = 0.
             for i in range(y_size):
-                d2_abs = cabs( (dydt_init_step_view[i] - dydt_old_view[i]) / scale_view[i] )
+                # TODO: should/could this be `y_init_step` instead of `y_old_view`?
+                scale = atol + cabs(y_old_view[i]) * rtol
+                d2_abs = cabs( (dydt_init_step_view[i] - dydt_old_view[i]) / scale )
                 d2 += (d2_abs * d2_abs)
 
             d2 = sqrt(d2) / (h0 * y_size_sqrt)
@@ -674,7 +670,7 @@ def cyrk_ode(
                 # Dot Product (K, E5) / scale and Dot Product (K, E3) * step / scale
                 for i in range(y_size):
                     # Check how well this step performed.
-                    scale_view[i] = atol + max(cabs(y_old_view[i]), cabs(y_new_view[i])) * rtol
+                    scale = atol + max(cabs(y_old_view[i]), cabs(y_new_view[i])) * rtol
 
                     for j in range(rk_n_stages_plus1):
                         if j == 0:
@@ -686,7 +682,7 @@ def cyrk_ode(
                             # Set last array of the K array.
                             K_view[j, i] = dydt_new_view[i]
 
-                        K_scale = K_view[j, i] / scale_view[i]
+                        K_scale = K_view[j, i] / scale
                         E5_tmp_view[i] = E5_tmp_view[i] + (K_scale * E5[j])
                         E3_tmp_view[i] = E3_tmp_view[i] + (K_scale * E3[j])
 
@@ -716,7 +712,7 @@ def cyrk_ode(
                 for i in range(y_size):
 
                     # Check how well this step performed.
-                    scale_view[i] = atol + max(cabs(y_old_view[i]), cabs(y_new_view[i])) * rtol
+                    scale = atol + max(cabs(y_old_view[i]), cabs(y_new_view[i])) * rtol
 
                     for j in range(rk_n_stages_plus1):
 
@@ -727,7 +723,7 @@ def cyrk_ode(
                             # Set last array of the K array.
                             K_view[j, i] = dydt_new_view[i]
 
-                        K_scale = K_view[j, i] / scale_view[i]
+                        K_scale = K_view[j, i] / scale
                         E_tmp_view[i] = E_tmp_view[i] + (K_scale * E[j] * step)
 
                     error_norm_abs = cabs(E_tmp_view[i])
