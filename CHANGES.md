@@ -5,11 +5,11 @@
 ### v0.4.0 - Alpha
 
 New Features
-- Added the ability to save intermediate (non-dependent y) results during integration for `nbrk` ode solver.
+- Added the ability to save intermediate (non-dependent y) results during integration for `nbrk` and `cyrk` ode solver.
   - See `Documentation/Extra Output.md` for more information. 
 
 Performance
-- Minor performance improvements to `cyrk_ode`
+- Minor performance improvements to `cyrk_ode` (switch to c++ compiler and some related functionality)
 
 ### v0.3.0 - Alpha
 
