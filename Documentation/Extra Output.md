@@ -35,7 +35,7 @@ Current limitations of this feature as of v0.4.0:
 - All extra outputs must have the same _type_ as the input `y`s. This means if you are using `y`s which are floats, but you need to capture a complex number, 
 then you will either need to change the `y`s to complex-valued (with a zero imaginary portion) or, a better option, return the real and imaginary portions of the extra parameter separately.
 
-## How to use with `CyRK.nbrk_ode`
+## How to use with `CyRK.nbrk_ode` (Numba-based)
 
 Define a differential equation function with the additional extra outputs put _after_ the y-derivatives.
 It is a good idea to turn the output into numpy ndarray before the final return.
@@ -62,6 +62,41 @@ time_domain, all_output, success, message = \
 ```
 
 The output of the solver (if successful) will now contain both the dependent `y` values over time as well as the extra parameters.
+
+```python
+y_0 = all_output[0, :]
+y_1 = all_output[1, :]
+extra_parameter_0 = all_output[2, :]
+extra_parameter_1 = all_output[3, :]
+```
+
+## How to use with `CyRK.cyrk_ode` (Cython-based)
+
+The process for capturing extra outputs with the cython-based solver follows similar steps to the numba-based approach discussed above with two exceptions.
+
+First, as is the case with the general solving method, the differential equation signature for `cyrk_ode` requires the output to be given as an input.
+Otherwise, the same rules apply here as they did with the numba version: extra outputs must come after the `dy/dt`s, and they must have the same type (TODO: for `cyrk_ode` as of v0.4.0 the type has to be complex).
+
+```python
+def diffeq_cy(t, y, output, arg_0, arg_1):
+    
+    extra_0 = (1. - arg_0 * y[1])
+    extra_1 = (arg_1 * y[0] - 1.)
+    output[0] = extra_0 * y[0]
+    output[1] = extra_1 * y[1]
+    output[2] = extra_0
+    output[3] = extra_1
+```
+
+The next change is that the solver needs to know how many extra outputs it should expect. In our example there are two additional outputs.
+
+```python
+from CyRK import cyrk_ode
+time_domain, all_output, success, message = \
+    cyrk_ode(diffeq_cy, time_span, initial_conds, rk_method=1, rtol=rtol, atol=atol, capture_extra=True, num_extra=2)
+```
+
+The output matches the output described for the numba-based approach,
 
 ```python
 y_0 = all_output[0, :]

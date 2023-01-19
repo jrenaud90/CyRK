@@ -255,7 +255,7 @@ def cyrk_ode(
     unsigned int rk_method = 1,
     np.ndarray[np.float64_t, ndim=1] t_eval = unused_t_eval,
     bool_cpp_t capture_extra = False,
-    int extra_size = 0,
+    int num_extra = 0,
     bool_cpp_t interpolate_extra = False
     ):
     """ A Numba-safe Runge-Kutta Integrator based on Scipy's solve_ivp RK integrator.
@@ -432,7 +432,7 @@ def cyrk_ode(
     # If extra output is true then the output of the diffeq will be larger than the size of y0.
     #   determine that extra size by calling the diffeq and checking its size.
     extra_start = y_size
-    total_size = y_size + extra_size
+    total_size = y_size + num_extra
     # Create diffeq out variable now that we know the total size.
     diffeq_out = np.empty(
         total_size,
@@ -450,7 +450,7 @@ def cyrk_ode(
         order='C'
     )
     extra_result = np.empty(
-        extra_size,
+        num_extra,
         dtype=complex_type,
         order='C'
     )
@@ -923,7 +923,7 @@ def cyrk_ode(
             # The latter method is more computationally expensive (recalls the diffeq for each y) but is more accurate.
             if interpolate_extra:
                 # Continue the interpolation for the extra values.
-                for j in range(extra_size):
+                for j in range(num_extra):
                     # np.interp only works on 1D arrays so we must loop through each of the variables:
                     # # Set timeslice equal to the time values at this y_j
                     for i in range(len_t):
@@ -948,7 +948,7 @@ def cyrk_ode(
                         t_, y_, diffeq_out, *args
                     )
 
-                    for j in range(extra_size):
+                    for j in range(num_extra):
                         y_results_reduced[extra_start + j, i] = diffeq_out[extra_start + j]
 
         # Replace the output y results and time domain with the new reduced one
