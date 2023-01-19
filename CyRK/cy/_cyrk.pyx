@@ -253,7 +253,7 @@ def cyrk_ode(
     unsigned int rk_method = 1,
     np.ndarray[np.float64_t, ndim=1] t_eval = unused_t_eval
     ):
-    """ A Numba-safe Rugge-Kutta Integrator based on Scipy's solve_ivp RK integrator.
+    """ A Numba-safe Runge-Kutta Integrator based on Scipy's solve_ivp RK integrator.
 
     Parameters
     ----------

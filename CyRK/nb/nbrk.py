@@ -84,14 +84,14 @@ def _norm(x):
 
 
 @njit(cache=False, fastmath=True)
-def nbrk_ode_tester(
+def nbrk_ode(
         diffeq: callable, t_span: Tuple[float, float], y0: np.ndarray, args: tuple = tuple(),
         rtol: float = 1.e-6, atol: float = 1.e-8,
         max_step: float = np.inf, first_step: float = None,
         rk_method: int = 1, t_eval: np.ndarray = EMPTY_ARR,
         capture_extra: bool = False, interpolate_extra: bool = False
         ):
-    """ A Numba-safe Rugge-Kutta Integrator based on Scipy's solve_ivp RK integrator.
+    """ A Numba-safe Runge-Kutta Integrator based on Scipy's solve_ivp RK integrator.
 
     Parameters
     ----------
