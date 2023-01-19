@@ -6,7 +6,6 @@
 
 In Progress:
  - Need to add cyrk tests
- - have helper functions convert additional outputs too
 
 New Features
 - Added the ability to save intermediate (non-dependent y) results during integration for `nbrk` and `cyrk` ode solver.

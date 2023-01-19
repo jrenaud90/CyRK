@@ -31,7 +31,8 @@ def test_extra_output_integration():
     assert all_output.dtype == np.complex128
     assert time_domain.size > 1
     assert time_domain.size == all_output[0].size
-    assert len(all_output.shape) == 4
+    assert len(all_output.shape) == 2
+    assert all_output.shape[0] == 4
     assert all_output[0].size == all_output[1].size
     assert all_output[0].size == all_output[2].size
     assert all_output[0].size == all_output[3].size
@@ -58,7 +59,8 @@ def test_extra_output_integration_teval_no_extra_interpolation():
     assert all_output.dtype == np.complex128
     assert time_domain.size == t_eval.size
     assert time_domain.size == all_output[0].size
-    assert len(all_output.shape) == 4
+    assert len(all_output.shape) == 2
+    assert all_output.shape[0] == 4
     assert all_output[0].size == all_output[1].size
     assert all_output[0].size == all_output[2].size
     assert all_output[0].size == all_output[3].size
@@ -87,7 +89,8 @@ def test_extra_output_integration_teval_with_extra_interpolation():
     assert all_output.dtype == np.complex128
     assert time_domain.size == t_eval.size
     assert time_domain.size == all_output[0].size
-    assert len(all_output.shape) == 4
+    assert len(all_output.shape) == 2
+    assert all_output.shape[0] == 4
     assert all_output[0].size == all_output[1].size
     assert all_output[0].size == all_output[2].size
     assert all_output[0].size == all_output[3].size

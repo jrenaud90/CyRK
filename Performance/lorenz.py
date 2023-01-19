@@ -25,3 +25,22 @@ def lorenz_nb(t, y, a, b, c):
 
 
 lorenz_cy = nb2cy(lorenz_nb, use_njit=True, cache_njit=True)
+
+@njit(cache=True)
+def lorenz_nb_extra(t, y, a, b, c):
+
+    y0 = y[0]
+    y1 = y[1]
+    y2 = y[2]
+
+    e_1 = a
+    e_2 = (b - y2)
+    e_3 = c * y2
+
+    dy_0 = e_1 * (y1 - y0)
+    dy_1 = y0 * e_2 - y1
+    dy_2 = y0 * y1 - e_3
+    return np.asarray([dy_0, dy_1, dy_2, e_1, e_2, e_3], dtype=np.complex128)
+
+
+lorenz_cy_extra = nb2cy(lorenz_nb_extra, use_njit=True, cache_njit=True)
