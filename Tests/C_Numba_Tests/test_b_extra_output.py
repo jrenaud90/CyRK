@@ -5,9 +5,9 @@ from CyRK import nbrk_ode
 
 
 @njit
-def diffeq_extra_outputs(t, y, a, b):
-    extra_0 = (1. - a * y[1])
-    extra_1 = (b * y[0] - 1.)
+def diffeq_extra_outputs(t, y):
+    extra_0 = (1. - 0.01 * y[1])
+    extra_1 = (0.02 * y[0] - 1.)
     dy_0 = extra_0 * y[0]
     dy_1 = extra_1 * y[1]
     return np.asarray([dy_0, dy_1, extra_0, extra_1], dtype=y.dtype)
