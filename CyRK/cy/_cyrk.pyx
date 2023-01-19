@@ -1,10 +1,14 @@
+# distutils: language = c++
 import cython
 import numpy as np
 cimport numpy as np
-from cpython cimport array
-
 from numpy.core.multiarray import (interp as compiled_interp, interp_complex as compiled_interp_complex
     )
+np.import_array()
+from cpython cimport array
+from libcpp.string cimport string as string_cpp_t
+from libcpp.vector cimport vector as vector_cpp_t
+from libcpp cimport bool as bool_cpp_t
 
 np.import_array()
 
@@ -19,7 +23,6 @@ cdef double cabs(double complex value) nogil:
     cdef double v_imag = value.imag
     return sqrt(v_real * v_real + v_imag * v_imag)
 
-
 # Multiply steps computed from asymptotic behaviour of errors by this.
 cdef double SAFETY = 0.9
 
@@ -31,7 +34,6 @@ cdef double INF = np.inf
 cdef double EPS = np.finfo(np.float64).eps
 cdef double EPS_10 = EPS * 10.
 cdef double EPS_100 = EPS * 100.
-
 
 unused_t_eval = np.empty((0,), dtype=np.float64)
 
@@ -251,9 +253,12 @@ def cyrk_ode(
     double max_step = MAX_STEP,
     double first_step = 0.,
     unsigned int rk_method = 1,
-    np.ndarray[np.float64_t, ndim=1] t_eval = unused_t_eval
+    np.ndarray[np.float64_t, ndim=1] t_eval = unused_t_eval,
+    bool_cpp_t capture_extra = False,
+    int num_extra = 0,
+    bool_cpp_t interpolate_extra = False
     ):
-    """ A Numba-safe Rugge-Kutta Integrator based on Scipy's solve_ivp RK integrator.
+    """ A Numba-safe Runge-Kutta Integrator based on Scipy's solve_ivp RK integrator.
 
     Parameters
     ----------
@@ -309,26 +314,27 @@ def cyrk_ode(
     cdef list time_domain_list, y_results_list
     cdef str message
     cdef (int, int) K_size, result_size, reduced_result_size
-    cdef bint success, step_accepted, step_rejected, step_error = False
+    cdef bool_cpp_t success, step_accepted, step_rejected, step_error = False
     cdef int rk_order, error_order, rk_n_stages, rk_n_stages_plus1, len_c, len_t, \
-        len_teval, rk_n_stages_extended
+        len_teval, rk_n_stages_extended, extra_start, total_size, store_loop_size
     cdef int s, i, j
     cdef int status
     cdef double t_start, t_end, t_delta, t_delta_abs, t_init_step, \
         error_expo, error_norm, error_norm5, error_norm3, error_denom, error_norm3_abs, error_norm5_abs, error_norm_abs, \
         direction, h0_direction, d0, d1, d2, h0, h1, step_size, time_, min_step, step_factor, c, \
-        d0_abs, d1_abs, d2_abs, y_size_sqrt, y_size_dbl
+        d0_abs, d1_abs, d2_abs, y_size_sqrt, y_size_dbl, scale
     cdef double complex K_scale
-    cdef np.ndarray[np.float64_t, ndim=1] scale, time_domain
+    cdef np.ndarray[np.float64_t, ndim=1] time_domain
     cdef np.ndarray[np.complex128_t, ndim=1] y_new, y_old, y_tmp, y_init_step, dydt_new, dydt_old, dydt_init_step, \
-        diffeq_out, y_result_temp, E_tmp, y_result_timeslice, \
-        E3_tmp, E5_tmp
+        diffeq_out, y_result_temp, E_tmp, y_result_timeslice, y0_plus_extra, y0_to_store, extra_result, \
+        E3_tmp, E5_tmp, y_result_store
     cdef np.ndarray[np.complex128_t, ndim=2] y_results, y_results_reduced, K
-    cdef double[:] scale_view, C
+    cdef double[:] C
     cdef double complex[:]  y_init_step_view, y_new_view, \
         y_old_view, dydt_new_view, dydt_old_view, dydt_init_step_view, y_tmp_view, diffeq_out_view, \
-        E_tmp_view, B, E, E3, E5, E3_tmp_view, E5_tmp_view
+        E_tmp_view, B, E, E3, E5, E3_tmp_view, E5_tmp_view, extra_result_view, y_result_store_view
     cdef double complex[:, :] K_view, y_results_reduced_view, A
+    cdef bool_cpp_t run_interpolation, store_extras_during_integration
 
     # Clean up and interpret inputs
     # Time Domain
@@ -349,17 +355,17 @@ def cyrk_ode(
     step_accepted = False
     step_rejected = False
     step_error = False
-
-    # Start storing results with the initial conditions
-    time_domain_list = [t_start]
-    y_results_list = [y0]
+    run_interpolation = False
+    if len_teval > 0:
+        run_interpolation = True
+    store_extras_during_integration = capture_extra
+    if run_interpolation and not interpolate_extra:
+        # If y is eventually interpolated but the extra outputs are not being interpolated, then there is
+        #  no point in storing the values during the integration. Turn off this functionality to save
+        #  on computation
+        store_extras_during_integration = False
 
     # Initialize arrays
-    scale = np.empty(
-        y_size,
-        dtype=float_type,
-        order='C'
-    )
     y_init_step = np.empty(
         y_size,
         dtype=complex_type,
@@ -395,22 +401,92 @@ def cyrk_ode(
         dtype=complex_type,
         order='C'
     )
-    diffeq_out     = np.empty(
+    E3_tmp = np.empty(
+        y_size,
+        dtype=complex_type,
+        order='C'
+    )
+    E5_tmp = np.empty(
+        y_size,
+        dtype=complex_type,
+        order='C'
+    )
+    E_tmp = np.empty(
         y_size,
         dtype=complex_type,
         order='C'
     )
 
     # Setup memoryviews
-    scale_view              = scale
-    y_init_step_view        = y_init_step
-    y_new_view              = y_new
-    y_old_view              = y_old
-    dydt_new_view           = dydt_new
-    dydt_old_view           = dydt_old
-    dydt_init_step_view     = dydt_init_step
-    y_tmp_view              = y_tmp
-    diffeq_out_view         = diffeq_out
+    y_init_step_view    = y_init_step
+    y_new_view          = y_new
+    y_old_view          = y_old
+    dydt_new_view       = dydt_new
+    dydt_old_view       = dydt_old
+    dydt_init_step_view = dydt_init_step
+    y_tmp_view          = y_tmp
+    E3_tmp_view         = E3_tmp
+    E5_tmp_view         = E5_tmp
+    E_tmp_view          = E_tmp
+
+    # If extra output is true then the output of the diffeq will be larger than the size of y0.
+    #   determine that extra size by calling the diffeq and checking its size.
+    extra_start = y_size
+    total_size = y_size + num_extra
+    # Create diffeq out variable now that we know the total size.
+    diffeq_out = np.empty(
+        total_size,
+        dtype=complex_type,
+        order='C'
+    )
+    y_result_store = np.empty(
+        total_size,
+        dtype=complex_type,
+        order='C'
+    )
+    y0_plus_extra = np.empty(
+        total_size,
+        dtype=complex_type,
+        order='C'
+    )
+    extra_result = np.empty(
+        num_extra,
+        dtype=complex_type,
+        order='C'
+    )
+    diffeq_out_view     = diffeq_out
+    extra_result_view   = extra_result
+    y_result_store_view = y_result_store
+
+    if capture_extra:
+        diffeq(
+            t_start,
+            y0,
+            diffeq_out,
+            *args
+        )
+
+        # Extract the extra output from the function output.
+        for i in range(total_size):
+            if i < extra_start:
+                # Pull from y0
+                y0_plus_extra[i] = y0[i]
+            else:
+                # Pull from extra output
+                y0_plus_extra[i] = diffeq_out_view[i]
+        if store_extras_during_integration:
+            y0_to_store = y0_plus_extra
+            store_loop_size = total_size
+        else:
+            y0_to_store = y0
+            store_loop_size = y_size
+    else:
+        y0_to_store = y0
+        store_loop_size = y_size
+
+    # Start storing results with the initial conditions
+    time_domain_list = [t_start]
+    y_results_list = [y0_to_store.copy()]
 
     # Integrator Status Codes
     #   0  = Running
@@ -428,14 +504,12 @@ def cyrk_ode(
         A = RK23_A
         B = RK23_B
         E = RK23_E
-        len_c = RK23_LEN_C
 
-        E_tmp = np.empty(
-            y_size,
-            dtype=complex_type,
-            order='C'
-        )
-        E_tmp_view = E_tmp
+        # Set these unused variables equal to something to avoid undeclared checks
+        E3 = E
+        E5 = E
+
+        len_c = RK23_LEN_C
 
     elif rk_method == 1:
         # RK45 Method
@@ -446,14 +520,12 @@ def cyrk_ode(
         A = RK45_A
         B = RK45_B
         E = RK45_E
-        len_c = RK45_LEN_C
 
-        E_tmp = np.empty(
-            y_size,
-            dtype=complex_type,
-            order='C'
-        )
-        E_tmp_view = E_tmp
+        # Set these unused variables equal to something to avoid undeclared checks
+        E3 = E
+        E5 = E
+
+        len_c = RK45_LEN_C
 
     else:
         # DOP853 Method
@@ -466,20 +538,11 @@ def cyrk_ode(
         B = DOP_B
         E3 = DOP_E3
         E5 = DOP_E5
-        len_c = DOP_LEN_C
 
-        E3_tmp = np.empty(
-            y_size,
-            dtype=complex_type,
-            order='C'
-        )
-        E5_tmp = np.empty(
-            y_size,
-            dtype=complex_type,
-            order='C'
-        )
-        E3_tmp_view = E3_tmp
-        E5_tmp_view = E5_tmp
+        # Set these unused variables equal to something to avoid undeclared checks
+        E = E3
+
+        len_c = DOP_LEN_C
 
     error_expo = 1. / (<double>error_order + 1.)
 
@@ -496,12 +559,13 @@ def cyrk_ode(
     diffeq(
         t_start,
         y0,
-        dydt_new,
+        diffeq_out,
         *args
     )
     t_old = t_start
     t_new = t_start
     for i in range(y_size):
+        dydt_new[i] = diffeq_out_view[i]
         dydt_old_view[i] = dydt_new_view[i]
         y_old_view[i] = y0[i]
         y_new_view[i] = y0[i]
@@ -517,10 +581,10 @@ def cyrk_ode(
             d0 = 0.
             d1 = 0.
             for i in range(y_size):
-                scale_view[i] = atol + cabs(y_old_view[i]) * rtol
+                scale = atol + cabs(y_old_view[i]) * rtol
 
-                d0_abs = cabs(y_old_view[i] / scale_view[i])
-                d1_abs = cabs(dydt_old_view[i] / scale_view[i])
+                d0_abs = cabs(y_old_view[i] / scale)
+                d1_abs = cabs(dydt_old_view[i] / scale)
                 d0 += (d0_abs * d0_abs)
                 d1 += (d1_abs * d1_abs)
 
@@ -540,14 +604,18 @@ def cyrk_ode(
             diffeq(
                 t_init_step,
                 y_init_step,
-                dydt_init_step,
+                diffeq_out,
                 *args
             )
 
             # Find the norm for d2
             d2 = 0.
             for i in range(y_size):
-                d2_abs = cabs( (dydt_init_step_view[i] - dydt_old_view[i]) / scale_view[i] )
+                dydt_init_step[i] = diffeq_out_view[i]
+
+                # TODO: should/could this be `y_init_step` instead of `y_old_view`?
+                scale = atol + cabs(y_old_view[i]) * rtol
+                d2_abs = cabs( (dydt_init_step_view[i] - dydt_old_view[i]) / scale )
                 d2 += (d2_abs * d2_abs)
 
             d2 = sqrt(d2) / (h0 * y_size_sqrt)
@@ -664,9 +732,16 @@ def cyrk_ode(
             diffeq(
                 t_new,
                 y_new,
-                dydt_new,
+                diffeq_out,
                 *args
             )
+            for i in range(store_loop_size):
+                if i < extra_start:
+                    # Set diffeq results
+                    dydt_new[i] = diffeq_out[i]
+                else:
+                    # Set extra results
+                    extra_result[i - extra_start] = diffeq_out[i]
 
             if rk_method == 2:
                 # Calculate Error for DOP853
@@ -674,7 +749,7 @@ def cyrk_ode(
                 # Dot Product (K, E5) / scale and Dot Product (K, E3) * step / scale
                 for i in range(y_size):
                     # Check how well this step performed.
-                    scale_view[i] = atol + max(cabs(y_old_view[i]), cabs(y_new_view[i])) * rtol
+                    scale = atol + max(cabs(y_old_view[i]), cabs(y_new_view[i])) * rtol
 
                     for j in range(rk_n_stages_plus1):
                         if j == 0:
@@ -686,7 +761,7 @@ def cyrk_ode(
                             # Set last array of the K array.
                             K_view[j, i] = dydt_new_view[i]
 
-                        K_scale = K_view[j, i] / scale_view[i]
+                        K_scale = K_view[j, i] / scale
                         E5_tmp_view[i] = E5_tmp_view[i] + (K_scale * E5[j])
                         E3_tmp_view[i] = E3_tmp_view[i] + (K_scale * E3[j])
 
@@ -716,7 +791,7 @@ def cyrk_ode(
                 for i in range(y_size):
 
                     # Check how well this step performed.
-                    scale_view[i] = atol + max(cabs(y_old_view[i]), cabs(y_new_view[i])) * rtol
+                    scale = atol + max(cabs(y_old_view[i]), cabs(y_new_view[i])) * rtol
 
                     for j in range(rk_n_stages_plus1):
 
@@ -727,7 +802,7 @@ def cyrk_ode(
                             # Set last array of the K array.
                             K_view[j, i] = dydt_new_view[i]
 
-                        K_scale = K_view[j, i] / scale_view[i]
+                        K_scale = K_view[j, i] / scale
                         E_tmp_view[i] = E_tmp_view[i] + (K_scale * E[j] * step)
 
                     error_norm_abs = cabs(E_tmp_view[i])
@@ -771,16 +846,23 @@ def cyrk_ode(
             dydt_old_view[i] = dydt_new_view[i]
 
         # Save data
-        len_t += 1
-        time_domain_list.append(t_new)
+        # If there is extra outputs then we need to store those at this timestep as well.
+        for i in range(store_loop_size):
+            if i < extra_start:
+                # Pull from y result
+                y_result_store[i] = y_new[i]
+            else:
+                # Pull from extra
+                y_result_store[i] = extra_result[i - extra_start]
 
-        # Numba does not support np.stack(x) if x is a list. So we have to continuously hstack as we go.
         y_results_list.append(
-            y_new.copy()
+            y_result_store.copy()
         )
+        time_domain_list.append(t_new)
+        len_t += 1
 
     # Create numpy arrays for the output
-    result_size = (y_size, len_t)
+    result_size = (store_loop_size, len_t)
     y_results_T = np.empty(
         result_size,
         dtype=complex_type,
@@ -795,16 +877,16 @@ def cyrk_ode(
     # To match the format that scipy follows, we will take the transpose of y.
     for i in range(len_t):
         time_domain[i] = time_domain_list[i]
-        for j in range(y_size):
+        for j in range(store_loop_size):
             # To match the format that scipy follows, we will take the transpose of y.
             y_results_T[j, i] = y_results_list[i][j]
 
-    if len_teval > 0:
+    if run_interpolation:
         # User only wants data at specific points.
         # The current version of this function has not implemented sicpy's dense output.
         #   Instead we use an interpolation.
         # OPT: this could be done inside the actual loop for performance gains.
-        reduced_result_size = (y_size, len_teval)
+        reduced_result_size = (total_size, len_teval)
         y_results_reduced = np.empty(
             reduced_result_size,
             dtype=complex_type,
@@ -833,6 +915,41 @@ def cyrk_ode(
             # Store result.
             for i in range(len_teval):
                 y_results_reduced_view[j, i] = y_result_temp[i]
+
+        if capture_extra:
+            # Right now if there is any extra output then it is stored at each time step used in the RK loop.
+            # We have to make a choice on what to output do we, like we do with y, interpolate all of those extras?
+            #  or do we use the interpolation on y to find new values.
+            # The latter method is more computationally expensive (recalls the diffeq for each y) but is more accurate.
+            if interpolate_extra:
+                # Continue the interpolation for the extra values.
+                for j in range(num_extra):
+                    # np.interp only works on 1D arrays so we must loop through each of the variables:
+                    # # Set timeslice equal to the time values at this y_j
+                    for i in range(len_t):
+                        y_result_timeslice[i] = y_results_T[extra_start + j, i]
+
+                    # Perform numerical interpolation
+                    y_result_temp = compiled_interp_complex(
+                        t_eval,
+                        time_domain,
+                        y_result_timeslice
+                    )
+                    y_results_reduced[extra_start + j, :] = y_result_temp
+            else:
+                # Use y and t to recalculate the extra outputs
+                y_ = np.empty(y_size, dtype=dtype)
+                for i in range(len_teval):
+                    t_ = t_eval[i]
+                    for j in range(y_size):
+                        y_[j] = y_results_reduced[j, i]
+
+                    diffeq(
+                        t_, y_, diffeq_out, *args
+                    )
+
+                    for j in range(num_extra):
+                        y_results_reduced[extra_start + j, i] = diffeq_out[extra_start + j]
 
         # Replace the output y results and time domain with the new reduced one
         y_results_T = y_results_reduced

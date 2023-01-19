@@ -11,7 +11,9 @@ from lotkavolterra import (
 
 from pendulum import pendulum_cy, pendulum_nb, pendulum_args, pendulum_y0, pendulum_time_span_1, pendulum_time_span_2
 
-from lorenz import lorenz_cy, lorenz_nb, lorenz_args, lorenz_y0, lorenz_time_span_1, lorenz_time_span_2
+from lorenz import (
+    lorenz_cy, lorenz_nb, lorenz_args, lorenz_y0, lorenz_time_span_1, lorenz_time_span_2,
+    lorenz_nb_extra, lorenz_cy_extra)
 
 REPEATS = 4
 RTOL = 1.e-6
@@ -19,11 +21,13 @@ ATOL = 1.e-8
 
 performance_filename = 'cyrk_performance.csv'
 diffeqs = {
-    'Lotkavolterra': (lotkavolterra_cy, lotkavolterra_nb, lotkavolterra_args, lotkavolterra_y0,
-                      (lotkavolterra_time_span_1, lotkavolterra_time_span_2)),
-    'Pendulum'     : (
-    pendulum_cy, pendulum_nb, pendulum_args, pendulum_y0, (pendulum_time_span_1, pendulum_time_span_2)),
-    'Lorenz'       : (lorenz_cy, lorenz_nb, lorenz_args, lorenz_y0, (lorenz_time_span_1, lorenz_time_span_2))
+    'Lotkavolterra'  : (lotkavolterra_cy, lotkavolterra_nb, lotkavolterra_args, lotkavolterra_y0,
+                        (lotkavolterra_time_span_1, lotkavolterra_time_span_2)),
+    'Pendulum'       : (
+        pendulum_cy, pendulum_nb, pendulum_args, pendulum_y0, (pendulum_time_span_1, pendulum_time_span_2)),
+    'Lorenz'         : (lorenz_cy, lorenz_nb, lorenz_args, lorenz_y0, (lorenz_time_span_1, lorenz_time_span_2)),
+    'Lorenz-ExtraOut': (lorenz_cy_extra, lorenz_nb_extra, lorenz_args, lorenz_y0,
+                        (lorenz_time_span_1, lorenz_time_span_2))
     }
 
 time_spans = {
@@ -106,8 +110,16 @@ def run_performance(integration_method_name):
             t_index = time_spans[time_span_name]
             time_span = timespans[t_index]
 
-            cy_timer = timeit.Timer(lambda: cyrk_ode(cy_diffeq, time_span, y0, args_, RTOL, ATOL, rk_method=int_method))
-            nb_timer = timeit.Timer(lambda: nbrk_ode(nb_diffeq, time_span, y0, args_, RTOL, ATOL, rk_method=int_method))
+            if 'extraout' in diffeq_name.lower():
+                cy_timer = timeit.Timer(
+                    lambda: cyrk_ode(cy_diffeq, time_span, y0, args_, RTOL, ATOL, rk_method=int_method,
+                                     capture_extra=True, num_extra=3))
+                nb_timer = timeit.Timer(
+                    lambda: nbrk_ode(nb_diffeq, time_span, y0, args_, RTOL, ATOL, rk_method=int_method,
+                                     capture_extra=True))
+            else:
+                cy_timer = timeit.Timer(lambda: cyrk_ode(cy_diffeq, time_span, y0, args_, RTOL, ATOL, rk_method=int_method))
+                nb_timer = timeit.Timer(lambda: nbrk_ode(nb_diffeq, time_span, y0, args_, RTOL, ATOL, rk_method=int_method))
 
             # Run the numba function once to make sure everything is compiled.
             print('\t\tPrecompiling numba')

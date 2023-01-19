@@ -2,8 +2,15 @@
 
 ## 2023 - January
 
-In-Progress:
-- Coverage is not working.
+### v0.4.0 - Alpha
+
+New Features
+- Added the ability to save intermediate (non-dependent y) results during integration for `nbrk` and `cyrk` ode solver.
+  - See `Documentation/Extra Output.md` for more information. 
+
+Performance
+- Minor performance improvements to `cyrk_ode` (switch to c++ compiler and some related functionality)
+- The new feature that saves intermediate results during integration had a minor impact on performance (even when not using the feature). However, it is within most tests margin of error.
 
 ### v0.3.0 - Alpha
 
