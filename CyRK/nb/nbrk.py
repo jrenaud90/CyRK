@@ -83,7 +83,6 @@ def _norm(x):
     return np.linalg.norm(x) / np.sqrt(x.size)
 
 
-
 @njit(cache=False, fastmath=True)
 def nbrk_ode_tester(
         diffeq: callable, t_span: Tuple[float, float], y0: np.ndarray, args: tuple = tuple(),
@@ -120,8 +119,14 @@ def nbrk_ode_tester(
     t_eval : np.ndarray = None
         If provided, then the function will interpolate the integration results to provide them at the
             requested t-steps.
+    capture_extra : bool = False
+        If True, then extra output will be captured from the differential equation.
+        See CyRK's Documentation/Extra Output.md for more information
+    interpolate_extra : bool = False
+        If True, then extra output will be interpolated (along with y) at t_eval. Otherwise, y will be interpolated
+         and then differential equation will be called to find the output at each t in t_eval.
 
-     References
+    References
     ----------
     .. [1] E. Hairer, S. P. Norsett G. Wanner, "Solving Ordinary Differential
            Equations I: Nonstiff Problems", Sec. II.
@@ -134,6 +139,12 @@ def nbrk_ode_tester(
         The final time domain. This is equal to t_eval if it was provided.
     y_results : np.ndarray
         The solution of the differential equation provided for each time_result.
+            If `capture_extra` was set to True then this will output both y and any extra parameters calculated by the
+             differential equation. The format of this output will look like:
+            ```
+            y_results[0:y_size, :]          = ... # Actual y-results calculated by the diffeq solver
+            y_results[y_size:extra_size, :] = ... # Extra outputs captured alongside y during integration
+
     success : bool
         Final integration success flag.
     message : str
@@ -151,6 +162,13 @@ def nbrk_ode_tester(
     y_size_sqrt = np.sqrt(y_size)
     dtype = y0.dtype
     t_eval_size = t_eval.size
+    run_interpolation = t_eval_size > 0
+    store_extras_during_integration = capture_extra
+    if run_interpolation and not interpolate_extra:
+        # If y is eventually interpolated but the extra outputs are not being interpolated, then there is
+        #  no point in storing the values during the integration. Turn off this functionality to save
+        #  on computation
+        store_extras_during_integration = False
 
     # If extra output is true then the output of the diffeq will be larger than the size of y0.
     #   determine that extra size by calling the diffeq and checking its size.
@@ -172,11 +190,22 @@ def nbrk_ode_tester(
             else:
                 # Pull from extra output
                 y0_plus_extra[i] = output_[i]
-        y0_to_store = y0_plus_extra
+        if store_extras_during_integration:
+            y0_to_store = y0_plus_extra
+            store_loop_size = total_size
+        else:
+            y0_to_store = y0
+            store_loop_size = y_size
+
     else:
         y0_to_store = y0
+        store_loop_size = y_size
     extra_result = np.empty(extra_size, dtype=dtype)
-    y_result_store = np.empty(total_size, dtype=dtype)
+
+    if store_extras_during_integration:
+        y_result_store = np.empty(total_size, dtype=dtype)
+    else:
+        y_result_store = np.empty(y_size, dtype=dtype)
 
     # Containers to store results during integration
     time_domain_list = [t_start]
@@ -277,7 +306,7 @@ def nbrk_ode_tester(
     E3_tmp   = np.empty_like(y0)
     E_tmp    = np.empty_like(y0)
     for i in range(y_size):
-        y0_i = y0[i]
+        y0_i     = y0[i]
         y_new[i] = y0_i
         y_old[i] = y0_i
 
@@ -430,7 +459,7 @@ def nbrk_ode_tester(
 
             # Find final dydt for this timestep
             diffeq_output = np.asarray(diffeq(t_new, y_new, *args), dtype=dtype)
-            for i in range(total_size):
+            for i in range(store_loop_size):
                 if i < extra_start:
                     # Set diffeq results
                     dydt_new[i] = diffeq_output[i]
@@ -534,7 +563,7 @@ def nbrk_ode_tester(
 
         # Save data
         # If there is extra outputs then we need to store those at this timestep as well.
-        for i in range(total_size):
+        for i in range(store_loop_size):
             if i < extra_start:
                 # Pull from y result
                 y_result_store[i] = y_new[i]
@@ -553,7 +582,7 @@ def nbrk_ode_tester(
     for t_i in range(t_size):
         time_domain[t_i] = time_domain_list[t_i]
         y_results_list_at_t = y_result_list[t_i]
-        for y_i in range(total_size):
+        for y_i in range(store_loop_size):
             y_results[y_i, t_i] = y_results_list_at_t[y_i]
 
     if t_eval_size > 0:

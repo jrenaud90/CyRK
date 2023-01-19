@@ -2,8 +2,11 @@
 
 ## 2023 - January
 
+### v0.4.0 - Alpha
 
-#### v0.3.1 - Alpha
+New Features
+- Added the ability to save intermediate (non-dependent y) results during integration for `nbrk` ode solver.
+  - See `Documentation/Extra Output.md` for more information. 
 
 Performance
 - Minor performance improvements to `cyrk_ode`
