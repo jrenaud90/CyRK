@@ -578,7 +578,7 @@ def nbrk_ode(
 
     # To match the format that scipy follows, we will take the transpose of y.
     time_domain = np.empty(t_size, dtype=np.float64)
-    y_results = np.empty((total_size, t_size), dtype=dtype)
+    y_results = np.empty((store_loop_size, t_size), dtype=dtype)
     for t_i in range(t_size):
         time_domain[t_i] = time_domain_list[t_i]
         y_results_list_at_t = y_result_list[t_i]
