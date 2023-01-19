@@ -25,27 +25,27 @@ MAX_FACTOR = 10.  # Maximum allowed increase in a step size.
 RK23_order = 3
 RK23_error_estimator_order = 2
 RK23_n_stages = 3
-RK23_C = np.array([0, 1 / 2, 3 / 4], order='C')
+RK23_C = np.array([0, 1 / 2, 3 / 4], order='C', dtype=np.float64)
 RK23_A = np.array(
         [
             [0, 0, 0],
             [1 / 2, 0, 0],
             [0, 3 / 4, 0]
-            ], order='C'
+            ], order='C', dtype=np.float64
         )
-RK23_B = np.array([2 / 9, 1 / 3, 4 / 9], order='C')
-RK23_E = np.array([5 / 72, -1 / 12, -1 / 9, 1 / 8], order='C')
+RK23_B = np.array([2 / 9, 1 / 3, 4 / 9], order='C', dtype=np.float64)
+RK23_E = np.array([5 / 72, -1 / 12, -1 / 9, 1 / 8], order='C', dtype=np.float64)
 RK23_P = np.array(
         [[1, -4 / 3, 5 / 9],
          [0, 1, -2 / 3],
          [0, 4 / 3, -8 / 9],
-         [0, -1, 1]], order='C'
+         [0, -1, 1]], order='C', dtype=np.float64
         )
 
 RK45_order = 5
 RK45_error_estimator_order = 4
 RK45_n_stages = 6
-RK45_C = np.array([0, 1 / 5, 3 / 10, 4 / 5, 8 / 9, 1], order='C')
+RK45_C = np.array([0, 1 / 5, 3 / 10, 4 / 5, 8 / 9, 1], order='C', dtype=np.float64)
 RK45_A = np.array(
         [
             [0, 0, 0, 0, 0],
@@ -54,12 +54,12 @@ RK45_A = np.array(
             [44 / 45, -56 / 15, 32 / 9, 0, 0],
             [19372 / 6561, -25360 / 2187, 64448 / 6561, -212 / 729, 0],
             [9017 / 3168, -355 / 33, 46732 / 5247, 49 / 176, -5103 / 18656]
-            ], order='C'
+            ], order='C', dtype=np.float64
         )
-RK45_B = np.array([35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84], order='C')
+RK45_B = np.array([35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84], order='C', dtype=np.float64)
 RK45_E = np.array(
         [-71 / 57600, 0, 71 / 16695, -71 / 1920, 17253 / 339200, -22 / 525,
-         1 / 40], order='C'
+         1 / 40], order='C', dtype=np.float64
         )
 
 RK45_P = np.array(
@@ -74,15 +74,23 @@ RK45_P = np.array(
             [0, 127303824393 / 49829197408, -318862633887 / 49829197408,
              701980252875 / 199316789632],
             [0, -282668133 / 205662961, 2019193451 / 616988883, -1453857185 / 822651844],
-            [0, 40617522 / 29380423, -110615467 / 29380423, 69997945 / 29380423]], order='C'
+            [0, 40617522 / 29380423, -110615467 / 29380423, 69997945 / 29380423]], order='C', dtype=np.float64
         )
 
+
+@njit(cache=False)
+def _norm(x):
+    return np.linalg.norm(x) / np.sqrt(x.size)
+
+
+
 @njit(cache=False, fastmath=True)
-def nbrk_ode(
+def nbrk_ode_tester(
         diffeq: callable, t_span: Tuple[float, float], y0: np.ndarray, args: tuple = tuple(),
         rtol: float = 1.e-6, atol: float = 1.e-8,
-        max_step: float = INF, first_step: float = None,
-        rk_method: int = 1, t_eval: np.ndarray = EMPTY_ARR
+        max_step: float = np.inf, first_step: float = None,
+        rk_method: int = 1, t_eval: np.ndarray = EMPTY_ARR,
+        capture_extra: bool = False, interpolate_extra: bool = False
         ):
     """ A Numba-safe Rugge-Kutta Integrator based on Scipy's solve_ivp RK integrator.
 
@@ -137,13 +145,42 @@ def nbrk_ode(
     t_start = t_span[0]
     t_end = t_span[1]
     direction = np.sign(t_end - t_start) if t_end != t_start else 1
-    direction_inf = direction * INF
+    direction_inf = direction * np.inf
     y0 = np.asarray(y0)
     y_size = y0.size
     y_size_sqrt = np.sqrt(y_size)
     dtype = y0.dtype
+    t_eval_size = t_eval.size
+
+    # If extra output is true then the output of the diffeq will be larger than the size of y0.
+    #   determine that extra size by calling the diffeq and checking its size.
+    extra_start = y_size
+    extra_size = 0
+    total_size = y_size
+    if capture_extra:
+        output_ = np.asarray(diffeq(t_start, y0, *args), dtype=dtype)
+        total_size = output_.size
+        extra_size = total_size - y_size
+        extra_start = y_size
+
+        # Extract the extra output from the function output.
+        y0_plus_extra = np.empty(total_size, dtype=dtype)
+        for i in range(total_size):
+            if i < extra_start:
+                # Pull from y0
+                y0_plus_extra[i] = y0[i]
+            else:
+                # Pull from extra output
+                y0_plus_extra[i] = output_[i]
+        y0_to_store = y0_plus_extra
+    else:
+        y0_to_store = y0
+    extra_result = np.empty(extra_size, dtype=dtype)
+    y_result_store = np.empty(total_size, dtype=dtype)
+
+    # Containers to store results during integration
     time_domain_list = [t_start]
-    y_result_list = [y0]
+    y_result_list = [np.copy(y0_to_store)]
 
     # Integrator Status Codes
     #   0  = Running
@@ -164,10 +201,14 @@ def nbrk_ode(
         E = np.asarray(RK23_E, dtype=dtype)
         # TODO: Used in dense output calculation. Not needed until that is implemented.
         # P = RK23_P
+        # Set these unused variables to E to avoid variable not set check
+        E3 = E
+        E5 = E
 
         # Initialize RK-K variable
         K = np.empty((rk_n_stages_plus1, y_size), dtype=dtype)
     elif rk_method == 1:
+
         # RK45 Method
         rk_order = RK45_order
         error_order = RK45_error_estimator_order
@@ -179,6 +220,9 @@ def nbrk_ode(
         E = np.asarray(RK45_E, dtype=dtype)
         # TODO: Used in dense output calculation. Not needed until that is implemented.
         # P = RK45_P
+        # Set these unused variables to E to avoid variable not set check
+        E3 = E
+        E5 = E
 
         # Initialize RK-K variable
         K = np.empty((rk_n_stages_plus1, y_size), dtype=dtype)
@@ -197,6 +241,8 @@ def nbrk_ode(
         # D = np.asarray(D_DOP, dtype=dtype)
         # A_EXTRA = np.asarray(A_DOP[rk_n_stages + 1:], dtype=dtype)
         # C_EXTRA = np.asarray(C_DOP[rk_n_stages + 1:], dtype=dtype)
+        # Set these unused variables to E to avoid variable not set check
+        E = E3
 
         # Initialize RK-K variable
         K_extended = np.empty((N_STAGES_EXTENDED_DOP, y_size), dtype=dtype)
@@ -218,20 +264,26 @@ def nbrk_ode(
         raise Exception
 
     # Initialize variables for start of integration
-    t_old = t_start
-    t_new = t_start
-    y_new = np.empty_like(y0)
-    y_old = np.empty_like(y0)
-    y_tmp = np.empty_like(y0)
-    E5_tmp = np.empty_like(y0)
-    E3_tmp = np.empty_like(y0)
-    E_tmp = np.empty_like(y0)
+    t_old    = t_start
+    t_new    = t_start
+    y_new    = np.empty_like(y0)
+    y_old    = np.empty_like(y0)
+    dydt_old = np.empty_like(y0)
+    dydt1    = np.empty_like(y0)
+    dy_      = np.empty_like(y0)
+    dydt_new = np.empty_like(y0)
+    y_tmp    = np.empty_like(y0)
+    E5_tmp   = np.empty_like(y0)
+    E3_tmp   = np.empty_like(y0)
+    E_tmp    = np.empty_like(y0)
     for i in range(y_size):
         y0_i = y0[i]
         y_new[i] = y0_i
         y_old[i] = y0_i
 
-    dydt_old = np.asarray(diffeq(t_new, y_new, *args), dtype=dtype)
+    output = np.asarray(diffeq(t_new, y_new, *args), dtype=dtype)
+    for i in range(y_size):
+        dydt_old[i] = output[i]
 
     # Find first step size
     first_step_found = False
@@ -278,7 +330,10 @@ def nbrk_ode(
             y1 = y_old + h0 * direction * dydt_old
             t1 = t_old + h0 * direction
 
-            dydt1 = np.asarray(diffeq(t1, y1, *args), dtype=dtype)
+            # Use the differential equation to estimate the first step size
+            diffeq_output = np.asarray(diffeq(t1, y1, *args), dtype=dtype)
+            for i in range(y_size):
+                dydt1[i] = diffeq_output[i]
 
             d2 = 0.
             for i in range(y_size):
@@ -339,18 +394,25 @@ def nbrk_ode(
             K[0, :] = dydt_old[:]
             for s in range(1, len(C)):
                 c = C[s]
+                A_ = A[s, :]
                 time_ = t_old + c * step
 
                 # Dot Product (K, a) * step
                 for j in range(s):
+                    K_ = K[j, :]
+                    a_ = A_[j]
                     for i in range(y_size):
                         if j == 0:
                             # Initialize
                             y_tmp[i] = y_old[i]
 
-                        y_tmp[i] = y_tmp[i] + (K[j, i] * A[s, j] * step)
+                        y_tmp[i] = y_tmp[i] + (K_[i] * a_ * step)
 
-                dy_ = np.asarray(diffeq(time_, y_tmp, *args), dtype=dtype)
+                # Update K with a new result from the differential equationC
+                diffeq_output = np.asarray(diffeq(time_, y_tmp, *args), dtype=dtype)
+                for i in range(y_size):
+                    dy_[i] = diffeq_output[i]
+
                 for i in range(y_size):
                     K[s, i] = dy_[i]
 
@@ -358,22 +420,31 @@ def nbrk_ode(
             for j in range(rk_n_stages):
                 # We do not use rk_n_stages_plus1 here because we are chopping off the last row of K to match
                 #  the shape of B.
+                K_ = K[j, :]
+                b_ = B[j]
                 for i in range(y_size):
                     if j == 0:
                         # Initialize
                         y_new[i] = y_old[i]
-                    y_new[i] = y_new[i] + (K[j, i] * B[j] * step)
+                    y_new[i] = y_new[i] + (K_[i] * b_ * step)
 
-            dydt_new = np.asarray(diffeq(t_new, y_new, *args), dtype=dtype)
+            # Find final dydt for this timestep
+            diffeq_output = np.asarray(diffeq(t_new, y_new, *args), dtype=dtype)
+            for i in range(total_size):
+                if i < extra_start:
+                    # Set diffeq results
+                    dydt_new[i] = diffeq_output[i]
+                else:
+                    # Set extra results
+                    extra_result[i - extra_start] = diffeq_output[i]
 
+            # Estimate error to change the step size for next step
             if rk_method == 2:
                 # DOP853 error estimation
-
                 # Dot Product (K, E5) / Scale and (K, E3) / scale
                 for i in range(y_size):
                     # Check how well this step performed
                     scale = atol + np.maximum(np.abs(y_old[i]), np.abs(y_new[i])) * rtol
-
                     for j in range(rk_n_stages_plus1):
                         if j == 0:
                             # Initialize
@@ -382,7 +453,6 @@ def nbrk_ode(
                         elif j == rk_n_stages:
                             # Set last array of the K array
                             K[j, i] = dydt_new[i]
-
                         K_scale = K[j, i] / scale
                         E5_tmp[i] = E5_tmp[i] + (K_scale * E5[j])
                         E3_tmp[i] = E3_tmp[i] + (K_scale * E3[j])
@@ -395,7 +465,6 @@ def nbrk_ode(
                 for i in range(y_size):
                     error_norm5_abs = np.abs(E5_tmp[i])
                     error_norm3_abs = np.abs(E3_tmp[i])
-
                     error_norm5 += (error_norm5_abs * error_norm5_abs)
                     error_norm3 += (error_norm3_abs * error_norm3_abs)
 
@@ -411,10 +480,8 @@ def nbrk_ode(
                 error_norm = 0.
                 # Dot Product (K, E) * step / scale
                 for i in range(y_size):
-
                     # Check how well this step performed.
                     scale = atol + max(np.abs(y_old[i]), np.abs(y_new[i])) * rtol
-
                     for j in range(rk_n_stages_plus1):
                         if j == 0:
                             # Initialize
@@ -422,7 +489,6 @@ def nbrk_ode(
                         elif j == rk_n_stages:
                             # Set last array of the K array.
                             K[j, i] = dydt_new[i]
-
                         K_scale = K[j, i] / scale
                         E_tmp[i] = E_tmp[i] + (K_scale * E[j] * step)
 
@@ -467,36 +533,64 @@ def nbrk_ode(
             dydt_old[i] = dydt_new[i]
 
         # Save data
-        time_domain_list.append(t_new)
+        # If there is extra outputs then we need to store those at this timestep as well.
+        for i in range(total_size):
+            if i < extra_start:
+                # Pull from y result
+                y_result_store[i] = y_new[i]
+            else:
+                # Pull from extra
+                y_result_store[i] = extra_result[i - extra_start]
 
-        # Numba does not support np.stack(x) if x is a list. So we have to continuously hstack as we go.
-        #         y_new_array = y_now.reshape(1, y_size)
-        y_result_list.append(np.copy(y_new))
+        time_domain_list.append(t_new)
+        y_result_list.append(np.copy(y_result_store))
 
     t_size = len(time_domain_list)
 
     # To match the format that scipy follows, we will take the transpose of y.
     time_domain = np.empty(t_size, dtype=np.float64)
-    y_results = np.empty((y_size, t_size), dtype=dtype)
+    y_results = np.empty((total_size, t_size), dtype=dtype)
     for t_i in range(t_size):
         time_domain[t_i] = time_domain_list[t_i]
-        for y_i in range(y_size):
-            y_results[y_i, t_i] = y_result_list[t_i][y_i]
+        y_results_list_at_t = y_result_list[t_i]
+        for y_i in range(total_size):
+            y_results[y_i, t_i] = y_results_list_at_t[y_i]
 
-    if t_eval.size > 0:
+    if t_eval_size > 0:
         # User only wants data at specific points.
         # The current version of this function has not implemented sicpy's dense output, so we must use an interpolation.
         t_eval = np.asarray(t_eval, dtype=np.float64)
-        y_results_reduced = np.empty((y_size, t_eval.size), dtype=dtype)
+        y_results_reduced = np.empty((total_size, t_eval.size), dtype=dtype)
 
+        # np.interp only works on 1D arrays, so we have to loop through each of the variables and call for each y:
         for i in range(y_size):
-            # np.interp only works on 1D arrays so we must loop through each of the variables:
             y_results_reduced[i, :] = np.interp(t_eval, time_domain, y_results[i, :])
+
+        if capture_extra:
+            # Right now if there is any extra output then it is stored at each time step used in the RK loop.
+            # We have to make a choice on what to output do we, like we do with y, interpolate all of those extras?
+            #  or do we use the interpolation on y to find new values.
+            # The latter method is more computationally expensive (recalls the diffeq for each y) but is more accurate.
+            if interpolate_extra:
+                # Continue the interpolation for the extra values.
+                for i in range(extra_size):
+                    y_results_reduced[extra_start + i, :] = \
+                        np.interp(t_eval, time_domain, y_results[extra_start + i, :])
+            else:
+                # Use y and t to recalculate the extra outputs
+                y_ = np.empty(y_size, dtype=dtype)
+                for t_i in range(t_eval_size):
+                    t_ = t_eval[t_i]
+                    for y_i in range(y_size):
+                        y_[y_i] = y_results_reduced[y_i, t_i]
+                    diffeq_output = np.asarray(diffeq(t_, y_, *args), dtype=dtype)
+                    for i in range(extra_size):
+                        y_results_reduced[extra_start + i, t_i] = diffeq_output[extra_start + i]
 
         y_results = y_results_reduced
         time_domain = t_eval
-
     success = status == 1
+
     if status == 1:
         message = 'Integration finished.'
     elif status == 0:
