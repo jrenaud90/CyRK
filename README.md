@@ -151,8 +151,6 @@ The solver will then interpolate the results to fit this array.
 (same for all y's).
 - [Issue 3](https://github.com/jrenaud90/CyRK/issues/3): Right now the cython version only allows for complex-valued
 y-values.
-- [Issue 5](https://github.com/jrenaud90/CyRK/issues/5): The numba solver is worse than the pure python scipy solver at
-large timespans (high integration times).
 
 ## Citing CyRK
 
