@@ -42,7 +42,9 @@ It is a good idea to turn the output into numpy ndarray before the final return.
 
 ```python
 import numpy as np
+from numba import njit
 
+@njit
 def diffeq(t, y, arg_0, arg_1):
     
     extra_parameter_0 = arg_0 * y[0] * np.sin(arg_1 * t)
@@ -105,7 +107,9 @@ extra_parameter_0 = all_output[2, :]
 extra_parameter_1 = all_output[3, :]
 ```
 
-## Extra considerations when using `t_eval`
+## Additional Considerations When Using `t_eval`
+
+_This is applicable to either the numba- or cython-based solver._
 
 By setting the `t_eval` argument for either the `nbrk_ode` or `cyrk_ode` solver, an interpolation will occur at the end of integration.
 This uses the solved `y`s and `time_domain` to find a new reduced `y_reduced` at `t_eval` intervals using `numpy.interp` function. 
@@ -114,8 +118,8 @@ Since we are potentially storing extra parameters during integration, we need to
 - **Option 1**: Solve for the extra parameters at the new interpolated `y` values
   - _How to set_: Set `t_eval` to the desired numpy array, set `capture_extra=True`, and `interpolate_extra=False`.
   - Pros:
-    - Less information is stored during integration which can reduce memory usage for when an integration requires many steps.
-    - Results are more accurate since all the interpolation error is in `y`, extra parameters are correct (with respect to the new `y`s) and not interpolated further.
+    - Less information is stored during integration which can reduce memory usage, especially when an integration requires many steps.
+    - Results are more accurate since all the interpolation error is only in `y`, extra parameters are as correct as `y` (no compounding interpolation error).
   - Cons:
     - Additional calls to the `diffeq` are made after integration is completed (number of calls `= len(t_eval)`). If this function is computationally expensive then this will slow down overall solver time.
 - **Option 2**: Store extra parameters during integration and then perform interpolation on both `y` and all extra parameters.
@@ -123,7 +127,7 @@ Since we are potentially storing extra parameters during integration, we need to
   - Pros:
     - No additional calls to `diffeq` are made. This could improve performance if this is a particularly expensive function.
   - Mixed:
-    - The same amount of information is stored during integration as if `t_eval` were not set. This can have a negative impact on memory and performance depending on the number of extra parameters.
+    - The same amount of information is stored during integration as if `t_eval` were not set in the first place. This can have a negative impact on memory and performance depending on the number of extra parameters and the number of integration steps.
   - Cons:
-    - Results are less accurate because the extra parameters are interpolated independent of `y` so if any of the parameters depend on `y` then the interpolated results may no longer match expectations. Particularly when `y` is changing quickly.
+    - Results may be less accurate because the extra parameters are interpolated _independent_ of `y`'s interpolation. Parameters that depend on `y` may no longer match expectations, particularly when `y` is changing quickly. For example, if an extra output is defined as `x = y[0] * 2.0`, then at some time `t` where `y[0]` was interpolated to be 5.0, `x` may differ from its definition (we expect it to be equal to 10.0): `x(t) = 9.8`.
     - More call(s) to `numpy.interp` will be made (once for each extra parameter) this may have a negative impact on performance, particularly for many extra parameters.
