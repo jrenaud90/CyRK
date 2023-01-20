@@ -143,6 +143,7 @@ The solver will then interpolate the results to fit this array.
   - `0` - "RK23" Explicit Runge-Kutta method of order 3(2).
   - `1` - "RK45" Explicit Runge-Kutta method of order 5(4).
   - `2` - "DOP853" Explicit Runge-Kutta method of order 8.
+- `capture_extra` and `interpolate_extra`: CyRK has the capability of capturing additional parameters during integration. Please see `Documentation\Extra Output.md` for more details.
 
 ### Limitations and Known Issues
 
