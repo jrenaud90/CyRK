@@ -571,7 +571,7 @@ def cyrk_ode(
     t_old = t_start
     t_new = t_start
     for i in range(y_size):
-        dydt_new[i] = diffeq_out_view[i]
+        dydt_new_view[i] = diffeq_out_view[i]
         dydt_old_view[i] = dydt_new_view[i]
         y_old_view[i] = y0[i]
         y_new_view[i] = y0[i]
@@ -617,7 +617,7 @@ def cyrk_ode(
             # Find the norm for d2
             d2 = 0.
             for i in range(y_size):
-                dydt_init_step[i] = diffeq_out_view[i]
+                dydt_init_step_view[i] = diffeq_out_view[i]
 
                 # TODO: should/could this be `y_init_step` instead of `y_old_view`?
                 scale = atol + dabs(y_old_view[i]) * rtol
@@ -744,10 +744,10 @@ def cyrk_ode(
             for i in range(store_loop_size):
                 if i < extra_start:
                     # Set diffeq results
-                    dydt_new[i] = diffeq_out[i]
+                    dydt_new_view[i] = diffeq_out_view[i]
                 else:
                     # Set extra results
-                    extra_result[i - extra_start] = diffeq_out[i]
+                    extra_result_view[i - extra_start] = diffeq_out_view[i]
 
             if rk_method == 2:
                 # Calculate Error for DOP853
@@ -856,10 +856,10 @@ def cyrk_ode(
         for i in range(store_loop_size):
             if i < extra_start:
                 # Pull from y result
-                y_result_store[i] = y_new[i]
+                y_result_store_view[i] = y_new_view[i]
             else:
                 # Pull from extra
-                y_result_store[i] = extra_result[i - extra_start]
+                y_result_store_view[i] = extra_result_view[i - extra_start]
 
         y_results_list.append(
             y_result_store.copy()
