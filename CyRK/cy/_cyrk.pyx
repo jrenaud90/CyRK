@@ -2,18 +2,36 @@
 import cython
 import numpy as np
 cimport numpy as np
-from numpy.core.multiarray import (interp as compiled_interp, interp_complex as compiled_interp_complex
-    )
+from numpy.core.multiarray import (interp as compiled_interp, interp_complex as compiled_interp_complex)
 np.import_array()
-from cpython cimport array
-from libcpp.string cimport string as string_cpp_t
-from libcpp.vector cimport vector as vector_cpp_t
 from libcpp cimport bool as bool_cpp_t
-
-np.import_array()
-
 from libc.math cimport sqrt, fabs
 
+@cython.cdivision(True)
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef double cabs(double complex value) nogil:
+    """ Absolute value function for complex-valued inputs.
+    
+    Parameters
+    ----------
+    value : float (double complex)
+        Complex-valued number.
+         
+    Returns
+    -------
+    value_abs : float (double)
+        Absolute value of `value`.
+    """
+
+    cdef double v_real
+    cdef double v_imag
+    v_real = value.real
+    v_imag = value.imag
+
+    return sqrt(v_real * v_real + v_imag * v_imag)
+
+# Define fused type to handle both float and complex-valued versions of y and dydt.
 ctypedef fused double_numeric:
     double
     double complex
@@ -21,15 +39,21 @@ ctypedef fused double_numeric:
 @cython.cdivision(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef double cabs(double complex value) nogil:
-    cdef double v_real = value.real
-    cdef double v_imag = value.imag
-    return sqrt(v_real * v_real + v_imag * v_imag)
-
-@cython.cdivision(True)
-@cython.boundscheck(False)
-@cython.wraparound(False)
 cdef double dabs(double_numeric value) nogil:
+    """ Absolute value function for either float or complex-valued inputs.
+    
+    Checks the type of value and either utilizes `cabs` (for double complex) or `fabs` (for floats).
+    
+    Parameters
+    ----------
+    value : float (double_numeric)
+        Float or complex-valued number.
+
+    Returns
+    -------
+    value_abs : float (double)
+        Absolute value of `value`.
+    """
 
     # Check the type of value
     if double_numeric is cython.doublecomplex:
@@ -37,25 +61,25 @@ cdef double dabs(double_numeric value) nogil:
     else:
         return fabs(value)
 
+# # Integration Constants
 # Multiply steps computed from asymptotic behaviour of errors by this.
 cdef double SAFETY = 0.9
-
 cdef double MIN_FACTOR = 0.2  # Minimum allowed decrease in a step size.
 cdef double MAX_FACTOR = 10.  # Maximum allowed increase in a step size.
 cdef double MAX_STEP = np.inf
 cdef double INF = np.inf
-
 cdef double EPS = np.finfo(np.float64).eps
 cdef double EPS_10 = EPS * 10.
 cdef double EPS_100 = EPS * 100.
-
 
 # RK23 Constants
 cdef double RK23_C[3]
 cdef double RK23_B[3]
 cdef double RK23_E[4]
 cdef double RK23_A[3][3]
-
+cdef unsigned int RK23_order = 3
+cdef unsigned int RK23_error_order = 2
+cdef unsigned int RK23_n_stages = 3
 cdef unsigned int RK23_LEN_C = 3
 cdef unsigned int RK23_LEN_B = 3
 cdef unsigned int RK23_LEN_E = 4
@@ -63,10 +87,6 @@ cdef unsigned int RK23_LEN_E3 = 4
 cdef unsigned int RK23_LEN_E5 = 4
 cdef unsigned int RK23_LEN_A0 = 3
 cdef unsigned int RK23_LEN_A1 = 3
-
-cdef unsigned int RK23_order = 3
-cdef unsigned int RK23_error_order = 2
-cdef unsigned int RK23_n_stages = 3
 
 RK23_C[:] = [0, 1 / 2, 3 / 4]
 RK23_B[:] = [2 / 9, 1 / 3, 4 / 9]
@@ -81,7 +101,9 @@ cdef double RK45_C[6]
 cdef double RK45_B[6]
 cdef double RK45_E[7]
 cdef double RK45_A[6][5]
-
+cdef unsigned int RK45_order = 5
+cdef unsigned int RK45_error_order = 4
+cdef unsigned int RK45_n_stages = 6
 cdef unsigned int RK45_LEN_C = 6
 cdef unsigned int RK45_LEN_B = 6
 cdef unsigned int RK45_LEN_E = 7
@@ -89,10 +111,6 @@ cdef unsigned int RK45_LEN_E3 = 7
 cdef unsigned int RK45_LEN_E5 = 7
 cdef unsigned int RK45_LEN_A0 = 6
 cdef unsigned int RK45_LEN_A1 = 5
-
-cdef unsigned int RK45_order = 5
-cdef unsigned int RK45_error_order = 4
-cdef unsigned int RK45_n_stages = 6
 
 RK45_C[:] = [0, 1 / 5, 3 / 10, 4 / 5, 8 / 9, 1]
 RK45_B[:] = [35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84]
@@ -106,13 +124,11 @@ RK45_A[4][:] = [19372 / 6561, -25360 / 2187, 64448 / 6561, -212 / 729, 0]
 RK45_A[5][:] = [9017 / 3168, -355 / 33, 46732 / 5247, 49 / 176, -5103 / 18656]
 
 # DOP863 Constants
-
 cdef int j_, i_
 cdef unsigned int DOP_order = 8
 cdef unsigned int DOP_error_order = 7
 cdef unsigned int DOP_n_stages = 12
 cdef unsigned int DOP_n_stages_extended = 16
-
 cdef unsigned int DOP_LEN_C = 12  ## Reduced Size
 cdef unsigned int DOP_LEN_B = 12
 cdef unsigned int DOP_LEN_E = 13
@@ -283,7 +299,7 @@ DOP_E5[11] = -0.2235530786388629525884427845e-1
 @cython.boundscheck(False)
 @cython.wraparound(False)
 #@cython.nonecheck(False)
-def cyrk_ode_notype(
+def cyrk_ode(
     diffeq,
     (double, double) t_span,
     double_numeric[:] y0,
@@ -326,6 +342,24 @@ def cyrk_ode_notype(
     t_eval : np.ndarray = None
         If provided, then the function will interpolate the integration results to provide them at the
             requested t-steps.
+    capture_extra : bool = False
+        If True, then additional output from the differential equation will be collected (but not used to determine
+         integration error).
+         Example:
+            ```
+            def diffeq(t, y, dy):
+                a = ... some function of y and t.
+                dy[0] = a**2 * sin(t) - y[1]
+                dy[1] = a**3 * cos(t) + y[0]
+
+                # Storing extra output in dy even though it is not part of the diffeq.
+                dy[2] = a
+            ```
+    num_extra : int = 0
+        The number of extra outputs the integrator should expect. With the previous example there is 1 extra output.
+    interpolate_extra : bool = False
+        If True, and if `t_eval` was provided, then the integrator will interpolate the extra output values at each
+         step in `t_eval`.
 
     Returns
     -------
@@ -339,14 +373,17 @@ def cyrk_ode_notype(
         Any integration messages, useful if success=False.
 
     """
+    # Setup loop variables
+    cdef int s, i, j
 
+    # Determine information about the differential equation based on its initial conditions
     cdef int y_size
-    y_size = y0.size
-
-    # infer type from y0 input type
-    # only float64 and complex128 supported
+    cdef double y_size_dbl, y_size_sqrt
     cdef bool_cpp_t y_is_complex
+    y_size = y0.size
     y_is_complex = False
+    y_size_dbl = <double>y_size
+    y_size_sqrt = sqrt(y_size_dbl)
 
     # Check the type of the values in y0
     if double_numeric is cython.double:
@@ -355,110 +392,53 @@ def cyrk_ode_notype(
         DTYPE = np.complex128
         y_is_complex = True
     else:
+        # Cyrk only supports float64 and complex128.
         raise Exception('Unexpected type found for initial conditions (y0).')
 
-    cdef list time_domain_list, y_results_list
-    cdef str message
-    cdef (int, int) K_size, result_size, reduced_result_size
-    cdef bool_cpp_t success, step_accepted, step_rejected, step_error = False
-    cdef int len_t, \
-        len_teval, rk_n_stages_extended, extra_start, total_size, store_loop_size
-    cdef int s, i, j
-    cdef int status
-    cdef double t_start, t_end, t_delta, t_delta_abs, t_init_step, \
-        error_expo, error_norm, error_norm5, error_norm3, error_denom, error_norm3_abs, error_norm5_abs, error_norm_abs, \
-        direction, h0_direction, d0, d1, d2, h0, h1, step_size, time_, min_step, step_factor, c, \
-        d0_abs, d1_abs, d2_abs, y_size_sqrt, y_size_dbl, scale
-    cdef double_numeric K_scale
-    cdef double_numeric[:]  y_init_step_view, y_new_view, \
-        y_old_view, dydt_new_view, dydt_old_view, dydt_init_step_view, y_tmp_view, diffeq_out_view, \
-        E_tmp_view, E3_tmp_view, E5_tmp_view, extra_result_view, y_result_store_view
-    cdef double_numeric[:, :] K_view, y_results_reduced_view
-    cdef double_numeric dydt_old_view_abs, y_old_view_abs
-    cdef bool_cpp_t run_interpolation, store_extras_during_integration
-
-    # Clean up and interpret inputs
-    # Time Domain
+    # Build time domain
+    cdef double t_start, t_end, t_delta, t_delta_abs, direction, t_old, t_new, time_
     t_start = t_span[0]
-    t_end = t_span[1]
+    t_end   = t_span[1]
     t_delta = t_end - t_start
     t_delta_abs = fabs(t_delta)
     if t_delta >= 0.:
         direction = 1.
     else:
         direction = -1.
-    len_teval = t_eval.size
-    y_size_dbl = <double>y_size
-    y_size_sqrt = sqrt(y_size_dbl)
 
-    # Set flags
-    success = False
-    step_accepted = False
-    step_rejected = False
-    step_error = False
+    # Pull out information on t-eval
+    cdef int len_teval
+    len_teval = t_eval.size
+
+    # Set integration flags
+    cdef bool_cpp_t success, step_accepted, step_rejected, step_error, run_interpolation, \
+        store_extras_during_integration
+    success           = False
+    step_accepted     = False
+    step_rejected     = False
+    step_error        = False
     run_interpolation = False
+    store_extras_during_integration = capture_extra
     if len_teval > 0:
         run_interpolation = True
-    store_extras_during_integration = capture_extra
     if run_interpolation and not interpolate_extra:
         # If y is eventually interpolated but the extra outputs are not being interpolated, then there is
         #  no point in storing the values during the integration. Turn off this functionality to save
-        #  on computation
+        #  on computation.
         store_extras_during_integration = False
 
-    # Initialize arrays
-    y_init_step = np.empty(
-        y_size,
-        dtype=DTYPE,
-        order='C'
-    )
-    y_new          = np.empty(
-        y_size,
-        dtype=DTYPE,
-        order='C'
-    )
-    y_old          = np.empty(
-        y_size,
-        dtype=DTYPE,
-        order='C'
-    )
-    dydt_new       = np.empty(
-        y_size,
-        dtype=DTYPE,
-        order='C'
-    )
-    dydt_old       = np.empty(
-        y_size,
-        dtype=DTYPE,
-        order='C'
-    )
-    dydt_init_step = np.empty(
-        y_size,
-        dtype=DTYPE,
-        order='C'
-    )
-    y_tmp          = np.empty(
-        y_size,
-        dtype=DTYPE,
-        order='C'
-    )
-    E3_tmp = np.empty(
-        y_size,
-        dtype=DTYPE,
-        order='C'
-    )
-    E5_tmp = np.empty(
-        y_size,
-        dtype=DTYPE,
-        order='C'
-    )
-    E_tmp = np.empty(
-        y_size,
-        dtype=DTYPE,
-        order='C'
-    )
+    # Initialize arrays that are based on y's size and type.
+    y_init_step    = np.empty(y_size, dtype=DTYPE, order='C')
+    y_new          = np.empty(y_size, dtype=DTYPE, order='C')
+    y_old          = np.empty(y_size, dtype=DTYPE, order='C')
+    dydt_new       = np.empty(y_size, dtype=DTYPE, order='C')
+    dydt_old       = np.empty(y_size, dtype=DTYPE, order='C')
+    dydt_init_step = np.empty(y_size, dtype=DTYPE, order='C')
+    y_tmp          = np.empty(y_size, dtype=DTYPE, order='C')
 
-    # Setup memoryviews
+    # Setup memory views for these arrays
+    cdef double_numeric[:] y_init_step_view, y_new_view, y_old_view, dydt_new_view, dydt_old_view, \
+        dydt_init_step_view, y_tmp_view
     y_init_step_view    = y_init_step
     y_new_view          = y_new
     y_old_view          = y_old
@@ -466,39 +446,26 @@ def cyrk_ode_notype(
     dydt_old_view       = dydt_old
     dydt_init_step_view = dydt_init_step
     y_tmp_view          = y_tmp
-    E3_tmp_view         = E3_tmp
-    E5_tmp_view         = E5_tmp
-    E_tmp_view          = E_tmp
 
     # If extra output is true then the output of the diffeq will be larger than the size of y0.
-    #   determine that extra size by calling the diffeq and checking its size.
+    # Determine that extra size by calling the diffeq and checking its size.
+    cdef int extra_start, total_size, store_loop_size
     extra_start = y_size
-    total_size = y_size + num_extra
-    # Create diffeq out variable now that we know the total size.
-    diffeq_out = np.empty(
-        total_size,
-        dtype=DTYPE,
-        order='C'
-    )
-    y_result_store = np.empty(
-        total_size,
-        dtype=DTYPE,
-        order='C'
-    )
-    y0_plus_extra = np.empty(
-        total_size,
-        dtype=DTYPE,
-        order='C'
-    )
-    extra_result = np.empty(
-        num_extra,
-        dtype=DTYPE,
-        order='C'
-    )
-    diffeq_out_view     = diffeq_out
-    extra_result_view   = extra_result
-    y_result_store_view = y_result_store
+    total_size  = y_size + num_extra
+    # Create arrays based on this total size
+    diffeq_out     = np.empty(total_size, dtype=DTYPE, order='C')
+    y_result_store = np.empty(total_size, dtype=DTYPE, order='C')
+    y0_plus_extra  = np.empty(total_size, dtype=DTYPE, order='C')
+    extra_result   = np.empty(num_extra, dtype=DTYPE, order='C')
 
+    # Setup memory views
+    cdef double_numeric[:] diffeq_out_view, y_result_store_view, y0_plus_extra_view, extra_result_view
+    diffeq_out_view     = diffeq_out
+    y_result_store_view = y_result_store
+    y0_plus_extra_view  = y0_plus_extra
+    extra_result_view   = extra_result
+
+    # Capture the extra output for the initial condition.
     if capture_extra:
         diffeq(
             t_start,
@@ -511,123 +478,108 @@ def cyrk_ode_notype(
         for i in range(total_size):
             if i < extra_start:
                 # Pull from y0
-                y0_plus_extra[i] = y0[i]
+                y0_plus_extra_view[i] = y0[i]
             else:
                 # Pull from extra output
-                y0_plus_extra[i] = diffeq_out_view[i]
+                y0_plus_extra_view[i] = diffeq_out_view[i]
         if store_extras_during_integration:
-            y0_to_store = y0_plus_extra
             store_loop_size = total_size
         else:
-            y0_to_store = np.asarray(y0)
             store_loop_size = y_size
     else:
-        y0_to_store = np.asarray(y0)
+        # No extra output
         store_loop_size = y_size
 
+    y0_to_store = np.empty(store_loop_size, dtype=DTYPE, order='C')
+    cdef double_numeric[:] y0_to_store_view
+    y0_to_store_view = y0_to_store
+    for i in range(store_loop_size):
+        if store_extras_during_integration:
+            y0_to_store_view[i] = y0_plus_extra_view[i]
+        else:
+            y0_to_store_view[i] = y0[i]
+
+    # Create lists to store final outputs
+    cdef list time_domain_list, y_results_list
     # Start storing results with the initial conditions
     time_domain_list = [t_start]
-    y_results_list = [y0_to_store.copy()]
+    y_results_list   = [y0_to_store]
 
-    # Integrator Status Codes
-    #   0  = Running
-    #   -1 = Failed
-    #   1  = Finished with no obvious issues
-    status = 0
-
-    # Determine RK constants
-
-
-    cdef unsigned int len_C, len_B, len_E, len_E3, len_E5, len_A0, len_A1, rk_order, error_order, rk_n_stages, \
-        rk_n_stages_plus1
+    # # Determine RK scheme
+    cdef unsigned int rk_order, error_order, rk_n_stages, rk_n_stages_plus1, rk_n_stages_extended
+    cdef double error_expo, error_norm5, error_norm3, error_norm, error_norm_abs, error_denom
+    cdef unsigned int len_C, len_B, len_E, len_E3, len_E5, len_A0, len_A1
 
     if rk_method == 0:
         # RK23 Method
-        rk_order = RK23_order
+        rk_order    = RK23_order
         error_order = RK23_error_order
         rk_n_stages = RK23_n_stages
-        len_C = RK23_LEN_C
-        len_B = RK23_LEN_B
-        len_E = RK23_LEN_E
-        len_E3 = RK23_LEN_E3
-        len_E5 = RK23_LEN_E5
-        len_A0 = RK23_LEN_A0
-        len_A1 = RK23_LEN_A1
+        len_C       = RK23_LEN_C
+        len_B       = RK23_LEN_B
+        len_E       = RK23_LEN_E
+        len_E3      = RK23_LEN_E3
+        len_E5      = RK23_LEN_E5
+        len_A0      = RK23_LEN_A0
+        len_A1      = RK23_LEN_A1
     elif rk_method == 1:
-        # RK23 Method
-        rk_order = RK45_order
+        # RK45 Method
+        rk_order    = RK45_order
         error_order = RK45_error_order
         rk_n_stages = RK45_n_stages
-        len_C = RK45_LEN_C
-        len_B = RK45_LEN_B
-        len_E = RK45_LEN_E
-        len_E3 = RK45_LEN_E3
-        len_E5 = RK45_LEN_E5
-        len_A0 = RK45_LEN_A0
-        len_A1 = RK45_LEN_A1
+        len_C       = RK45_LEN_C
+        len_B       = RK45_LEN_B
+        len_E       = RK45_LEN_E
+        len_E3      = RK45_LEN_E3
+        len_E5      = RK45_LEN_E5
+        len_A0      = RK45_LEN_A0
+        len_A1      = RK45_LEN_A1
     else:
         # DOP853 Method
-        rk_order = DOP_order
+        rk_order    = DOP_order
         error_order = DOP_error_order
         rk_n_stages = DOP_n_stages
+        len_C       = DOP_LEN_C
+        len_B       = DOP_LEN_B
+        len_E       = DOP_LEN_E
+        len_E3      = DOP_LEN_E3
+        len_E5      = DOP_LEN_E5
+        len_A0      = DOP_LEN_A0
+        len_A1      = DOP_LEN_A1
+
         rk_n_stages_extended = DOP_n_stages_extended
-        len_C = DOP_LEN_C
-        len_B = DOP_LEN_B
-        len_E = DOP_LEN_E
-        len_E3 = DOP_LEN_E3
-        len_E5 = DOP_LEN_E5
-        len_A0 = DOP_LEN_A0
-        len_A1 = DOP_LEN_A1
 
     rk_n_stages_plus1 = rk_n_stages + 1
-    error_expo = 1. / (<double>error_order + 1.)
+    error_expo = 1. / (<double> error_order + 1.)
 
+    # Build RK Arrays. Note that all are 1D except for A and K.
+    A      = np.empty((len_A0, len_A1), dtype=DTYPE, order='C')
+    B      = np.empty(len_B, dtype=DTYPE, order='C')
+    C      = np.empty(len_C, dtype=np.float64, order='C')  # C is always float no matter what y0 is.
+    E      = np.empty(len_E, dtype=DTYPE, order='C')
+    E3     = np.empty(len_E3, dtype=DTYPE, order='C')
+    E5     = np.empty(len_E5, dtype=DTYPE, order='C')
+    E_tmp  = np.empty(y_size, dtype=DTYPE, order='C')
+    E3_tmp = np.empty(y_size, dtype=DTYPE, order='C')
+    E5_tmp = np.empty(y_size, dtype=DTYPE, order='C')
+    K      = np.zeros((rk_n_stages_plus1, y_size), dtype=DTYPE, order='C')  # It is important K be initialized with 0s
 
-    A = np.empty(
-        (len_A0, len_A1),
-        dtype=DTYPE,
-        order='C'
-    )
-    B = np.empty(
-        len_B,
-        dtype=DTYPE,
-        order='C'
-    )
-    C = np.empty(
-        len_C,
-        dtype=np.float64,
-        order='C'
-    )
-    E = np.empty(
-        len_E,
-        dtype=DTYPE,
-        order='C'
-    )
-
-    # Set these unused variables equal to something to avoid undeclared checks
-    E3 = np.empty(
-        len_E3,
-        dtype=DTYPE,
-        order='C'
-    )
-    E5 = np.empty(
-        len_E5,
-        dtype=DTYPE,
-        order='C'
-    )
-
-    # Setup memory views
-    cdef double_numeric[:] B_view, E_view, E3_view, E5_view
-    cdef double_numeric[:, :] A_view,
+    # Setup memory views.
+    cdef double_numeric[:] B_view, E_view, E3_view, E5_view, E_tmp_view, E3_tmp_view, E5_tmp_view
+    cdef double_numeric[:, :] A_view, K_view
     cdef double[:] C_view
-    A_view = A
-    B_view = B
-    C_view = C
-    E_view = E
-    E3_view = E3
-    E5_view = E5
+    A_view      = A
+    B_view      = B
+    C_view      = C
+    E_view      = E
+    E3_view     = E3
+    E5_view     = E5
+    E_tmp_view  = E_tmp
+    E3_tmp_view = E3_tmp
+    E5_tmp_view = E5_tmp
+    K_view      = K
 
-    # Populate values
+    # Populate values based on externally defined constants.
     if rk_method == 0:
         # RK23 Method
         for i in range(len_A0):
@@ -643,7 +595,7 @@ def cyrk_ode_notype(
             E3_view[i] = RK23_E[i]
             E5_view[i] = RK23_E[i]
     elif rk_method == 1:
-        # RK23 Method
+        # RK45 Method
         for i in range(len_A0):
             for j in range(len_A1):
                 A_view[i, j] = RK45_A[i][j]
@@ -658,18 +610,6 @@ def cyrk_ode_notype(
             E5_view[i] = RK45_E[i]
     else:
         # DOP853 Method
-        rk_order = DOP_order
-        error_order = DOP_error_order
-        rk_n_stages = DOP_n_stages
-        rk_n_stages_extended = DOP_n_stages_extended
-        len_C = DOP_LEN_C
-        len_B = DOP_LEN_B
-        len_E = DOP_LEN_E
-        len_E3 = DOP_LEN_E3
-        len_E5 = DOP_LEN_E5
-        len_A0 = DOP_LEN_A0
-        len_A1 = DOP_LEN_A1
-        # RK23 Method
         for i in range(len_A0):
             for j in range(len_A1):
                 A_view[i, j] = DOP_A_REDUCED[i][j]
@@ -684,22 +624,23 @@ def cyrk_ode_notype(
             # Dummy Variables, set equal to E3
             E_view[i] = DOP_E3[i]
 
+    # # Determine integration parameters
     # Check tolerances
     if rtol < EPS_100:
         rtol = EPS_100
 
-#     atol_arr = np.asarray(atol, dtype=np.complex128)
-#     if atol_arr.ndim > 0 and atol_arr.shape[0] != y_size:
-#         # atol must be either the same for all y or must be provided as an array, one for each y.
-#         raise Exception
+    #     atol_arr = np.asarray(atol, dtype=np.complex128)
+    #     if atol_arr.ndim > 0 and atol_arr.shape[0] != y_size:
+    #         # atol must be either the same for all y or must be provided as an array, one for each y.
+    #         raise Exception
 
     # Initialize variables for start of integration
     diffeq(
-        t_start,
-        y0,
-        diffeq_out,
-        *args
-    )
+            t_start,
+            y0,
+            diffeq_out,
+            *args
+            )
     t_old = t_start
     t_new = t_start
     for i in range(y_size):
@@ -708,6 +649,8 @@ def cyrk_ode_notype(
         y_old_view[i] = y0[i]
         y_new_view[i] = y0[i]
 
+    # # Determine size of first step.
+    cdef double step_size, d0, d1, d2, d0_abs, d1_abs, d2_abs, h0, h1, scale
     if first_step == 0.:
         # Select an initial step size based on the differential equation.
         # .. [1] E. Hairer, S. P. Norsett G. Wanner, "Solving Ordinary Differential
@@ -766,29 +709,23 @@ def cyrk_ode_notype(
             step_size = min(100. * h0, h1)
     else:
         if first_step <= 0.:
-            # Step size must be a positive number
-            raise Exception
+            raise Exception('Error in user-provided step size: Step size must be a positive number.')
         elif first_step > t_delta_abs:
-            # Step size can not exceed bounds
-            raise Exception
+            raise Exception('Error in user-provided step size: Step size can not exceed bounds.')
         step_size = first_step
 
-    # Initialize RK-K variable
-    K_size = (rk_n_stages_plus1, y_size)
-    K = np.zeros(
-        K_size,
-        dtype=DTYPE,
-        order='C'
-    )
-
-    # Setup K memoryviews
-    K_view = K
-
-    # Main integration loop
-    # # Time Loop
+    # # Main integration loop
+    cdef double min_step, step_factor, step
+    cdef double c
+    cdef double_numeric K_scale
+    # Integrator Status Codes
+    #   0  = Running
+    #   -1 = Failed
+    #   1  = Finished with no obvious issues
+    cdef int status, len_t
+    status = 0
     len_t = 1  # There is an initial condition provided so the time length is already 1
     while status == 0:
-
         if t_new == t_end or y_size == 0:
             t_old = t_end
             t_new = t_end
@@ -807,14 +744,14 @@ def cyrk_ode_notype(
         # Determine new step size
         step_accepted = False
         step_rejected = False
-        step_error = False
+        step_error    = False
 
         # # Step Loop
         while not step_accepted:
 
             if step_size < min_step:
                 step_error = True
-                status = -1
+                status     = -1
                 break
 
             # Move time forward for this particular step size
@@ -822,7 +759,7 @@ def cyrk_ode_notype(
             t_new = t_old + step
 
             # Check that we are not at the end of integration with that move
-            if direction * (t_new - t_end) > 0:
+            if direction * (t_new - t_end) > 0.:
                 t_new = t_end
 
             # Correct the step if we were at the end of integration
@@ -998,56 +935,69 @@ def cyrk_ode_notype(
         time_domain_list.append(t_new)
         len_t += 1
 
-    # Create numpy arrays for the output
-    result_size = (store_loop_size, len_t)
-    y_results_T = np.empty(
-        result_size,
-        dtype=DTYPE,
-        order='C'
-    )
-    time_domain = np.empty(
-        len_t,
-        dtype=np.float64,
-        order='C'
-    )
+    # # Clean up output.
+    # Look at status of integration. Break out early if bad code.
+    cdef str message
+    message = 'Not Defined.'
+    if status == 1:
+        success = True
+        message = 'Integration finished with no issue.'
+    elif status == -1:
+        message = 'Error in step size calculation: Required step size is less than spacing between numbers.'
+    elif status < -2:
+        message = 'Integration Failed.'
 
-    # To match the format that scipy follows, we will take the transpose of y.
-    for i in range(len_t):
-        time_domain[i] = time_domain_list[i]
-        for j in range(store_loop_size):
-            # To match the format that scipy follows, we will take the transpose of y.
-            y_results_T[j, i] = y_results_list[i][j]
+    # Create output arrays. To match the format that scipy follows, we will take the transpose of y.
+    y_results_T = np.empty((store_loop_size, len_t), dtype=DTYPE, order='C')
+    time_domain = np.empty(len_t, dtype=np.float64, order='C')
 
-    if run_interpolation:
+    # Create memory views.
+    cdef double_numeric[:, :] y_results_T_view
+    cdef double[:] time_domain_view
+    y_results_T_view = y_results_T
+    time_domain_view = time_domain
+
+    # Populate values.
+    if success:
+        for i in range(len_t):
+            time_domain_view[i] = time_domain_list[i]
+            for j in range(store_loop_size):
+                # To match the format that scipy follows, we will take the transpose of y.
+                y_results_T_view[j, i] = y_results_list[i][j]
+
+    # # If requested, run interpolation on output.
+    cdef double_numeric[:, :] y_results_reduced_view
+    cdef double_numeric[:] y_result_timeslice_view
+    cdef double_numeric[:] y_interp_view
+    if run_interpolation and success:
         # User only wants data at specific points.
         # The current version of this function has not implemented sicpy's dense output.
         #   Instead we use an interpolation.
         # OPT: this could be done inside the actual loop for performance gains.
-        reduced_result_size = (total_size, len_teval)
-        y_results_reduced = np.empty(
-            reduced_result_size,
-            dtype=DTYPE,
-            order='C'
-        )
-        y_result_timeslice = np.empty(
-                len_t,
-                dtype=DTYPE,
-                order='C'
-            )
-        y_results_reduced_view = y_results_reduced
+        y_results_reduced       = np.empty((total_size, len_teval), dtype=DTYPE, order='C')
+        y_result_timeslice      = np.empty(len_t, dtype=DTYPE, order='C')
+        y_results_reduced_view  = y_results_reduced
+        y_result_timeslice_view = y_result_timeslice
 
         for j in range(y_size):
             # np.interp only works on 1D arrays so we must loop through each of the variables:
             # # Set timeslice equal to the time values at this y_j
             for i in range(len_t):
-                y_result_timeslice[i] = y_results_T[j, i]
+                y_result_timeslice_view[i] = y_results_T_view[j, i]
 
             # Perform numerical interpolation
-            y_result_temp = compiled_interp_complex(
-                t_eval,
-                time_domain,
-                y_result_timeslice
-            )
+            if y_is_complex:
+                y_result_temp = compiled_interp_complex(
+                    t_eval,
+                    time_domain,
+                    y_result_timeslice
+                    )
+            else:
+                y_result_temp = compiled_interp(
+                    t_eval,
+                    time_domain,
+                    y_result_timeslice
+                    )
 
             # Store result.
             for i in range(len_teval):
@@ -1064,41 +1014,46 @@ def cyrk_ode_notype(
                     # np.interp only works on 1D arrays so we must loop through each of the variables:
                     # # Set timeslice equal to the time values at this y_j
                     for i in range(len_t):
-                        y_result_timeslice[i] = y_results_T[extra_start + j, i]
+                        y_result_timeslice_view[i] = y_results_T_view[extra_start + j, i]
 
                     # Perform numerical interpolation
-                    y_result_temp = compiled_interp_complex(
-                        t_eval,
-                        time_domain,
-                        y_result_timeslice
-                    )
-                    y_results_reduced[extra_start + j, :] = y_result_temp
+                    if y_is_complex:
+                        y_result_temp = compiled_interp_complex(
+                                t_eval,
+                                time_domain,
+                                y_result_timeslice
+                                )
+                    else:
+                        y_result_temp = compiled_interp(
+                                t_eval,
+                                time_domain,
+                                y_result_timeslice
+                                )
+
+                    # Store result.
+                    for i in range(len_teval):
+                        y_results_reduced_view[extra_start + j, i] = y_result_temp[i]
             else:
                 # Use y and t to recalculate the extra outputs
-                y_ = np.empty(y_size, dtype=DTYPE)
+                y_interp = np.empty(y_size, dtype=DTYPE)
+                y_interp_view = y_interp
                 for i in range(len_teval):
-                    t_ = t_eval[i]
+                    time_ = t_eval[i]
                     for j in range(y_size):
-                        y_[j] = y_results_reduced[j, i]
+                        y_interp_view[j] = y_results_reduced_view[j, i]
 
                     diffeq(
-                        t_, y_, diffeq_out, *args
+                        time_, y_interp, diffeq_out, *args
                     )
 
                     for j in range(num_extra):
-                        y_results_reduced[extra_start + j, i] = diffeq_out[extra_start + j]
+                        y_results_reduced_view[extra_start + j, i] = diffeq_out_view[extra_start + j]
 
         # Replace the output y results and time domain with the new reduced one
-        y_results_T = y_results_reduced
-        time_domain = t_eval
-
-    message = 'Not Defined.'
-    if status == 1:
-        success = True
-        message = 'Integration finished with no issue.'
-    elif status == -1:
-        message = 'Error in step size calculation: Required step size is less than spacing between numbers.'
-    elif status < -2:
-        message = 'Integration Failed.'
+        for i in range(len_teval):
+            time_domain_view[i] = t_eval[i]
+            for j in range(store_loop_size):
+                # To match the format that scipy follows, we will take the transpose of y.
+                y_results_T_view[j, i] = y_results_reduced_view[j, i]
 
     return time_domain, y_results_T, success, message

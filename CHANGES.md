@@ -8,6 +8,11 @@ New Features
 - `cyrk_ode` now supports both float and complex-typed y and dydt functions.
   - Resolves [issue 3](https://github.com/jrenaud90/CyRK/issues/3)). (Fix made by [David Meyer](https://github.com/dihm))
 
+Performance
+- TODO: converted various ints to `short`s or `Py_ssize_t`. `Py_ssize_t` is recommended by Cython for loop integers to better support 64-bit architecture. 
+
+Other Changes:
+- Refactored, cleaned up, and added comments and docstrings to `cyrk_ode`.
 
 ### v0.4.0
 
