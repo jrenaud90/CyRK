@@ -447,6 +447,15 @@ def cyrk_ode(
     dydt_init_step_view = dydt_init_step
     y_tmp_view          = y_tmp
 
+    # Store y0 into the y arrays
+    cdef double_numeric y_value
+    for i in range(y_size):
+        y_value = y0[i]
+        y_new_view[i] = y_value
+        y_old_view[i] = y_value
+        y_tmp_view[i] = y_value
+        y_init_step_view[i] = y_value
+
     # If extra output is true then the output of the diffeq will be larger than the size of y0.
     # Determine that extra size by calling the diffeq and checking its size.
     cdef int extra_start, total_size, store_loop_size
@@ -469,7 +478,7 @@ def cyrk_ode(
     if capture_extra:
         diffeq(
             t_start,
-            y0,
+            y_new,
             diffeq_out,
             *args
         )
@@ -550,7 +559,7 @@ def cyrk_ode(
         rk_n_stages_extended = DOP_n_stages_extended
 
     rk_n_stages_plus1 = rk_n_stages + 1
-    error_expo = 1. / (<double> error_order + 1.)
+    error_expo = 1. / (<double>error_order + 1.)
 
     # Build RK Arrays. Note that all are 1D except for A and K.
     A      = np.empty((len_A0, len_A1), dtype=DTYPE, order='C')
@@ -637,7 +646,7 @@ def cyrk_ode(
     # Initialize variables for start of integration
     diffeq(
             t_start,
-            y0,
+            y_new,
             diffeq_out,
             *args
             )
@@ -646,8 +655,6 @@ def cyrk_ode(
     for i in range(y_size):
         dydt_new_view[i] = diffeq_out_view[i]
         dydt_old_view[i] = dydt_new_view[i]
-        y_old_view[i] = y0[i]
-        y_new_view[i] = y0[i]
 
     # # Determine size of first step.
     cdef double step_size, d0, d1, d2, d0_abs, d1_abs, d2_abs, h0, h1, scale
@@ -1050,9 +1057,13 @@ def cyrk_ode(
                         y_results_reduced_view[extra_start + j, i] = diffeq_out_view[extra_start + j]
 
         # Replace the output y results and time domain with the new reduced one
+        y_results_T = np.empty((total_size, len_teval), dtype=DTYPE, order='C')
+        time_domain = np.empty(len_teval, dtype=np.float64, order='C')
+        y_results_T_view = y_results_T
+        time_domain_view = time_domain
         for i in range(len_teval):
             time_domain_view[i] = t_eval[i]
-            for j in range(store_loop_size):
+            for j in range(total_size):
                 # To match the format that scipy follows, we will take the transpose of y.
                 y_results_T_view[j, i] = y_results_reduced_view[j, i]
 

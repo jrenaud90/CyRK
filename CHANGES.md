@@ -13,6 +13,8 @@ Performance
 
 Other Changes:
 - Refactored, cleaned up, and added comments and docstrings to `cyrk_ode`.
+- Changed `cyrk_ode` tests to use pytest parameterization.
+- Changed the accuracy test for `cyrk_ode` to check against a known function.
 
 ### v0.4.0
 
