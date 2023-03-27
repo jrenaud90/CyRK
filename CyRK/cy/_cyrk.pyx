@@ -30,10 +30,12 @@ cdef double cabs(double complex value) nogil:
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef double dabs(double_numeric value) nogil:
-    if double_numeric is double:
-        return fabs(value)
-    else:
+
+    # Check the type of value
+    if double_numeric is cython.doublecomplex:
         return cabs(value)
+    else:
+        return fabs(value)
 
 # Multiply steps computed from asymptotic behaviour of errors by this.
 cdef double SAFETY = 0.9
@@ -53,11 +55,20 @@ cdef double RK23_C[3]
 cdef double RK23_B[3]
 cdef double RK23_E[4]
 cdef double RK23_A[3][3]
+
+cdef unsigned int RK23_LEN_C = 3
+cdef unsigned int RK23_LEN_B = 3
+cdef unsigned int RK23_LEN_E = 4
+cdef unsigned int RK23_LEN_E3 = 4
+cdef unsigned int RK23_LEN_E5 = 4
+cdef unsigned int RK23_LEN_A0 = 3
+cdef unsigned int RK23_LEN_A1 = 3
+
 cdef unsigned int RK23_order = 3
 cdef unsigned int RK23_error_order = 2
 cdef unsigned int RK23_n_stages = 3
+
 RK23_C[:] = [0, 1 / 2, 3 / 4]
-cdef unsigned int RK23_LEN_C = 3
 RK23_B[:] = [2 / 9, 1 / 3, 4 / 9]
 RK23_E[:] = [5 / 72, -1 / 12, -1 / 9, 1 / 8]
 
@@ -70,11 +81,20 @@ cdef double RK45_C[6]
 cdef double RK45_B[6]
 cdef double RK45_E[7]
 cdef double RK45_A[6][5]
+
+cdef unsigned int RK45_LEN_C = 6
+cdef unsigned int RK45_LEN_B = 6
+cdef unsigned int RK45_LEN_E = 7
+cdef unsigned int RK45_LEN_E3 = 7
+cdef unsigned int RK45_LEN_E5 = 7
+cdef unsigned int RK45_LEN_A0 = 6
+cdef unsigned int RK45_LEN_A1 = 5
+
 cdef unsigned int RK45_order = 5
 cdef unsigned int RK45_error_order = 4
 cdef unsigned int RK45_n_stages = 6
+
 RK45_C[:] = [0, 1 / 5, 3 / 10, 4 / 5, 8 / 9, 1]
-cdef unsigned int RK45_LEN_C = 6
 RK45_B[:] = [35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84]
 RK45_E[:] = [-71 / 57600, 0, 71 / 16695, -71 / 1920, 17253 / 339200, -22 / 525, 1 / 40]
 
@@ -92,6 +112,15 @@ cdef unsigned int DOP_order = 8
 cdef unsigned int DOP_error_order = 7
 cdef unsigned int DOP_n_stages = 12
 cdef unsigned int DOP_n_stages_extended = 16
+
+cdef unsigned int DOP_LEN_C = 12  ## Reduced Size
+cdef unsigned int DOP_LEN_B = 12
+cdef unsigned int DOP_LEN_E = 13
+cdef unsigned int DOP_LEN_E3 = 13
+cdef unsigned int DOP_LEN_E5 = 13
+cdef unsigned int DOP_LEN_A0 = 12  ## Reduced Size
+cdef unsigned int DOP_LEN_A1 = 12  ## Reduced Size
+
 cdef double DOP_C[16]
 DOP_C = [
     0.0,
@@ -114,7 +143,6 @@ DOP_C = [
 cdef double DOP_C_REDUCED[12]
 for i_ in range(12):
     DOP_C_REDUCED[i_] = DOP_C[i_]
-cdef unsigned int DOP_LEN_C = 12
 
 cdef double DOP_A[16][16]
 for j_ in range(16):
@@ -255,7 +283,7 @@ DOP_E5[11] = -0.2235530786388629525884427845e-1
 @cython.boundscheck(False)
 @cython.wraparound(False)
 #@cython.nonecheck(False)
-def cyrk_ode(
+def cyrk_ode_notype(
     diffeq,
     (double, double) t_span,
     double_numeric[:] y0,
@@ -312,20 +340,28 @@ def cyrk_ode(
 
     """
 
-    # infer type from y0 input type
-    # only float64 and complex128 supported
     cdef int y_size
     y_size = y0.size
-    if double_numeric is double:
+
+    # infer type from y0 input type
+    # only float64 and complex128 supported
+    cdef bool_cpp_t y_is_complex
+    y_is_complex = False
+
+    # Check the type of the values in y0
+    if double_numeric is cython.double:
         DTYPE = np.float64
     elif double_numeric is cython.doublecomplex:
         DTYPE = np.complex128
+        y_is_complex = True
+    else:
+        raise Exception('Unexpected type found for initial conditions (y0).')
 
     cdef list time_domain_list, y_results_list
     cdef str message
     cdef (int, int) K_size, result_size, reduced_result_size
     cdef bool_cpp_t success, step_accepted, step_rejected, step_error = False
-    cdef int rk_order, error_order, rk_n_stages, rk_n_stages_plus1, len_c, len_t, \
+    cdef int len_t, \
         len_teval, rk_n_stages_extended, extra_start, total_size, store_loop_size
     cdef int s, i, j
     cdef int status
@@ -334,12 +370,11 @@ def cyrk_ode(
         direction, h0_direction, d0, d1, d2, h0, h1, step_size, time_, min_step, step_factor, c, \
         d0_abs, d1_abs, d2_abs, y_size_sqrt, y_size_dbl, scale
     cdef double_numeric K_scale
-    cdef double[:] C, B, E, E3, E5
     cdef double_numeric[:]  y_init_step_view, y_new_view, \
         y_old_view, dydt_new_view, dydt_old_view, dydt_init_step_view, y_tmp_view, diffeq_out_view, \
         E_tmp_view, E3_tmp_view, E5_tmp_view, extra_result_view, y_result_store_view
-    cdef double[:, :] A
     cdef double_numeric[:, :] K_view, y_results_reduced_view
+    cdef double_numeric dydt_old_view_abs, y_old_view_abs
     cdef bool_cpp_t run_interpolation, store_extras_during_integration
 
     # Clean up and interpret inputs
@@ -501,56 +536,153 @@ def cyrk_ode(
     status = 0
 
     # Determine RK constants
+
+
+    cdef unsigned int len_C, len_B, len_E, len_E3, len_E5, len_A0, len_A1, rk_order, error_order, rk_n_stages, \
+        rk_n_stages_plus1
+
     if rk_method == 0:
         # RK23 Method
         rk_order = RK23_order
         error_order = RK23_error_order
         rk_n_stages = RK23_n_stages
-        C = RK23_C
-        A = RK23_A
-        B = RK23_B
-        E = RK23_E
-
-        # Set these unused variables equal to something to avoid undeclared checks
-        E3 = E
-        E5 = E
-
-        len_c = RK23_LEN_C
-
+        len_C = RK23_LEN_C
+        len_B = RK23_LEN_B
+        len_E = RK23_LEN_E
+        len_E3 = RK23_LEN_E3
+        len_E5 = RK23_LEN_E5
+        len_A0 = RK23_LEN_A0
+        len_A1 = RK23_LEN_A1
     elif rk_method == 1:
-        # RK45 Method
+        # RK23 Method
         rk_order = RK45_order
         error_order = RK45_error_order
         rk_n_stages = RK45_n_stages
-        C = RK45_C
-        A = RK45_A
-        B = RK45_B
-        E = RK45_E
-
-        # Set these unused variables equal to something to avoid undeclared checks
-        E3 = E
-        E5 = E
-
-        len_c = RK45_LEN_C
-
+        len_C = RK45_LEN_C
+        len_B = RK45_LEN_B
+        len_E = RK45_LEN_E
+        len_E3 = RK45_LEN_E3
+        len_E5 = RK45_LEN_E5
+        len_A0 = RK45_LEN_A0
+        len_A1 = RK45_LEN_A1
     else:
         # DOP853 Method
         rk_order = DOP_order
         error_order = DOP_error_order
         rk_n_stages = DOP_n_stages
         rk_n_stages_extended = DOP_n_stages_extended
-        C = DOP_C_REDUCED
-        A = DOP_A_REDUCED
-        B = DOP_B
-        E3 = DOP_E3
-        E5 = DOP_E5
+        len_C = DOP_LEN_C
+        len_B = DOP_LEN_B
+        len_E = DOP_LEN_E
+        len_E3 = DOP_LEN_E3
+        len_E5 = DOP_LEN_E5
+        len_A0 = DOP_LEN_A0
+        len_A1 = DOP_LEN_A1
 
-        # Set these unused variables equal to something to avoid undeclared checks
-        E = E3
-
-        len_c = DOP_LEN_C
-
+    rk_n_stages_plus1 = rk_n_stages + 1
     error_expo = 1. / (<double>error_order + 1.)
+
+
+    A = np.empty(
+        (len_A0, len_A1),
+        dtype=DTYPE,
+        order='C'
+    )
+    B = np.empty(
+        len_B,
+        dtype=DTYPE,
+        order='C'
+    )
+    C = np.empty(
+        len_C,
+        dtype=np.float64,
+        order='C'
+    )
+    E = np.empty(
+        len_E,
+        dtype=DTYPE,
+        order='C'
+    )
+
+    # Set these unused variables equal to something to avoid undeclared checks
+    E3 = np.empty(
+        len_E3,
+        dtype=DTYPE,
+        order='C'
+    )
+    E5 = np.empty(
+        len_E5,
+        dtype=DTYPE,
+        order='C'
+    )
+
+    # Setup memory views
+    cdef double_numeric[:] B_view, E_view, E3_view, E5_view
+    cdef double_numeric[:, :] A_view,
+    cdef double[:] C_view
+    A_view = A
+    B_view = B
+    C_view = C
+    E_view = E
+    E3_view = E3
+    E5_view = E5
+
+    # Populate values
+    if rk_method == 0:
+        # RK23 Method
+        for i in range(len_A0):
+            for j in range(len_A1):
+                A_view[i, j] = RK23_A[i][j]
+        for i in range(len_B):
+            B_view[i] = RK23_B[i]
+        for i in range(len_C):
+            C_view[i] = RK23_C[i]
+        for i in range(len_E):
+            E_view[i] = RK23_E[i]
+            # Dummy Variables, set equal to E
+            E3_view[i] = RK23_E[i]
+            E5_view[i] = RK23_E[i]
+    elif rk_method == 1:
+        # RK23 Method
+        for i in range(len_A0):
+            for j in range(len_A1):
+                A_view[i, j] = RK45_A[i][j]
+        for i in range(len_B):
+            B_view[i] = RK45_B[i]
+        for i in range(len_C):
+            C_view[i] = RK45_C[i]
+        for i in range(len_E):
+            E_view[i] = RK45_E[i]
+            # Dummy Variables, set equal to E
+            E3_view[i] = RK45_E[i]
+            E5_view[i] = RK45_E[i]
+    else:
+        # DOP853 Method
+        rk_order = DOP_order
+        error_order = DOP_error_order
+        rk_n_stages = DOP_n_stages
+        rk_n_stages_extended = DOP_n_stages_extended
+        len_C = DOP_LEN_C
+        len_B = DOP_LEN_B
+        len_E = DOP_LEN_E
+        len_E3 = DOP_LEN_E3
+        len_E5 = DOP_LEN_E5
+        len_A0 = DOP_LEN_A0
+        len_A1 = DOP_LEN_A1
+        # RK23 Method
+        for i in range(len_A0):
+            for j in range(len_A1):
+                A_view[i, j] = DOP_A_REDUCED[i][j]
+        for i in range(len_B):
+            B_view[i] = DOP_B[i]
+        for i in range(len_C):
+            C_view[i] = DOP_C_REDUCED[i]
+        for i in range(len_E):
+            E3_view[i] = DOP_E3[i]
+            E5_view[i] = DOP_E5[i]
+            E_view[i] = DOP_E5[i]
+            # Dummy Variables, set equal to E3
+            E_view[i] = DOP_E3[i]
 
     # Check tolerances
     if rtol < EPS_100:
@@ -621,7 +753,7 @@ def cyrk_ode(
 
                 # TODO: should/could this be `y_init_step` instead of `y_old_view`?
                 scale = atol + dabs(y_old_view[i]) * rtol
-                d2_abs = dabs( (dydt_init_step_view[i] - dydt_old_view[i]) / scale )
+                d2_abs = dabs( (dydt_init_step_view[i] - dydt_old_view[i]) / scale)
                 d2 += (d2_abs * d2_abs)
 
             d2 = sqrt(d2) / (h0 * y_size_sqrt)
@@ -642,7 +774,6 @@ def cyrk_ode(
         step_size = first_step
 
     # Initialize RK-K variable
-    rk_n_stages_plus1 = rk_n_stages + 1
     K_size = (rk_n_stages_plus1, y_size)
     K = np.zeros(
         K_size,
@@ -702,8 +833,8 @@ def cyrk_ode(
             for i in range(y_size):
                 K_view[0, i] = dydt_old_view[i]
 
-            for s in range(1, len_c):
-                c = C[s]
+            for s in range(1, len_C):
+                c = C_view[s]
                 time_ = t_old + c * step
 
                 # Dot Product (K, a) * step
@@ -713,7 +844,7 @@ def cyrk_ode(
                             # Initialize
                             y_tmp_view[i] = y_old_view[i]
 
-                        y_tmp_view[i] = y_tmp_view[i] + (K_view[j, i] * A[s, j] * step)
+                        y_tmp_view[i] = y_tmp_view[i] + (K_view[j, i] * A_view[s, j] * step)
 
                 diffeq(
                     time_,
@@ -733,7 +864,7 @@ def cyrk_ode(
                     if j == 0:
                         # Initialize
                         y_new_view[i] = y_old_view[i]
-                    y_new_view[i] = y_new_view[i] + (K_view[j, i] * B[j] * step)
+                    y_new_view[i] = y_new_view[i] + (K_view[j, i] * B_view[j] * step)
 
             diffeq(
                 t_new,
@@ -768,8 +899,8 @@ def cyrk_ode(
                             K_view[j, i] = dydt_new_view[i]
 
                         K_scale = K_view[j, i] / scale
-                        E5_tmp_view[i] = E5_tmp_view[i] + (K_scale * E5[j])
-                        E3_tmp_view[i] = E3_tmp_view[i] + (K_scale * E3[j])
+                        E5_tmp_view[i] = E5_tmp_view[i] + (K_scale * E5_view[j])
+                        E3_tmp_view[i] = E3_tmp_view[i] + (K_scale * E3_view[j])
 
                 # Find norms for each error
                 error_norm5 = 0.
@@ -809,7 +940,7 @@ def cyrk_ode(
                             K_view[j, i] = dydt_new_view[i]
 
                         K_scale = K_view[j, i] / scale
-                        E_tmp_view[i] = E_tmp_view[i] + (K_scale * E[j] * step)
+                        E_tmp_view[i] = E_tmp_view[i] + (K_scale * E_view[j] * step)
 
                     error_norm_abs = dabs(E_tmp_view[i])
                     error_norm += (error_norm_abs * error_norm_abs)
