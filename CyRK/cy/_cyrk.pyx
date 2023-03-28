@@ -10,6 +10,7 @@ from libc.math cimport sqrt, fabs
 @cython.cdivision(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
+@cython.nonecheck(False)
 cdef double cabs(double complex value) nogil:
     """ Absolute value function for complex-valued inputs.
     
@@ -39,6 +40,7 @@ ctypedef fused double_numeric:
 @cython.cdivision(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
+@cython.nonecheck(False)
 cdef double dabs(double_numeric value) nogil:
     """ Absolute value function for either float or complex-valued inputs.
     
@@ -298,7 +300,7 @@ DOP_E5[11] = -0.2235530786388629525884427845e-1
 @cython.cdivision(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
-#@cython.nonecheck(False)
+@cython.nonecheck(False)
 def cyrk_ode(
     diffeq,
     (double, double) t_span,
