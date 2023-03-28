@@ -321,7 +321,6 @@ def nbrk_ode(
 
     # Find first step size
     first_step_found = False
-    min_step = EPS_10
     if first_step is not None:
         step_size = max_step
         if first_step < 0.:
@@ -381,7 +380,7 @@ def nbrk_ode(
             else:
                 h1 = (0.01 / max(d1, d2))**error_expo
 
-            step_size = max(min_step, min(100. * h0, h1))
+            step_size = min(100. * h0, h1)
 
     # Main integration loop
     # # Time Loop
@@ -395,6 +394,8 @@ def nbrk_ode(
 
         # Run RK integration step
         # Determine step size based on previous loop
+        # Find minimum step size based on the value of t (less floating point numbers between numbers when t is large)
+        min_step = 10. * np.abs(np.nextafter(t_old, direction * np.inf) - t_old)
         # Look for over/undershoots in previous step size
         if step_size > max_step:
             step_size = max_step
