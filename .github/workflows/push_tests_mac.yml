@@ -24,8 +24,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Initialize conda
         run: |
-          $CONDA/bin/conda init zsh
-          source ~/.zshrc
+          $CONDA/bin/conda init bash
+          source ~/.bashrc
           echo "$SHELL"
       - name: Install Dependencies
         run: |
