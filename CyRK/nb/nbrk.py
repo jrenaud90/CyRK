@@ -6,6 +6,8 @@ from numba import njit
 
 is_macos = (platform.system().lower() == 'darwin')
 
+is_macos = False
+
 from CyRK.nb.dop_coefficients import (
     A as A_DOP, B as B_DOP, C as C_DOP, E3 as E3_DOP, E5 as E5_DOP, D as D_DOP,
     N_STAGES as N_STAGES_DOP, N_STAGES_EXTENDED as N_STAGES_EXTENDED_DOP, ORDER as ORDER_DOP,
@@ -433,9 +435,9 @@ def nbrk_ode(
             if direction * (t_new - t_end) > 0:
                 t_new = t_end
 
-                # Correct the step if we were at the end of integration
-                step = t_new - t_old
-                step_size = np.abs(step)
+            # Correct the step if we were at the end of integration
+            step = t_new - t_old
+            step_size = np.abs(step)
 
             # Calculate derivative using RK method
             K[0, :] = dydt_old[:]
