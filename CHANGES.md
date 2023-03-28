@@ -15,7 +15,8 @@ Performance
 Other Changes:
 - Refactored, cleaned up, and added comments and docstrings to `cyrk_ode`.
 - Changed both `nbrk_ode` and `cyrk_ode` tests to use pytest parameterization.
-- Changed the accuracy test for `cyrk_ode` to check against a known function.
+- Changed the accuracy test for both `nbrk_ode` and `cyrk_ode` to check against a known function.
+- Added openmp dependence during compile time to allow for the use of `prange`.
 
 ### v0.4.0
 

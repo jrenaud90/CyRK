@@ -3,6 +3,16 @@ import os
 from setuptools.extension import Extension
 from setuptools.command.build_py import build_py as _build_py
 
+is_windows = False
+if os.name == 'nt':
+    is_windows = True
+
+if is_windows:
+    extra_compile_args = ['/openmp']
+    extra_link_args = ['/openmp']
+else:
+    extra_compile_args = ['-fopenmp']
+    extra_link_args = ['-fopenmp']
 
 class build_cyrk(_build_py):
 
@@ -23,7 +33,9 @@ class build_cyrk(_build_py):
                 Extension(
                         name='CyRK.array.interp',
                         sources=['CyRK/array/interp.pyx'],
-                        include_dirs=[os.path.join('CyRK', 'array'), np.get_include()]
+                        include_dirs=[os.path.join('CyRK', 'array'), np.get_include()],
+                        extra_compile_args=extra_compile_args,
+                        extra_link_args=extra_link_args
                         )
                 )
 
@@ -32,7 +44,9 @@ class build_cyrk(_build_py):
                 Extension(
                         'CyRK.cy.cyrk',
                         sources=[os.path.join('CyRK', 'cy', '_cyrk.pyx')],
-                        include_dirs=[os.path.join('CyRK', 'cy'), np.get_include()]
+                        include_dirs=[os.path.join('CyRK', 'cy'), np.get_include()],
+                        extra_compile_args=extra_compile_args,
+                        extra_link_args=extra_link_args
                         )
                 )
 
