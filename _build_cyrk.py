@@ -18,6 +18,15 @@ class build_cyrk(_build_py):
         if self.distribution.ext_modules == None:
             self.distribution.ext_modules = []
 
+        # Add array to ext_modules list
+        self.distribution.ext_modules.append(
+                Extension(
+                        name='CyRK.array.interp',
+                        sources=['CyRK/array/interp.pyx'],
+                        include_dirs=[os.path.join('CyRK', 'array'), np.get_include()]
+                        )
+                )
+
         # Add cyrk to ext_modules list
         self.distribution.ext_modules.append(
                 Extension(
@@ -26,6 +35,7 @@ class build_cyrk(_build_py):
                         include_dirs=[os.path.join('CyRK', 'cy'), np.get_include()]
                         )
                 )
+
 
         # Add cythonize ext_modules
         self.distribution.ext_modules = cythonize(

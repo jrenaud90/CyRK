@@ -7,6 +7,10 @@ from setuptools import Extension, setup
 setup(
     ext_modules=[
         Extension(
+            name='CyRK.array.interp',
+            sources=['CyRK/array/interp.pyx'],
+            include_dirs=[os.path.join('CyRK', 'array'), np.get_include()]),
+        Extension(
             name='CyRK.cy.cyrk',
             sources=['CyRK/cy/_cyrk.pyx'],
             include_dirs=[os.path.join('CyRK', 'cy'), np.get_include()])

@@ -2,10 +2,11 @@
 import cython
 import numpy as np
 cimport numpy as np
-from numpy.core.multiarray import (interp as compiled_interp, interp_complex as compiled_interp_complex)
 np.import_array()
 from libcpp cimport bool as bool_cpp_t
 from libc.math cimport sqrt, fabs
+
+from CyRK.array.interp cimport interp_array, interp_complex_array
 
 @cython.cdivision(True)
 @cython.boundscheck(False)
@@ -979,6 +980,8 @@ def cyrk_ode(
     cdef double_numeric[:, :] y_results_reduced_view
     cdef double_numeric[:] y_result_timeslice_view
     cdef double_numeric[:] y_interp_view
+    cdef double_numeric[:] y_result_temp_view
+    cdef double[:] t_eval_view
     if run_interpolation and success:
         # User only wants data at specific points.
         # The current version of this function has not implemented sicpy's dense output.
@@ -986,8 +989,11 @@ def cyrk_ode(
         # OPT: this could be done inside the actual loop for performance gains.
         y_results_reduced       = np.empty((total_size, len_teval), dtype=DTYPE, order='C')
         y_result_timeslice      = np.empty(len_t, dtype=DTYPE, order='C')
+        y_result_temp           = np.empty(len_teval, dtype=DTYPE, order='C')
         y_results_reduced_view  = y_results_reduced
         y_result_timeslice_view = y_result_timeslice
+        y_result_temp_view      = y_result_temp
+        t_eval_view = t_eval
 
         for j in range(y_size):
             # np.interp only works on 1D arrays so we must loop through each of the variables:
@@ -996,22 +1002,24 @@ def cyrk_ode(
                 y_result_timeslice_view[i] = y_results_T_view[j, i]
 
             # Perform numerical interpolation
-            if y_is_complex:
-                y_result_temp = compiled_interp_complex(
-                    t_eval,
+            if double_numeric is cython.doublecomplex:
+                y_result_temp = interp_complex_array(
+                    t_eval_view,
                     time_domain,
-                    y_result_timeslice
+                    y_result_timeslice_view,
+                    y_result_temp_view
                     )
             else:
-                y_result_temp = compiled_interp(
-                    t_eval,
-                    time_domain,
-                    y_result_timeslice
+                interp_array(
+                    t_eval_view,
+                    time_domain_view,
+                    y_result_timeslice_view,
+                    y_result_temp_view
                     )
 
             # Store result.
             for i in range(len_teval):
-                y_results_reduced_view[j, i] = y_result_temp[i]
+                y_results_reduced_view[j, i] = y_result_temp_view[i]
 
         if capture_extra:
             # Right now if there is any extra output then it is stored at each time step used in the RK loop.
@@ -1027,22 +1035,24 @@ def cyrk_ode(
                         y_result_timeslice_view[i] = y_results_T_view[extra_start + j, i]
 
                     # Perform numerical interpolation
-                    if y_is_complex:
-                        y_result_temp = compiled_interp_complex(
-                                t_eval,
+                    if double_numeric is cython.doublecomplex:
+                        y_result_temp = interp_complex_array(
+                                t_eval_view,
                                 time_domain,
-                                y_result_timeslice
+                                y_result_timeslice_view,
+                                y_result_temp_view
                                 )
                     else:
-                        y_result_temp = compiled_interp(
-                                t_eval,
-                                time_domain,
-                                y_result_timeslice
+                        interp_array(
+                                t_eval_view,
+                                time_domain_view,
+                                y_result_timeslice_view,
+                                y_result_temp_view
                                 )
 
                     # Store result.
                     for i in range(len_teval):
-                        y_results_reduced_view[extra_start + j, i] = y_result_temp[i]
+                        y_results_reduced_view[extra_start + j, i] = y_result_temp_view[i]
             else:
                 # Use y and t to recalculate the extra outputs
                 y_interp = np.empty(y_size, dtype=DTYPE)
