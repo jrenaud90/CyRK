@@ -386,7 +386,7 @@ def nbrk_ode(
             next_after = 10. * abs(np.nextafter(t_old, direction * np.inf) - t_old)
             if is_macos:
                 # TODO: this really should not be required but was having problems on ubuntu and linux systems.
-                next_after = max(next_after, 1.0e-50)
+                next_after = max(next_after, 1.0e-12)
             step_size = max(next_after, min(100. * h0, h1))
 
     # Main integration loop
@@ -405,7 +405,7 @@ def nbrk_ode(
         next_after = 10. * abs(np.nextafter(t_old, direction * np.inf) - t_old)
         if is_macos:
             # TODO: this really should not be required but was having problems on ubuntu and linux systems.
-            next_after = max(next_after, 1.0e-50)
+            next_after = max(next_after, 1.0e-12)
         min_step = next_after
 
         # Look for over/undershoots in previous step size
