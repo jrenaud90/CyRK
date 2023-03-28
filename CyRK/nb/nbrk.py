@@ -1,7 +1,10 @@
 from typing import Tuple
+import platform
 
 import numpy as np
 from numba import njit
+
+is_macos = platform.system()
 
 from CyRK.nb.dop_coefficients import (
     A as A_DOP, B as B_DOP, C as C_DOP, E3 as E3_DOP, E5 as E5_DOP, D as D_DOP,
@@ -380,7 +383,11 @@ def nbrk_ode(
             else:
                 h1 = (0.01 / max(d1, d2))**error_expo
 
-            step_size = max(10. * abs(np.nextafter(t_old, direction * np.inf) - t_old), min(100. * h0, h1))
+            next_after = 10. * abs(np.nextafter(t_old, direction * np.inf) - t_old)
+            if is_macos:
+                # TODO: this really should not be required but was having problems on ubuntu and linux systems.
+                next_after = max(next_after, 1.0e-100)
+            step_size = max(next_after, min(100. * h0, h1))
 
     # Main integration loop
     # # Time Loop
@@ -395,10 +402,12 @@ def nbrk_ode(
         # Run RK integration step
         # Determine step size based on previous loop
         # Find minimum step size based on the value of t (less floating point numbers between numbers when t is large)
-        min_step = 10. * abs(np.nextafter(t_old, direction * np.inf) - t_old)
+        next_after = 10. * abs(np.nextafter(t_old, direction * np.inf) - t_old)
+        if is_macos:
+            # TODO: this really should not be required but was having problems on ubuntu and linux systems.
+            next_after = max(next_after, 1.0e-100)
+        min_step = next_after
 
-        # TODO: this really should not be required but was having problems on ubuntu and linux systems.
-        min_step = max(min_step, 1.0e-200)
         # Look for over/undershoots in previous step size
         if step_size > max_step:
             step_size = max_step
