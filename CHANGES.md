@@ -21,7 +21,7 @@ Other Changes:
 - Moved `cyrk_ode`'s Runge-Kutta constants to a separate module `CyRK.rk`. 
 
 Bug Fixes:
-- Fixed issue (for `nbrk_ode`) where incorrect step size could be used due to bad minimum step check (see [issue 20](https://github.com/jrenaud90/CyRK/issues/20)).
+- Fixed issue (for `nbrk_ode` and `cyrk_ode`) where incorrect step size could be used due to bad minimum step check (see [issue 20](https://github.com/jrenaud90/CyRK/issues/20)).
 
 ### v0.4.0
 

@@ -4,7 +4,7 @@ import numpy as np
 cimport numpy as np
 np.import_array()
 from libcpp cimport bool as bool_cpp_t
-from libc.math cimport sqrt, fabs
+from libc.math cimport sqrt, fabs, nextafter
 
 from CyRK.array.interp cimport interp_array, interp_complex_array
 from CyRK.rk.rk cimport (
@@ -184,7 +184,7 @@ def cyrk_ode(
         raise Exception('Unexpected type found for initial conditions (y0).')
 
     # Build time domain
-    cdef double t_start, t_end, t_delta, t_delta_abs, direction, t_old, t_new, time_
+    cdef double t_start, t_end, t_delta, t_delta_abs, direction, direction_inf, t_old, t_new, time_
     t_start = t_span[0]
     t_end   = t_span[1]
     t_delta = t_end - t_start
@@ -193,6 +193,7 @@ def cyrk_ode(
         direction = 1.
     else:
         direction = -1.
+    direction_inf = direction * INF
 
     # Pull out information on t-eval
     cdef unsigned int len_teval
@@ -531,7 +532,8 @@ def cyrk_ode(
 
         # Run RK integration step
         # Determine step size based on previous loop
-        min_step = EPS_10
+        # Find minimum step size based on the value of t (less floating point numbers between numbers when t is large)
+        min_step = 10. * fabs(nextafter(t_old, direction_inf) - t_old)
         # Look for over/undershoots in previous step size
         if step_size > max_step:
             step_size = max_step
@@ -740,7 +742,7 @@ def cyrk_ode(
         message = 'Integration finished with no issue.'
     elif status == -1:
         message = 'Error in step size calculation: Required step size is less than spacing between numbers.'
-    elif status < -2:
+    elif status < -1:
         message = 'Integration Failed.'
 
     # Create output arrays. To match the format that scipy follows, we will take the transpose of y.
