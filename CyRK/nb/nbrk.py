@@ -6,8 +6,6 @@ from numba import njit
 
 is_macos = (platform.system().lower() == 'darwin')
 
-is_macos = False
-
 from CyRK.nb.dop_coefficients import (
     A as A_DOP, B as B_DOP, C as C_DOP, E3 as E3_DOP, E5 as E5_DOP, D as D_DOP,
     N_STAGES as N_STAGES_DOP, N_STAGES_EXTENDED as N_STAGES_EXTENDED_DOP, ORDER as ORDER_DOP,
@@ -388,7 +386,7 @@ def nbrk_ode(
             next_after = 10. * abs(np.nextafter(t_old, direction * np.inf) - t_old)
             if is_macos:
                 # TODO: this really should not be required but was having problems on ubuntu and linux systems.
-                next_after = max(next_after, 1.0e-100)
+                next_after = max(next_after, 1.0e-50)
             step_size = max(next_after, min(100. * h0, h1))
 
     # Main integration loop
@@ -407,7 +405,7 @@ def nbrk_ode(
         next_after = 10. * abs(np.nextafter(t_old, direction * np.inf) - t_old)
         if is_macos:
             # TODO: this really should not be required but was having problems on ubuntu and linux systems.
-            next_after = max(next_after, 1.0e-100)
+            next_after = max(next_after, 1.0e-50)
         min_step = next_after
 
         # Look for over/undershoots in previous step size
