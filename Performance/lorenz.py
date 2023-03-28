@@ -5,7 +5,7 @@ from numba import njit
 
 from CyRK import nb2cy
 
-lorenz_y0 = np.asarray((1., 0., 0.), dtype=np.complex128)
+lorenz_y0 = np.asarray((1., 0., 0.), dtype=np.float64)
 lorenz_args = (10., 28.0, 8. / 3.)
 lorenz_time_span_1 = (0., 10.)
 lorenz_time_span_2 = (0., 100.)
@@ -40,7 +40,7 @@ def lorenz_nb_extra(t, y, a, b, c):
     dy_0 = e_1 * (y1 - y0)
     dy_1 = y0 * e_2 - y1
     dy_2 = y0 * y1 - e_3
-    return np.asarray([dy_0, dy_1, dy_2, e_1, e_2, e_3], dtype=np.complex128)
+    return np.asarray([dy_0, dy_1, dy_2, e_1, e_2, e_3], dtype=np.float64)
 
 
 lorenz_cy_extra = nb2cy(lorenz_nb_extra, use_njit=True, cache_njit=True)

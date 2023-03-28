@@ -216,24 +216,17 @@ def cyrk_ode(
         store_extras_during_integration = False
 
     # Initialize arrays that are based on y's size and type.
-    y_init_step    = np.empty(y_size, dtype=DTYPE, order='C')
-    y_new          = np.empty(y_size, dtype=DTYPE, order='C')
-    y_old          = np.empty(y_size, dtype=DTYPE, order='C')
-    dydt_new       = np.empty(y_size, dtype=DTYPE, order='C')
-    dydt_old       = np.empty(y_size, dtype=DTYPE, order='C')
-    dydt_init_step = np.empty(y_size, dtype=DTYPE, order='C')
-    y_tmp          = np.empty(y_size, dtype=DTYPE, order='C')
+    y_new    = np.empty(y_size, dtype=DTYPE, order='C')
+    y_old    = np.empty(y_size, dtype=DTYPE, order='C')
+    dydt_new = np.empty(y_size, dtype=DTYPE, order='C')
+    dydt_old = np.empty(y_size, dtype=DTYPE, order='C')
 
     # Setup memory views for these arrays
-    cdef double_numeric[:] y_init_step_view, y_new_view, y_old_view, dydt_new_view, dydt_old_view, \
-        dydt_init_step_view, y_tmp_view
-    y_init_step_view    = y_init_step
-    y_new_view          = y_new
-    y_old_view          = y_old
-    dydt_new_view       = dydt_new
-    dydt_old_view       = dydt_old
-    dydt_init_step_view = dydt_init_step
-    y_tmp_view          = y_tmp
+    cdef double_numeric[:] y_new_view, y_old_view, dydt_new_view, dydt_old_view
+    y_new_view    = y_new
+    y_old_view    = y_old
+    dydt_new_view = dydt_new
+    dydt_old_view = dydt_old
 
     # Store y0 into the y arrays
     cdef double_numeric y_value
@@ -241,8 +234,6 @@ def cyrk_ode(
         y_value = y0[i]
         y_new_view[i] = y_value
         y_old_view[i] = y_value
-        y_tmp_view[i] = y_value
-        y_init_step_view[i] = y_value
 
     # If extra output is true then the output of the diffeq will be larger than the size of y0.
     # Determine that extra size by calling the diffeq and checking its size.
@@ -438,14 +429,18 @@ def cyrk_ode(
     #         raise Exception
 
     # Initialize variables for start of integration
-    diffeq(
-            t_start,
-            y_new,
-            diffeq_out,
-            *args
-            )
+    if not capture_extra:
+        # If `capture_extra` is True then this step was already performed.
+        diffeq(
+                t_start,
+                y_new,
+                diffeq_out,
+                *args
+                )
+
     t_old = t_start
     t_new = t_start
+    # Initialize dydt arrays.
     for i in range(y_size):
         dydt_new_view[i] = diffeq_out_view[i]
         dydt_old_view[i] = dydt_new_view[i]
@@ -479,13 +474,13 @@ def cyrk_ode(
                 h0 = 0.01 * d0 / d1
 
             h0_direction = h0 * direction
-            t_init_step = t_old + h0_direction
+            t_new = t_old + h0_direction
             for i in range(y_size):
-                y_init_step_view[i] = y_old_view[i] + h0_direction * dydt_old_view[i]
+                y_new_view[i] = y_old_view[i] + h0_direction * dydt_old_view[i]
 
             diffeq(
-                t_init_step,
-                y_init_step,
+                t_new,
+                y_new,
                 diffeq_out,
                 *args
             )
@@ -493,11 +488,11 @@ def cyrk_ode(
             # Find the norm for d2
             d2 = 0.
             for i in range(y_size):
-                dydt_init_step_view[i] = diffeq_out_view[i]
+                dydt_new_view[i] = diffeq_out_view[i]
 
-                # TODO: should/could this be `y_init_step` instead of `y_old_view`?
+                # TODO: should/could this be `y_new_view` instead of `y_old_view`?
                 scale = atol + dabs(y_old_view[i]) * rtol
-                d2_abs = dabs( (dydt_init_step_view[i] - dydt_old_view[i]) / scale)
+                d2_abs = dabs( (dydt_new_view[i] - dydt_old_view[i]) / scale)
                 d2 += (d2_abs * d2_abs)
 
             d2 = sqrt(d2) / (h0 * y_size_sqrt)
@@ -564,9 +559,9 @@ def cyrk_ode(
             if direction * (t_new - t_end) > 0.:
                 t_new = t_end
 
-            # Correct the step if we were at the end of integration
-            step = t_new - t_old
-            step_size = fabs(step)
+                # Correct the step if we were at the end of integration
+                step = t_new - t_old
+                step_size = fabs(step)
 
             # Calculate derivative using RK method
             for i in range(y_size):
@@ -581,13 +576,13 @@ def cyrk_ode(
                     for i in range(y_size):
                         if j == 0:
                             # Initialize
-                            y_tmp_view[i] = y_old_view[i]
+                            y_new_view[i] = y_old_view[i]
 
-                        y_tmp_view[i] = y_tmp_view[i] + (K_view[j, i] * A_view[s, j] * step)
+                        y_new_view[i] = y_new_view[i] + (K_view[j, i] * A_view[s, j] * step)
 
                 diffeq(
                     time_,
-                    y_tmp,
+                    y_new,
                     diffeq_out,
                     *args
                 )
@@ -670,7 +665,6 @@ def cyrk_ode(
                     scale = atol + max(dabs(y_old_view[i]), dabs(y_new_view[i])) * rtol
 
                     for j in range(rk_n_stages_plus1):
-
                         if j == 0:
                             # Initialize
                             E_tmp_view[i] = 0.
@@ -772,9 +766,9 @@ def cyrk_ode(
     cdef double_numeric[:] y_result_timeslice_view
     cdef double_numeric[:] y_interp_view
     cdef double_numeric[:] y_result_temp_view
-    cdef double[:] t_eval_view
     if run_interpolation and success:
         # User only wants data at specific points.
+
         # The current version of this function has not implemented sicpy's dense output.
         #   Instead we use an interpolation.
         # OPT: this could be done inside the actual loop for performance gains.
@@ -784,7 +778,6 @@ def cyrk_ode(
         y_results_reduced_view  = y_results_reduced
         y_result_timeslice_view = y_result_timeslice
         y_result_temp_view      = y_result_temp
-        t_eval_view = t_eval
 
         for j in range(y_size):
             # np.interp only works on 1D arrays so we must loop through each of the variables:
@@ -794,15 +787,15 @@ def cyrk_ode(
 
             # Perform numerical interpolation
             if double_numeric is cython.doublecomplex:
-                y_result_temp = interp_complex_array(
-                    t_eval_view,
-                    time_domain,
+                interp_complex_array(
+                    t_eval,
+                    time_domain_view,
                     y_result_timeslice_view,
                     y_result_temp_view
                     )
             else:
                 interp_array(
-                    t_eval_view,
+                    t_eval,
                     time_domain_view,
                     y_result_timeslice_view,
                     y_result_temp_view
@@ -827,15 +820,15 @@ def cyrk_ode(
 
                     # Perform numerical interpolation
                     if double_numeric is cython.doublecomplex:
-                        y_result_temp = interp_complex_array(
-                                t_eval_view,
-                                time_domain,
+                        interp_complex_array(
+                                t_eval,
+                                time_domain_view,
                                 y_result_timeslice_view,
                                 y_result_temp_view
                                 )
                     else:
                         interp_array(
-                                t_eval_view,
+                                t_eval,
                                 time_domain_view,
                                 y_result_timeslice_view,
                                 y_result_temp_view
@@ -865,6 +858,8 @@ def cyrk_ode(
         time_domain = np.empty(len_teval, dtype=np.float64, order='C')
         y_results_T_view = y_results_T
         time_domain_view = time_domain
+
+        # Update output arrays
         for i in range(len_teval):
             time_domain_view[i] = t_eval[i]
             for j in range(total_size):

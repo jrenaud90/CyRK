@@ -4,7 +4,7 @@ from numba import njit
 
 from CyRK import nb2cy
 
-lotkavolterra_y0 = np.asarray((10., 5.), dtype=np.complex128)
+lotkavolterra_y0 = np.asarray((10., 5.), dtype=np.float64)
 lotkavolterra_args = (1.5, 1, 3, 1)
 lotkavolterra_time_span_1 = (0., 15.)
 lotkavolterra_time_span_2 = (0., 150.)
