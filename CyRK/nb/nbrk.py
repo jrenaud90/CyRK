@@ -4,7 +4,7 @@ import platform
 import numpy as np
 from numba import njit
 
-is_macos = platform.system()
+is_macos = (platform.system().lower() == 'darwin')
 
 from CyRK.nb.dop_coefficients import (
     A as A_DOP, B as B_DOP, C as C_DOP, E3 as E3_DOP, E5 as E5_DOP, D as D_DOP,
