@@ -9,12 +9,16 @@ New Features
   - Resolves [issue 3](https://github.com/jrenaud90/CyRK/issues/3)). (Fix made by [David Meyer](https://github.com/dihm))
 
 Performance
-- TODO: converted various ints to `short`s or `Py_ssize_t`. `Py_ssize_t` is recommended by Cython for loop integers to better support 64-bit architecture. 
+- Converted various ints to `short`s, `char`s, or `Py_ssize_t`. `Py_ssize_t` is recommended by Cython for loop integers to better support 64-bit architecture. 
+- Added custom interpolation functions which, depending on the size of the array, can be up to 10x faster than numpys.
+- Removed unnecessarily variables from `cyrk_ode`.
 
 Other Changes:
 - Refactored, cleaned up, and added comments and docstrings to `cyrk_ode`.
-- Changed `cyrk_ode` tests to use pytest parameterization.
-- Changed the accuracy test for `cyrk_ode` to check against a known function.
+- Changed both `nbrk_ode` and `cyrk_ode` tests to use pytest parameterization.
+- Changed the accuracy test for both `nbrk_ode` and `cyrk_ode` to check against a known function.
+- Added openmp dependence during compile time to allow for the use of `prange`.
+- Moved `cyrk_ode`'s Runge-Kutta constants to a separate module `CyRK.rk`. 
 
 ### v0.4.0
 

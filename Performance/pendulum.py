@@ -5,7 +5,7 @@ from numba import njit
 
 from CyRK import nb2cy
 
-pendulum_y0 = np.asarray((0.01, 0.), dtype=np.complex128)
+pendulum_y0 = np.asarray((0.01, 0.), dtype=np.float64)
 pendulum_args = (1., 1., 9.81)  # length [m], mass [kg], acceleration due to gravity [m s-2]
 pendulum_time_span_1 = (0., 10.)
 pendulum_time_span_2 = (0., 100.)
