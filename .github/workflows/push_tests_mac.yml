@@ -8,6 +8,10 @@ on: [push, pull_request, workflow_dispatch]
 jobs:
 
   test-macos:
+    defaults:
+      run:
+        shell: bash -el {0}
+
     name: Test CyRK on MacOS
     runs-on: macos-latest
     strategy:
@@ -32,7 +36,9 @@ jobs:
         run: |
           conda install numpy scipy cython llvm-openmp pytest
       - name: Install package
+        shell: bash -el {0}
         run: |
           python -m pip install . -v
       - name: Run pytest
+        shell: bash -el {0}
         run: pytest -v Tests/
