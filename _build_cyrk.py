@@ -1,15 +1,17 @@
 """ Commands to build the cython extensions of CyRK (a hack to work with pyproject.toml) """
 import os
+import platform
 from setuptools.extension import Extension
 from setuptools.command.build_py import build_py as _build_py
 
-is_windows = False
-if os.name == 'nt':
-    is_windows = True
+install_platform = platform.system()
 
-if is_windows:
+if install_platform.lower() == 'windows':
     extra_compile_args = ['/openmp']
     extra_link_args = ['/openmp']
+elif install_platform.lower() == 'darwin':
+    extra_compile_args = ['-Xclang -fopenmp']
+    extra_link_args = ['-Xclang -fopenmp']
 else:
     extra_compile_args = ['-fopenmp']
     extra_link_args = ['-fopenmp']

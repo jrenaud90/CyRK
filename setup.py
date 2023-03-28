@@ -1,15 +1,17 @@
 import os
+import platform
 
 import numpy as np
 from setuptools import Extension, setup
 
-is_windows = False
-if os.name == 'nt':
-    is_windows = True
+install_platform = platform.system()
 
-if is_windows:
+if install_platform.lower() == 'windows':
     extra_compile_args = ['/openmp']
     extra_link_args = ['/openmp']
+elif install_platform.lower() == 'darwin':
+    extra_compile_args = ['-Xclang -fopenmp']
+    extra_link_args = ['-Xclang -fopenmp']
 else:
     extra_compile_args = ['-fopenmp']
     extra_link_args = ['-fopenmp']
