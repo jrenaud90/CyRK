@@ -107,7 +107,7 @@ def test_max_step(rk_method, complex_valued):
         initial_conds_to_use = initial_conds
 
     time_domain, y_results, success, message = \
-        nbrk_ode(diffeq, time_span, initial_conds_to_use, rk_method=rk_method, max_step=1.0e5)
+        nbrk_ode(diffeq, time_span, initial_conds_to_use, rk_method=rk_method, max_step=time_span[1] / 2.)
 
     # Check that the ndarrays make sense
     assert type(time_domain) == np.ndarray
