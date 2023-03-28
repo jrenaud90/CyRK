@@ -503,7 +503,7 @@ def cyrk_ode(
             else:
                 h1 = (0.01 / max(d1, d2))**error_expo
 
-            step_size = max(fabs(nextafter(t_old, direction_inf) - t_old), min(100. * h0, h1))
+            step_size = max(10. * fabs(nextafter(t_old, direction_inf) - t_old), min(100. * h0, h1))
     else:
         if first_step <= 0.:
             raise Exception('Error in user-provided step size: Step size must be a positive number.')
