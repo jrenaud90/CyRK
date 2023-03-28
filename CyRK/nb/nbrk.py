@@ -86,7 +86,7 @@ def _norm(x):
     return np.linalg.norm(x) / np.sqrt(x.size)
 
 
-@njit(cache=False, fastmath=False)
+@njit(cache=False, fastmath=not is_macos)
 def nbrk_ode(
         diffeq: callable, t_span: Tuple[float, float], y0: np.ndarray, args: tuple = tuple(),
         rtol: float = 1.e-6, atol: float = 1.e-8,
@@ -384,9 +384,9 @@ def nbrk_ode(
                 h1 = (0.01 / max(d1, d2))**error_expo
 
             next_after = 10. * abs(np.nextafter(t_old, direction * np.inf) - t_old)
-            if is_macos:
-                # TODO: this really should not be required but was having problems on ubuntu and linux systems.
-                next_after = max(next_after, 1.0e-12)
+            # if is_macos:
+            #     # TODO: this really should not be required but was having problems on ubuntu and linux systems.
+            #     next_after = max(next_after, 1.0e-12)
             step_size = max(next_after, min(100. * h0, h1))
 
     # Main integration loop
@@ -403,9 +403,9 @@ def nbrk_ode(
         # Determine step size based on previous loop
         # Find minimum step size based on the value of t (less floating point numbers between numbers when t is large)
         next_after = 10. * abs(np.nextafter(t_old, direction * np.inf) - t_old)
-        if is_macos:
-            # TODO: this really should not be required but was having problems on ubuntu and linux systems.
-            next_after = max(next_after, 1.0e-12)
+        # if is_macos:
+        #     # TODO: this really should not be required but was having problems on ubuntu and linux systems.
+        #     next_after = max(next_after, 1.0e-12)
         min_step = next_after
 
         # Look for over/undershoots in previous step size
