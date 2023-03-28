@@ -9,7 +9,7 @@ New Features
   - Resolves [issue 3](https://github.com/jrenaud90/CyRK/issues/3)). (Fix made by [David Meyer](https://github.com/dihm))
 
 Performance
-- TODO: converted various ints to `short`s or `Py_ssize_t`. `Py_ssize_t` is recommended by Cython for loop integers to better support 64-bit architecture. 
+- Converted various ints to `short`s, `char`s, or `Py_ssize_t`. `Py_ssize_t` is recommended by Cython for loop integers to better support 64-bit architecture. 
 
 Other Changes:
 - Refactored, cleaned up, and added comments and docstrings to `cyrk_ode`.

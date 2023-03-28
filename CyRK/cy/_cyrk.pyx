@@ -77,16 +77,16 @@ cdef double RK23_C[3]
 cdef double RK23_B[3]
 cdef double RK23_E[4]
 cdef double RK23_A[3][3]
-cdef unsigned int RK23_order = 3
-cdef unsigned int RK23_error_order = 2
-cdef unsigned int RK23_n_stages = 3
-cdef unsigned int RK23_LEN_C = 3
-cdef unsigned int RK23_LEN_B = 3
-cdef unsigned int RK23_LEN_E = 4
-cdef unsigned int RK23_LEN_E3 = 4
-cdef unsigned int RK23_LEN_E5 = 4
-cdef unsigned int RK23_LEN_A0 = 3
-cdef unsigned int RK23_LEN_A1 = 3
+cdef unsigned char RK23_order = 3
+cdef unsigned char RK23_error_order = 2
+cdef unsigned char RK23_n_stages = 3
+cdef unsigned char RK23_LEN_C = 3
+cdef unsigned char RK23_LEN_B = 3
+cdef unsigned char RK23_LEN_E = 4
+cdef unsigned char RK23_LEN_E3 = 4
+cdef unsigned char RK23_LEN_E5 = 4
+cdef unsigned char RK23_LEN_A0 = 3
+cdef unsigned char RK23_LEN_A1 = 3
 
 RK23_C[:] = [0, 1 / 2, 3 / 4]
 RK23_B[:] = [2 / 9, 1 / 3, 4 / 9]
@@ -101,16 +101,16 @@ cdef double RK45_C[6]
 cdef double RK45_B[6]
 cdef double RK45_E[7]
 cdef double RK45_A[6][5]
-cdef unsigned int RK45_order = 5
-cdef unsigned int RK45_error_order = 4
-cdef unsigned int RK45_n_stages = 6
-cdef unsigned int RK45_LEN_C = 6
-cdef unsigned int RK45_LEN_B = 6
-cdef unsigned int RK45_LEN_E = 7
-cdef unsigned int RK45_LEN_E3 = 7
-cdef unsigned int RK45_LEN_E5 = 7
-cdef unsigned int RK45_LEN_A0 = 6
-cdef unsigned int RK45_LEN_A1 = 5
+cdef unsigned char RK45_order = 5
+cdef unsigned char RK45_error_order = 4
+cdef unsigned char RK45_n_stages = 6
+cdef unsigned char RK45_LEN_C = 6
+cdef unsigned char RK45_LEN_B = 6
+cdef unsigned char RK45_LEN_E = 7
+cdef unsigned char RK45_LEN_E3 = 7
+cdef unsigned char RK45_LEN_E5 = 7
+cdef unsigned char RK45_LEN_A0 = 6
+cdef unsigned char RK45_LEN_A1 = 5
 
 RK45_C[:] = [0, 1 / 5, 3 / 10, 4 / 5, 8 / 9, 1]
 RK45_B[:] = [35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84]
@@ -124,18 +124,18 @@ RK45_A[4][:] = [19372 / 6561, -25360 / 2187, 64448 / 6561, -212 / 729, 0]
 RK45_A[5][:] = [9017 / 3168, -355 / 33, 46732 / 5247, 49 / 176, -5103 / 18656]
 
 # DOP863 Constants
-cdef int j_, i_
-cdef unsigned int DOP_order = 8
-cdef unsigned int DOP_error_order = 7
-cdef unsigned int DOP_n_stages = 12
-cdef unsigned int DOP_n_stages_extended = 16
-cdef unsigned int DOP_LEN_C = 12  ## Reduced Size
-cdef unsigned int DOP_LEN_B = 12
-cdef unsigned int DOP_LEN_E = 13
-cdef unsigned int DOP_LEN_E3 = 13
-cdef unsigned int DOP_LEN_E5 = 13
-cdef unsigned int DOP_LEN_A0 = 12  ## Reduced Size
-cdef unsigned int DOP_LEN_A1 = 12  ## Reduced Size
+cdef Py_ssize_t j_, i_
+cdef unsigned char DOP_order = 8
+cdef unsigned char DOP_error_order = 7
+cdef unsigned char DOP_n_stages = 12
+cdef unsigned char DOP_n_stages_extended = 16
+cdef unsigned char DOP_LEN_C = 12  ## Reduced Size
+cdef unsigned char DOP_LEN_B = 12
+cdef unsigned char DOP_LEN_E = 13
+cdef unsigned char DOP_LEN_E3 = 13
+cdef unsigned char DOP_LEN_E5 = 13
+cdef unsigned char DOP_LEN_A0 = 12  ## Reduced Size
+cdef unsigned char DOP_LEN_A1 = 12  ## Reduced Size
 
 cdef double DOP_C[16]
 DOP_C = [
@@ -308,10 +308,10 @@ def cyrk_ode(
     double atol = 1.e-8,
     double max_step = MAX_STEP,
     double first_step = 0.,
-    unsigned int rk_method = 1,
+    unsigned char rk_method = 1,
     double[:] t_eval = np.empty((0,), dtype=np.float64),
     bool_cpp_t capture_extra = False,
-    int num_extra = 0,
+    short num_extra = 0,
     bool_cpp_t interpolate_extra = False
     ):
     """ A Numba-safe Runge-Kutta Integrator based on Scipy's solve_ivp RK integrator.
@@ -374,10 +374,10 @@ def cyrk_ode(
 
     """
     # Setup loop variables
-    cdef int s, i, j
+    cdef Py_ssize_t s, i, j
 
     # Determine information about the differential equation based on its initial conditions
-    cdef int y_size
+    cdef unsigned short y_size
     cdef double y_size_dbl, y_size_sqrt
     cdef bool_cpp_t y_is_complex
     y_size = y0.size
@@ -407,7 +407,7 @@ def cyrk_ode(
         direction = -1.
 
     # Pull out information on t-eval
-    cdef int len_teval
+    cdef unsigned int len_teval
     len_teval = t_eval.size
 
     # Set integration flags
@@ -458,7 +458,7 @@ def cyrk_ode(
 
     # If extra output is true then the output of the diffeq will be larger than the size of y0.
     # Determine that extra size by calling the diffeq and checking its size.
-    cdef int extra_start, total_size, store_loop_size
+    cdef unsigned short extra_start, total_size, store_loop_size
     extra_start = y_size
     total_size  = y_size + num_extra
     # Create arrays based on this total size
@@ -515,9 +515,9 @@ def cyrk_ode(
     y_results_list   = [y0_to_store]
 
     # # Determine RK scheme
-    cdef unsigned int rk_order, error_order, rk_n_stages, rk_n_stages_plus1, rk_n_stages_extended
+    cdef unsigned char rk_order, error_order, rk_n_stages, rk_n_stages_plus1, rk_n_stages_extended
     cdef double error_expo, error_norm5, error_norm3, error_norm, error_norm_abs, error_denom
-    cdef unsigned int len_C, len_B, len_E, len_E3, len_E5, len_A0, len_A1
+    cdef unsigned char len_C, len_B, len_E, len_E3, len_E5, len_A0, len_A1
 
     if rk_method == 0:
         # RK23 Method
@@ -729,9 +729,10 @@ def cyrk_ode(
     #   0  = Running
     #   -1 = Failed
     #   1  = Finished with no obvious issues
-    cdef int status, len_t
+    cdef char status
+    cdef unsigned int len_t
     status = 0
-    len_t = 1  # There is an initial condition provided so the time length is already 1
+    len_t  = 1  # There is an initial condition provided so the time length is already 1
     while status == 0:
         if t_new == t_end or y_size == 0:
             t_old = t_end
