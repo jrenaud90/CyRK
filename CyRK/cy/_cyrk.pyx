@@ -546,7 +546,7 @@ def cyrk_ode(
         len_E5      = RK45_LEN_E5
         len_A0      = RK45_LEN_A0
         len_A1      = RK45_LEN_A1
-    else:
+    elif rk_method == 2:
         # DOP853 Method
         rk_order    = DOP_order
         error_order = DOP_error_order
@@ -560,6 +560,12 @@ def cyrk_ode(
         len_A1      = DOP_LEN_A1
 
         rk_n_stages_extended = DOP_n_stages_extended
+    else:
+        raise Exception(
+            'Unexpected rk_method provided. Currently supported versions are:\n'
+            '\t0 = RK23\n'
+            '\t1 = RK34\n'
+            '\t2 = DOP853')
 
     rk_n_stages_plus1 = rk_n_stages + 1
     error_expo = 1. / (<double>error_order + 1.)

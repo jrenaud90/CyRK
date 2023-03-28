@@ -10,10 +10,11 @@ New Features
 
 Performance
 - Converted various ints to `short`s, `char`s, or `Py_ssize_t`. `Py_ssize_t` is recommended by Cython for loop integers to better support 64-bit architecture. 
+- Added custom interpolation functions which, depending on the size of the array, can be up to 10x faster than numpys.
 
 Other Changes:
 - Refactored, cleaned up, and added comments and docstrings to `cyrk_ode`.
-- Changed `cyrk_ode` tests to use pytest parameterization.
+- Changed both `nbrk_ode` and `cyrk_ode` tests to use pytest parameterization.
 - Changed the accuracy test for `cyrk_ode` to check against a known function.
 
 ### v0.4.0

@@ -304,8 +304,11 @@ cpdef void interp_array(double[:] desired_x_array, double[:] x_domain, double[:]
     cdef double fp_at_jp1
     cdef double xp_at_jp1
 
-    # since most of the time we are linearly increasing, set the initial guess off the slope
-    #  between desired and actual x domains.
+    # Since most of the use cases for this function are subsampling an array with another array, we can improve our
+    #  guess by increasing it alongside the index variable. There are problems with this:
+    #    1 - If the desired array is randomly distributed, rather than increasing, this will be slow.
+    #    2 - The actual x domain is likely not linear. So the linear increase we are performing with this guess variable
+    #        is not correct.
     cdef double x_slope
     cdef unsigned int guess
     x_slope = lenx / desired_len
@@ -384,8 +387,11 @@ cpdef void interp_complex_array(double[:] desired_x_array, double[:] x_domain, d
     cdef double fp_at_jp1_imag
     cdef double xp_at_jp1
 
-    # since most of the time we are linearly increasing, set the initial guess off the slope
-    #  between desired and actual x domains.
+    # Since most of the use cases for this function are subsampling an array with another array, we can improve our
+    #  guess by increasing it alongside the index variable. There are problems with this:
+    #    1 - If the desired array is randomly distributed, rather than increasing, this will be slow.
+    #    2 - The actual x domain is likely not linear. So the linear increase we are performing with this guess variable
+    #        is not correct.
     cdef double x_slope
     cdef unsigned int guess
     x_slope = lenx / desired_len

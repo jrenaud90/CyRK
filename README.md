@@ -149,8 +149,6 @@ The solver will then interpolate the results to fit this array.
 
 - [Issue 1](https://github.com/jrenaud90/CyRK/issues/1): Absolute tolerance can only be passed as a single value
 (same for all y's).
-- [Issue 3](https://github.com/jrenaud90/CyRK/issues/3): Right now the cython version only allows for complex-valued
-y-values.
 
 ## Citing CyRK
 

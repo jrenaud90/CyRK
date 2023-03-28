@@ -237,7 +237,6 @@ def nbrk_ode(
         # Initialize RK-K variable
         K = np.empty((rk_n_stages_plus1, y_size), dtype=dtype)
     elif rk_method == 1:
-
         # RK45 Method
         rk_order = RK45_order
         error_order = RK45_error_estimator_order
@@ -255,7 +254,7 @@ def nbrk_ode(
 
         # Initialize RK-K variable
         K = np.empty((rk_n_stages_plus1, y_size), dtype=dtype)
-    else:
+    elif rk_method == 2:
         # DOP853
         rk_order = ORDER_DOP
         error_order = ERROR_ESTIMATOR_ORDER_DOP
@@ -276,6 +275,12 @@ def nbrk_ode(
         # Initialize RK-K variable
         K_extended = np.empty((N_STAGES_EXTENDED_DOP, y_size), dtype=dtype)
         K = np.ascontiguousarray(K_extended[:rk_n_stages_plus1, :])
+    else:
+        raise Exception(
+            'Unexpected rk_method provided. Currently supported versions are:\n'
+            '\t0 = RK23\n'
+            '\t1 = RK34\n'
+            '\t2 = DOP853')
 
     # Recast some constants into the correct dtype, so they can be used with y0.
     A = np.asarray(A, dtype=dtype)

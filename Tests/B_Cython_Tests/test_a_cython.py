@@ -216,7 +216,7 @@ def test_teval(rk_method, complex_valued):
     assert type(message) == str
 
 @pytest.mark.parametrize('complex_valued', (True, False))
-@pytest.mark.parametrize('rk_method', (2, 3, 4))
+@pytest.mark.parametrize('rk_method', (0, 1, 2))
 def test_args(rk_method, complex_valued):
     """Check that the cython solver is able to run with user provided additional diffeq arguments """
 
@@ -245,7 +245,7 @@ def test_args(rk_method, complex_valued):
     assert success
     assert type(message) == str
 
-@pytest.mark.parametrize('rk_method', (2, 3, 4))
+@pytest.mark.parametrize('rk_method', (0, 1, 2))
 def test_accuracy(rk_method):
     """Check that the cython solver is able to reproduce a known functions integral with reasonable accuracy """
 
@@ -274,12 +274,17 @@ def test_accuracy(rk_method):
     y0 = np.asarray((0., 1.), dtype=np.float64)
     time_span_ = (0., 10.)
 
-    # CyRK
+    # CyRK.cyrk_ode
     time_domain, y_results, success, message = \
         cyrk_ode(diffeq_accuracy, time_span_, y0, rk_method=rk_method, rtol=1.0e-8, atol=1.0e-9)
     real_answer = correct_answer(time_domain, c1, c2)
 
-    assert np.allclose(y_results, real_answer, rtol=1.0e-5, atol=1.0e-8)
+    if rk_method == 0:
+        assert np.allclose(y_results, real_answer, rtol=1.0e-3, atol=1.0e-6)
+    elif rk_method == 1:
+        assert np.allclose(y_results, real_answer, rtol=1.0e-4, atol=1.0e-7)
+    else:
+        assert np.allclose(y_results, real_answer, rtol=1.0e-5, atol=1.0e-8)
 
     # Check the accuracy of the results
     # import matplotlib.pyplot as plt
