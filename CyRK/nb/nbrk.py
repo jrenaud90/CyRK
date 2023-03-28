@@ -396,6 +396,9 @@ def nbrk_ode(
         # Determine step size based on previous loop
         # Find minimum step size based on the value of t (less floating point numbers between numbers when t is large)
         min_step = 10. * abs(np.nextafter(t_old, direction * np.inf) - t_old)
+
+        # TODO: this really should not be required but was having problems on ubuntu and linux systems.
+        min_step = max(min_step, 1.0e-200)
         # Look for over/undershoots in previous step size
         if step_size > max_step:
             step_size = max_step

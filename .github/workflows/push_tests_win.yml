@@ -30,4 +30,4 @@ jobs:
           python -m pip install . -v
 
       - name: Run pytest
-        run: pytest -v .\Tests\
+        run: pytest --capture=sys -v .\Tests\
