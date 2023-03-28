@@ -34,7 +34,7 @@ jobs:
       - name: install libomp
         shell: bash -el {0}
         run: |
-          brew install llvm libomp
+          brew reinstall llvm libomp
           export CC=/usr/bin/clang
           export CXX=/usr/bin/clang++
           export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp"
