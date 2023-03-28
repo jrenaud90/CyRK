@@ -24,8 +24,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install Dependencies
         run: |
-          brew install llvm libomp
-          export CPP=/usr/local/opt/llvm/bin/clang
+          brew install llvm libomp gcc
           python -m pip install --upgrade pip
           python -m pip install pytest
       - name: Install package
