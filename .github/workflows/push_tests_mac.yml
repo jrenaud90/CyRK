@@ -24,10 +24,11 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Initialize conda
         run: |
-          $CONDA/bin/conda init
+          $CONDA/bin/conda init zsh
+          source ~/.zshrc
+          echo "$SHELL"
       - name: Install Dependencies
         run: |
-          $CONDA/bin/conda init
           $CONDA/bin/conda create -n cyrk-dev -c conda-forge python=${{ matrix.python-version }} numpy scipy cython llvm-openmp
           $CONDA/bin/conda activate cyrk-dev
           python -m pip install --upgrade pip
