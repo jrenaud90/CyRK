@@ -24,9 +24,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install Dependencies
         run: |
-          xcode-select --install
-          conda create -n cyrk-dev -c conda-forge python=${{ matrix.python-version }} numpy scipy cython llvm-openmp
-          conda activate cyrk-dev
+          $CONDA/bin/conda create -n cyrk-dev -c conda-forge python=${{ matrix.python-version }} numpy scipy cython llvm-openmp
+          $CONDA/bin/conda activate cyrk-dev
           python -m pip install --upgrade pip
           python -m pip install pytest
       - name: Install package
