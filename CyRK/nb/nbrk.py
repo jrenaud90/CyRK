@@ -380,7 +380,7 @@ def nbrk_ode(
             else:
                 h1 = (0.01 / max(d1, d2))**error_expo
 
-            step_size = min(100. * h0, h1)
+            step_size = max(10. * np.abs(np.nextafter(t_old, direction * np.inf) - t_old), min(100. * h0, h1))
 
     # Main integration loop
     # # Time Loop
