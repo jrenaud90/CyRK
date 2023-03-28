@@ -26,6 +26,12 @@ setup(
             extra_compile_args=extra_compile_args,
             extra_link_args=extra_link_args),
         Extension(
+                name='CyRK.rk.rk',
+                sources=['CyRK/rk/rk.pyx'],
+                include_dirs=[os.path.join('CyRK', 'rk'), np.get_include()],
+                extra_compile_args=extra_compile_args,
+                extra_link_args=extra_link_args),
+        Extension(
             name='CyRK.cy.cyrk',
             sources=['CyRK/cy/_cyrk.pyx'],
             include_dirs=[os.path.join('CyRK', 'cy'), np.get_include()],

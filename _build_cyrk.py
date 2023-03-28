@@ -41,6 +41,17 @@ class build_cyrk(_build_py):
                         )
                 )
 
+        # Add RK constants to ext_modules list
+        self.distribution.ext_modules.append(
+                Extension(
+                        name='CyRK.rk.rk',
+                        sources=['CyRK/rk/rk.pyx'],
+                        include_dirs=[os.path.join('CyRK', 'rk'), np.get_include()],
+                        extra_compile_args=extra_compile_args,
+                        extra_link_args=extra_link_args
+                        )
+                )
+
         # Add cyrk to ext_modules list
         self.distribution.ext_modules.append(
                 Extension(

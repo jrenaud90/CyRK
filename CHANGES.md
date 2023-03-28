@@ -17,6 +17,7 @@ Other Changes:
 - Changed both `nbrk_ode` and `cyrk_ode` tests to use pytest parameterization.
 - Changed the accuracy test for both `nbrk_ode` and `cyrk_ode` to check against a known function.
 - Added openmp dependence during compile time to allow for the use of `prange`.
+- Moved `cyrk_ode`'s Runge-Kutta constants to a separate module `CyRK.rk`. 
 
 ### v0.4.0
 
