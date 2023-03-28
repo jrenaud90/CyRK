@@ -48,6 +48,7 @@ def test_nb2cy_noargs():
     # First calculate the result of an integration using nbrk.
     time_domain_nb, y_results_nb, success_nb, message_nb = \
         nbrk_ode(diffeq_scipy, time_span, initial_conds, t_eval=t_eval)
+    print(message_nb)
     assert success_nb
 
     # Perform a cyrk integration using the diffeq that was written for cyrk
@@ -124,6 +125,7 @@ def test_cy2nb_noargs():
     # First calculate the result of an integration using nbrk.
     time_domain_nb, y_results_nb, success_nb, message_nb = \
         nbrk_ode(diffeq_scipy, time_span, initial_conds, t_eval=t_eval)
+    print(message_nb)
     assert success_nb
 
     # Perform a cyrk integration using the diffeq that was written for cyrk
