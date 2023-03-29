@@ -52,4 +52,4 @@ jobs:
           python -m pip install . -v
       - name: Run pytest
         shell: bash -el {0}
-        run: pytest -v Tests/
+        run: pytest --capture=sys -v Tests/

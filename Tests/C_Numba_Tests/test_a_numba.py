@@ -107,7 +107,7 @@ def test_max_step(rk_method, complex_valued):
         initial_conds_to_use = initial_conds
 
     time_domain, y_results, success, message = \
-        nbrk_ode(diffeq, time_span, initial_conds_to_use, rk_method=rk_method, max_step=1.0e5)
+        nbrk_ode(diffeq, time_span, initial_conds_to_use, rk_method=rk_method, max_step=time_span[1] / 2.)
 
     # Check that the ndarrays make sense
     assert type(time_domain) == np.ndarray
@@ -159,7 +159,7 @@ def test_first_step(rk_method, complex_valued):
 @pytest.mark.parametrize('complex_valued', (True, False))
 @pytest.mark.parametrize('rk_method', (0, 1, 2))
 def test_large_end_value(rk_method, complex_valued):
-    """Check that the numba solver is able to run using the RK23 method. Using a larger ending time value """
+    """Check that the numba solver is able to run using a larger ending time value """
 
     if complex_valued:
         initial_conds_to_use = initial_conds_complex
@@ -245,6 +245,7 @@ def test_args(rk_method, complex_valued):
     assert y_results[0].size == y_results[1].size
 
     # Check that the other output makes sense
+    print(message)
     assert type(success) == bool
     assert success
     assert type(message) == str
