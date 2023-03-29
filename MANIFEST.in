@@ -1,1 +1,3 @@
 include CyRK/cy/*.pyx
+include CyRK/rk/*.pyx
+include CyRK/array/*.pyx

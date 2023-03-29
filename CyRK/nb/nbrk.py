@@ -83,7 +83,7 @@ def _norm(x):
     return np.linalg.norm(x) / np.sqrt(x.size)
 
 
-@njit(cache=False, fastmath=True)
+@njit(cache=False, fastmath=False)
 def nbrk_ode(
         diffeq: callable, t_span: Tuple[float, float], y0: np.ndarray, args: tuple = tuple(),
         rtol: float = 1.e-6, atol: float = 1.e-8,
@@ -237,7 +237,6 @@ def nbrk_ode(
         # Initialize RK-K variable
         K = np.empty((rk_n_stages_plus1, y_size), dtype=dtype)
     elif rk_method == 1:
-
         # RK45 Method
         rk_order = RK45_order
         error_order = RK45_error_estimator_order
@@ -255,7 +254,7 @@ def nbrk_ode(
 
         # Initialize RK-K variable
         K = np.empty((rk_n_stages_plus1, y_size), dtype=dtype)
-    else:
+    elif rk_method == 2:
         # DOP853
         rk_order = ORDER_DOP
         error_order = ERROR_ESTIMATOR_ORDER_DOP
@@ -276,6 +275,12 @@ def nbrk_ode(
         # Initialize RK-K variable
         K_extended = np.empty((N_STAGES_EXTENDED_DOP, y_size), dtype=dtype)
         K = np.ascontiguousarray(K_extended[:rk_n_stages_plus1, :])
+    else:
+        raise Exception(
+            'Unexpected rk_method provided. Currently supported versions are:\n'
+            '\t0 = RK23\n'
+            '\t1 = RK34\n'
+            '\t2 = DOP853')
 
     # Recast some constants into the correct dtype, so they can be used with y0.
     A = np.asarray(A, dtype=dtype)
@@ -316,7 +321,6 @@ def nbrk_ode(
 
     # Find first step size
     first_step_found = False
-    min_step = EPS_10
     if first_step is not None:
         step_size = max_step
         if first_step < 0.:
@@ -376,7 +380,8 @@ def nbrk_ode(
             else:
                 h1 = (0.01 / max(d1, d2))**error_expo
 
-            step_size = max(min_step, min(100. * h0, h1))
+            next_after = 10. * abs(np.nextafter(t_old, direction * np.inf) - t_old)
+            step_size  = max(next_after, min(100. * h0, h1))
 
     # Main integration loop
     # # Time Loop
@@ -390,6 +395,10 @@ def nbrk_ode(
 
         # Run RK integration step
         # Determine step size based on previous loop
+        # Find minimum step size based on the value of t (less floating point numbers between numbers when t is large)
+        next_after = 10. * abs(np.nextafter(t_old, direction * np.inf) - t_old)
+        min_step   = next_after
+
         # Look for over/undershoots in previous step size
         if step_size > max_step:
             step_size = max_step
@@ -415,9 +424,9 @@ def nbrk_ode(
             if direction * (t_new - t_end) > 0:
                 t_new = t_end
 
-            # Correct the step if we were at the end of integration
-            step = t_new - t_old
-            step_size = np.abs(step)
+                # Correct the step if we were at the end of integration
+                step = t_new - t_old
+                step_size = np.abs(step)
 
             # Calculate derivative using RK method
             K[0, :] = dydt_old[:]
