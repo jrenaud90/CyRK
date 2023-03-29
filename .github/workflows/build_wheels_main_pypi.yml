@@ -22,29 +22,6 @@ jobs:
       with:
         path: dist/*.tar.gz
 
-  build_nonmacos_wheels:
-    name: Build ${{ matrix.platform }} wheels
-    runs-on: ${{ matrix.platform }}
-    strategy:
-      fail-fast: false
-      matrix:
-          platform:
-#              - macos-12  ## macos is not playing nice with cibuildwheel with openmp from cython.
-              - windows-2022
-              - ubuntu-20.04
-
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - name: Build wheels
-        uses: pypa/cibuildwheel@v2.11.4
-
-      - uses: actions/upload-artifact@v3
-        with:
-          path: ./wheelhouse/*.whl
-
   build_macos_wheel:
     name: Build MacOS wheel for Python ${{ matrix.python }}
     runs-on: macos-latest
@@ -72,7 +49,7 @@ jobs:
         shell: bash -el {0}
         run: conda info
 
-      - name: install libomp
+      - name: Install llvm and libomp
         shell: bash -el {0}
         run: |
           brew reinstall llvm libomp
@@ -100,9 +77,32 @@ jobs:
           name: dist
           path: ./wheelhouse/*.whl
 
+  build_other_wheels:
+    name: Build ${{ matrix.platform }} wheels
+    runs-on: ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          #              - macos-12  ## macos is not playing nice with cibuildwheel with openmp from cython.
+          - windows-2022
+          - ubuntu-20.04
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.11.4
+
+      - uses: actions/upload-artifact@v3
+        with:
+          path: ./wheelhouse/*.whl
+
   check_dist:
     name: Check dist
-    needs: [make_sdist, build_nonmacos_wheels, build_macos_wheel]
+    needs: [make_sdist, build_macos_wheel, build_other_wheels]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/download-artifact@v3
@@ -114,7 +114,7 @@ jobs:
 
   upload_all:
     name: Upload wheels to PyPI
-    needs: [build_nonmacos_wheels, build_macos_wheel, make_sdist, check_dist]
+    needs: [build_macos_wheel, build_other_wheels, make_sdist, check_dist]
     runs-on: ubuntu-latest
     if: github.event_name == 'release' && github.event.action == 'published'
     steps:
