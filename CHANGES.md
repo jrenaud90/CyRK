@@ -2,6 +2,15 @@
 
 ## 2023
 
+### v0.5.3
+
+Other Changes
+- Changed `cyrk_ode` arguments to const to avoid memoryview buffer problems.
+
+#### v0.5.1 and v0.5.2
+
+- Fixed issues with MacOS wheel build during CI.
+
 ### v0.5.0
 
 New Features
@@ -14,7 +23,7 @@ Performance
 - Removed unnecessarily variables from `cyrk_ode`.
 - Had to turn off `fastmath` for `nbrk_ode`. See [issue 24](https://github.com/jrenaud90/CyRK/issues/24). This negatively impacted the numba integrator's performance by around 5%.
 
-Other Changes:
+Other Changes
 - Refactored, cleaned up, and added comments and docstrings to `cyrk_ode`.
 - Changed both `nbrk_ode` and `cyrk_ode` tests to use pytest parameterization.
 - Changed the accuracy test for both `nbrk_ode` and `cyrk_ode` to check against a known function.
