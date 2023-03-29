@@ -90,7 +90,7 @@ cdef double dabs(double_numeric value) nogil:
 def cyrk_ode(
     diffeq,
     (double, double) t_span,
-    double_numeric[:] y0,
+    const double_numeric[:] y0,
     tuple args = tuple(),
     double rtol = 1.e-6,
     double atol = 1.e-8,
