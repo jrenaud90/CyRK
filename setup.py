@@ -10,8 +10,13 @@ if install_platform.lower() == 'windows':
     extra_compile_args = ['/openmp']
     extra_link_args = []
 elif install_platform.lower() == 'darwin':
-    os.environ['CC'] = 'clang'
+    os.environ['CC']       = 'clang'
     os.environ['LDSHARED'] = 'clang -shared'
+    os.environ['PATH']     = "/usr/local/opt/llvm/bin:$PATH"
+    os.environ['CPPFLAGS'] = "$CPPFLAGS -Xpreprocessor -fopenmp -I/usr/local/opt/llvm/include"
+    os.environ['CFLAGS']   = "$CFLAGS -I/usr/local/opt/libomp/include"
+    os.environ['CXXFLAGS'] = "$CXXFLAGS -I/usr/local/opt/libomp/include"
+    os.environ['LDFLAGS']  = "$LDFLAGS -Wl,-rpath,/usr/local/opt/libomp/lib -L/usr/local/opt/libomp/lib -lomp -L/usr/local/opt/llvm/lib"
     extra_compile_args = []
     extra_link_args = []
 else:
