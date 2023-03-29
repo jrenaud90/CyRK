@@ -10,6 +10,9 @@ if install_platform.lower() == 'windows':
     extra_compile_args = ['/openmp']
     extra_link_args = []
 elif install_platform.lower() == 'darwin':
+    os.environ['CC'] = 'clang'
+    os.environ['CXX'] = 'clang++'
+    os.environ['LDSHARED'] = 'clang -shared'
     extra_compile_args = []
     extra_link_args = []
 else:
