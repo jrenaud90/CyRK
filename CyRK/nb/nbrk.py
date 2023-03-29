@@ -1,5 +1,4 @@
 from typing import Tuple
-import platform
 
 import numpy as np
 from numba import njit
