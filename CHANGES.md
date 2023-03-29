@@ -12,6 +12,7 @@ Performance
 - Converted various ints to `short`s, `char`s, or `Py_ssize_t`. `Py_ssize_t` is recommended by Cython for loop integers to better support 64-bit architecture. 
 - Added custom interpolation functions which, depending on the size of the array, can be up to 10x faster than numpys.
 - Removed unnecessarily variables from `cyrk_ode`.
+- Had to turn off `fastmath` for `nbrk_ode`. See [issue 24](https://github.com/jrenaud90/CyRK/issues/24). This negatively impacted the numba integrator's performance by around 5%.
 
 Other Changes:
 - Refactored, cleaned up, and added comments and docstrings to `cyrk_ode`.
