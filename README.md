@@ -24,7 +24,7 @@ Currently, CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementa
 The [cython](https://cython.org/) implementation is 5-30x faster. The cython function is also largely pre-compiled which avoids most of the 
 initial performance hit found with using the numba version.
 
-<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_v0-5-0.png" alt="CyRK Performance" />
+<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_v0-4-0a0-dev7.png" alt="CyRK Performance" />
 
 ## Installation
 
@@ -148,8 +148,6 @@ The solver will then interpolate the results to fit this array.
 - `capture_extra` and `interpolate_extra`: CyRK has the capability of capturing additional parameters during integration. Please see `Documentation\Extra Output.md` for more details.
 
 ### Limitations and Known Issues
-
-See all [issues here](https://github.com/jrenaud90/CyRK/issues).
 
 - [Issue 1](https://github.com/jrenaud90/CyRK/issues/1): Absolute tolerance can only be passed as a single value
 (same for all y's).
