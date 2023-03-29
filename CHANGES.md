@@ -4,6 +4,9 @@
 
 ### v0.5.3
 
+Performance
+- Removed dynamic optional arguments from `cyrk_ode`. Now it checks if those arguments are just set to None.
+
 Other Changes
 - Changed `cyrk_ode` arguments to const to avoid memoryview buffer problems.
 

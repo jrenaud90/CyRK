@@ -91,13 +91,13 @@ def cyrk_ode(
     diffeq,
     (double, double) t_span,
     const double_numeric[:] y0,
-    tuple args = tuple(),
+    tuple args = None,
     double rtol = 1.e-6,
     double atol = 1.e-8,
     double max_step = MAX_STEP,
     double first_step = 0.,
     unsigned char rk_method = 1,
-    double[:] t_eval = np.empty((0,), dtype=np.float64),
+    double[:] t_eval = None,
     bool_cpp_t capture_extra = False,
     short num_extra = 0,
     bool_cpp_t interpolate_extra = False
@@ -197,7 +197,17 @@ def cyrk_ode(
 
     # Pull out information on t-eval
     cdef unsigned int len_teval
-    len_teval = t_eval.size
+    if t_eval is None:
+        len_teval = 0
+    else:
+        len_teval = t_eval.size
+
+    # Pull out information on args
+    cdef bool_cpp_t use_args
+    if args is None:
+        use_args = False
+    else:
+        use_args = True
 
     # Set integration flags
     cdef bool_cpp_t success, step_accepted, step_rejected, step_error, run_interpolation, \
@@ -256,12 +266,10 @@ def cyrk_ode(
 
     # Capture the extra output for the initial condition.
     if capture_extra:
-        diffeq(
-            t_start,
-            y_new,
-            diffeq_out,
-            *args
-        )
+        if use_args:
+            diffeq(t_start, y_new, diffeq_out, *args)
+        else:
+            diffeq(t_start, y_new, diffeq_out)
 
         # Extract the extra output from the function output.
         for i in range(total_size):
@@ -432,12 +440,10 @@ def cyrk_ode(
     # Initialize variables for start of integration
     if not capture_extra:
         # If `capture_extra` is True then this step was already performed.
-        diffeq(
-                t_start,
-                y_new,
-                diffeq_out,
-                *args
-                )
+        if use_args:
+            diffeq(t_start, y_new, diffeq_out, *args)
+        else:
+            diffeq(t_start, y_new, diffeq_out)
 
     t_old = t_start
     t_new = t_start
@@ -479,12 +485,10 @@ def cyrk_ode(
             for i in range(y_size):
                 y_new_view[i] = y_old_view[i] + h0_direction * dydt_old_view[i]
 
-            diffeq(
-                t_new,
-                y_new,
-                diffeq_out,
-                *args
-            )
+            if use_args:
+                diffeq(t_new, y_new, diffeq_out, *args)
+            else:
+                diffeq(t_new, y_new, diffeq_out)
 
             # Find the norm for d2
             d2 = 0.
@@ -582,12 +586,10 @@ def cyrk_ode(
 
                         y_new_view[i] = y_new_view[i] + (K_view[j, i] * A_view[s, j] * step)
 
-                diffeq(
-                    time_,
-                    y_new,
-                    diffeq_out,
-                    *args
-                )
+                if use_args:
+                    diffeq(time_, y_new, diffeq_out, *args)
+                else:
+                    diffeq(time_, y_new, diffeq_out)
 
                 for i in range(y_size):
                     K_view[s, i] = diffeq_out_view[i]
@@ -602,12 +604,11 @@ def cyrk_ode(
                         y_new_view[i] = y_old_view[i]
                     y_new_view[i] = y_new_view[i] + (K_view[j, i] * B_view[j] * step)
 
-            diffeq(
-                t_new,
-                y_new,
-                diffeq_out,
-                *args
-            )
+            if use_args:
+                diffeq(t_new, y_new, diffeq_out, *args)
+            else:
+                diffeq(t_new, y_new, diffeq_out)
+
             for i in range(store_loop_size):
                 if i < extra_start:
                     # Set diffeq results
@@ -848,9 +849,10 @@ def cyrk_ode(
                     for j in range(y_size):
                         y_interp_view[j] = y_results_reduced_view[j, i]
 
-                    diffeq(
-                        time_, y_interp, diffeq_out, *args
-                    )
+                    if use_args:
+                        diffeq(time_, y_interp, diffeq_out, *args)
+                    else:
+                        diffeq(time_, y_interp, diffeq_out)
 
                     for j in range(num_extra):
                         y_results_reduced_view[extra_start + j, i] = diffeq_out_view[extra_start + j]
