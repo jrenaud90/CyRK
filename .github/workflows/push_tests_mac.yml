@@ -42,6 +42,13 @@ jobs:
       - name: Install package
         shell: bash -el {0}
         run: |
+          export CC=/usr/bin/clang
+          export CXX=/usr/bin/clang++
+          export PATH="/usr/local/opt/llvm/bin:$PATH"
+          export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -I/usr/local/opt/llvm/include"
+          export CFLAGS="$CFLAGS -I/usr/local/opt/libomp/include"
+          export CXXFLAGS="$CXXFLAGS -I/usr/local/opt/libomp/include"
+          export LDFLAGS="$LDFLAGS -Wl,-rpath,/usr/local/opt/libomp/lib -L/usr/local/opt/libomp/lib -lomp -L/usr/local/opt/llvm/lib"
           python -m pip install . -v
       - name: Run pytest
         shell: bash -el {0}
