@@ -2,13 +2,13 @@
 
 ## 2023
 
-### v0.5.3
+#### v0.5.3
 
 Performance
-- Removed dynamic optional arguments from `cyrk_ode`. Now it checks if those arguments are just set to None.
+- Removed dynamic optional arguments from `cyrk_ode`. Now it checks if those arguments are set to None.
 
 Other Changes
-- Changed `cyrk_ode` arguments to const to avoid memoryview buffer problems.
+- Changed `cyrk_ode` arguments to const to avoid memoryview buffer problems. (Change made by [David Meyer](https://github.com/dihm))
 
 #### v0.5.1 and v0.5.2
 
@@ -18,7 +18,7 @@ Other Changes
 
 New Features
 - `cyrk_ode` now supports both float and complex-typed y and dydt functions.
-  - Resolves [issue 3](https://github.com/jrenaud90/CyRK/issues/3)). (Fix made by [David Meyer](https://github.com/dihm))
+  - Resolves [issue 3](https://github.com/jrenaud90/CyRK/issues/3)). (Feature added by [David Meyer](https://github.com/dihm))
 
 Performance
 - Converted various ints to `short`s, `char`s, or `Py_ssize_t`. `Py_ssize_t` is recommended by Cython for loop integers to better support 64-bit architecture. 
