@@ -2,6 +2,11 @@
 
 ## 2023
 
+### v0.6.0
+
+Bug Fixes:
+- Fixed missing declarations for variables in `cyrk_ode`
+
 #### v0.5.3
 
 Performance

@@ -304,7 +304,7 @@ def cyrk_ode(
 
     # # Determine RK scheme
     cdef unsigned char rk_order, error_order, rk_n_stages, rk_n_stages_plus1, rk_n_stages_extended
-    cdef double error_expo, error_norm5, error_norm3, error_norm, error_norm_abs, error_denom
+    cdef double error_expo, error_norm5, error_norm3, error_norm, error_norm_abs, error_norm3_abs, error_norm5_abs, error_denom
     cdef unsigned char len_C, len_B, len_E, len_E3, len_E5, len_A0, len_A1
 
     if rk_method == 0:

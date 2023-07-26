@@ -1,12 +1,16 @@
 # distutils: language = c++
+# cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True
 import cython
+from cython.parallel import parallel, prange
 cimport cython
+
 cimport openmp
+
 import numpy as np
 cimport numpy as np
 np.import_array()
+
 from libc.math cimport isnan
-from cython.parallel import parallel, prange
 
 # Get machine precision.
 cdef double EPS
@@ -15,10 +19,7 @@ EPS = np.finfo(dtype=np.float64).eps
 # Determine cache limits.
 cdef unsigned int LIKELY_IN_CACHE_SIZE = 8
 
-@cython.cdivision(True)
-@cython.boundscheck(False)
-@cython.wraparound(False)
-@cython.nonecheck(False)
+
 cdef unsigned int binary_search_with_guess(double key, double[:] array, unsigned int length, unsigned int guess) nogil:
     """ Binary search with guess.
 
@@ -91,10 +92,7 @@ cdef unsigned int binary_search_with_guess(double key, double[:] array, unsigned
 
     return imin - 1
 
-@cython.cdivision(True)
-@cython.boundscheck(False)
-@cython.wraparound(False)
-@cython.nonecheck(False)
+
 cpdef double interp(double desired_x, double[:] x_domain, double[:] dependent_values) nogil:
     """ Interpolation function for floats.
 
@@ -169,10 +167,6 @@ cpdef double interp(double desired_x, double[:] x_domain, double[:] dependent_va
     return result
 
 
-@cython.cdivision(True)
-@cython.boundscheck(False)
-@cython.wraparound(False)
-@cython.nonecheck(False)
 cpdef double complex interp_complex(double desired_x, double[:] x_domain,
                                     double complex[:] dependent_values) nogil:
     """ Interpolation function for complex numbers.
@@ -275,10 +269,7 @@ cpdef double complex interp_complex(double desired_x, double[:] x_domain,
 
     return result
 
-@cython.cdivision(True)
-@cython.boundscheck(False)
-@cython.wraparound(False)
-@cython.nonecheck(False)
+
 cpdef void interp_array(double[:] desired_x_array, double[:] x_domain, double[:] dependent_values,
                         double[:] desired_dependent_array) nogil:
 
@@ -348,10 +339,7 @@ cpdef void interp_array(double[:] desired_x_array, double[:] x_domain, double[:]
 
         desired_dependent_array[index] = result
 
-@cython.cdivision(True)
-@cython.boundscheck(False)
-@cython.wraparound(False)
-@cython.nonecheck(False)
+
 cpdef void interp_complex_array(double[:] desired_x_array, double[:] x_domain, double complex[:] dependent_values,
                                 double complex[:] desired_dependent_array) nogil:
 
