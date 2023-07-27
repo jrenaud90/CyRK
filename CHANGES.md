@@ -5,8 +5,9 @@
 ### v0.6.0
 
 Bug Fixes:
-- Fixed compile error with `cyrk_ode` "complex types are unordered"
-- Fixed missing declarations for variables in `cyrk_ode`
+- Fixed compile error with `cyrk_ode` "complex types are unordered".
+  - This was not a problem before so likely something has changed in newer cython versions.
+- Fixed missing declarations for variables in `cyrk_ode`.
 
 #### v0.5.3
 
