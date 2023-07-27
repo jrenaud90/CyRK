@@ -107,6 +107,78 @@ extra_parameter_0 = all_output[2, :]
 extra_parameter_1 = all_output[3, :]
 ```
 
+## How to use with `CySolver` (Cython-based)
+
+The process to extract extra outputs is straight forward when using the cython-based cdef class. First, as described in the readme.md, you must create a new sub class that defines the diffeq. Note the following code must be made in a .pyx file, cythonized, and compiled. After that it can be imported and used in a regular python file.
+
+```cython
+"""ODE.pyx"""
+# distutils: language = c++
+# cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
+from CyRK.cy.cysolver cimport CySolver
+# Note the `cimport` here^
+
+cdef class CySolverTester(CySolver):
+
+    @cython.exceptval(check=False)
+    cdef void diffeq(self):
+        
+        # Unpack dependent variables using the `self.y_new_view` variable.
+        cdef double y0, y1
+        y0 = self.y_new_view[0]
+        y1 = self.y_new_view[1]
+
+        # If needed, unpack the time variable using `self.t_new`
+        cdef double t
+        t = self.t_new
+
+        # Unpack any additional arguments that do not change with time using the `self.arg_array_view` variable.
+        cdef double a, b
+        # These must be float64s
+        a  = self.arg_array_view[0]
+        b  = self.arg_array_view[1]
+
+        # Define extra variables that you are interested in storing and accessing later.
+        cdef double extra_0, extra_1
+        # These extra parameters must be float64s
+        extra_0 = (1. - a * y1)
+        extra_1 = (b * y0 - 1.)
+        # These are then stored in the self.
+        self.extra_output_view[0] = extra_0
+        self.extra_output_view[0] = extra_1
+
+        # This function must set the dydt variable `self.dy_new_view`
+        self.dy_new_view[0] = extra_0 * y0
+        self.dy_new_view[1] = extra_1 * y1
+```
+
+Once you compile the differential equation it can be imported in a regular python file and used in a similar fashion to the other integrators.
+
+```python
+"""run.py"""
+from CyRK.cy.cysolvertest import CySolverTester
+
+# Need to make an instance of the integrator.
+# We need to tell the solver how many extra outputs we want to capture. In this case, 2.
+CySolverTesterInst = CySolverTester(time_span, initial_conds, args=(0.01, 0.02),
+                                    rk_method=1, rtol=rtol, atol=atol,
+                                    num_extra=2, interpolate_extra=False)
+
+# To perform the integration make a call to the solve method.
+CySolverTesterInst.solve()
+
+# Once complete, you can access the results via...
+CySolverTesterInst.success     # True / False
+CySolverTesterInst.message     # Note about integration
+CySolverTesterInst.solution_t  # Time domain
+CySolverTesterInst.solution_y  # y dependent variables
+
+# Extra output that was captured during integration.
+CySolverTesterInst.solution_extra
+print(CySolverTesterInst.solution_extra[0, :])
+print(CySolverTesterInst.solution_extra[1, :])
+```
+
 ## Additional Considerations When Using `t_eval`
 
 _This is applicable to either the numba- or cython-based solver._

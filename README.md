@@ -1,7 +1,7 @@
 # CyRK
 <div style="text-align: center;">
 <a href="https://doi.org/10.5281/zenodo.7093266"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.7093266.svg" alt="DOI"></a>
-<a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.8|3.9|3.10-blue" alt="Python Version 3.8-3.10" /></a>
+<a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.8|3.9|3.10|3.11-blue" alt="Python Version 3.8-3.11" /></a>
 <a href="https://codecov.io/gh/jrenaud90/CyRK" ><img src="https://codecov.io/gh/jrenaud90/CyRK/branch/main/graph/badge.svg?token=MK2PqcNGET" alt="Code Coverage"/></a>
 <br />
 <a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml/badge.svg?branch=main" alt="Windows Tests" /></a>
@@ -11,20 +11,24 @@
 
 ---
 
-<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.5.3 Alpha-orange" alt="CyRK Version 0.5.3 Alpha" /></a>
+<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.6.0 Alpha-orange" alt="CyRK Version 0.6.0 Alpha" /></a>
 
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
 
-CyRK provides fast integration tools to solve systems of ODEs using an adaptive time stepping scheme. CyRK can accept differential equation functions 
-that are written in pure Python or njited numba, speeding up development time. The purpose of this package is to provide some 
-functionality of [scipy's solve_ivp](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html) with improved performance.
+CyRK provides fast integration tools to solve systems of ODEs using an adaptive time stepping scheme. CyRK can, usually, accept differential equation functions 
+that are written in pure Python, njited numba, or cython-based cdef classes. These kinds of functions are generally easier to implement than pure c functions. Using CyRK can speed up development time while not making a huge sacrifice when it comes to performance. 
 
-Currently, CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is 10-100x faster than scipy's solve_ivp function. 
-The [cython](https://cython.org/) implementation is 5-30x faster. The cython function is also largely pre-compiled which avoids most of the 
-initial performance hit found with using the numba version.
+The purpose of this package is to provide some 
+functionality of [scipy's solve_ivp](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html) with greatly improved performance.
 
-<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_v0-4-0a0-dev7.png" alt="CyRK Performance" />
+Currently, CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is **10-100x faster** than scipy's solve_ivp function.
+The [cython](https://cython.org/) `cyrk_ode` function that works with python (or numba) functions is **5-40x faster** than scipy.
+The [cython](https://cython.org/) `CySolver` class that works with cython-based cdef classes is **5-400x faster** than scipy.
+
+An additional benefit of the two cython implementations is that they are pre-compiled. This avoids most of the start-up performance hit experienced by just-in-time compilers like numba.
+
+<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_v0-6-0a4.png" alt="CyRK Performance" />
 
 ## Installation
 
@@ -40,11 +44,13 @@ After the files have been compiled, cython will be uninstalled and CyRK's runtim
 
 A new installation of CyRK can be tested quickly by running the following from a python console.
 ```python
-from CyRK import test_cyrk, test_nbrk
+from CyRK import test_cyrk, test_nbrk, test_cysolver
 test_cyrk()
 # You will hopefully see the message "CyRK's cyrk_ode was tested successfully."
 test_nbrk()
 # You will hopefully see the message "CyRK's nbrk_ode was tested successfully."
+test_cysolver()
+# You will hopefully see the message "CyRK's CySolver was tested successfully."
 ```
 
 ### Installation Troubleshooting
@@ -84,6 +90,7 @@ rtol = 1.0e-7
 atol = 1.0e-8
 ```
 
+### Numba-based `nbrk_ode`
 The ODE can then be solved using the numba function by calling CyRK's `nbrk_ode`:
 
 ```python
@@ -92,6 +99,7 @@ time_domain, y_results, success, message = \
     nbrk_ode(diffeq_nb, time_span, initial_conds, rk_method=1, rtol=rtol, atol=atol)
 ```
 
+### Cython-based `cyrk_ode`
 To call the cython version of the integrator you need to slightly edit the differential equation so that it does not
 return the derivative. Instead, the output is passed as an input argument (a np.ndarray) to the function. 
 
@@ -127,7 +135,65 @@ time_domain, y_results, success, message = \
     cyrk_ode(diffeq_cy, time_span, initial_conds, rk_method=1, rtol=rtol, atol=atol)
 ```
 
-### Optional Inputs
+### Cython-based `CySolver`
+The cython-based `CySolver` class requires writing a new cython cdef class. This can be done like so, note this is in a .pyx file that must be
+cythonized and compiled before it can be used.
+
+```cython
+"""ODE.pyx"""
+# distutils: language = c++
+# cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
+from CyRK.cy.cysolver cimport CySolver
+# Note the `cimport` here^
+
+cdef class CySolverTester(CySolver):
+
+    @cython.exceptval(check=False)
+    cdef void diffeq(self):
+        
+        # Unpack dependent variables using the `self.y_new_view` variable.
+        cdef double y0, y1
+        y0 = self.y_new_view[0]
+        y1 = self.y_new_view[1]
+
+        # Unpack any additional arguments that do not change with time using the `self.arg_array_view` variable.
+        cdef double a, b
+        # These must be float64s
+        a  = self.arg_array_view[0]
+        b  = self.arg_array_view[1]
+
+        # If needed, unpack the time variable using `self.t_new`
+        cdef double t
+        t = self.t_new
+
+        # This function must set the dydt variable `self.dy_new_view`
+        self.dy_new_view[0] = (1. - a * y1) * y0
+        self.dy_new_view[1] = (b * y0 - 1.) * y1
+```
+
+Once you compile the differential equation it can be imported in a regular python file and used in a similar fashion to the other integrators.
+
+```python
+"""run.py"""
+from CyRK.cy.cysolvertest import CySolverTester
+
+# Need to make an instance of the integrator.
+# The diffeq no longer needs to be passed to the class.
+CySolverTesterInst = CySolverTester(time_span, initial_conds, args=(0.01, 0.02), rk_method=1, rtol=rtol, atol=atol)
+
+# To perform the integration make a call to the solve method.
+CySolverTesterInst.solve()
+
+# Once complete, you can access the results via...
+CySolverTesterInst.success     # True / False
+CySolverTesterInst.message     # Note about integration
+CySolverTesterInst.solution_t  # Time domain
+CySolverTesterInst.solution_y  # y dependent variables
+CySolverTesterInst.solution_extra  # Extra output that was captured during integration.
+# See Documentation/Extra Output.md for more information on `solution_extra`
+```
+
+## Optional Arguments
 
 Both the numba and cython versions of the ODE solver have the following optional inputs:
 - `rtol`: Relative Tolerance (default is 1.0e-6).
@@ -147,7 +213,14 @@ The solver will then interpolate the results to fit this array.
   - `2` - "DOP853" Explicit Runge-Kutta method of order 8.
 - `capture_extra` and `interpolate_extra`: CyRK has the capability of capturing additional parameters during integration. Please see `Documentation\Extra Output.md` for more details.
 
-### Limitations and Known Issues
+### Additional Arguments for `cyrk_ode` and `CySolver`
+- `num_extra` : The number of extra outputs the integrator should expect.
+- `expected_size` : Best guess on the expected size of the final time domain (number of points).
+    - The integrator must pre-allocate memory to store results from the integration. It will attempt to use arrays sized to `expected_size`. However, if this is too small or too large then performance will be impacted. It is recommended you try out different values based on the problem you are trying to solve.
+    - If `expected_size=0` (the default) then the solver will attempt to guess a best size. Currently this is a very basic guess so it is not recommended.
+    - It is better to overshoot than undershoot this guess.
+
+## Limitations and Known Issues
 
 - [Issue 1](https://github.com/jrenaud90/CyRK/issues/1): Absolute tolerance can only be passed as a single value
 (same for all y's).

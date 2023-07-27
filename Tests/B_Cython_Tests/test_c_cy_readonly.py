@@ -3,6 +3,7 @@ from numba import njit
 import pytest
 
 from CyRK import cyrk_ode
+from CyRK.cy.cysolvertest import CySolverTester
 
 @njit
 def diffeq(t, y, dy):
@@ -53,3 +54,36 @@ def test_readonly_y0(complex_valued):
     assert type(success) == bool
     assert success
     assert type(message) == str
+
+@pytest.mark.parametrize('complex_valued', (False,))
+def test_readonly_y0_CySolver(complex_valued):
+    """ Test if a readonly array will work in CySolver. """
+
+    if complex_valued:
+        initial_conds_to_use = initial_conds_complex
+    else:
+        initial_conds_to_use = initial_conds
+
+    # Make readonly
+    initial_conds_to_use.setflags(write=False)
+
+
+    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=1)
+    CySolverTesterInst.solve()
+
+    # Check that the ndarrays make sense
+    assert type(CySolverTesterInst.solution_t) == np.ndarray
+    assert CySolverTesterInst.solution_t.dtype == np.float64
+    if complex_valued:
+        assert CySolverTesterInst.solution_y.dtype == np.complex128
+    else:
+        assert CySolverTesterInst.solution_y.dtype == np.float64
+    assert CySolverTesterInst.solution_t.size > 1
+    assert CySolverTesterInst.solution_t.size == CySolverTesterInst.solution_y[0].size
+    assert len(CySolverTesterInst.solution_y.shape) == 2
+    assert CySolverTesterInst.solution_y[0].size == CySolverTesterInst.solution_y[1].size
+
+    # Check that the other output makes sense
+    assert type(CySolverTesterInst.success) == bool
+    assert CySolverTesterInst.success
+    assert type(CySolverTesterInst.message) == str

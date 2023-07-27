@@ -1,10 +1,12 @@
 # distutils: language = c++
+# cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
+
 import cython
 import numpy as np
 cimport numpy as np
 np.import_array()
 from libcpp cimport bool as bool_cpp_t
-from libc.math cimport sqrt, fabs, nextafter
+from libc.math cimport sqrt, fabs, nextafter, fmax, fmin
 
 from CyRK.array.interp cimport interp_array, interp_complex_array
 from CyRK.rk.rk cimport (
@@ -26,10 +28,7 @@ cdef double EPS = np.finfo(np.float64).eps
 cdef double EPS_10 = EPS * 10.
 cdef double EPS_100 = EPS * 100.
 
-@cython.cdivision(True)
-@cython.boundscheck(False)
-@cython.wraparound(False)
-@cython.nonecheck(False)
+
 cdef double cabs(double complex value) nogil:
     """ Absolute value function for complex-valued inputs.
     
@@ -56,10 +55,7 @@ ctypedef fused double_numeric:
     double
     double complex
 
-@cython.cdivision(True)
-@cython.boundscheck(False)
-@cython.wraparound(False)
-@cython.nonecheck(False)
+
 cdef double dabs(double_numeric value) nogil:
     """ Absolute value function for either float or complex-valued inputs.
     
@@ -83,10 +79,6 @@ cdef double dabs(double_numeric value) nogil:
         return fabs(value)
 
 
-@cython.cdivision(True)
-@cython.boundscheck(False)
-@cython.wraparound(False)
-@cython.nonecheck(False)
 def cyrk_ode(
     diffeq,
     (double, double) t_span,
@@ -100,7 +92,8 @@ def cyrk_ode(
     double[:] t_eval = None,
     bool_cpp_t capture_extra = False,
     short num_extra = 0,
-    bool_cpp_t interpolate_extra = False
+    bool_cpp_t interpolate_extra = False,
+    unsigned int expected_size = 0
     ):
     """ A Numba-safe Runge-Kutta Integrator based on Scipy's solve_ivp RK integrator.
 
@@ -148,6 +141,10 @@ def cyrk_ode(
     interpolate_extra : bool = False
         If True, and if `t_eval` was provided, then the integrator will interpolate the extra output values at each
          step in `t_eval`.
+    expected_size : int = 0
+        The integrator must pre-allocate memory to store results from the integration. It will attempt to use arrays sized to `expected_size`. However, if this is too small or too large then performance will be impacted. It is recommended you try out different values based on the problem you are trying to solve.
+        If `expected_size=0` (the default) then the solver will attempt to guess a best size. Currently this is a very basic guess so it is not recommended.
+        It is better to overshoot than undershoot this guess.
 
     Returns
     -------
@@ -226,6 +223,31 @@ def cyrk_ode(
         #  on computation.
         store_extras_during_integration = False
 
+    # # Determine integration parameters
+    # Check tolerances
+    if rtol < EPS_100:
+        rtol = EPS_100
+
+    #     atol_arr = np.asarray(atol, dtype=np.complex128)
+    #     if atol_arr.ndim > 0 and atol_arr.shape[0] != y_size:
+    #         # atol must be either the same for all y or must be provided as an array, one for each y.
+    #         raise Exception
+
+    # Expected size of output arrays.
+    cdef double temp_expected_size
+    cdef unsigned int expected_size_to_use, num_concats
+    if expected_size == 0:
+        # CySolver will attempt to guess on a best size for the arrays.
+        temp_expected_size = 100. * t_delta_abs * fmax(1., (1.e-6 / rtol))
+        temp_expected_size = fmax(temp_expected_size, 100.)
+        temp_expected_size = fmin(temp_expected_size, 10_000_000.)
+        expected_size_to_use = <unsigned int>temp_expected_size
+    else:
+        expected_size_to_use = expected_size
+    # This variable tracks how many times the storage arrays have been appended.
+    # It starts at 1 since there is at least one storage array present.
+    num_concats = 1
+
     # Initialize arrays that are based on y's size and type.
     y_new    = np.empty(y_size, dtype=DTYPE, order='C')
     y_old    = np.empty(y_size, dtype=DTYPE, order='C')
@@ -253,14 +275,12 @@ def cyrk_ode(
     total_size  = y_size + num_extra
     # Create arrays based on this total size
     diffeq_out     = np.empty(total_size, dtype=DTYPE, order='C')
-    y_result_store = np.empty(total_size, dtype=DTYPE, order='C')
     y0_plus_extra  = np.empty(total_size, dtype=DTYPE, order='C')
     extra_result   = np.empty(num_extra, dtype=DTYPE, order='C')
 
     # Setup memory views
-    cdef double_numeric[:] diffeq_out_view, y_result_store_view, y0_plus_extra_view, extra_result_view
+    cdef double_numeric[:] diffeq_out_view, y0_plus_extra_view, extra_result_view
     diffeq_out_view     = diffeq_out
-    y_result_store_view = y_result_store
     y0_plus_extra_view  = y0_plus_extra
     extra_result_view   = extra_result
 
@@ -296,15 +316,9 @@ def cyrk_ode(
         else:
             y0_to_store_view[i] = y0[i]
 
-    # Create lists to store final outputs
-    cdef list time_domain_list, y_results_list
-    # Start storing results with the initial conditions
-    time_domain_list = [t_start]
-    y_results_list   = [y0_to_store]
-
     # # Determine RK scheme
     cdef unsigned char rk_order, error_order, rk_n_stages, rk_n_stages_plus1, rk_n_stages_extended
-    cdef double error_expo, error_norm5, error_norm3, error_norm, error_norm_abs, error_denom
+    cdef double error_pow, error_expo, error_norm5, error_norm3, error_norm, error_norm_abs, error_norm3_abs, error_norm5_abs, error_denom
     cdef unsigned char len_C, len_B, len_E, len_E3, len_E5, len_A0, len_A1
 
     if rk_method == 0:
@@ -427,16 +441,6 @@ def cyrk_ode(
             # Dummy Variables, set equal to E3
             E_view[i] = DOP_E3[i]
 
-    # # Determine integration parameters
-    # Check tolerances
-    if rtol < EPS_100:
-        rtol = EPS_100
-
-    #     atol_arr = np.asarray(atol, dtype=np.complex128)
-    #     if atol_arr.ndim > 0 and atol_arr.shape[0] != y_size:
-    #         # atol must be either the same for all y or must be provided as an array, one for each y.
-    #         raise Exception
-
     # Initialize variables for start of integration
     if not capture_extra:
         # If `capture_extra` is True then this step was already performed.
@@ -451,6 +455,24 @@ def cyrk_ode(
     for i in range(y_size):
         dydt_new_view[i] = diffeq_out_view[i]
         dydt_old_view[i] = dydt_new_view[i]
+    
+    # Setup storage arrays
+    # These arrays are built to fit a number of points equal to `expected_size_to_use`
+    # If the integration needs more than that then a new array will be concatenated (with performance costs) to these.
+    cdef double_numeric[:, :] y_results_array_view, y_results_array_new_view, solution_y_view
+    cdef double[:] time_domain_array_view, time_domain_array_new_view, solution_t_view
+    y_results_array        = np.empty((store_loop_size, expected_size_to_use), dtype=DTYPE, order='C')
+    time_domain_array      = np.empty(expected_size_to_use, dtype=np.float64, order='C')
+    y_results_array_view   = y_results_array
+    time_domain_array_view = time_domain_array
+
+    # Load initial conditions into output arrays
+    time_domain_array_view[0] = t_start
+    for i in range(store_loop_size):
+        if store_extras_during_integration:
+            y_results_array_view[i] = y0_plus_extra_view[i]
+        else:
+            y_results_array_view[i] = y0[i]
 
     # # Determine size of first step.
     cdef double step_size, d0, d1, d2, d0_abs, d1_abs, d2_abs, h0, h1, scale
@@ -687,10 +709,8 @@ def cyrk_ode(
                 if error_norm == 0.:
                     step_factor = MAX_FACTOR
                 else:
-                    step_factor = min(
-                        MAX_FACTOR,
-                        SAFETY * error_norm**-error_expo
-                        )
+                    error_pow = error_norm**-error_expo
+                    step_factor = min(MAX_FACTOR, SAFETY * error_pow)
 
                 if step_rejected:
                     # There were problems with this step size on the previous step loop. Make sure factor does
@@ -700,7 +720,8 @@ def cyrk_ode(
                 step_size = step_size * step_factor
                 step_accepted = True
             else:
-                step_size = step_size * max(MIN_FACTOR, SAFETY * error_norm**-error_expo)
+                error_pow = error_norm**-error_expo
+                step_size = step_size * max(MIN_FACTOR, SAFETY * error_pow)
                 step_rejected = True
 
         if not step_accepted:
@@ -719,23 +740,44 @@ def cyrk_ode(
             dydt_old_view[i] = dydt_new_view[i]
 
         # Save data
-        # If there is extra outputs then we need to store those at this timestep as well.
+        if len_t >= (num_concats * expected_size_to_use):                
+            # There is more data than we have room in our arrays. 
+            # Build new arrays with more space.
+            # OPT: Note this is an expensive operation. 
+            num_concats += 1
+            new_size = num_concats * expected_size_to_use
+            time_domain_array_new      = np.empty(new_size, dtype=np.float64, order='C')
+            y_results_array_new        = np.empty((store_loop_size, new_size), dtype=DTYPE, order='C')
+            time_domain_array_new_view = time_domain_array_new
+            y_results_array_new_view   = y_results_array_new
+            
+            # Loop through time to fill in these new arrays with the old values
+            for i in range(len_t):
+                time_domain_array_new_view[i] = time_domain_array_view[i]
+                
+                for j in range(store_loop_size):
+                    y_results_array_new_view[j, i] = y_results_array_view[j, i]
+            
+            # No longer need the old arrays. Change where the view is pointing and delete them.
+            y_results_array_view = y_results_array_new
+            time_domain_array_view = time_domain_array_new
+            # TODO: Delete the old arrays?
+        
+        # There should be room in the arrays to add new data.
+        time_domain_array_view[len_t] = t_new
+        # To match the format that scipy follows, we will take the transpose of y.
         for i in range(store_loop_size):
             if i < extra_start:
                 # Pull from y result
-                y_result_store_view[i] = y_new_view[i]
+                y_results_array_view[i, len_t] = y_new_view[i]
             else:
                 # Pull from extra
-                y_result_store_view[i] = extra_result_view[i - extra_start]
+                y_results_array_view[i, len_t] = extra_result_view[i - extra_start]
 
-        y_results_list.append(
-            y_result_store.copy()
-        )
-        time_domain_list.append(t_new)
+        # Increase number of time points.
         len_t += 1
 
     # # Clean up output.
-    # Look at status of integration. Break out early if bad code.
     cdef str message
     message = 'Not Defined.'
     if status == 1:
@@ -746,35 +788,42 @@ def cyrk_ode(
     elif status < -1:
         message = 'Integration Failed.'
 
+
     # Create output arrays. To match the format that scipy follows, we will take the transpose of y.
-    y_results_T = np.empty((store_loop_size, len_t), dtype=DTYPE, order='C')
-    time_domain = np.empty(len_t, dtype=np.float64, order='C')
-
-    # Create memory views.
-    cdef double_numeric[:, :] y_results_T_view
-    cdef double[:] time_domain_view
-    y_results_T_view = y_results_T
-    time_domain_view = time_domain
-
-    # Populate values.
     if success:
-        for i in range(len_t):
-            time_domain_view[i] = time_domain_list[i]
-            for j in range(store_loop_size):
-                # To match the format that scipy follows, we will take the transpose of y.
-                y_results_T_view[j, i] = y_results_list[i][j]
+        # Build final output arrays.
+        # The arrays built during integration likely have a bunch of unused junk at the end due to overbuilding their size.
+        # This process will remove that junk and leave only the wanted data.
+        solution_y = np.empty((store_loop_size, len_t), dtype=DTYPE, order='C')
+        solution_t = np.empty(len_t, dtype=np.float64, order='C')
 
-    # # If requested, run interpolation on output.
+        # Link memory views
+        solution_y_view = solution_y
+        solution_t_view = solution_t
+
+        # Populate values
+        for i in range(len_t):
+            solution_t_view[i] = time_domain_array_view[i]
+            for j in range(store_loop_size):
+                solution_y_view[j, i] = y_results_array_view[j, i]
+    else:
+        # Build nan arrays
+        solution_y = np.nan * np.ones((store_loop_size, 1), dtype=DTYPE, order='C')
+        solution_t = np.nan * np.ones(1, dtype=np.float64, order='C')
+
+        # Link memory views
+        solution_y_view = solution_y
+        solution_t_view = solution_t
+
     cdef double_numeric[:, :] y_results_reduced_view
-    cdef double_numeric[:] y_result_timeslice_view
-    cdef double_numeric[:] y_interp_view
-    cdef double_numeric[:] y_result_temp_view
+    cdef double_numeric[:] y_result_timeslice_view, y_result_temp_view
+
     if run_interpolation and success:
         # User only wants data at specific points.
 
         # The current version of this function has not implemented sicpy's dense output.
         #   Instead we use an interpolation.
-        # OPT: this could be done inside the actual loop for performance gains.
+        # OPT: this could be done inside the integration loop for performance gains.
         y_results_reduced       = np.empty((total_size, len_teval), dtype=DTYPE, order='C')
         y_result_timeslice      = np.empty(len_t, dtype=DTYPE, order='C')
         y_result_temp           = np.empty(len_teval, dtype=DTYPE, order='C')
@@ -786,20 +835,20 @@ def cyrk_ode(
             # np.interp only works on 1D arrays so we must loop through each of the variables:
             # # Set timeslice equal to the time values at this y_j
             for i in range(len_t):
-                y_result_timeslice_view[i] = y_results_T_view[j, i]
+                y_result_timeslice_view[i] = solution_y_view[j, i]
 
             # Perform numerical interpolation
             if double_numeric is cython.doublecomplex:
                 interp_complex_array(
                     t_eval,
-                    time_domain_view,
+                    solution_t_view,
                     y_result_timeslice_view,
                     y_result_temp_view
                     )
             else:
                 interp_array(
                     t_eval,
-                    time_domain_view,
+                    solution_t_view,
                     y_result_timeslice_view,
                     y_result_temp_view
                     )
@@ -819,20 +868,20 @@ def cyrk_ode(
                     # np.interp only works on 1D arrays so we must loop through each of the variables:
                     # # Set timeslice equal to the time values at this y_j
                     for i in range(len_t):
-                        y_result_timeslice_view[i] = y_results_T_view[extra_start + j, i]
+                        y_result_timeslice_view[i] = solution_y_view[extra_start + j, i]
 
                     # Perform numerical interpolation
                     if double_numeric is cython.doublecomplex:
                         interp_complex_array(
                                 t_eval,
-                                time_domain_view,
+                                solution_t_view,
                                 y_result_timeslice_view,
                                 y_result_temp_view
                                 )
                     else:
                         interp_array(
                                 t_eval,
-                                time_domain_view,
+                                solution_t_view,
                                 y_result_timeslice_view,
                                 y_result_temp_view
                                 )
@@ -858,16 +907,16 @@ def cyrk_ode(
                         y_results_reduced_view[extra_start + j, i] = diffeq_out_view[extra_start + j]
 
         # Replace the output y results and time domain with the new reduced one
-        y_results_T = np.empty((total_size, len_teval), dtype=DTYPE, order='C')
-        time_domain = np.empty(len_teval, dtype=np.float64, order='C')
-        y_results_T_view = y_results_T
-        time_domain_view = time_domain
+        solution_y = np.empty((total_size, len_teval), dtype=DTYPE, order='C')
+        solution_t = np.empty(len_teval, dtype=np.float64, order='C')
+        solution_y_view = solution_y
+        solution_t_view = solution_t
 
         # Update output arrays
         for i in range(len_teval):
-            time_domain_view[i] = t_eval[i]
+            solution_t_view[i] = t_eval[i]
             for j in range(total_size):
                 # To match the format that scipy follows, we will take the transpose of y.
-                y_results_T_view[j, i] = y_results_reduced_view[j, i]
+                solution_y_view[j, i] = y_results_reduced_view[j, i]
 
-    return time_domain, y_results_T, success, message
+    return solution_t, solution_y, success, message

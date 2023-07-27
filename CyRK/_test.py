@@ -47,3 +47,19 @@ def test_nbrk():
     assert y_results.shape[0] == 2
 
     print("CyRK's nbrk_ode was tested successfully.")
+
+
+def test_cysolver():
+
+    from CyRK.cy.cysolvertest import CySolverTester
+
+    # TODO: Currently CySolver only works with floats not complex
+    CySolverTesterInst = CySolverTester(time_span, np.asarray(initial_conds, dtype=np.float64))
+    CySolverTesterInst.solve()
+
+    assert CySolverTesterInst.success
+    assert type(CySolverTesterInst.solution_t) == np.ndarray
+    assert type(CySolverTesterInst.solution_y) == np.ndarray
+    assert CySolverTesterInst.solution_y.shape[0] == 2
+
+    print("CyRK's CySolver was tested successfully.")
