@@ -5,6 +5,7 @@
 ### v0.6.0
 
 New Features
+- `CyRK` now works with python 3.11.
 - Created the `CySolver` class which is more efficient than the `cyrk_ode` function.
   - Solves [issue 28](https://github.com/jrenaud90/CyRK/issues/28)
 - New functions in `CyRK.cy.cysolvertest` to help test and check performance of `CySolver`.

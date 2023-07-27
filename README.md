@@ -1,7 +1,7 @@
 # CyRK
 <div style="text-align: center;">
 <a href="https://doi.org/10.5281/zenodo.7093266"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.7093266.svg" alt="DOI"></a>
-<a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.8|3.9|3.10-blue" alt="Python Version 3.8-3.10" /></a>
+<a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.8|3.9|3.10|3.11-blue" alt="Python Version 3.8-3.11" /></a>
 <a href="https://codecov.io/gh/jrenaud90/CyRK" ><img src="https://codecov.io/gh/jrenaud90/CyRK/branch/main/graph/badge.svg?token=MK2PqcNGET" alt="Code Coverage"/></a>
 <br />
 <a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml/badge.svg?branch=main" alt="Windows Tests" /></a>
@@ -16,17 +16,19 @@
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
 
-CyRK provides fast integration tools to solve systems of ODEs using an adaptive time stepping scheme. CyRK can accept differential equation functions 
-that are written in pure Python, njited numba, or cython-based cdef classes. These kinds of functions are generally easier to implement than pure c functions, speeding up development time. The purpose of this package is to provide some 
+CyRK provides fast integration tools to solve systems of ODEs using an adaptive time stepping scheme. CyRK can, usually, accept differential equation functions 
+that are written in pure Python, njited numba, or cython-based cdef classes. These kinds of functions are generally easier to implement than pure c functions. Using CyRK can speed up development time while not making a huge sacrifice when it comes to performance. 
+
+The purpose of this package is to provide some 
 functionality of [scipy's solve_ivp](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html) with greatly improved performance.
 
 Currently, CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is **10-100x faster** than scipy's solve_ivp function.
 The [cython](https://cython.org/) `cyrk_ode` function that works with python (or numba) functions is **5-40x faster** than scipy.
 The [cython](https://cython.org/) `CySolver` class that works with cython-based cdef classes is **5-400x faster** than scipy.
 
-An additional benefit of the two cython implementations is that they are pre-compiled. This avoids most of the run-time performance hit compared to the numba version.
+An additional benefit of the two cython implementations is that they are pre-compiled. This avoids most of the start-up performance hit experienced by just-in-time compilers like numba.
 
-<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_v0-4-0a0-dev7.png" alt="CyRK Performance" />
+<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_v0-6-0a4.png" alt="CyRK Performance" />
 
 ## Installation
 
