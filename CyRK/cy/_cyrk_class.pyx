@@ -1,4 +1,3 @@
-%%cython --annotate --force
 # distutils: language = c++
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 
@@ -66,6 +65,8 @@ cdef class CyRKSolver:
     cdef double t_start, t_end, t_delta, t_delta_abs, direction, direction_inf
     cdef double rtol, atol
     cdef double step_size, max_step
+    cdef unsigned int expected_size
+    cdef unsigned int num_concats
     
     # -- Optional args info
     cdef unsigned short num_args
@@ -97,7 +98,8 @@ cdef class CyRKSolver:
                   const double[:] t_eval = None,
                   bool_cpp_t capture_extra = False,
                   unsigned short num_extra = 0,
-                  bool_cpp_t interpolate_extra = False):
+                  bool_cpp_t interpolate_extra = False,
+                  unsigned int expected_size = 10000):
         
         # Setup loop variables
         cdef Py_ssize_t i, j
@@ -106,6 +108,12 @@ cdef class CyRKSolver:
         self.status  = -3  # Status code to indicate that integration has not started.
         self.message = 'Integration has not started.'
         self.success = False
+        
+        # Expected size of output arrays.
+        self.expected_size = expected_size
+        # This variable tracks how many times the storage arrays have been appended.
+        # It starts at 1 since there is at least one storage array present.
+        self.num_concats = 1
         
         # Determine y-size information
         self.y_size = len(y0)
@@ -442,15 +450,35 @@ cdef class CyRKSolver:
         E5_tmp_view = self.E5_tmp_view
         K_view      = self.K_view
         
-        # Setup storage lists
-        cdef list y_results_list
-        cdef list time_domain_list
-        cdef list extra_list
-        y_results_list   = [self.y0_view.copy()]
-        time_domain_list = [self.t_start]
+        # Setup storage arrays
+        # These arrays are built to fit a number of points equal to `self.expected_size`
+        # If the integration needs more than that then a new array will be concatenated (with performance costs) to these.
+        cdef np.ndarray[np.float64_t, ndim=2, mode='c'] y_results_array, extra_array
+        cdef np.ndarray[np.float64_t, ndim=1, mode='c'] time_domain_array
+        cdef double[:, :] y_results_array_view, extra_array_view
+        cdef double[:] time_domain_array_view
+        y_results_array        = np.empty((self.y_size, self.expected_size), dtype=np.float64, order='C')
+        time_domain_array      = np.empty(self.expected_size, dtype=np.float64, order='C')
+        y_results_array_view   = y_results_array
+        time_domain_array_view = time_domain_array
         if self.capture_extra:
-            extra_list = [self.extra_output_init_view.copy()]
+            extra_array      = np.empty((self.num_extra, self.expected_size), dtype=np.float64, order='C')
+            extra_array_view = extra_array
+
+        # The following are unused unless the previous array size is too small to capture all of the data
+        cdef np.ndarray[np.float64_t, ndim=2, mode='c'] y_results_array_new, extra_array_new
+        cdef np.ndarray[np.float64_t, ndim=1, mode='c'] time_domain_array_new
+        cdef double[:, :] y_results_array_new_view, extra_array_new_view
+        cdef double[:] time_domain_array_new_view
         
+        # Load initial conditions into output arrays
+        time_domain_array_view[0] = self.t_start
+        for i in range(self.y_size):
+            y_results_array_view[i, 0] = self.y0_view[i]
+        if self.capture_extra:
+            for i in range(self.num_extra):
+                extra_array_view[i, 0] = self.extra_output_init_view[i]
+
         # Reset live variables to their starting values.
         # Set current and old y variables equal to y0
         for i in range(self.y_size):
@@ -668,10 +696,51 @@ cdef class CyRKSolver:
                 self.dy_old_view[i] = self.dy_new_view[i]
 
             # Save data
-            y_results_list.append(self.y_new_view.copy())
-            time_domain_list.append(self.t_new)
+            if self.len_t >= (self.num_concats * self.expected_size):                
+                # There is more data than we have room in our arrays. 
+                # Build new arrays with more space.
+                # OPT: Note this is an expensive operation. 
+                self.num_concats += 1
+                new_size = self.num_concats * self.expected_size
+                time_domain_array_new = np.empty(new_size, dtype=np.float64, order='C')
+                y_results_array_new = np.empty((self.y_size, new_size), dtype=np.float64, order='C')
+                time_domain_array_new_view = time_domain_array_new
+                y_results_array_new_view = y_results_array_new
+                if self.capture_extra:
+                    extra_array_new = np.empty((self.num_extra, new_size), dtype=np.float64, order='C')
+                    extra_array_new_view = extra_array_new
+
+                # Loop through time to fill in these new arrays with the old values
+                for i in range(self.len_t):
+                    time_domain_array_new_view[i] = time_domain_array_view[i]
+
+                    for j in range(self.y_size):
+                        y_results_array_new_view[j, i] = y_results_array_view[j, i]
+                    
+                    if self.capture_extra:
+                        for j in range(self.num_extra):
+                            extra_array_new_view[j, i] = extra_array_view[j, i]
+                
+                # No longer need the old arrays. Change where the view is pointing and delete them.
+                y_results_array_view = y_results_array_new
+                time_domain_array_view = time_domain_array_new
+#                 del y_results_array
+#                 del time_domain_array
+                if self.capture_extra:
+                    extra_array_view = extra_array_new
+#                     del extra_array
+            
+            # There should be room in the arrays to add new data.
+            time_domain_array_view[self.len_t] = self.t_new
+            # To match the format that scipy follows, we will take the transpose of y.
+            for i in range(self.y_size):
+                y_results_array_view[i, self.len_t] = self.y_new_view[i]
+            
             if self.capture_extra:
-                extra_list.append(self.extra_output.copy())
+                for i in range(self.num_extra):
+                    extra_array_view[i, self.len_t] = self.extra_output_view[i]
+
+            # Increase number of time points.
             self.len_t += 1
 
         # # Clean up output.
@@ -691,44 +760,45 @@ cdef class CyRKSolver:
             self.message = 'Integration Failed.'
 
         # Create output arrays. To match the format that scipy follows, we will take the transpose of y.
-        cdef np.ndarray[np.float64_t, ndim=2, mode='c'] y_results_T_array, y_results_T_array_bad
-        cdef np.ndarray[np.float64_t, ndim=2, mode='c'] extra_output_array, extra_output_array_bad
-        cdef np.ndarray[np.float64_t, ndim=1, mode='c'] time_domain_array, time_domain_array_bad
+        cdef np.ndarray[np.float64_t, ndim=2, mode='c'] y_results_out_array, y_results_out_array_bad
+        cdef np.ndarray[np.float64_t, ndim=2, mode='c'] extra_output_out_array, extra_output_out_array_bad
+        cdef np.ndarray[np.float64_t, ndim=1, mode='c'] time_domain_out_array, time_domain_out_array_bad
 
         if self.success:
-            # Build arrays
-            y_results_T_array = np.empty((self.y_size, self.len_t), dtype=np.float64, order='C')
-            time_domain_array = np.empty(self.len_t, dtype=np.float64, order='C')
+            # Build final output arrays.
+            # The arrays built during integration likely have a bunch of unused junk at the end due to overbuilding their size.
+            # This process will remove that junk and leave only the wanted data.
+            y_results_out_array = np.empty((self.y_size, self.len_t), dtype=np.float64, order='C')
+            time_domain_out_array = np.empty(self.len_t, dtype=np.float64, order='C')
             if self.capture_extra:
-                extra_output_array = np.empty((self.num_extra, self.len_t), dtype=np.float64, order='C')
+                extra_output_out_array = np.empty((self.num_extra, self.len_t), dtype=np.float64, order='C')
 
             # Link memory views
-            self.solution_y_view = y_results_T_array
-            self.solution_t_view = time_domain_array
+            self.solution_y_view = y_results_out_array
+            self.solution_t_view = time_domain_out_array
             if self.capture_extra:
-                self.solution_extra_view = extra_output_array
+                self.solution_extra_view = extra_output_out_array
 
             # Populate values
             for i in range(self.len_t):
-                self.solution_t_view[i] = time_domain_list[i]
+                self.solution_t_view[i] = time_domain_array_view[i]
                 for j in range(self.y_size):
-                    # To match the format that scipy follows, we will take the transpose of y.
-                    self.solution_y_view[j, i] = y_results_list[i][j]
+                    self.solution_y_view[j, i] = y_results_array_view[j, i]
                 if self.capture_extra:
                     for j in range(self.num_extra):
-                        self.solution_extra_view[j, i] = extra_list[i][j]
+                        self.solution_extra_view[j, i] = extra_array_view[j, i]
         else:
             # Build nan arrays
-            y_results_T_array_bad = np.nan * np.ones((self.y_size, 1), dtype=np.float64, order='C')
-            time_domain_array_bad = np.nan * np.ones(1, dtype=np.float64, order='C')
+            y_results_out_array_bad = np.nan * np.ones((self.y_size, 1), dtype=np.float64, order='C')
+            time_domain_out_array_bad = np.nan * np.ones(1, dtype=np.float64, order='C')
             if self.capture_extra:
-                extra_output_array_bad = np.nan * np.ones((self.num_extra, 1), dtype=np.float64, order='C')
+                extra_output_out_array_bad = np.nan * np.ones((self.num_extra, 1), dtype=np.float64, order='C')
 
             # Link memory views
-            self.solution_y_view = y_results_T_array_bad
-            self.solution_t_view = time_domain_array_bad
+            self.solution_y_view = y_results_out_array_bad
+            self.solution_t_view = time_domain_out_array_bad
             if self.capture_extra:
-                self.solution_extra_view = extra_output_array_bad
+                self.solution_extra_view = extra_output_out_array_bad
 
         # Integration is complete. Check if interpolation was requested.
         if self.success and self.run_interpolation:
@@ -879,3 +949,8 @@ cdef class CyRKSolver:
     def solution_extra(self):
         # Need to convert the memory view back into a numpy array
         return np.asarray(self.solution_extra_view)
+    
+    @property
+    def size_growths(self):
+        # How many times the array had to grow during integration
+        return self.num_concats

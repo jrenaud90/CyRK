@@ -4,6 +4,9 @@
 
 ### v0.6.0
 
+New Features
+- Created the `CyRKSolver` class which is more efficient than the `cyrk_ode` function.
+
 Bug Fixes:
 - Fixed compile error with `cyrk_ode` "complex types are unordered".
   - This was not a problem before so likely something has changed in newer cython versions.
