@@ -180,7 +180,7 @@ CySolverTesterInst.solve()
 CySolverTesterInst.success     # True / False
 CySolverTesterInst.message     # Note about integration
 CySolverTesterInst.solution_t  # Time domain
-CySolverTesterInst.solution_t  # y dependent variables
+CySolverTesterInst.solution_y  # y dependent variables
 CySolverTesterInst.solution_extra  # Extra output that was captured during integration.
 # See Documentation/Extra Output.md for more information on `solution_extra`
 ```
@@ -205,17 +205,17 @@ The solver will then interpolate the results to fit this array.
   - `2` - "DOP853" Explicit Runge-Kutta method of order 8.
 - `capture_extra` and `interpolate_extra`: CyRK has the capability of capturing additional parameters during integration. Please see `Documentation\Extra Output.md` for more details.
 
-### `cyrk_ode` Additional Arguments
+### Additional Arguments for `cyrk_ode`
 - `num_extra` : The number of extra outputs the integrator should expect.
 
-### `CySolver` Additional Arguments
+### Additional Arguments for `CySolver`
 - `num_extra` : The number of extra outputs the integrator should expect.
 - `expected_size` : Best guess on the expected size of the final time domain (number of points).
     - The integrator must pre-allocate memory to store results from the integration. It will attempt to use arrays sized to `expected_size`. However, if this is too small or too large then performance will be impacted. It is recommended you try out different values based on the problem you are trying to solve.
     - If `expected_size=0` (the default) then the solver will attempt to guess a best size. Currently this is a very basic guess so it is not recommended.
     - It is better to overshoot than undershoot this guess.
 
-### Limitations and Known Issues
+## Limitations and Known Issues
 
 - [Issue 1](https://github.com/jrenaud90/CyRK/issues/1): Absolute tolerance can only be passed as a single value
 (same for all y's).
