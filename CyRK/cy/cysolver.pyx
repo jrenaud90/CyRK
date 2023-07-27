@@ -6,7 +6,7 @@ import numpy as np
 cimport numpy as np
 np.import_array()
 from libcpp cimport bool as bool_cpp_t
-from libc.math cimport sqrt, fabs, nextafter, pow
+from libc.math cimport sqrt, fabs, nextafter, fmax, fmin
 
 from CyRK.array.interp cimport interp_array
 from CyRK.rk.rk cimport (
@@ -43,7 +43,7 @@ cdef class CySolver:
                   bool_cpp_t capture_extra = False,
                   unsigned short num_extra = 0,
                   bool_cpp_t interpolate_extra = False,
-                  unsigned int expected_size = 10000):
+                  unsigned int expected_size = 0):
         
         # Setup loop variables
         cdef Py_ssize_t i, j
@@ -63,12 +63,6 @@ cdef class CySolver:
         self.solution_extra_view = solution_extra_fake
         self.solution_y_view = solution_y_fake
         
-        # Expected size of output arrays.
-        self.expected_size = expected_size
-        # This variable tracks how many times the storage arrays have been appended.
-        # It starts at 1 since there is at least one storage array present.
-        self.num_concats = 1
-        
         # Determine y-size information
         self.y_size = len(y0)
         self.y_size_dbl = <double>self.y_size
@@ -86,6 +80,20 @@ cdef class CySolver:
         else:
             self.direction = -1.
         self.direction_inf = self.direction * INF
+
+        # Expected size of output arrays.
+        cdef double temp_expected_size
+        if expected_size == 0:
+            # CySolver will attempt to guess on a best size for the arrays.
+            temp_expected_size = 100. * self.t_delta_abs
+            temp_expected_size = fmax(temp_expected_size, 100.)
+            temp_expected_size = fmin(temp_expected_size, 10_000_000.)
+            self.expected_size = <unsigned int>temp_expected_size
+        else:
+            self.expected_size = expected_size
+        # This variable tracks how many times the storage arrays have been appended.
+        # It starts at 1 since there is at least one storage array present.
+        self.num_concats = 1
         
         # Determine optional arguments
         cdef np.ndarray[np.float64_t, ndim=1, mode='c'] arg_array

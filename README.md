@@ -11,18 +11,20 @@
 
 ---
 
-<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.5.3 Alpha-orange" alt="CyRK Version 0.5.3 Alpha" /></a>
+<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.6.0 Alpha-orange" alt="CyRK Version 0.6.0 Alpha" /></a>
 
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
 
 CyRK provides fast integration tools to solve systems of ODEs using an adaptive time stepping scheme. CyRK can accept differential equation functions 
-that are written in pure Python or njited numba, speeding up development time. The purpose of this package is to provide some 
-functionality of [scipy's solve_ivp](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html) with improved performance.
+that are written in pure Python, njited numba, or cython-based cdef classes. These kinds of functions are generally easier to implement than pure c functions, speeding up development time. The purpose of this package is to provide some 
+functionality of [scipy's solve_ivp](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html) with greatly improved performance.
 
-Currently, CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is 10-100x faster than scipy's solve_ivp function. 
-The [cython](https://cython.org/) implementation is 5-30x faster. The cython function is also largely pre-compiled which avoids most of the 
-initial performance hit found with using the numba version.
+Currently, CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is 10-100x faster than scipy's solve_ivp function.
+The [cython](https://cython.org/) `cyrk_ode` function that works with python (or numba) functions is 5-30x faster than scipy.
+The [cython](https://cython.org/) `CySolver` class that works with cython-based cdef classes is NNNx faster than scipy.
+
+An additional benefit of the two cython implementations is that they are pre-compiled. This avoids most of the run-time performance hit compared to the numba version.
 
 <img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_v0-4-0a0-dev7.png" alt="CyRK Performance" />
 
@@ -40,11 +42,13 @@ After the files have been compiled, cython will be uninstalled and CyRK's runtim
 
 A new installation of CyRK can be tested quickly by running the following from a python console.
 ```python
-from CyRK import test_cyrk, test_nbrk
+from CyRK import test_cyrk, test_nbrk, test_cysolver
 test_cyrk()
 # You will hopefully see the message "CyRK's cyrk_ode was tested successfully."
 test_nbrk()
 # You will hopefully see the message "CyRK's nbrk_ode was tested successfully."
+test_cysolver()
+# You will hopefully see the message "CyRK's CySolver was tested successfully."
 ```
 
 ### Installation Troubleshooting

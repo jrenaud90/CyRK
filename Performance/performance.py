@@ -15,6 +15,8 @@ from lorenz import (
     lorenz_cy, lorenz_nb, lorenz_args, lorenz_y0, lorenz_time_span_1, lorenz_time_span_2,
     lorenz_nb_extra, lorenz_cy_extra)
 
+from CyRK.cy.cysolvertest import CySolverPendulum, CySolverLotkavolterra, CySolverLorenzExtra, CySolverLorenz
+
 REPEATS = 4
 RTOL = 1.e-6
 ATOL = 1.e-8
@@ -22,12 +24,11 @@ ATOL = 1.e-8
 performance_filename = 'cyrk_performance.csv'
 diffeqs = {
     'Lotkavolterra'  : (lotkavolterra_cy, lotkavolterra_nb, lotkavolterra_args, lotkavolterra_y0,
-                        (lotkavolterra_time_span_1, lotkavolterra_time_span_2)),
-    'Pendulum'       : (
-        pendulum_cy, pendulum_nb, pendulum_args, pendulum_y0, (pendulum_time_span_1, pendulum_time_span_2)),
-    'Lorenz'         : (lorenz_cy, lorenz_nb, lorenz_args, lorenz_y0, (lorenz_time_span_1, lorenz_time_span_2)),
+                        (lotkavolterra_time_span_1, lotkavolterra_time_span_2), CySolverLotkavolterra),
+    'Pendulum'       : (pendulum_cy, pendulum_nb, pendulum_args, pendulum_y0, (pendulum_time_span_1, pendulum_time_span_2), CySolverPendulum),
+    'Lorenz'         : (lorenz_cy, lorenz_nb, lorenz_args, lorenz_y0, (lorenz_time_span_1, lorenz_time_span_2), CySolverLorenz),
     'Lorenz-ExtraOut': (lorenz_cy_extra, lorenz_nb_extra, lorenz_args, lorenz_y0,
-                        (lorenz_time_span_1, lorenz_time_span_2))
+                        (lorenz_time_span_1, lorenz_time_span_2), CySolverLorenzExtra)
     }
 
 time_spans = {
@@ -38,8 +39,10 @@ time_spans = {
 statistics = {
     'cython (avg)': 0,
     'cython (std)': 1,
-    'numba  (avg)': 2,
-    'numba  (std)': 3
+    'CySolver (avg)': 1,
+    'CySolver (std)': 2,
+    'numba  (avg)': 3,
+    'numba  (std)': 4
     }
 
 integration_methods = {
@@ -102,7 +105,7 @@ def run_performance(integration_method_name):
     for d_i, diffeq_name in enumerate(diffeqs):
 
         print(f'\tWorking on {diffeq_name}')
-        cy_diffeq, nb_diffeq, args_, y0, timespans = diffeqs[diffeq_name]
+        cy_diffeq, nb_diffeq, args_, y0, timespans, CySolverClass = diffeqs[diffeq_name]
 
         for t_i, time_span_name in enumerate(time_spans):
 
@@ -117,9 +120,12 @@ def run_performance(integration_method_name):
                 nb_timer = timeit.Timer(
                     lambda: nbrk_ode(nb_diffeq, time_span, y0, args_, RTOL, ATOL, rk_method=int_method,
                                      capture_extra=True))
+                cysolver_timer = timeit.Timer(
+                    lambda: CySolverClass(time_span, y0, args_, RTOL, ATOL, rk_method=int_method, capture_extra=True, num_extra=3).solve())
             else:
                 cy_timer = timeit.Timer(lambda: cyrk_ode(cy_diffeq, time_span, y0, args_, RTOL, ATOL, rk_method=int_method))
                 nb_timer = timeit.Timer(lambda: nbrk_ode(nb_diffeq, time_span, y0, args_, RTOL, ATOL, rk_method=int_method))
+                cysolver_timer = timeit.Timer(lambda: CySolverClass(time_span, y0, args_, RTOL, ATOL, rk_method=int_method).solve())
 
             # Run the numba function once to make sure everything is compiled.
             print('\t\tPrecompiling numba')
@@ -139,6 +145,21 @@ def run_performance(integration_method_name):
             cy_avg = np.average(cython_times)
             cy_std = np.std(cython_times)
             performance_csv_line += f', {cy_avg:0.4f}, {cy_std:0.4f}'
+
+            # Cython Solver Class
+            print('\t\t\tWorking on CySolver.', end='')
+            cysolver_times = list()
+            time_0 = time.time()
+            for i in range(REPEATS):
+                N, T = cysolver_timer.autorange()
+                cysolver_times.append(T / N * 1000.)
+            print(f' Finished taking {time.time() - time_0:0.1f}s.')
+            cysolver_times = np.asarray(cysolver_times)
+
+            # Store Cython Solver results
+            cysolver_avg = np.average(cysolver_times)
+            cysolver_std = np.std(cysolver_times)
+            performance_csv_line += f', {cysolver_avg:0.4f}, {cysolver_std:0.4f}'
 
             # Numba
             print('\t\t\tWorking on nbrk_ode.', end='')
