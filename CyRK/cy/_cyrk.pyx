@@ -53,7 +53,7 @@ cdef double cabs(double complex value) nogil:
 
 # Define fused type to handle both float and complex-valued versions of y and dydt.
 ctypedef fused double_numeric:
-    double
+    unsigned int
     double complex
 
 @cython.cdivision(True)
@@ -735,7 +735,6 @@ def cyrk_ode(
         len_t += 1
 
     # # Clean up output.
-    # Look at status of integration. Break out early if bad code.
     cdef str message
     message = 'Not Defined.'
     if status == 1:
@@ -774,7 +773,7 @@ def cyrk_ode(
 
         # The current version of this function has not implemented sicpy's dense output.
         #   Instead we use an interpolation.
-        # OPT: this could be done inside the actual loop for performance gains.
+        # OPT: this could be done inside the integration loop for performance gains.
         y_results_reduced       = np.empty((total_size, len_teval), dtype=DTYPE, order='C')
         y_result_timeslice      = np.empty(len_t, dtype=DTYPE, order='C')
         y_result_temp           = np.empty(len_teval, dtype=DTYPE, order='C')
