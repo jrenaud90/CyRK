@@ -4,10 +4,8 @@
 
 ### v0.6.0
 
-TODO: 
-- fix potential power issue in cyrk_ode
-
 Bug Fixes:
+- Fixed compile error with `cyrk_ode` "complex types are unordered"
 - Fixed missing declarations for variables in `cyrk_ode`
 
 #### v0.5.3

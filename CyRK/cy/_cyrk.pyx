@@ -304,7 +304,7 @@ def cyrk_ode(
 
     # # Determine RK scheme
     cdef unsigned char rk_order, error_order, rk_n_stages, rk_n_stages_plus1, rk_n_stages_extended
-    cdef double error_expo, error_norm5, error_norm3, error_norm, error_norm_abs, error_norm3_abs, error_norm5_abs, error_denom
+    cdef double error_pow, error_expo, error_norm5, error_norm3, error_norm, error_norm_abs, error_norm3_abs, error_norm5_abs, error_denom
     cdef unsigned char len_C, len_B, len_E, len_E3, len_E5, len_A0, len_A1
 
     if rk_method == 0:
@@ -687,10 +687,8 @@ def cyrk_ode(
                 if error_norm == 0.:
                     step_factor = MAX_FACTOR
                 else:
-                    step_factor = min(
-                        MAX_FACTOR,
-                        SAFETY * error_norm**-error_expo
-                        )
+                    error_pow = error_norm**-error_expo
+                    step_factor = min(MAX_FACTOR, SAFETY * error_pow)
 
                 if step_rejected:
                     # There were problems with this step size on the previous step loop. Make sure factor does
@@ -700,7 +698,8 @@ def cyrk_ode(
                 step_size = step_size * step_factor
                 step_accepted = True
             else:
-                step_size = step_size * max(MIN_FACTOR, SAFETY * error_norm**-error_expo)
+                error_pow = error_norm**-error_expo
+                step_size = step_size * max(MIN_FACTOR, SAFETY * error_pow)
                 step_rejected = True
 
         if not step_accepted:
