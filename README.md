@@ -20,9 +20,9 @@ CyRK provides fast integration tools to solve systems of ODEs using an adaptive 
 that are written in pure Python, njited numba, or cython-based cdef classes. These kinds of functions are generally easier to implement than pure c functions, speeding up development time. The purpose of this package is to provide some 
 functionality of [scipy's solve_ivp](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html) with greatly improved performance.
 
-Currently, CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is 10-100x faster than scipy's solve_ivp function.
-The [cython](https://cython.org/) `cyrk_ode` function that works with python (or numba) functions is 5-30x faster than scipy.
-The [cython](https://cython.org/) `CySolver` class that works with cython-based cdef classes is NNNx faster than scipy.
+Currently, CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is **10-100x faster** than scipy's solve_ivp function.
+The [cython](https://cython.org/) `cyrk_ode` function that works with python (or numba) functions is **5-40x faster** than scipy.
+The [cython](https://cython.org/) `CySolver` class that works with cython-based cdef classes is **5-400x faster** than scipy.
 
 An additional benefit of the two cython implementations is that they are pre-compiled. This avoids most of the run-time performance hit compared to the numba version.
 
@@ -211,10 +211,7 @@ The solver will then interpolate the results to fit this array.
   - `2` - "DOP853" Explicit Runge-Kutta method of order 8.
 - `capture_extra` and `interpolate_extra`: CyRK has the capability of capturing additional parameters during integration. Please see `Documentation\Extra Output.md` for more details.
 
-### Additional Arguments for `cyrk_ode`
-- `num_extra` : The number of extra outputs the integrator should expect.
-
-### Additional Arguments for `CySolver`
+### Additional Arguments for `cyrk_ode` and `CySolver`
 - `num_extra` : The number of extra outputs the integrator should expect.
 - `expected_size` : Best guess on the expected size of the final time domain (number of points).
     - The integrator must pre-allocate memory to store results from the integration. It will attempt to use arrays sized to `expected_size`. However, if this is too small or too large then performance will be impacted. It is recommended you try out different values based on the problem you are trying to solve.

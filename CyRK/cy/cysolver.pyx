@@ -81,11 +81,23 @@ cdef class CySolver:
             self.direction = -1.
         self.direction_inf = self.direction * INF
 
+        # # Determine integration parameters
+        # Check tolerances
+        self.rtol = rtol
+        self.atol = atol
+        if self.rtol < EPS_100:
+            self.rtol = EPS_100
+        # TODO: array based atol
+        #     atol_arr = np.asarray(atol, dtype=)
+        #     if atol_arr.ndim > 0 and atol_arr.shape[0] != y_size:
+        #         # atol must be either the same for all y or must be provided as an array, one for each y.
+        #         raise Exception
+
         # Expected size of output arrays.
         cdef double temp_expected_size
         if expected_size == 0:
             # CySolver will attempt to guess on a best size for the arrays.
-            temp_expected_size = 100. * self.t_delta_abs
+            temp_expected_size = 100. * self.t_delta_abs * fmax(1., (1.e-6 / rtol))
             temp_expected_size = fmax(temp_expected_size, 100.)
             temp_expected_size = fmin(temp_expected_size, 10_000_000.)
             self.expected_size = <unsigned int>temp_expected_size
@@ -158,18 +170,6 @@ cdef class CySolver:
             self.t_eval_view = t_eval_array
             for i in range(self.len_t_eval):
                 self.t_eval_view[i] = t_eval[i]
-        
-        # # Determine integration parameters
-        # Check tolerances
-        self.rtol = rtol
-        self.atol = atol
-        if self.rtol < EPS_100:
-            self.rtol = EPS_100
-        # TODO: array based atol
-        #     atol_arr = np.asarray(atol, dtype=)
-        #     if atol_arr.ndim > 0 and atol_arr.shape[0] != y_size:
-        #         # atol must be either the same for all y or must be provided as an array, one for each y.
-        #         raise Exception
         
         # Determine RK scheme
         self.rk_method = rk_method
@@ -686,12 +686,9 @@ cdef class CySolver:
                 # No longer need the old arrays. Change where the view is pointing and delete them.
                 y_results_array_view = y_results_array_new
                 time_domain_array_view = time_domain_array_new
-                # TODO
-#                 del y_results_array
-#                 del time_domain_array
+                # TODO: Delete the old arrays?
                 if self.capture_extra:
                     extra_array_view = extra_array_new
-#                     del extra_array
             
             # There should be room in the arrays to add new data.
             time_domain_array_view[self.len_t] = self.t_new

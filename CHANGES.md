@@ -6,7 +6,12 @@
 
 New Features
 - Created the `CySolver` class which is more efficient than the `cyrk_ode` function.
+  - Solves [issue 28](https://github.com/jrenaud90/CyRK/issues/28)
 - New functions in `CyRK.cy.cysolvertest` to help test and check performance of `CySolver`.
+
+Performance
+- Removed python lists from `cyrk_ode` leading to an increase in performance of 15--20%. 
+  - Solves [issue 27](https://github.com/jrenaud90/CyRK/issues/27)
 
 Bug Fixes:
 - Fixed compile error with `cyrk_ode` "complex types are unordered".
