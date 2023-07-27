@@ -154,13 +154,19 @@ cdef class CySolverTester(CySolver):
         y0 = self.y_new_view[0]
         y1 = self.y_new_view[1]
 
+        # Unpack any additional arguments that do not change with time using the `self.arg_array_view` variable.
+        cdef double a, b
+        # These must be float64s
+        a  = self.arg_array_view[0]
+        b  = self.arg_array_view[1]
+
         # If needed, unpack the time variable using `self.t_new`
         cdef double t
         t = self.t_new
 
         # This function must set the dydt variable `self.dy_new_view`
-        self.dy_new_view[0] = (1. - 0.01 * y1) * y0
-        self.dy_new_view[1] = (0.02 * y0 - 1.) * y1
+        self.dy_new_view[0] = (1. - a * y1) * y0
+        self.dy_new_view[1] = (b * y0 - 1.) * y1
 ```
 
 Once you compile the differential equation it can be imported in a regular python file and used in a similar fashion to the other integrators.
@@ -171,7 +177,7 @@ from CyRK.cy.cysolvertest import CySolverTester
 
 # Need to make an instance of the integrator.
 # The diffeq no longer needs to be passed to the class.
-CySolverTesterInst = CySolverTester(time_span, initial_conds, rk_method=1, rtol=rtol, atol=atol)
+CySolverTesterInst = CySolverTester(time_span, initial_conds, args=(0.01, 0.02), rk_method=1, rtol=rtol, atol=atol)
 
 # To perform the integration make a call to the solve method.
 CySolverTesterInst.solve()

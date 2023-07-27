@@ -56,7 +56,7 @@ class build_cyrk(_build_py):
         self.distribution.ext_modules.append(
                 Extension(
                         'CyRK.cy.cyrk',
-                        sources=[os.path.join('CyRK', 'cy', '_cyrk.pyx')],
+                        sources=[os.path.join('CyRK', 'cy', 'cyrk.pyx')],
                         include_dirs=[os.path.join('CyRK', 'cy'), np.get_include()],
                         extra_compile_args=extra_compile_args,
                         extra_link_args=extra_link_args
