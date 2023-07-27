@@ -88,6 +88,7 @@ rtol = 1.0e-7
 atol = 1.0e-8
 ```
 
+### Numba-based `nbrk_ode`
 The ODE can then be solved using the numba function by calling CyRK's `nbrk_ode`:
 
 ```python
@@ -96,6 +97,7 @@ time_domain, y_results, success, message = \
     nbrk_ode(diffeq_nb, time_span, initial_conds, rk_method=1, rtol=rtol, atol=atol)
 ```
 
+### Cython-based `cyrk_ode`
 To call the cython version of the integrator you need to slightly edit the differential equation so that it does not
 return the derivative. Instead, the output is passed as an input argument (a np.ndarray) to the function. 
 
@@ -131,7 +133,59 @@ time_domain, y_results, success, message = \
     cyrk_ode(diffeq_cy, time_span, initial_conds, rk_method=1, rtol=rtol, atol=atol)
 ```
 
-### Optional Inputs
+### Cython-based `CySolver`
+The cython-based `CySolver` class requires writing a new cython cdef class. This can be done like so, note this is in a .pyx file that must be
+cythonized and compiled before it can be used.
+
+```cython
+"""ODE.pyx"""
+# distutils: language = c++
+# cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
+from CyRK.cy.cysolver cimport CySolver
+# Note the `cimport` here^
+
+cdef class CySolverTester(CySolver):
+
+    @cython.exceptval(check=False)
+    cdef void diffeq(self):
+        
+        # Unpack dependent variables using the `self.y_new_view` variable.
+        cdef double y0, y1
+        y0 = self.y_new_view[0]
+        y1 = self.y_new_view[1]
+
+        # If needed, unpack the time variable using `self.t_new`
+        cdef double t
+        t = self.t_new
+
+        # This function must set the dydt variable `self.dy_new_view`
+        self.dy_new_view[0] = (1. - 0.01 * y1) * y0
+        self.dy_new_view[1] = (0.02 * y0 - 1.) * y1
+```
+
+Once you compile the differential equation it can be imported in a regular python file and used in a similar fashion to the other integrators.
+
+```python
+"""run.py"""
+from CyRK.cy.cysolvertest import CySolverTester
+
+# Need to make an instance of the integrator.
+# The diffeq no longer needs to be passed to the class.
+CySolverTesterInst = CySolverTester(time_span, initial_conds, rk_method=1, rtol=rtol, atol=atol)
+
+# To perform the integration make a call to the solve method.
+CySolverTesterInst.solve()
+
+# Once complete, you can access the results via...
+CySolverTesterInst.success     # True / False
+CySolverTesterInst.message     # Note about integration
+CySolverTesterInst.solution_t  # Time domain
+CySolverTesterInst.solution_t  # y dependent variables
+CySolverTesterInst.solution_extra  # Extra output that was captured during integration.
+# See Documentation/Extra Output.md for more information on `solution_extra`
+```
+
+## Optional Arguments
 
 Both the numba and cython versions of the ODE solver have the following optional inputs:
 - `rtol`: Relative Tolerance (default is 1.0e-6).
@@ -150,6 +204,16 @@ The solver will then interpolate the results to fit this array.
   - `1` - "RK45" Explicit Runge-Kutta method of order 5(4).
   - `2` - "DOP853" Explicit Runge-Kutta method of order 8.
 - `capture_extra` and `interpolate_extra`: CyRK has the capability of capturing additional parameters during integration. Please see `Documentation\Extra Output.md` for more details.
+
+### `cyrk_ode` Additional Arguments
+- `num_extra` : The number of extra outputs the integrator should expect.
+
+### `CySolver` Additional Arguments
+- `num_extra` : The number of extra outputs the integrator should expect.
+- `expected_size` : Best guess on the expected size of the final time domain (number of points).
+    - The integrator must pre-allocate memory to store results from the integration. It will attempt to use arrays sized to `expected_size`. However, if this is too small or too large then performance will be impacted. It is recommended you try out different values based on the problem you are trying to solve.
+    - If `expected_size=0` (the default) then the solver will attempt to guess a best size. Currently this is a very basic guess so it is not recommended.
+    - It is better to overshoot than undershoot this guess.
 
 ### Limitations and Known Issues
 
