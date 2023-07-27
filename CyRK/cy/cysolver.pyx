@@ -28,63 +28,7 @@ cdef double EPS = np.finfo(np.float64).eps
 cdef double EPS_10 = EPS * 10.
 cdef double EPS_100 = EPS * 100.
     
-cdef class CyRKSolver:
-
-    # TODO:
-    # - y_old and dy_old do not need to be class variables. they can be inside the solver alone.
-    # - Add     @cython.exceptval(check=False) and @cython.initializedcheck(False) everywhere.
-    
-    
-    # def solve_complex
-    
-    # def solve
-    
-    # -- Live variables
-    cdef double t_new, t_old
-    cdef unsigned int len_t
-    cdef double[:] y_new_view, y_old_view, dy_new_view, dy_old_view
-    cdef double[:] extra_output_view, extra_output_init_view
-    
-    # -- Dependent (y0) variable information
-    cdef unsigned short y_size
-    cdef double y_size_dbl, y_size_sqrt
-    cdef const double[:] y0_view
-    
-    # -- RK method information
-    cdef unsigned char rk_method
-    cdef unsigned char rk_order, error_order, rk_n_stages, rk_n_stages_plus1, rk_n_stages_extended
-    cdef double error_expo
-    cdef unsigned char len_C
-    cdef double[:] B_view, E_view, E3_view, E5_view, E_tmp_view, E3_tmp_view, E5_tmp_view, C_view
-    cdef double[:, :] A_view, K_view
-    
-    # -- Integration information
-    cdef public char status
-    cdef public str message
-    cdef public bool_cpp_t success
-    cdef double t_start, t_end, t_delta, t_delta_abs, direction, direction_inf
-    cdef double rtol, atol
-    cdef double step_size, max_step
-    cdef unsigned int expected_size
-    cdef unsigned int num_concats
-    
-    # -- Optional args info
-    cdef unsigned short num_args
-    cdef double[:] arg_array_view
-
-    # -- Extra output info
-    cdef bool_cpp_t capture_extra
-    cdef unsigned short num_extra
-
-    # -- Interpolation info
-    cdef bool_cpp_t run_interpolation
-    cdef bool_cpp_t interpolate_extra
-    cdef unsigned int len_t_eval
-    cdef double[:] t_eval_view
-
-    # -- Solution variables
-    cdef double[:, :] solution_y_view, solution_extra_view
-    cdef double[:] solution_t_view
+cdef class CySolver:
     
     def __init__(self,
                  (double, double) t_span,
@@ -108,6 +52,16 @@ cdef class CyRKSolver:
         self.status  = -3  # Status code to indicate that integration has not started.
         self.message = 'Integration has not started.'
         self.success = False
+
+        # Declare public variables to avoid memory access violations if solve() is not called.
+        cdef np.ndarray[np.float64_t, ndim=2, mode='c'] solution_extra_fake, solution_y_fake
+        cdef np.ndarray[np.float64_t, ndim=1, mode='c'] solution_t_fake
+        solution_extra_fake = np.nan * np.ones((1, 1), dtype=np.float64, order='C')
+        solution_y_fake = np.nan * np.ones((1, 1), dtype=np.float64, order='C')
+        solution_t_fake = np.nan * np.ones(1, dtype=np.float64, order='C')
+        self.solution_t_view = solution_t_fake
+        self.solution_extra_view = solution_extra_fake
+        self.solution_y_view = solution_y_fake
         
         # Expected size of output arrays.
         self.expected_size = expected_size
@@ -364,7 +318,7 @@ cdef class CyRKSolver:
         self.max_step = max_step
 
     @cython.exceptval(check=False)
-    cdef double calc_first_step(self) nogil:
+    cdef double calc_first_step(self):
         """ Determine initial step size. """
         
         cdef double step_size, d0, d1, d2, d0_abs, d1_abs, d2_abs, h0, h1, scale
@@ -423,7 +377,7 @@ cdef class CyRKSolver:
         return step_size
     
     @cython.exceptval(check=False)
-    def solve(self):
+    cpdef void solve(self):
         self._solve()
     
     @cython.exceptval(check=False)
@@ -724,6 +678,7 @@ cdef class CyRKSolver:
                 # No longer need the old arrays. Change where the view is pointing and delete them.
                 y_results_array_view = y_results_array_new
                 time_domain_array_view = time_domain_array_new
+                # TODO
 #                 del y_results_array
 #                 del time_domain_array
                 if self.capture_extra:
@@ -908,7 +863,7 @@ cdef class CyRKSolver:
 
     
     @cython.exceptval(check=False)
-    cdef void diffeq(self) nogil:
+    cdef void diffeq(self):
         # This is a template function that should be overriden by the user's subclass.
         
         # The diffeq can use live variables:

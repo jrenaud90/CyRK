@@ -5,7 +5,8 @@
 ### v0.6.0
 
 New Features
-- Created the `CyRKSolver` class which is more efficient than the `cyrk_ode` function.
+- Created the `CySolver` class which is more efficient than the `cyrk_ode` function.
+- New functions in `CyRK.cy.cysolvertest` to help test and check performance of `CySolver`.
 
 Bug Fixes:
 - Fixed compile error with `cyrk_ode` "complex types are unordered".

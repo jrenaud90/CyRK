@@ -13,4 +13,4 @@ from CyRK.cy.cyrk import cyrk_ode
 from .helper import nb2cy, cy2nb
 
 # Import test functions
-from ._test import test_cyrk, test_nbrk
+from ._test import test_cyrk, test_nbrk, test_cysolver
