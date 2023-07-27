@@ -53,7 +53,7 @@ cdef double cabs(double complex value) nogil:
 
 # Define fused type to handle both float and complex-valued versions of y and dydt.
 ctypedef fused double_numeric:
-    unsigned int
+    double
     double complex
 
 @cython.cdivision(True)
