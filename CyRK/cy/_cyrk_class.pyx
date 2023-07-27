@@ -1,5 +1,6 @@
+%%cython --annotate --force
 # distutils: language = c++
-# cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True
+# cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 
 import cython
 import numpy as np
@@ -68,7 +69,7 @@ cdef class CyRKSolver:
     
     # -- Optional args info
     cdef unsigned short num_args
-    cdef tuple args
+    cdef double[:] arg_array_view
 
     # -- Extra output info
     cdef bool_cpp_t capture_extra
@@ -125,11 +126,15 @@ cdef class CyRKSolver:
         self.direction_inf = self.direction * INF
         
         # Determine optional arguments
+        cdef np.ndarray[np.float64_t, ndim=1, mode='c'] arg_array
         if args is None:
             self.num_args = 0
         else:
             self.num_args = len(args)
-            self.args = args
+            arg_array = np.empty(self.num_args, dtype=np.float64, order='C')
+            self.arg_array_view = arg_array
+            for i in range(self.num_args):
+                self.arg_array_view[i] = args[i]
 
         # Initialize live variable arrays
         cdef np.ndarray[np.float64_t, ndim=1, mode='c'] y_new, y_old, dy_new, dy_old
@@ -349,8 +354,9 @@ cdef class CyRKSolver:
                 raise Exception('Error in user-provided step size: Step size can not exceed bounds.')
             self.step_size = first_step
         self.max_step = max_step
-        
-    cdef double calc_first_step(self):
+
+    @cython.exceptval(check=False)
+    cdef double calc_first_step(self) nogil:
         """ Determine initial step size. """
         
         cdef double step_size, d0, d1, d2, d0_abs, d1_abs, d2_abs, h0, h1, scale
@@ -408,7 +414,12 @@ cdef class CyRKSolver:
             
         return step_size
     
+    @cython.exceptval(check=False)
     def solve(self):
+        self._solve()
+    
+    @cython.exceptval(check=False)
+    cdef void _solve(self):
         """ Perform Runge-Kutta integration on `self.diffeq` function."""
         
         # Setup loop variables
@@ -416,6 +427,20 @@ cdef class CyRKSolver:
         
         # Initialize other variables
         cdef double error_norm5, error_norm3, error_norm, error_norm_abs, error_norm3_abs, error_norm5_abs, error_denom, error_pow
+        
+        # Avoid method lookups for variables in tight loops
+        cdef double[:] B_view, E_view, E3_view, E5_view, E_tmp_view, E3_tmp_view, E5_tmp_view, C_view
+        cdef double[:, :] A_view, K_view
+        A_view      = self.A_view
+        B_view      = self.B_view
+        C_view      = self.C_view
+        E_view      = self.E_view
+        E3_view     = self.E3_view
+        E5_view     = self.E5_view
+        E_tmp_view  = self.E_tmp_view
+        E3_tmp_view = self.E3_tmp_view
+        E5_tmp_view = self.E5_tmp_view
+        K_view      = self.K_view
         
         # Setup storage lists
         cdef list y_results_list
@@ -501,13 +526,13 @@ cdef class CyRKSolver:
 
                 # Calculate derivative using RK method
                 for i in range(self.y_size):
-                    self.K_view[0, i] = self.dy_old_view[i]
+                    K_view[0, i] = self.dy_old_view[i]
 
                 # t_new must be updated for each loop of s in order to make the diffeq calls. 
                 # But we need to return to its original value later on. Store in temp variable.
                 time_tmp = self.t_new
                 for s in range(1, self.len_C):
-                    c = self.C_view[s]
+                    c = C_view[s]
                     
                     # Update t_new so it can be used in the diffeq call.
                     self.t_new = self.t_old + c * step
@@ -519,12 +544,12 @@ cdef class CyRKSolver:
                                 # Initialize
                                 self.y_new_view[i] = self.y_old_view[i]
 
-                            self.y_new_view[i] = self.y_new_view[i] + (self.K_view[j, i] * self.A_view[s, j] * step)
+                            self.y_new_view[i] = self.y_new_view[i] + (K_view[j, i] * A_view[s, j] * step)
                     
                     self.diffeq()
 
                     for i in range(self.y_size):
-                        self.K_view[s, i] = self.dy_new_view[i]
+                        K_view[s, i] = self.dy_new_view[i]
                 
                 # Restore t_new to its previous value.
                 self.t_new = time_tmp
@@ -537,7 +562,7 @@ cdef class CyRKSolver:
                         if j == 0:
                             # Initialize
                             self.y_new_view[i] = self.y_old_view[i]
-                        self.y_new_view[i] = self.y_new_view[i] + (self.K_view[j, i] * self.B_view[j] * step)
+                        self.y_new_view[i] = self.y_new_view[i] + (K_view[j, i] * B_view[j] * step)
                 
                 self.diffeq()
 
@@ -552,16 +577,16 @@ cdef class CyRKSolver:
                         for j in range(self.rk_n_stages_plus1):
                             if j == 0:
                                 # Initialize
-                                self.E5_tmp_view[i] = 0.
-                                self.E3_tmp_view[i] = 0.
+                                E5_tmp_view[i] = 0.
+                                E3_tmp_view[i] = 0.
 
                             elif j == self.rk_n_stages:
                                 # Set last array of the K array.
-                                self.K_view[j, i] = self.dy_new_view[i]
+                                K_view[j, i] = self.dy_new_view[i]
 
-                            K_scale = self.K_view[j, i] / scale
-                            self.E5_tmp_view[i] = self.E5_tmp_view[i] + (K_scale * self.E5_view[j])
-                            self.E3_tmp_view[i] = self.E3_tmp_view[i] + (K_scale * self.E3_view[j])
+                            K_scale = K_view[j, i] / scale
+                            E5_tmp_view[i] = E5_tmp_view[i] + (K_scale * E5_view[j])
+                            E3_tmp_view[i] = E3_tmp_view[i] + (K_scale * E3_view[j])
 
                     # Find norms for each error
                     error_norm5 = 0.
@@ -569,8 +594,8 @@ cdef class CyRKSolver:
 
                     # Perform summation
                     for i in range(self.y_size):
-                        error_norm5_abs = fabs(self.E5_tmp_view[i])
-                        error_norm3_abs = fabs(self.E3_tmp_view[i])
+                        error_norm5_abs = fabs(E5_tmp_view[i])
+                        error_norm3_abs = fabs(E3_tmp_view[i])
 
                         error_norm5 += (error_norm5_abs * error_norm5_abs)
                         error_norm3 += (error_norm3_abs * error_norm3_abs)
@@ -594,15 +619,15 @@ cdef class CyRKSolver:
                         for j in range(self.rk_n_stages_plus1):
                             if j == 0:
                                 # Initialize
-                                self.E_tmp_view[i] = 0.
+                                E_tmp_view[i] = 0.
                             elif j == self.rk_n_stages:
                                 # Set last array of the K array.
-                                self.K_view[j, i] = self.dy_new_view[i]
+                                K_view[j, i] = self.dy_new_view[i]
 
                             K_scale = self.K_view[j, i] / scale
-                            self.E_tmp_view[i] = self.E_tmp_view[i] + (K_scale * self.E_view[j] * step)
+                            E_tmp_view[i] = E_tmp_view[i] + (K_scale * E_view[j] * step)
 
-                        error_norm_abs = fabs(self.E_tmp_view[i])
+                        error_norm_abs = fabs(E_tmp_view[i])
                         error_norm += (error_norm_abs * error_norm_abs)
                     error_norm = sqrt(error_norm) / self.y_size_sqrt
 
@@ -708,8 +733,9 @@ cdef class CyRKSolver:
         # Integration is complete. Check if interpolation was requested.
         if self.success and self.run_interpolation:
             self.interpolate()
-
-    cdef interpolate(self):
+    
+    @cython.exceptval(check=False)
+    cdef void interpolate(self):
         """ Interpolate the results of a successful integration over the user provided time domain, `t_eval`."""
         # User only wants data at specific points.
 
@@ -781,7 +807,7 @@ cdef class CyRKSolver:
                     # Perform numerical interpolation
                     interp_array(
                             self.t_eval_view,
-                            self.solution_t,
+                            self.solution_t_view,
                             extra_timeslice_view,
                             extra_temp_view
                             )
@@ -810,8 +836,9 @@ cdef class CyRKSolver:
         if self.capture_extra:
             self.solution_extra_view = extra_reduced_view
 
-        
-    cdef diffeq(self):
+    
+    @cython.exceptval(check=False)
+    cdef void diffeq(self) nogil:
         # This is a template function that should be overriden by the user's subclass.
         
         # The diffeq can use live variables:
