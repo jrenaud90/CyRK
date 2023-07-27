@@ -322,16 +322,26 @@ cdef class CyRKSolver:
                 # Dummy Variables, set equal to E3
                 self.E_view[i] = DOP_E3[i]
         
+        # Reset live variables to their starting values.
+        # Set current and old y variables equal to y0
+        for i in range(self.y_size):
+            self.y_new_view[i] = self.y0_view[i]
+            self.y_old_view[i] = self.y0_view[i]
+        # Set current and old time variables equal to t0
+        self.t_old = self.t_start
+        self.t_new = self.t_start
+
+        # Initialize dy_new_view for start of integration (important for first_step calculation)
+        if not self.capture_extra:
+            # If `capture_extra` is True then this step was already performed so we can skip it.
+            self.diffeq()
+        
+        for i in range(self.y_size):
+            self.dy_old_view[i] = self.dy_new_view[i]
+
         # Determine first step
         if first_step == 0.:
             self.step_size = self.calc_first_step()
-
-            # Reset state variables
-            self.t_old = self.t_start
-            self.t_new = self.t_start
-            for i in range(self.y_size):
-                self.y_new_view[i] = self.y0_view[i]
-                self.y_old_view[i] = self.y0_view[i]
         else:
             if first_step <= 0.:
                 raise Exception('Error in user-provided step size: Step size must be a positive number.')

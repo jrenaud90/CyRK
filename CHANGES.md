@@ -4,6 +4,9 @@
 
 ### v0.6.0
 
+TODO: 
+- fix potential power issue in cyrk_ode
+
 Bug Fixes:
 - Fixed missing declarations for variables in `cyrk_ode`
 
