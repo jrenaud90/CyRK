@@ -503,12 +503,13 @@ cdef class CyRKSolver:
                 for i in range(self.y_size):
                     self.K_view[0, i] = self.dy_old_view[i]
 
+                # t_new must be updated for each loop of s in order to make the diffeq calls. 
+                # But we need to return to its original value later on. Store in temp variable.
+                time_tmp = self.t_new
                 for s in range(1, self.len_C):
                     c = self.C_view[s]
                     
                     # Update t_new so it can be used in the diffeq call.
-                    # Keep old value so it can be restored.
-                    time_tmp = self.t_new
                     self.t_new = self.t_old + c * step
 
                     # Dot Product (K, a) * step
@@ -525,8 +526,9 @@ cdef class CyRKSolver:
                     for i in range(self.y_size):
                         self.K_view[s, i] = self.dy_new_view[i]
                 
-                # Restore t_new
+                # Restore t_new to its previous value.
                 self.t_new = time_tmp
+
                 # Dot Product (K, B) * step
                 for j in range(self.rk_n_stages):
                     # We do not use rk_n_stages_plus1 here because we are chopping off the last row of K to match
@@ -629,10 +631,10 @@ cdef class CyRKSolver:
                 # Issue with step convergence
                 self.status = -1
                 break
-            # elif not step_accepted:
-            #     # Issue with step convergence
-            #     self.status = -2
-            #     break
+            elif not step_accepted:
+                # Issue with step convergence
+                self.status = -2
+                break
 
             # End of step loop. Update the _now variables
             self.t_old = self.t_new
