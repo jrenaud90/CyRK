@@ -16,8 +16,7 @@
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
 
-CyRK provides fast integration tools to solve systems of ODEs using an adaptive time stepping scheme. CyRK can accept differential equation functions 
-that are written in pure Python, njited numba, or cython-based cdef classes. These kinds of functions are generally easier to implement than pure c functions. Using CyRK can speed up development time while not making a huge sacrifice when it comes to performance. 
+CyRK provides fast integration tools to solve systems of ODEs using an adaptive time stepping scheme. CyRK can accept differential equations that are written in pure Python, njited numba, or cython-based cdef classes. These kinds of functions are generally easier to implement than pure c functions. Using CyRK can speed up development time while not making a huge sacrifice when it comes to performance. 
 
 The purpose of this package is to provide some 
 functionality of [scipy's solve_ivp](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html) with greatly improved performance.
@@ -32,25 +31,24 @@ An additional benefit of the two cython implementations is that they are pre-com
 
 ## Installation
 
-It is recommended you use an [Anaconda](https://www.anaconda.com/products/distribution) environment. CyRK has been tested on Python 3.8--3.10
+*CyRK has been tested on Python 3.8--3.11; Windows, Ubuntu, and MacOS.*
 
 To install simply open a terminal and call:
 
 `pip install CyRK`
 
-If not installing from a wheel, CyRK will attempt to install `Cython` and `Numpy` in order to compile the cython code. 
-After the files have been compiled, cython will be uninstalled and CyRK's runtime dependencies 
-(see the pyproject.toml file for the latest list) will be installed instead.
+If not installing from a wheel, CyRK will attempt to install `Cython` and `Numpy` in order to compile the source code. 
+After everything has been compiled, cython will be uninstalled and CyRK's runtime dependencies (see the pyproject.toml file for the latest list) will be installed instead.
 
 A new installation of CyRK can be tested quickly by running the following from a python console.
 ```python
 from CyRK import test_cyrk, test_nbrk, test_cysolver
 test_cyrk()
-# You will hopefully see the message "CyRK's cyrk_ode was tested successfully."
+# Should see "CyRK's cyrk_ode was tested successfully."
 test_nbrk()
-# You will hopefully see the message "CyRK's nbrk_ode was tested successfully."
+# Should see "CyRK's nbrk_ode was tested successfully."
 test_cysolver()
-# You will hopefully see the message "CyRK's CySolver was tested successfully."
+# Should see "CyRK's CySolver was tested successfully."
 ```
 
 ### Installation Troubleshooting
@@ -59,12 +57,11 @@ test_cysolver()
 
 - If you see a "Can not load module: CyRK.cy" or similar error then the cython extensions likely did not compile during installation. Try running `pip install CyRK --no-binary="CyRK"` 
 to force python to recompile the cython extensions locally (rather than via a prebuilt wheel).
-- On MacOS: If you run into problems installing CyRK then reinstall using the verbose flag (`pip install -v .`) to look at the installation log. If you see an error that looks like "clang: error: unsupported option '-fopenmp'" then you may have a problem with your `llvm` or `libomp` libraries. It is recommended that you install CyRK in an anaconda environment with the following packages `conda install numpy scipy cython llvm-openmp`. See more discussion [here](https://github.com/facebookresearch/xformers/issues/157) and the steps taken [here](https://github.com/jrenaud90/CyRK/blob/main/.github/workflows/push_tests_mac.yml).
+- On MacOS: If you run into problems installing CyRK then reinstall using the verbose flag (`pip install -v .`) to look at the installation log. If you see an error that looks like "clang: error: unsupported option '-fopenmp'" then you may have a problem with your `llvm` or `libomp` libraries. It is recommended that you install CyRK in an [Anaconda](https://www.anaconda.com/download) environment with the following packages `conda install numpy scipy cython llvm-openmp`. See more discussion [here](https://github.com/facebookresearch/xformers/issues/157) and the steps taken [here](https://github.com/jrenaud90/CyRK/blob/main/.github/workflows/push_tests_mac.yml).
 
 ### Development and Testing Dependencies
 
-If you intend to work on CyRK's code base you will want to install the following dependencies in order to run CyRK's
-test suite.
+If you intend to work on CyRK's code base you will want to install the following dependencies in order to run CyRK's test suite and experimental notebooks.
 
 `conda install pytest scipy matplotlib jupyter`
 
@@ -75,8 +72,9 @@ CyRK's API is similar to SciPy's solve_ivp function. A differential equation can
 
 ```python
 import numpy as np
-from numba import njit
+
 # For even more speed up you can use numba's njit to compile the diffeq
+from numba import njit
 @njit
 def diffeq_nb(t, y):
     dy = np.empty_like(y)
@@ -91,7 +89,7 @@ atol = 1.0e-8
 ```
 
 ### Numba-based `nbrk_ode`
-The ODE can then be solved using the numba function by calling CyRK's `nbrk_ode`:
+The system of ODEs can then be solved using CyRK's numba solver by,
 
 ```python
 from CyRK import nbrk_ode
@@ -101,7 +99,7 @@ time_domain, y_results, success, message = \
 
 ### Cython-based `cyrk_ode`
 To call the cython version of the integrator you need to slightly edit the differential equation so that it does not
-return the derivative. Instead, the output is passed as an input argument (a np.ndarray) to the function. 
+return the derivative. Instead, the output is passed as an input argument (a `np.ndarray`) to the function. 
 
 ```python
 @njit
@@ -110,8 +108,7 @@ def diffeq_cy(t, y, dy):
     dy[1] = (0.02 * y[0] - 1.) * y[1]
 ```
 
-Alternatively, you can use CyRK's conversion helper functions to automatically convert between numba/scipy and cyrk
-function calls.
+Alternatively, you can use CyRK's conversion helper functions to automatically convert between numba/scipy and cyrk function calls.
 
 ```python
 from CyRK import nb2cy, cy2nb
@@ -136,13 +133,13 @@ time_domain, y_results, success, message = \
 ```
 
 ### Cython-based `CySolver`
-The cython-based `CySolver` class requires writing a new cython cdef class. This can be done like so, note this is in a .pyx file that must be
-cythonized and compiled before it can be used.
+The cython-based `CySolver` class requires writing a new cython cdef class. This is done in a new cython .pyx file which must then be cythonized and compiled before it can be used.
 
 ```cython
 """ODE.pyx"""
 # distutils: language = c++
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
+
 from CyRK.cy.cysolver cimport CySolver
 # Note the `cimport` here^
 
@@ -152,6 +149,7 @@ cdef class MyCyRKDiffeq(CySolver):
     cdef void diffeq(self):
         
         # Unpack dependent variables using the `self.y_new_view` variable.
+        # In this example we have a system of two dependent variables, but any number can be used.
         cdef double y0, y1
         y0 = self.y_new_view[0]
         y1 = self.y_new_view[1]
@@ -166,7 +164,7 @@ cdef class MyCyRKDiffeq(CySolver):
         cdef double t
         t = self.t_new
 
-        # This function must set the dydt variable `self.dy_new_view`
+        # This then updates dydt by setting the values of `self.dy_new_view`
         self.dy_new_view[0] = (1. - a * y1) * y0
         self.dy_new_view[1] = (b * y0 - 1.) * y1
 ```
@@ -195,17 +193,15 @@ MyCyRKDiffeqInst.solution_extra  # Extra output that was captured during integra
 
 ## Optional Arguments
 
-Both the numba and cython versions of the ODE solver have the following optional inputs:
+All three integrators can take the following optional inputs:
 - `rtol`: Relative Tolerance (default is 1.0e-6).
 - `atol`: Absolute Tolerance (default is 1.0e-8).
 - `max_step`: Maximum step size (default is +infinity).
 - `first_step`: Initial step size (default is 0).
   - If 0, then the solver will try to determine an ideal value.
 - `args`: Python tuple of additional arguments passed to the `diffeq`.
-- `t_eval`: Both solvers uses an adaptive time stepping protocol based on the recent error at each step. This results in
-a final non-uniform time domain of variable size. If the user would like the results at specific time steps then 
-they can provide a np.ndarray array at the desired steps to `t_eval`.
-The solver will then interpolate the results to fit this array.
+  - For the cython solvers these arguments must be floating point numbers only.
+- `t_eval`: Both solvers uses an adaptive time stepping protocol based on the recent error at each step. This results in a final non-uniform time domain of variable size. If the user would like the results at specific time steps then they can provide a np.ndarray array at the desired steps via `t_eval`. The solver will then interpolate the results to fit this array.
 - `rk_method`: Runge-Kutta method (default is 1; all of these methods are based off of
 [SciPy implementations](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html)):
   - `0` - "RK23" Explicit Runge-Kutta method of order 3(2).
@@ -215,37 +211,31 @@ The solver will then interpolate the results to fit this array.
 
 ### Additional Arguments for `cyrk_ode` and `CySolver`
 - `num_extra` : The number of extra outputs the integrator should expect.
+  - Please see `Documentation\Extra Output.md` for more details.
 - `expected_size` : Best guess on the expected size of the final time domain (number of points).
-    - The integrator must pre-allocate memory to store results from the integration. It will attempt to use arrays sized to `expected_size`. However, if this is too small or too large then performance will be impacted. It is recommended you try out different values based on the problem you are trying to solve.
+    - The integrator must pre-allocate memory to store results from the integration. It will attempt to use arrays sized to `expected_size`. However, if this is too small or too large then performance will be negatively impacted. It is recommended you try out different values based on the problem you are trying to solve.
     - If `expected_size=0` (the default) then the solver will attempt to guess a best size. Currently this is a very basic guess so it is not recommended.
     - It is better to overshoot than undershoot this guess.
 
 ## Limitations and Known Issues
 
-- [Issue 1](https://github.com/jrenaud90/CyRK/issues/1): Absolute tolerance can only be passed as a single value
-(same for all y's).
+- [Issue 1](https://github.com/jrenaud90/CyRK/issues/1): Absolute tolerance can only be passed as a single value (same for all y's).
+- [Issue 30](https://github.com/jrenaud90/CyRK/issues/30): CyRK's CySolver does not allow for complex-valued dependent variables. 
 
 ## Citing CyRK
 
-It is great to see CyRK used in other software or in scientific studies. We ask that you cite back to CyRK's 
-[GitHub](https://github.com/jrenaud90/CyRK) website so interested parties can learn about this package. 
+It is great to see CyRK used in other software or in scientific studies. We ask that you cite back to CyRK's [GitHub](https://github.com/jrenaud90/CyRK) website so interested parties can learn about this package. It would also be great to hear about the work being done with CyRK, so get in touch!
 
 Renaud, Joe P. (2022). CyRK - ODE Integrator Implemented in Cython and Numba. Zenodo. https://doi.org/10.5281/zenodo.7093266
 
-In addition to citing CyRK, please consider citing SciPy and its references for the specific Runge-Kutta model that
-was used in your work. CyRK is largely an adaptation of SciPy's functionality.
-Find more details [here](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html).
+In addition to citing CyRK, please consider citing SciPy and its references for the specific Runge-Kutta model that was used in your work. CyRK is largely an adaptation of SciPy's functionality. Find more details [here](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html).
 
 Pauli Virtanen, Ralf Gommers, Travis E. Oliphant, Matt Haberland, Tyler Reddy, David Cournapeau, Evgeni Burovski, Pearu Peterson, Warren Weckesser, Jonathan Bright, Stéfan J. van der Walt, Matthew Brett, Joshua Wilson, K. Jarrod Millman, Nikolay Mayorov, Andrew R. J. Nelson, Eric Jones, Robert Kern, Eric Larson, CJ Carey, İlhan Polat, Yu Feng, Eric W. Moore, Jake VanderPlas, Denis Laxalde, Josef Perktold, Robert Cimrman, Ian Henriksen, E.A. Quintero, Charles R Harris, Anne M. Archibald, Antônio H. Ribeiro, Fabian Pedregosa, Paul van Mulbregt, and SciPy 1.0 Contributors. (2020) SciPy 1.0: Fundamental Algorithms for Scientific Computing in Python. Nature Methods, 17(3), 261-272.
 
 ## Contribute to CyRK
 _Please look [here](https://github.com/jrenaud90/CyRK/graphs/contributors) for an up-to-date list of contributors to the CyRK package._
 
-CyRK is open-source and is distributed under the Creative Commons Attribution-ShareAlike 4.0 International license. 
-You are welcome to fork this repository and make any edits with attribution back to this project (please see the 
-`Citing CyRK` section).
+CyRK is open-source and is distributed under the Creative Commons Attribution-ShareAlike 4.0 International license. You are welcome to fork this repository and make any edits with attribution back to this project (please see the `Citing CyRK` section).
 - We encourage users to report bugs or feature requests using [GitHub Issues](https://github.com/jrenaud90/CyRK/issues).
-- If you would like to contribute but don't know where to start, check out the 
-[good first issue](https://github.com/jrenaud90/CyRK/labels/good%20first%20issue) tag on GitHub.
-- Users are welcome to submit pull requests and should feel free to create them before the final code is completed so
-that feedback and suggestions can be given early on.
+- If you would like to contribute but don't know where to start, check out the [good first issue](https://github.com/jrenaud90/CyRK/labels/good%20first%20issue) tag on GitHub.
+- Users are welcome to submit pull requests and should feel free to create them before the final code is completed so that feedback and suggestions can be given early on.
