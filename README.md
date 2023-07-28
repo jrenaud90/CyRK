@@ -146,7 +146,7 @@ cythonized and compiled before it can be used.
 from CyRK.cy.cysolver cimport CySolver
 # Note the `cimport` here^
 
-cdef class CySolverTester(CySolver):
+cdef class MyCyRKDiffeq(CySolver):
 
     @cython.exceptval(check=False)
     cdef void diffeq(self):
@@ -175,21 +175,21 @@ Once you compile the differential equation it can be imported in a regular pytho
 
 ```python
 """run.py"""
-from CyRK.cy.cysolvertest import CySolverTester
+from ODE import MyCyRKDiffeq
 
 # Need to make an instance of the integrator.
 # The diffeq no longer needs to be passed to the class.
-CySolverTesterInst = CySolverTester(time_span, initial_conds, args=(0.01, 0.02), rk_method=1, rtol=rtol, atol=atol)
+MyCyRKDiffeqInst = MyCyRKDiffeq(time_span, initial_conds, args=(0.01, 0.02), rk_method=1, rtol=rtol, atol=atol)
 
 # To perform the integration make a call to the solve method.
-CySolverTesterInst.solve()
+MyCyRKDiffeqInst.solve()
 
 # Once complete, you can access the results via...
-CySolverTesterInst.success     # True / False
-CySolverTesterInst.message     # Note about integration
-CySolverTesterInst.solution_t  # Time domain
-CySolverTesterInst.solution_y  # y dependent variables
-CySolverTesterInst.solution_extra  # Extra output that was captured during integration.
+MyCyRKDiffeqInst.success     # True / False
+MyCyRKDiffeqInst.message     # Note about integration
+MyCyRKDiffeqInst.solution_t  # Time domain
+MyCyRKDiffeqInst.solution_y  # y dependent variables
+MyCyRKDiffeqInst.solution_extra  # Extra output that was captured during integration.
 # See Documentation/Extra Output.md for more information on `solution_extra`
 ```
 
