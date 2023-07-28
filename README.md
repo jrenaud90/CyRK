@@ -16,7 +16,7 @@
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
 
-CyRK provides fast integration tools to solve systems of ODEs using an adaptive time stepping scheme. CyRK can, usually, accept differential equation functions 
+CyRK provides fast integration tools to solve systems of ODEs using an adaptive time stepping scheme. CyRK can accept differential equation functions 
 that are written in pure Python, njited numba, or cython-based cdef classes. These kinds of functions are generally easier to implement than pure c functions. Using CyRK can speed up development time while not making a huge sacrifice when it comes to performance. 
 
 The purpose of this package is to provide some 
