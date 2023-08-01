@@ -54,7 +54,7 @@ def test_cysolver():
     from CyRK.cy.cysolvertest import CySolverTester
 
     # TODO: Currently CySolver only works with floats not complex
-    CySolverTesterInst = CySolverTester(time_span, np.asarray(initial_conds, dtype=np.float64))
+    CySolverTesterInst = CySolverTester(time_span, np.asarray(np.real(initial_conds), dtype=np.float64))
     CySolverTesterInst.solve()
 
     assert CySolverTesterInst.success

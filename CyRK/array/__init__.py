@@ -1,1 +1,1 @@
-from CyRK.array.interp import interp, interp_complex, interp_array, interp_complex_array
+from CyRK.array.interp import interpj, interp_complexj, interp, interp_complex, interp_array, interp_complex_array
