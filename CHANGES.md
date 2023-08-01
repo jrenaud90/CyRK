@@ -15,6 +15,7 @@ Bug Fixes
 
 Other Changes
 - Reordered tests since numba tests take the longest.
+- Added `initializedcheck=False` to the array module compile arguments.
 
 ### v0.6.0
 

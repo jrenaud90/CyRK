@@ -1,5 +1,5 @@
 # distutils: language = c++
-# cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True
+# cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 import cython
 from cython.parallel import parallel, prange
 cimport cython
