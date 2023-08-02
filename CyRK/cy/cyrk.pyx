@@ -516,8 +516,6 @@ def cyrk_ode(
             d2 = 0.
             for i in range(y_size):
                 dydt_new_view[i] = diffeq_out_view[i]
-
-                # TODO: should/could this be `y_new_view` instead of `y_old_view`?
                 scale = atol + dabs(y_old_view[i]) * rtol
                 d2_abs = dabs( (dydt_new_view[i] - dydt_old_view[i]) / scale)
                 d2 += (d2_abs * d2_abs)
