@@ -2,6 +2,21 @@
 
 ## 2023
 
+#### v0.6.1
+
+New Features
+- Added top level parameters (like `MAX_STEP`) used in `CySolver` to `cysolver.pxd` so they can be cimported.
+- Added new argument to `array.interp` and `array.interp_complex`: `provided_j` the user can provide a `j` index,
+allowing the functions to skip the binary search. 
+- Added new function `interpj` to array module that outputs the interpolation result as well as the `j` index that was found.
+
+Bug Fixes
+- Fixed issue with array tests not actually checking values.
+
+Other Changes
+- Reordered tests since numba tests take the longest.
+- Added `initializedcheck=False` to the array module compile arguments.
+
 ### v0.6.0
 
 New Features

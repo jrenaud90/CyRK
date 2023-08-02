@@ -1,5 +1,15 @@
 cimport numpy as np
 from libcpp cimport bool as bool_cpp_t
+
+cdef double SAFETY
+cdef double MIN_FACTOR
+cdef double MAX_FACTOR
+cdef double MAX_STEP
+cdef double INF
+cdef double EPS
+cdef double EPS_10
+cdef double EPS_100
+
 cdef class CySolver:
 
     # Class attributes    

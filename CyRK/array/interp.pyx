@@ -1,5 +1,5 @@
 # distutils: language = c++
-# cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True
+# cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 import cython
 from cython.parallel import parallel, prange
 cimport cython
@@ -93,7 +93,219 @@ cdef unsigned int binary_search_with_guess(double key, double[:] array, unsigned
     return imin - 1
 
 
-cpdef double interp(double desired_x, double[:] x_domain, double[:] dependent_values) nogil:
+cpdef (double, int) interpj(double desired_x, double[:] x_domain, double[:] dependent_values,
+                            int provided_j = -1) nogil:
+    """ Interpolation function for floats. This function will return the index that it found during interpolation.
+
+    Provided a domain, `x_domain` and a dependent array `dependent_values` search domain for value closest to 
+    `desired_x` and return the value of `dependent_values` at that location if it is defined. Otherwise, use local 
+    slopes of `x_domain` and `dependent_values` to interpolate a value of `dependent_values` at `desired_x`.
+
+    Based on `numpy`'s `interp` function.
+
+    Parameters
+    ----------
+    desired_x : float
+        Location where `dependent_variables` is desired.
+    x_domain : np.ndarray[float]
+        Domain to search for the correct location.
+    dependent_values : np.ndarray[float]
+        Dependent values that are to be returned after search and interpolation.
+    provided_j : int
+        Give a j index from a previous interpolation to improve performance.
+
+    Returns
+    -------
+    result : float
+        Desired value of `dependent_values`.
+    j_out : int
+        The index that was found during binary_search_with_guess which can be used by other interpolation functions 
+        to improve performance.
+
+    """
+
+    cdef unsigned int lenx
+    lenx = len(x_domain)
+    # TODO: Needs to be at least 3 item long array. Add exception here?
+
+    cdef double left_value
+    left_value = dependent_values[0]
+    cdef double right_value
+    right_value = dependent_values[lenx - 1]
+
+    # Binary Search with Guess
+    cdef unsigned int j
+    j = 0
+    cdef double slope
+
+    cdef double result
+    cdef double fp_at_j
+    cdef double xp_at_j
+    cdef double fp_at_jp1
+    cdef double xp_at_jp1
+
+    # Perform binary search with guess
+    if provided_j == -1:
+        # No j provided; search for it instead.
+        j = binary_search_with_guess(desired_x, x_domain, lenx, j)
+    elif provided_j < -1:
+        # Error
+        # TODO: How to handle exception handling in a cdef function... For now just repeat the search.
+        j = binary_search_with_guess(desired_x, x_domain, lenx, j)
+    else:
+        # provided_j is strictly positive and smaller size in this block so the conversion is safe.
+        j = <unsigned int>provided_j
+
+    cdef int j_out
+    j_out = <int>j
+
+    if j == 0:
+        result = left_value
+    elif j == lenx:
+        result = right_value
+    else:
+        fp_at_j = dependent_values[j]
+        xp_at_j = x_domain[j]
+        if j == lenx - 1:
+            result = fp_at_j
+        elif xp_at_j == desired_x:
+            result = fp_at_j
+        else:
+            fp_at_jp1 = dependent_values[j + 1]
+            xp_at_jp1 = x_domain[j + 1]
+            slope = (fp_at_jp1 - fp_at_j) / (xp_at_jp1 - xp_at_j)
+
+            # If we get nan in one direction, try the other
+            result = slope * (desired_x - xp_at_j) + fp_at_j
+            if isnan(result):
+                result = slope * (desired_x - xp_at_jp1) + fp_at_jp1
+                if isnan(result) and (fp_at_jp1 == fp_at_j):
+                    result = fp_at_j
+
+    return result, j_out
+
+
+cpdef (double complex, int) interp_complexj(double desired_x, double[:] x_domain,
+                                            double complex[:] dependent_values, int provided_j = -1) nogil:
+    """ Interpolation function for complex numbers.
+
+    Provided a domain, `desired_x` and a dependent array `dependent_values` search domain for value closest to 
+    `desired_x` and return the value of `dependent_values` at that location if it is defined. Otherwise, use local 
+    slopes of `desired_x` and `dependent_values` to interpolate a value of `dependent_values` at `desired_x`.
+
+    Based on `numpy`'s `interp` function.
+
+    Parameters
+    ----------
+    desired_x : float
+        Location where `dependent_variables` is desired.
+    x_domain : np.ndarray[float]
+        Domain to search for the correct location.
+    dependent_values : np.ndarray[complex]
+        Dependent values that are to be returned after search and interpolation.
+    provided_j : int
+        Give a j index from a previous interpolation to improve performance.
+
+    Returns
+    -------
+    result : complex
+        Desired value of `dependent_values`.
+    j_out : int
+        The index that was found during binary_search_with_guess which can be used by other interpolation functions 
+        to improve performance.
+
+    """
+
+    cdef unsigned int lenx
+    lenx = len(x_domain)
+    # Note: Needs to be at least 3 item long array. Add exception here?
+
+    cdef double complex left_value
+    left_value = dependent_values[0]
+    cdef double complex right_value
+    right_value = dependent_values[lenx - 1]
+
+    # Binary Search with Guess
+    cdef unsigned int j
+    j = 0
+    cdef double slope_real
+    cdef double slope_imag
+    cdef double x_slope_inverse
+
+    cdef double result_real
+    cdef double result_imag
+    cdef double complex fp_at_j
+    cdef double fp_at_j_real
+    cdef double fp_at_j_imag
+    cdef double xp_at_j
+    cdef double complex fp_at_jp1
+    cdef double fp_at_jp1_real
+    cdef double fp_at_jp1_imag
+    cdef double xp_at_jp1
+
+    # Perform binary search with guess
+    if provided_j == -1:
+        # No j provided; search for it instead.
+        j = binary_search_with_guess(desired_x, x_domain, lenx, j)
+    elif provided_j < -1:
+        # Error
+        # TODO: How to handle exception handling in a cdef function... For now just repeat the search.
+        j = binary_search_with_guess(desired_x, x_domain, lenx, j)
+    else:
+        # provided_j is strictly positive and smaller size in this block so the conversion is safe.
+        j = <unsigned int> provided_j
+
+    cdef int j_out
+    j_out = <int> j
+
+    if j == 0:
+        result_real = left_value.real
+        result_imag = left_value.imag
+    elif j == lenx:
+        result_real = right_value.real
+        result_imag = right_value.imag
+    else:
+        fp_at_j = dependent_values[j]
+        fp_at_j_real = fp_at_j.real
+        fp_at_j_imag = fp_at_j.imag
+        xp_at_j = x_domain[j]
+        if j == lenx - 1:
+            result_real = fp_at_j_real
+            result_imag = fp_at_j_imag
+        elif xp_at_j == desired_x:
+            result_real = fp_at_j_real
+            result_imag = fp_at_j_imag
+        else:
+            fp_at_jp1 = dependent_values[j + 1]
+            fp_at_jp1_real = fp_at_jp1.real
+            fp_at_jp1_imag = fp_at_jp1.imag
+            xp_at_jp1 = x_domain[j + 1]
+            x_slope_inverse = 1.0 / (xp_at_jp1 - xp_at_j)
+            slope_real = (fp_at_jp1_real - fp_at_j_real) * x_slope_inverse
+            slope_imag = (fp_at_jp1_imag - fp_at_j_imag) * x_slope_inverse
+
+            # If we get nan in one direction try the other
+            # Real Part
+            result_real = slope_real * (desired_x - xp_at_j) + fp_at_j_real
+            if isnan(result_real):
+                result_real = slope_real * (desired_x - xp_at_jp1) + fp_at_jp1_real
+                if isnan(result_real) and (fp_at_jp1_real == fp_at_j_real):
+                    result_real = fp_at_j_real
+
+            # Imaginary Part
+            result_imag = slope_imag * (desired_x - xp_at_j) + fp_at_j_imag
+            if isnan(result_imag):
+                result_imag = slope_imag * (desired_x - xp_at_jp1) + fp_at_jp1_imag
+                if isnan(result_imag) and (fp_at_jp1_imag == fp_at_j_imag):
+                    result_imag = fp_at_j_imag
+
+    cdef double complex result
+    result = result_real + 1.0j * result_imag
+
+    return result, j_out
+
+
+cpdef double interp(double desired_x, double[:] x_domain, double[:] dependent_values, int provided_j = -1) nogil:
     """ Interpolation function for floats.
 
     Provided a domain, `x_domain` and a dependent array `dependent_values` search domain for value closest to 
@@ -110,6 +322,8 @@ cpdef double interp(double desired_x, double[:] x_domain, double[:] dependent_va
         Domain to search for the correct location.
     dependent_values : np.ndarray[float]
         Dependent values that are to be returned after search and interpolation.
+    provided_j : int
+        Give a j index from a previous interpolation to improve performance.
 
     Returns
     -------
@@ -139,7 +353,16 @@ cpdef double interp(double desired_x, double[:] x_domain, double[:] dependent_va
     cdef double xp_at_jp1
 
     # Perform binary search with guess
-    j = binary_search_with_guess(desired_x, x_domain, lenx, j)
+    if provided_j == -1:
+        # No j provided; search for it instead.
+        j = binary_search_with_guess(desired_x, x_domain, lenx, j)
+    elif provided_j < -1:
+        # Error
+        # TODO: How to handle exception handling in a cdef function... For now just repeat the search.
+        j = binary_search_with_guess(desired_x, x_domain, lenx, j)
+    else:
+        # provided_j is strictly positive and smaller size in this block so the conversion is safe.
+        j = <unsigned int>provided_j
 
     if j == 0:
         result = left_value
@@ -168,7 +391,7 @@ cpdef double interp(double desired_x, double[:] x_domain, double[:] dependent_va
 
 
 cpdef double complex interp_complex(double desired_x, double[:] x_domain,
-                                    double complex[:] dependent_values) nogil:
+                                    double complex[:] dependent_values, int provided_j = -1) nogil:
     """ Interpolation function for complex numbers.
 
     Provided a domain, `desired_x` and a dependent array `dependent_values` search domain for value closest to 
@@ -185,6 +408,8 @@ cpdef double complex interp_complex(double desired_x, double[:] x_domain,
         Domain to search for the correct location.
     dependent_values : np.ndarray[complex]
         Dependent values that are to be returned after search and interpolation.
+    provided_j : int
+        Give a j index from a previous interpolation to improve performance.
 
     Returns
     -------
@@ -221,7 +446,16 @@ cpdef double complex interp_complex(double desired_x, double[:] x_domain,
     cdef double xp_at_jp1
 
     # Perform binary search with guess
-    j = binary_search_with_guess(desired_x, x_domain, lenx, j)
+    if provided_j == -1:
+        # No j provided; search for it instead.
+        j = binary_search_with_guess(desired_x, x_domain, lenx, j)
+    elif provided_j < -1:
+        # Error
+        # TODO: How to handle exception handling in a cdef function... For now just repeat the search.
+        j = binary_search_with_guess(desired_x, x_domain, lenx, j)
+    else:
+        # provided_j is strictly positive and smaller size in this block so the conversion is safe.
+        j = <unsigned int> provided_j
 
     if j == 0:
         result_real = left_value.real
