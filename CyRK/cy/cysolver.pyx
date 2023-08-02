@@ -367,7 +367,6 @@ cdef class CySolver:
             # Find the norm for d2
             d2 = 0.
             for i in range(self.y_size):
-                # TODO: should/could this be `y_new_view` instead of `y_old_view`?
                 scale = self.atol + fabs(self.y_old_view[i]) * self.rtol
                 d2_abs = fabs( (self.dy_new_view[i] - self.dy_old_view[i]) / scale)
                 d2 += (d2_abs * d2_abs)
