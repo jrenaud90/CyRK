@@ -177,10 +177,11 @@ from ODE import MyCyRKDiffeq
 
 # Need to make an instance of the integrator.
 # The diffeq no longer needs to be passed to the class.
-MyCyRKDiffeqInst = MyCyRKDiffeq(time_span, initial_conds, args=(0.01, 0.02), rk_method=1, rtol=rtol, atol=atol)
+MyCyRKDiffeqInst = MyCyRKDiffeq(time_span, initial_conds, args=(0.01, 0.02), rk_method=1, rtol=rtol, atol=atol, auto_solve=True)
 
 # To perform the integration make a call to the solve method.
-MyCyRKDiffeqInst.solve()
+# Only required if the `auto_solve` flag is set to False (defaults to True)
+# MyCyRKDiffeqInst.solve()
 
 # Once complete, you can access the results via...
 MyCyRKDiffeqInst.success     # True / False
