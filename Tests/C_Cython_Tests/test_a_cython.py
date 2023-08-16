@@ -530,8 +530,7 @@ def test_accuracy_CySolverTester(rk_method):
     time_span_ = (0., 10.)
 
     # CyRK.CySolver
-    CySolverAccuracyTestInst = CySolverAccuracyTest(time_span_, y0, rk_method=rk_method, rtol=1.0e-8, atol=1.0e-9)
-    CySolverAccuracyTestInst.solve()
+    CySolverAccuracyTestInst = CySolverAccuracyTest(time_span_, y0, rk_method=rk_method, rtol=1.0e-8, atol=1.0e-9, auto_solve=True)
     real_answer = correct_answer(CySolverAccuracyTestInst.solution_t, c1, c2)
 
     if rk_method == 0:
