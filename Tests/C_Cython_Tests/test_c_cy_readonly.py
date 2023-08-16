@@ -68,8 +68,7 @@ def test_readonly_y0_CySolver(complex_valued):
     initial_conds_to_use.setflags(write=False)
 
 
-    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=1)
-    CySolverTesterInst.solve()
+    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=1, auto_solve=True)
 
     # Check that the ndarrays make sense
     assert type(CySolverTesterInst.solution_t) == np.ndarray

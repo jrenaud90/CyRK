@@ -48,8 +48,7 @@ def test_extra_output_integration():
 def test_extra_output_integration_CySolver():
     """Check that the cython class solver is able to run and capture additional outputs """
 
-    CySolverExtraTestInst = CySolverExtraTest(time_span, initial_conds_float, capture_extra=True, num_extra=2)
-    CySolverExtraTestInst.solve()
+    CySolverExtraTestInst = CySolverExtraTest(time_span, initial_conds_float, capture_extra=True, num_extra=2, auto_solve=True)
 
     # Check that the ndarrays make sense
     assert type(CySolverExtraTestInst.solution_t) == np.ndarray
@@ -106,8 +105,7 @@ def test_extra_output_integration_teval_no_extra_interpolation_CySolver():
     t_eval = np.linspace(time_span[0], time_span[1], 5)
 
     CySolverExtraTestInst = CySolverExtraTest(time_span, initial_conds_float, t_eval=t_eval,
-                                              capture_extra=True, num_extra=2, interpolate_extra=False)
-    CySolverExtraTestInst.solve()
+                                              capture_extra=True, num_extra=2, interpolate_extra=False, auto_solve=True)
 
     # Check that the ndarrays make sense
     assert type(CySolverExtraTestInst.solution_t) == np.ndarray
@@ -164,8 +162,7 @@ def test_extra_output_integration_teval_with_extra_interpolation_CySolver():
     t_eval = np.linspace(time_span[0], time_span[1], 5)
 
     CySolverExtraTestInst = CySolverExtraTest(time_span, initial_conds_float, t_eval=t_eval,
-                                              capture_extra=True, num_extra=2, interpolate_extra=True)
-    CySolverExtraTestInst.solve()
+                                              capture_extra=True, num_extra=2, interpolate_extra=True, auto_solve=True)
 
     # Check that the ndarrays make sense
     assert type(CySolverExtraTestInst.solution_t) == np.ndarray

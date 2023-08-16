@@ -43,7 +43,8 @@ cdef class CySolver:
                   bool_cpp_t capture_extra = False,
                   unsigned short num_extra = 0,
                   bool_cpp_t interpolate_extra = False,
-                  unsigned int expected_size = 0):
+                  unsigned int expected_size = 0,
+                  bool_cpp_t auto_solve = True):
         
         # Setup loop variables
         cdef Py_ssize_t i, j
@@ -324,6 +325,10 @@ cdef class CySolver:
                 raise Exception('Error in user-provided step size: Step size can not exceed bounds.')
             self.step_size = first_step
         self.max_step = max_step
+
+        # Run solver if requested
+        if auto_solve:
+            self._solve()
 
     @cython.exceptval(check=False)
     cdef double calc_first_step(self):

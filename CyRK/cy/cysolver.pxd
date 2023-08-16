@@ -1,4 +1,3 @@
-cimport numpy as np
 from libcpp cimport bool as bool_cpp_t
 
 cdef double SAFETY

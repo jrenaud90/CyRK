@@ -121,11 +121,11 @@ def run_performance(integration_method_name):
                     lambda: nbrk_ode(nb_diffeq, time_span, y0, args_, RTOL, ATOL, rk_method=int_method,
                                      capture_extra=True))
                 cysolver_timer = timeit.Timer(
-                    lambda: CySolverClass(time_span, y0, args_, RTOL, ATOL, rk_method=int_method, capture_extra=True, num_extra=3).solve())
+                    lambda: CySolverClass(time_span, y0, args_, RTOL, ATOL, rk_method=int_method, capture_extra=True, num_extra=3, auto_solve=True))
             else:
                 cy_timer = timeit.Timer(lambda: cyrk_ode(cy_diffeq, time_span, y0, args_, RTOL, ATOL, rk_method=int_method))
                 nb_timer = timeit.Timer(lambda: nbrk_ode(nb_diffeq, time_span, y0, args_, RTOL, ATOL, rk_method=int_method))
-                cysolver_timer = timeit.Timer(lambda: CySolverClass(time_span, y0, args_, RTOL, ATOL, rk_method=int_method).solve())
+                cysolver_timer = timeit.Timer(lambda: CySolverClass(time_span, y0, args_, RTOL, ATOL, rk_method=int_method, auto_solve=True))
 
             # Run the numba function once to make sure everything is compiled.
             print('\t\tPrecompiling numba')

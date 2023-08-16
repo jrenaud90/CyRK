@@ -3,6 +3,10 @@
 ## 2023
 
 #### v0.6.1
+New Features
+- Added `auto_solve` key word to `CySolver` class. This flag defaults to True. If True, then the solver will automatically call `self.solve()` after initialization.
+
+#### v0.6.1
 
 New Features
 - Added top level parameters (like `MAX_STEP`) used in `CySolver` to `cysolver.pxd` so they can be cimported.
