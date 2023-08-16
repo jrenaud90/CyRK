@@ -297,15 +297,6 @@ cdef class CySolver:
                 self.E_view[i] = DOP_E5[i]
                 # Dummy Variables, set equal to E3
                 self.E_view[i] = DOP_E3[i]
-        
-        # Reset live variables to their starting values.
-        # Set current and old y variables equal to y0
-        for i in range(self.y_size):
-            self.y_new_view[i] = self.y0_view[i]
-            self.y_old_view[i] = self.y0_view[i]
-        # Set current and old time variables equal to t0
-        self.t_old = self.t_start
-        self.t_new = self.t_start
 
         # Initialize dy_new_view for start of integration (important for first_step calculation)
         if not self.capture_extra:
@@ -316,19 +307,71 @@ cdef class CySolver:
             self.dy_old_view[i] = self.dy_new_view[i]
 
         # Determine first step
-        if first_step == 0.:
+        self.first_step = first_step
+        if self.first_step == 0.:
             self.step_size = self.calc_first_step()
         else:
-            if first_step <= 0.:
+            if self.first_step <= 0.:
                 raise Exception('Error in user-provided step size: Step size must be a positive number.')
-            elif first_step > self.t_delta_abs:
+            elif self.first_step > self.t_delta_abs:
                 raise Exception('Error in user-provided step size: Step size can not exceed bounds.')
-            self.step_size = first_step
+            self.step_size = self.first_step
         self.max_step = max_step
 
         # Run solver if requested
         if auto_solve:
-            self._solve()
+            # We know for a fact that this is the first time solve will be called
+            #  so we do not need to reset the state.
+            self._solve(reset=False)
+
+    @cython.exceptval(check=False)
+    cdef void reset_state(self):
+        """ Resets the integrator to its initial state. """
+        cdef Py_ssize_t i, j
+
+        # Set current and old time variables equal to t0
+        self.t_old = self.t_start
+        self.t_new = self.t_start
+        self.len_t = 1
+
+        for i in range(self.y_size):
+            # Set current and old y variables equal to y0
+            self.y_new_view[i] = self.y0_view[i]
+            self.y_old_view[i] = self.y0_view[i]
+
+            for j in range(self.rk_n_stages_plus1):
+                # Reset RK variables
+                self.K_view[j, i] = 0.
+
+        # Make initial call to diffeq()
+        self.diffeq()
+        for i in range(self.y_size):
+            self.dy_old_view[i] = self.dy_new_view[i]
+
+        # Determine first step size
+        if self.first_step == 0.:
+            self.step_size = self.calc_first_step()
+        else:
+            if self.first_step <= 0.:
+                raise Exception('Error in user-provided step size: Step size must be a positive number.')
+            elif self.first_step > self.t_delta_abs:
+                raise Exception('Error in user-provided step size: Step size can not exceed bounds.')
+            self.step_size = self.first_step
+
+        # Reset public variables to clear any old solutions.
+        cdef np.ndarray[np.float64_t, ndim=2, mode='c'] solution_extra_fake, solution_y_fake
+        cdef np.ndarray[np.float64_t, ndim=1, mode='c'] solution_t_fake
+        solution_extra_fake = np.nan * np.ones((1, 1), dtype=np.float64, order='C')
+        solution_y_fake = np.nan * np.ones((1, 1), dtype=np.float64, order='C')
+        solution_t_fake = np.nan * np.ones(1, dtype=np.float64, order='C')
+        self.solution_t_view = solution_t_fake
+        self.solution_extra_view = solution_extra_fake
+        self.solution_y_view = solution_y_fake
+
+        # Other flags and messages
+        self.success = False
+        self.status = 2  # status == 2 means that reset has been called but solve has not yet.
+        self.message = "CySolver has been reset."
 
     @cython.exceptval(check=False)
     cdef double calc_first_step(self):
@@ -389,13 +432,17 @@ cdef class CySolver:
         return step_size
     
     @cython.exceptval(check=False)
-    cpdef void solve(self):
+    cpdef void solve(self, bool_cpp_t reset = True):
         self._solve()
     
     @cython.exceptval(check=False)
-    cdef void _solve(self):
+    cdef void _solve(self, bool_cpp_t reset = True):
         """ Perform Runge-Kutta integration on `self.diffeq` function."""
-        
+
+        # Reset the solver's state (avoid issues if solve() is called multiple times).
+        if reset:
+            self.reset_state()
+
         # Setup loop variables
         cdef Py_ssize_t s, i, j
         

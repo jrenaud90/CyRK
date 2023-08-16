@@ -2,9 +2,13 @@
 
 ## 2023
 
-#### v0.6.1
+#### v0.6.2
 New Features
 - Added `auto_solve` key word to `CySolver` class. This flag defaults to True. If True, then the solver will automatically call `self.solve()` after initialization.
+
+Bug Fixes:
+- Fixed issue where `CySolver` could give incorrect results if the `solve()` method was called multiple times on the same instance.
+- Removed extraneous code from `CySolver.__init__`.
 
 #### v0.6.1
 

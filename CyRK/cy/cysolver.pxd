@@ -38,6 +38,7 @@ cdef class CySolver:
     cdef double t_start, t_end, t_delta, t_delta_abs, direction, direction_inf
     cdef double rtol, atol
     cdef double step_size, max_step
+    cdef double first_step
     cdef unsigned int expected_size
     cdef unsigned int num_concats
     
@@ -60,8 +61,9 @@ cdef class CySolver:
     cdef double[:] solution_t_view
 
     # Class functions
+    cdef void reset_state(self)
     cdef double calc_first_step(self)
-    cpdef void solve(self)
-    cdef void _solve(self)
+    cpdef void solve(self, bool_cpp_t reset = *)
+    cdef void _solve(self, bool_cpp_t reset = *)
     cdef void interpolate(self)
     cdef void diffeq(self)
