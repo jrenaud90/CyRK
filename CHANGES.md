@@ -2,6 +2,14 @@
 
 ## 2023
 
+### v0.7.0
+
+Other Changes
+- Improved documentation for `CySolver`'s `diffeq` method template.
+
+Bug Fixes:
+- Fixed potential seg fault when accessing `CySolver`'s arg_array_view.
+
 #### v0.6.2
 New Features
 - Added `auto_solve` key word to `CySolver` class. This flag defaults to True. If True, then the solver will automatically call `self.solve()` after initialization.

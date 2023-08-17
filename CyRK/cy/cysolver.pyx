@@ -114,6 +114,9 @@ cdef class CySolver:
         cdef np.ndarray[np.float64_t, ndim=1, mode='c'] arg_array
         if args is None:
             self.num_args = 0
+            # Even though there are no args, initialize the array to something to avoid seg faults
+            arg_array = np.empty(0, dype=np.float64, order='C')
+            self.arg_array_view = arg_array
         else:
             self.num_args = len(args)
             arg_array = np.empty(self.num_args, dtype=np.float64, order='C')
@@ -1094,22 +1097,42 @@ cdef class CySolver:
     cdef void diffeq(self):
         # This is a template function that should be overriden by the user's subclass.
         
-        # The diffeq can use live variables:
-        #  self.t_new
-        #  self.y_new_view[:]
-        #  (size of array is self.y_size)
+        # The diffeq can use live variables which are automatically updated before each call.
+        # self.t_new: The current "time" (of course, depending on your problem, it may not actually be _time_ per se).
+        # self.y_new_view[:]: The current y value(s) stored as an array.
+        # For example...
+        # ```python
+        # cdef double t_sin
+        # # You will want to import the c version of sin "from libc.math cimport sin" at the top of your file.
+        # t_sin = sin(self.t_new)
+        # y0 = self.y_new_view[0]
+        # y1 = self.y_new_view[1]
+        # ```
         
         # Can also use other optional global attributes like...
-        #  self.args  (size of args is self.num_args)
+        # self.arg_array_view  (size of self.arg_array_view is self.num_args). For example...
+        # ```python
+        # cdef double a, b
+        # a = self.arg_array_view[0]
+        # b = self.arg_array_view[1]
+        # ```
+        # Currently, these args must be doubles (floats).
         
-        # This function must set the dy_new variables
-        #  self.dy_new_view[:] = ...  (size of array is self.y_size)
+        # This function *must* set new values to the dy_new_view variable (size of array is self.y_size). For example...
+        # ```python
+        # self.dy_new_view[0] = b * t_sin - y1
+        # self.dy_new_view[1] = a * sin(y0)
+        # ```
 
-        # It can also set additional outputs that the user may want to capture
-        #  self.extra_output_view[:] = ...
-        # Currently, these additional outputs must be stored as floats. 
-        # Note that if extra output is used then the variables `capture_extra` and `num_extra`
-        #  must be set during solver __init__.
+        # CySolver can also set additional outputs that the user may want to capture without having to make new calls
+        #  to the differential equation or its sub-methods. For example...
+        # ```python
+        # self.extra_output_view[0] = t_sin
+        # self.extra_output_view[1] = b * t_sin
+        # ```
+        # Currently, these additional outputs must be stored as doubles (floats).
+        # Note that if extra output is used then the variables `capture_extra` and `num_extra` must be set in CySolver's
+        #  `__init__` method.
         
         # The default template simply sets all dy to 0.
         cdef Py_ssize_t i
