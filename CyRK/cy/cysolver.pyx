@@ -6,7 +6,7 @@ import numpy as np
 cimport numpy as np
 np.import_array()
 from libcpp cimport bool as bool_cpp_t
-from libc.math cimport sqrt, fabs, nextafter, fmax, fmin
+from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, isnan, NAN
 
 from CyRK.array.interp cimport interp_array
 from CyRK.rk.rk cimport (
@@ -27,24 +27,26 @@ cdef double INF = np.inf
 cdef double EPS = np.finfo(np.float64).eps
 cdef double EPS_10 = EPS * 10.
 cdef double EPS_100 = EPS * 100.
+
+cdef (double, double) EMPTY_T_SPAN = (NAN, NAN)
     
 cdef class CySolver:
     
     def __init__(self,
                  (double, double) t_span,
-                  const double[:] y0,
-                  tuple args = None,
-                  double rtol = 1.e-6,
-                  double atol = 1.e-8,
-                  double max_step = MAX_STEP,
-                  double first_step = 0.,
-                  unsigned char rk_method = 1,
-                  const double[:] t_eval = None,
-                  bool_cpp_t capture_extra = False,
-                  unsigned short num_extra = 0,
-                  bool_cpp_t interpolate_extra = False,
-                  unsigned int expected_size = 0,
-                  bool_cpp_t auto_solve = True):
+                 const double[:] y0,
+                 tuple args = None,
+                 double rtol = 1.e-6,
+                 double atol = 1.e-8,
+                 double max_step = MAX_STEP,
+                 double first_step = 0.,
+                 unsigned char rk_method = 1,
+                 const double[:] t_eval = None,
+                 bool_cpp_t capture_extra = False,
+                 unsigned short num_extra = 0,
+                 bool_cpp_t interpolate_extra = False,
+                 unsigned int expected_size = 0,
+                 bool_cpp_t auto_solve = True):
         
         # Setup loop variables
         cdef Py_ssize_t i, j
@@ -83,7 +85,7 @@ cdef class CySolver:
         self.direction_inf = self.direction * INF
 
         # # Determine integration parameters
-        # Check tolerances
+        # Add tolerances
         self.rtol = rtol
         self.atol = atol
         if self.rtol < EPS_100:
@@ -216,7 +218,7 @@ cdef class CySolver:
 
             self.rk_n_stages_extended = DOP_n_stages_extended
         else:
-            raise Exception(
+            raise AttributeError(
                 'Unexpected rk_method provided. Currently supported versions are:\n'
                 '\t0 = RK23\n'
                 '\t1 = RK34\n'
@@ -312,9 +314,9 @@ cdef class CySolver:
             self.step_size = self.calc_first_step()
         else:
             if self.first_step <= 0.:
-                raise Exception('Error in user-provided step size: Step size must be a positive number.')
+                raise AttributeError('Error in user-provided step size: Step size must be a positive number.')
             elif self.first_step > self.t_delta_abs:
-                raise Exception('Error in user-provided step size: Step size can not exceed bounds.')
+                raise AttributeError('Error in user-provided step size: Step size can not exceed bounds.')
             self.step_size = self.first_step
         self.max_step = max_step
 
@@ -324,8 +326,8 @@ cdef class CySolver:
             #  so we do not need to reset the state.
             self._solve(reset=False)
 
-    @cython.exceptval(check=False)
-    cdef void reset_state(self):
+
+    cpdef void reset_state(self):
         """ Resets the integrator to its initial state. """
         cdef Py_ssize_t i, j
 
@@ -334,6 +336,7 @@ cdef class CySolver:
         self.t_new = self.t_start
         self.len_t = 1
 
+        # Reset y variables
         for i in range(self.y_size):
             # Set current and old y variables equal to y0
             self.y_new_view[i] = self.y0_view[i]
@@ -353,10 +356,13 @@ cdef class CySolver:
             self.step_size = self.calc_first_step()
         else:
             if self.first_step <= 0.:
-                raise Exception('Error in user-provided step size: Step size must be a positive number.')
+                raise AttributeError('Error in user-provided step size: Step size must be a positive number.')
             elif self.first_step > self.t_delta_abs:
-                raise Exception('Error in user-provided step size: Step size can not exceed bounds.')
+                raise AttributeError('Error in user-provided step size: Step size can not exceed bounds.')
             self.step_size = self.first_step
+
+        # Reset output storage
+        self.num_concats = 1
 
         # Reset public variables to clear any old solutions.
         cdef np.ndarray[np.float64_t, ndim=2, mode='c'] solution_extra_fake, solution_y_fake
@@ -370,8 +376,9 @@ cdef class CySolver:
 
         # Other flags and messages
         self.success = False
-        self.status = 2  # status == 2 means that reset has been called but solve has not yet.
+        self.status = -5  # status == -5 means that reset has been called but solve has not yet been called.
         self.message = "CySolver has been reset."
+
 
     @cython.exceptval(check=False)
     cdef double calc_first_step(self):
@@ -430,11 +437,13 @@ cdef class CySolver:
                             min(100. * h0, h1))
             
         return step_size
-    
+
+
     @cython.exceptval(check=False)
     cpdef void solve(self, bool_cpp_t reset = True):
         self._solve()
-    
+
+
     @cython.exceptval(check=False)
     cdef void _solve(self, bool_cpp_t reset = True):
         """ Perform Runge-Kutta integration on `self.diffeq` function."""
@@ -814,7 +823,8 @@ cdef class CySolver:
         # Integration is complete. Check if interpolation was requested.
         if self.success and self.run_interpolation:
             self.interpolate()
-    
+
+
     @cython.exceptval(check=False)
     cdef void interpolate(self):
         """ Interpolate the results of a successful integration over the user provided time domain, `t_eval`."""
@@ -917,7 +927,169 @@ cdef class CySolver:
         if self.capture_extra:
             self.solution_extra_view = extra_reduced_view
 
-    
+
+    cpdef void change_t_span(self, (double, double) t_span, bool_cpp_t auto_reset_state = False):
+
+        # Update time domain information
+        self.t_start     = t_span[0]
+        self.t_end       = t_span[1]
+        self.t_delta     = self.t_end - self.t_start
+        self.t_delta_abs = fabs(self.t_delta)
+        if self.t_delta >= 0.:
+            self.direction = 1.
+        else:
+            self.direction = -1.
+        self.direction_inf = self.direction * INF
+
+        if auto_reset_state:
+            self.reset_state()
+
+
+    cpdef void change_y0(self, const double[:] y0, bool_cpp_t auto_reset_state = False):
+
+        # Check y-size information
+        cdef Py_ssize_t y_size_new
+        y_size_new = len(y0)
+
+        if self.y_size != y_size_new:
+            # So many things need to update if ysize changes that the user might as well just
+            #  create a new class instance.
+            self.status = -6  # Bad update status
+            raise AttributeError('New y0 must be the same size as the original y0 used to create CySolver class.'
+                                 'Create new CySolver instance instead.')
+
+        # Store y0 values for later
+        self.y0_view = y0
+
+        if auto_reset_state:
+            self.reset_state()
+
+
+    cpdef void change_args(self, tuple args, bool_cpp_t auto_reset_state = False):
+
+        # Determine optional arguments
+        cdef np.ndarray[np.float64_t, ndim=1, mode='c'] arg_array
+
+        self.num_args = len(args)
+        arg_array = np.empty(self.num_args, dtype=np.float64, order='C')
+        self.arg_array_view = arg_array
+        for i in range(self.num_args):
+            self.arg_array_view[i] = args[i]
+
+        if auto_reset_state:
+            self.reset_state()
+
+
+    cpdef void change_tols(self, double rtol = NAN, double atol = NAN, bool_cpp_t auto_reset_state = False):
+
+        # Update tolerances
+        if not isnan(rtol):
+            self.rtol = rtol
+        if not isnan(atol):
+            self.atol = atol
+
+        if self.rtol < EPS_100:
+            self.rtol = EPS_100
+        # TODO: array based atol
+        #     atol_arr = np.asarray(atol, dtype=)
+        #     if atol_arr.ndim > 0 and atol_arr.shape[0] != y_size:
+        #         # atol must be either the same for all y or must be provided as an array, one for each y.
+        #         raise Exception
+
+        if auto_reset_state:
+            self.reset_state()
+
+
+    cpdef void change_max_step(self, double max_step, bool_cpp_t auto_reset_state = False):
+
+        self.max_step = max_step
+
+        if auto_reset_state:
+            self.reset_state()
+
+
+    cpdef void change_first_step(self, double first_step, bool_cpp_t auto_reset_state = False):
+
+        self.first_step = first_step
+        if self.first_step == 0.:
+            self.step_size = self.calc_first_step()
+        else:
+            if self.first_step <= 0.:
+                raise AttributeError('Error in user-provided step size: Step size must be a positive number.')
+            elif self.first_step > self.t_delta_abs:
+                raise AttributeError('Error in user-provided step size: Step size can not exceed bounds.')
+            self.step_size = self.first_step
+
+        if auto_reset_state:
+            self.reset_state()
+
+
+    cpdef void change_t_eval(self, const double[:] t_eval, bool_cpp_t auto_reset_state = False):
+
+        # Determine interpolation information
+        cdef np.ndarray[np.float64_t, ndim=1, mode='c'] t_eval_array
+
+        self.run_interpolation = True
+        self.len_t_eval = len(t_eval)
+
+        t_eval_array = np.empty(self.len_t_eval, dtype=np.float64, order='C')
+        self.t_eval_view = t_eval_array
+        for i in range(self.len_t_eval):
+            self.t_eval_view[i] = t_eval[i]
+
+        if auto_reset_state:
+            self.reset_state()
+
+
+    cpdef void change_parameters(
+            self,
+            (double, double) t_span = EMPTY_T_SPAN,
+            const double[:] y0 = None,
+            tuple args = None,
+            double rtol = NAN,
+            double atol = NAN,
+            double max_step = NAN,
+            double first_step = NAN,
+            const double[:] t_eval = None,
+            bool_cpp_t auto_reset_state = True,
+            bool_cpp_t auto_solve = False):
+
+        if not isnan(t_span[0]):
+            self.change_t_span(t_span, auto_reset_state=False)
+
+        if y0 is not None:
+            self.change_y0(y0, auto_reset_state=False)
+
+        if args is not None:
+            self.change_args(args, auto_reset_state=False)
+
+        if not isnan(rtol) and not isnan(atol):
+            self.change_tols(rtol=rtol, atol=atol, auto_reset_state=False)
+        elif not isnan(rtol):
+            self.change_tols(rtol=rtol, auto_reset_state=False)
+        elif not isnan(atol):
+            self.change_tols(atol=atol, auto_reset_state=False)
+
+        if not isnan(max_step):
+            self.change_max_step(max_step, auto_reset_state=False)
+
+        if not isnan(first_step):
+            self.change_first_step(first_step, auto_reset_state=False)
+
+        if t_eval is not None:
+            self.change_t_eval(t_eval, auto_reset_state=False)
+
+        # Now that everything has been set, reset the solver's state.
+        if auto_reset_state:
+            self.reset_state()
+
+        # User can choose to go ahead and rerun the solver with the new setup
+        if auto_solve:
+            # Tell solver to reset state if for some reason the user set reset to False but auto_solve to True,
+            # ^ This should probably be a warning. Don't see why you'd ever want to do that.
+            self._solve(reset=(not auto_reset_state))
+
+
     @cython.exceptval(check=False)
     cdef void diffeq(self):
         # This is a template function that should be overriden by the user's subclass.
@@ -950,17 +1122,20 @@ cdef class CySolver:
     def solution_t(self):
         # Need to convert the memory view back into a numpy array
         return np.asarray(self.solution_t_view)
-    
+
+
     @property
     def solution_y(self):
         # Need to convert the memory view back into a numpy array
         return np.asarray(self.solution_y_view)
-    
+
+
     @property
     def solution_extra(self):
         # Need to convert the memory view back into a numpy array
         return np.asarray(self.solution_extra_view)
-    
+
+
     @property
     def size_growths(self):
         # How many times the array had to grow during integration

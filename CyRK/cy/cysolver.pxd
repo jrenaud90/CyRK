@@ -61,9 +61,19 @@ cdef class CySolver:
     cdef double[:] solution_t_view
 
     # Class functions
-    cdef void reset_state(self)
+    cpdef void reset_state(self)
     cdef double calc_first_step(self)
     cpdef void solve(self, bool_cpp_t reset = *)
     cdef void _solve(self, bool_cpp_t reset = *)
     cdef void interpolate(self)
     cdef void diffeq(self)
+    cpdef void change_t_span(self, (double, double) t_span, bool_cpp_t auto_reset_state = *)
+    cpdef void change_y0(self, const double[:] y0, bool_cpp_t auto_reset_state = *)
+    cpdef void change_args(self, tuple args, bool_cpp_t auto_reset_state = *)
+    cpdef void change_tols(self, double rtol = *, double atol = *, bool_cpp_t auto_reset_state = *)
+    cpdef void change_max_step(self, double max_step, bool_cpp_t auto_reset_state = *)
+    cpdef void change_first_step(self, double first_step, bool_cpp_t auto_reset_state = *)
+    cpdef void change_t_eval(self, const double[:] t_eval, bool_cpp_t auto_reset_state = *)
+    cpdef void change_parameters(self, (double, double) t_span = *, const double[:] y0 = *, tuple args = *,
+                                double rtol = *, double atol = *, double max_step = *, double first_step = *,
+                                const double[:] t_eval = *, bool_cpp_t auto_reset_state = *, bool_cpp_t auto_solve = *)
