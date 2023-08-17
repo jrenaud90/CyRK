@@ -77,8 +77,7 @@ def test_basic_integration_CySolverTester(rk_method, complex_valued):
     else:
         initial_conds_to_use = initial_conds
 
-    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method)
-    CySolverTesterInst.solve()
+    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method, auto_solve=True)
 
     # Check that the ndarrays make sense
     assert type(CySolverTesterInst.solution_t) == np.ndarray
@@ -138,8 +137,7 @@ def test_different_tols_CySolverTester(rk_method, complex_valued):
     else:
         initial_conds_to_use = initial_conds
 
-    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method, rtol=1.0e-10, atol=1.0e-12)
-    CySolverTesterInst.solve()
+    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method, rtol=1.0e-10, atol=1.0e-12, auto_solve=True)
 
     # Check that the ndarrays make sense
     assert type(CySolverTesterInst.solution_t) == np.ndarray
@@ -198,8 +196,7 @@ def test_max_step_CySolverTester(rk_method, complex_valued):
     else:
         initial_conds_to_use = initial_conds
 
-    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method, max_step=time_span[1] / 2.)
-    CySolverTesterInst.solve()
+    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method, max_step=time_span[1] / 2., auto_solve=True)
 
     # Check that the ndarrays make sense
     assert type(CySolverTesterInst.solution_t) == np.ndarray
@@ -258,8 +255,7 @@ def test_first_step_CySolverTester(rk_method, complex_valued):
     else:
         initial_conds_to_use = initial_conds
 
-    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method, first_step=0.01)
-    CySolverTesterInst.solve()
+    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method, first_step=0.01, auto_solve=True)
 
     # Check that the ndarrays make sense
     assert type(CySolverTesterInst.solution_t) == np.ndarray
@@ -318,8 +314,7 @@ def test_large_end_value_CySolverTester(rk_method, complex_valued):
     else:
         initial_conds_to_use = initial_conds
 
-    CySolverTesterInst = CySolverTester(time_span_large, initial_conds_to_use, rk_method=rk_method)
-    CySolverTesterInst.solve()
+    CySolverTesterInst = CySolverTester(time_span_large, initial_conds_to_use, rk_method=rk_method, auto_solve=True)
 
     # Check that the ndarrays make sense
     assert type(CySolverTesterInst.solution_t) == np.ndarray
@@ -383,8 +378,7 @@ def test_teval_CySolverTester(rk_method, complex_valued):
 
     t_eval = np.linspace(time_span[0], time_span[1], 10)
 
-    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method, t_eval=t_eval)
-    CySolverTesterInst.solve()
+    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method, t_eval=t_eval, auto_solve=True)
 
     # Check that the ndarrays make sense
     assert type(CySolverTesterInst.solution_t) == np.ndarray
@@ -443,8 +437,7 @@ def test_args_CySolverTester(rk_method, complex_valued):
     else:
         initial_conds_to_use = initial_conds
 
-    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method, args=(0.01, 0.02))
-    CySolverTesterInst.solve()
+    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method, args=(0.01, 0.02), auto_solve=True)
 
     # Check that the ndarrays make sense
     assert type(CySolverTesterInst.solution_t) == np.ndarray
@@ -537,8 +530,7 @@ def test_accuracy_CySolverTester(rk_method):
     time_span_ = (0., 10.)
 
     # CyRK.CySolver
-    CySolverAccuracyTestInst = CySolverAccuracyTest(time_span_, y0, rk_method=rk_method, rtol=1.0e-8, atol=1.0e-9)
-    CySolverAccuracyTestInst.solve()
+    CySolverAccuracyTestInst = CySolverAccuracyTest(time_span_, y0, rk_method=rk_method, rtol=1.0e-8, atol=1.0e-9, auto_solve=True)
     real_answer = correct_answer(CySolverAccuracyTestInst.solution_t, c1, c2)
 
     if rk_method == 0:

@@ -17,10 +17,10 @@ cdef double EPS
 EPS = np.finfo(dtype=np.float64).eps
 
 # Determine cache limits.
-cdef unsigned int LIKELY_IN_CACHE_SIZE = 8
+cdef Py_ssize_t LIKELY_IN_CACHE_SIZE = 8
 
 
-cdef unsigned int binary_search_with_guess(double key, double[:] array, unsigned int length, unsigned int guess) nogil:
+cdef Py_ssize_t binary_search_with_guess(double key, double[:] array, Py_ssize_t length, Py_ssize_t guess) nogil:
     """ Binary search with guess.
 
     Based on `numpy`'s `binary_search_with_guess` function.
@@ -42,8 +42,8 @@ cdef unsigned int binary_search_with_guess(double key, double[:] array, unsigned
         Corrected guess after search.
     """
 
-    cdef unsigned int imin = 0
-    cdef unsigned int imax = length
+    cdef Py_ssize_t imin = 0
+    cdef Py_ssize_t imax = length
 
     if key > array[length - 1]:
         return length
@@ -82,7 +82,7 @@ cdef unsigned int binary_search_with_guess(double key, double[:] array, unsigned
                     imax = guess + LIKELY_IN_CACHE_SIZE
 
     # Finally, find index by bisection
-    cdef unsigned int imid
+    cdef Py_ssize_t imid
     while imin < imax:
         imid = imin + ((imax - imin) >> 1)
         if key >= array[imid]:
@@ -93,8 +93,8 @@ cdef unsigned int binary_search_with_guess(double key, double[:] array, unsigned
     return imin - 1
 
 
-cpdef (double, int) interpj(double desired_x, double[:] x_domain, double[:] dependent_values,
-                            int provided_j = -1) nogil:
+cpdef (double, Py_ssize_t) interpj(double desired_x, double[:] x_domain, double[:] dependent_values,
+                                    Py_ssize_t provided_j = -1) nogil:
     """ Interpolation function for floats. This function will return the index that it found during interpolation.
 
     Provided a domain, `x_domain` and a dependent array `dependent_values` search domain for value closest to 
@@ -124,7 +124,7 @@ cpdef (double, int) interpj(double desired_x, double[:] x_domain, double[:] depe
 
     """
 
-    cdef unsigned int lenx
+    cdef Py_ssize_t lenx
     lenx = len(x_domain)
     # TODO: Needs to be at least 3 item long array. Add exception here?
 
@@ -134,7 +134,7 @@ cpdef (double, int) interpj(double desired_x, double[:] x_domain, double[:] depe
     right_value = dependent_values[lenx - 1]
 
     # Binary Search with Guess
-    cdef unsigned int j
+    cdef Py_ssize_t j
     j = 0
     cdef double slope
 
@@ -154,10 +154,10 @@ cpdef (double, int) interpj(double desired_x, double[:] x_domain, double[:] depe
         j = binary_search_with_guess(desired_x, x_domain, lenx, j)
     else:
         # provided_j is strictly positive and smaller size in this block so the conversion is safe.
-        j = <unsigned int>provided_j
+        j = provided_j
 
-    cdef int j_out
-    j_out = <int>j
+    cdef Py_ssize_t j_out
+    j_out = j
 
     if j == 0:
         result = left_value
@@ -185,8 +185,8 @@ cpdef (double, int) interpj(double desired_x, double[:] x_domain, double[:] depe
     return result, j_out
 
 
-cpdef (double complex, int) interp_complexj(double desired_x, double[:] x_domain,
-                                            double complex[:] dependent_values, int provided_j = -1) nogil:
+cpdef (double complex, Py_ssize_t) interp_complexj(double desired_x, double[:] x_domain,
+                                                    double complex[:] dependent_values, Py_ssize_t provided_j = -1) nogil:
     """ Interpolation function for complex numbers.
 
     Provided a domain, `desired_x` and a dependent array `dependent_values` search domain for value closest to 
@@ -216,7 +216,7 @@ cpdef (double complex, int) interp_complexj(double desired_x, double[:] x_domain
 
     """
 
-    cdef unsigned int lenx
+    cdef Py_ssize_t lenx
     lenx = len(x_domain)
     # Note: Needs to be at least 3 item long array. Add exception here?
 
@@ -226,7 +226,7 @@ cpdef (double complex, int) interp_complexj(double desired_x, double[:] x_domain
     right_value = dependent_values[lenx - 1]
 
     # Binary Search with Guess
-    cdef unsigned int j
+    cdef Py_ssize_t j
     j = 0
     cdef double slope_real
     cdef double slope_imag
@@ -253,10 +253,10 @@ cpdef (double complex, int) interp_complexj(double desired_x, double[:] x_domain
         j = binary_search_with_guess(desired_x, x_domain, lenx, j)
     else:
         # provided_j is strictly positive and smaller size in this block so the conversion is safe.
-        j = <unsigned int> provided_j
+        j = provided_j
 
-    cdef int j_out
-    j_out = <int> j
+    cdef Py_ssize_t j_out
+    j_out =  j
 
     if j == 0:
         result_real = left_value.real
@@ -305,7 +305,7 @@ cpdef (double complex, int) interp_complexj(double desired_x, double[:] x_domain
     return result, j_out
 
 
-cpdef double interp(double desired_x, double[:] x_domain, double[:] dependent_values, int provided_j = -1) nogil:
+cpdef double interp(double desired_x, double[:] x_domain, double[:] dependent_values, Py_ssize_t provided_j = -1) nogil:
     """ Interpolation function for floats.
 
     Provided a domain, `x_domain` and a dependent array `dependent_values` search domain for value closest to 
@@ -332,7 +332,7 @@ cpdef double interp(double desired_x, double[:] x_domain, double[:] dependent_va
 
     """
 
-    cdef unsigned int lenx
+    cdef Py_ssize_t lenx
     lenx = len(x_domain)
     # TODO: Needs to be at least 3 item long array. Add exception here?
 
@@ -342,7 +342,7 @@ cpdef double interp(double desired_x, double[:] x_domain, double[:] dependent_va
     right_value = dependent_values[lenx - 1]
 
     # Binary Search with Guess
-    cdef unsigned int j
+    cdef Py_ssize_t j
     j = 0
     cdef double slope
 
@@ -362,7 +362,7 @@ cpdef double interp(double desired_x, double[:] x_domain, double[:] dependent_va
         j = binary_search_with_guess(desired_x, x_domain, lenx, j)
     else:
         # provided_j is strictly positive and smaller size in this block so the conversion is safe.
-        j = <unsigned int>provided_j
+        j =  provided_j
 
     if j == 0:
         result = left_value
@@ -391,7 +391,7 @@ cpdef double interp(double desired_x, double[:] x_domain, double[:] dependent_va
 
 
 cpdef double complex interp_complex(double desired_x, double[:] x_domain,
-                                    double complex[:] dependent_values, int provided_j = -1) nogil:
+                                    double complex[:] dependent_values, Py_ssize_t provided_j = -1) nogil:
     """ Interpolation function for complex numbers.
 
     Provided a domain, `desired_x` and a dependent array `dependent_values` search domain for value closest to 
@@ -418,7 +418,7 @@ cpdef double complex interp_complex(double desired_x, double[:] x_domain,
 
     """
 
-    cdef unsigned int lenx
+    cdef Py_ssize_t lenx
     lenx = len(x_domain)
     # Note: Needs to be at least 3 item long array. Add exception here?
 
@@ -428,7 +428,7 @@ cpdef double complex interp_complex(double desired_x, double[:] x_domain,
     right_value = dependent_values[lenx - 1]
 
     # Binary Search with Guess
-    cdef unsigned int j
+    cdef Py_ssize_t j
     j = 0
     cdef double slope_real
     cdef double slope_imag
@@ -455,7 +455,7 @@ cpdef double complex interp_complex(double desired_x, double[:] x_domain,
         j = binary_search_with_guess(desired_x, x_domain, lenx, j)
     else:
         # provided_j is strictly positive and smaller size in this block so the conversion is safe.
-        j = <unsigned int> provided_j
+        j = provided_j
 
     if j == 0:
         result_real = left_value.real
@@ -509,11 +509,11 @@ cpdef void interp_array(double[:] desired_x_array, double[:] x_domain, double[:]
 
     # Array variables
     cdef Py_ssize_t index 
-    cdef unsigned int desired_len
+    cdef Py_ssize_t desired_len
     desired_len = len(desired_x_array)
 
     # Interpolation variables
-    cdef unsigned int lenx
+    cdef Py_ssize_t lenx
     lenx = len(x_domain)
     cdef double left_value
     left_value = dependent_values[0]
@@ -521,7 +521,7 @@ cpdef void interp_array(double[:] desired_x_array, double[:] x_domain, double[:]
     right_value = dependent_values[lenx - 1]
 
     # Binary Search with Guess
-    cdef unsigned int j
+    cdef Py_ssize_t j
     cdef double slope
     cdef double result
     cdef double fp_at_j
@@ -535,8 +535,8 @@ cpdef void interp_array(double[:] desired_x_array, double[:] x_domain, double[:]
     #    2 - The actual x domain is likely not linear. So the linear increase we are performing with this guess variable
     #        is not correct.
     cdef double x_slope
-    cdef unsigned int guess
-    x_slope = lenx / desired_len
+    cdef Py_ssize_t guess
+    x_slope = <double>lenx / <double>desired_len
     if x_slope < 1.:
         x_slope = 1.
 
@@ -545,7 +545,7 @@ cpdef void interp_array(double[:] desired_x_array, double[:] x_domain, double[:]
         desired_x = desired_x_array[index]
 
         # Perform binary search with guess
-        guess = <unsigned int>x_slope * index
+        guess = <Py_ssize_t>x_slope * index
         j = binary_search_with_guess(desired_x, x_domain, lenx, guess)
 
         if j == 0:
@@ -579,11 +579,11 @@ cpdef void interp_complex_array(double[:] desired_x_array, double[:] x_domain, d
 
     # Array variables
     cdef Py_ssize_t index 
-    cdef unsigned int desired_len
+    cdef Py_ssize_t desired_len
     desired_len = len(desired_x_array)
 
 
-    cdef unsigned int lenx
+    cdef Py_ssize_t lenx
     lenx = len(x_domain)
     # Note: Needs to be at least 3 item long array. Add exception here?
 
@@ -594,7 +594,7 @@ cpdef void interp_complex_array(double[:] desired_x_array, double[:] x_domain, d
     right_value = dependent_values[lenx - 1]
 
     # Binary Search with Guess
-    cdef unsigned int j
+    cdef Py_ssize_t j
     cdef double slope_real
     cdef double slope_imag
     cdef double x_slope_inverse
@@ -615,8 +615,8 @@ cpdef void interp_complex_array(double[:] desired_x_array, double[:] x_domain, d
     #    2 - The actual x domain is likely not linear. So the linear increase we are performing with this guess variable
     #        is not correct.
     cdef double x_slope
-    cdef unsigned int guess
-    x_slope = lenx / desired_len
+    cdef Py_ssize_t guess
+    x_slope = <double>lenx / <double>desired_len
     if x_slope < 1.:
         x_slope = 1.
 
@@ -626,7 +626,7 @@ cpdef void interp_complex_array(double[:] desired_x_array, double[:] x_domain, d
         desired_x = desired_x_array[index]
 
         # Perform binary search with guess
-        guess = <unsigned int>x_slope * index
+        guess = <Py_ssize_t>x_slope * index
         # Perform binary search with guess
         j = binary_search_with_guess(desired_x, x_domain, lenx, guess)
 

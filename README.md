@@ -11,7 +11,7 @@
 
 ---
 
-<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.6.1 Alpha-orange" alt="CyRK Version 0.6.1 Alpha" /></a>
+<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.6.2 Alpha-orange" alt="CyRK Version 0.6.2 Alpha" /></a>
 
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
@@ -27,7 +27,7 @@ The [cython](https://cython.org/) `CySolver` class that works with cython-based 
 
 An additional benefit of the two cython implementations is that they are pre-compiled. This avoids most of the start-up performance hit experienced by just-in-time compilers like numba.
 
-<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_v0-6-0a4.png" alt="CyRK Performance" />
+<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_v0-6-2-dev4.png" alt="CyRK Performance" />
 
 ## Installation
 
@@ -177,10 +177,11 @@ from ODE import MyCyRKDiffeq
 
 # Need to make an instance of the integrator.
 # The diffeq no longer needs to be passed to the class.
-MyCyRKDiffeqInst = MyCyRKDiffeq(time_span, initial_conds, args=(0.01, 0.02), rk_method=1, rtol=rtol, atol=atol)
+MyCyRKDiffeqInst = MyCyRKDiffeq(time_span, initial_conds, args=(0.01, 0.02), rk_method=1, rtol=rtol, atol=atol, auto_solve=True)
 
 # To perform the integration make a call to the solve method.
-MyCyRKDiffeqInst.solve()
+# Only required if the `auto_solve` flag is set to False (defaults to True)
+# MyCyRKDiffeqInst.solve()
 
 # Once complete, you can access the results via...
 MyCyRKDiffeqInst.success     # True / False

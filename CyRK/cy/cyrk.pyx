@@ -91,7 +91,7 @@ def cyrk_ode(
     unsigned char rk_method = 1,
     double[:] t_eval = None,
     bool_cpp_t capture_extra = False,
-    short num_extra = 0,
+    Py_ssize_t num_extra = 0,
     bool_cpp_t interpolate_extra = False,
     unsigned int expected_size = 0
     ):
@@ -162,7 +162,7 @@ def cyrk_ode(
     cdef Py_ssize_t s, i, j
 
     # Determine information about the differential equation based on its initial conditions
-    cdef unsigned short y_size
+    cdef Py_ssize_t y_size
     cdef double y_size_dbl, y_size_sqrt
     cdef bool_cpp_t y_is_complex
     y_size = y0.size
@@ -193,7 +193,7 @@ def cyrk_ode(
     direction_inf = direction * INF
 
     # Pull out information on t-eval
-    cdef unsigned int len_teval
+    cdef Py_ssize_t len_teval
     if t_eval is None:
         len_teval = 0
     else:
@@ -270,7 +270,7 @@ def cyrk_ode(
 
     # If extra output is true then the output of the diffeq will be larger than the size of y0.
     # Determine that extra size by calling the diffeq and checking its size.
-    cdef unsigned short extra_start, total_size, store_loop_size
+    cdef Py_ssize_t extra_start, total_size, store_loop_size
     extra_start = y_size
     total_size  = y_size + num_extra
     # Create arrays based on this total size
@@ -317,9 +317,10 @@ def cyrk_ode(
             y0_to_store_view[i] = y0[i]
 
     # # Determine RK scheme
-    cdef unsigned char rk_order, error_order, rk_n_stages, rk_n_stages_plus1, rk_n_stages_extended
+    cdef unsigned char rk_order, error_order
+    cdef Py_ssize_t rk_n_stages, rk_n_stages_plus1, rk_n_stages_extended
+    cdef Py_ssize_t len_C, len_B, len_E, len_E3, len_E5, len_A0, len_A1
     cdef double error_pow, error_expo, error_norm5, error_norm3, error_norm, error_norm_abs, error_norm3_abs, error_norm5_abs, error_denom
-    cdef unsigned char len_C, len_B, len_E, len_E3, len_E5, len_A0, len_A1
 
     if rk_method == 0:
         # RK23 Method
@@ -544,7 +545,7 @@ def cyrk_ode(
     #   -1 = Failed
     #   1  = Finished with no obvious issues
     cdef char status
-    cdef unsigned int len_t
+    cdef Py_ssize_t len_t
     status = 0
     len_t  = 1  # There is an initial condition provided so the time length is already 1
     while status == 0:

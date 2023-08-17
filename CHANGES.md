@@ -2,6 +2,17 @@
 
 ## 2023
 
+#### v0.6.2
+New Features
+- Added `auto_solve` key word to `CySolver` class. This flag defaults to True. If True, then the solver will automatically call `self.solve()` after initialization.
+- Added new parameter change functions to `CySolver` so that certain parameters can be changed after the class is initialized for a performance boost.
+  - Look for the "self.change_<X>" methods in cysolver.pyx/pxd. There is a main change method, `CySolver.change_parameters` which allows you to change multiple parameters at once.
+
+Bug Fixes:
+- Fixed issue where `CySolver` could give incorrect results if the `solve()` method was called multiple times on the same instance.
+- Removed extraneous code from `CySolver.__init__`.
+- Changed several cython integer variables to all use Py_ssize_t types. Corrected type conversions.
+
 #### v0.6.1
 
 New Features
