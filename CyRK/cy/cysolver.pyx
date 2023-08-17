@@ -29,9 +29,11 @@ cdef double EPS_10 = EPS * 10.
 cdef double EPS_100 = EPS * 100.
 
 cdef (double, double) EMPTY_T_SPAN = (NAN, NAN)
-    
+
+
 cdef class CySolver:
-    
+
+
     def __init__(self,
                  (double, double) t_span,
                  const double[:] y0,
@@ -47,7 +49,7 @@ cdef class CySolver:
                  bool_cpp_t interpolate_extra = False,
                  unsigned int expected_size = 0,
                  bool_cpp_t auto_solve = True):
-        
+
         # Setup loop variables
         cdef Py_ssize_t i, j
 
@@ -65,14 +67,14 @@ cdef class CySolver:
         self.solution_t_view = solution_t_fake
         self.solution_extra_view = solution_extra_fake
         self.solution_y_view = solution_y_fake
-        
+
         # Determine y-size information
         self.y_size = len(y0)
         self.y_size_dbl = <double>self.y_size
         self.y_size_sqrt = sqrt(self.y_size_dbl)
         # Store y0 values for later
         self.y0_view = y0
-        
+
         # Determine time domain information
         self.t_start = t_span[0]
         self.t_end   = t_span[1]
@@ -109,7 +111,7 @@ cdef class CySolver:
         # This variable tracks how many times the storage arrays have been appended.
         # It starts at 1 since there is at least one storage array present.
         self.num_concats = 1
-        
+
         # Determine optional arguments
         cdef np.ndarray[np.float64_t, ndim=1, mode='c'] arg_array
         if args is None:
@@ -134,12 +136,12 @@ cdef class CySolver:
         self.y_old_view  = y_old
         self.dy_new_view = dy_new
         self.dy_old_view = dy_old
-        
+
         # Set current and old y variables equal to y0
         for i in range(self.y_size):
             self.y_new_view[i] = self.y0_view[i]
             self.y_old_view[i] = self.y0_view[i]
-            
+
         # Set current and old time variables equal to t0
         self.t_old = self.t_start
         self.t_new = self.t_start
@@ -156,11 +158,11 @@ cdef class CySolver:
             self.extra_output_init_view = extra_output_init
             self.extra_output_view      = extra_output
 
-            # We need to determine the extra outputs at the initial time step. 
+            # We need to determine the extra outputs at the initial time step.
             self.diffeq()
             for i in range(num_extra):
                 self.extra_output_init_view[i] = self.extra_output_view[i]
-        
+
         # Determine interpolation information
         cdef np.ndarray[np.float64_t, ndim=1, mode='c'] t_eval_array
         if t_eval is None:
@@ -176,7 +178,7 @@ cdef class CySolver:
             self.t_eval_view = t_eval_array
             for i in range(self.len_t_eval):
                 self.t_eval_view[i] = t_eval[i]
-        
+
         # Determine RK scheme
         self.rk_method = rk_method
         cdef Py_ssize_t len_B, len_E, len_E3, len_E5, len_A0, len_A1
@@ -233,7 +235,7 @@ cdef class CySolver:
         # Initialize RK Arrays. Note that all are 1D except for A and K.
         cdef np.ndarray[np.float64_t, ndim=2, mode='c'] A, K
         cdef np.ndarray[np.float64_t, ndim=1, mode='c'] B, C, E, E3, E5, E_tmp, E3_tmp, E5_tmp
-        
+
         A      = np.empty((len_A0, len_A1), dtype=np.float64, order='C')
         B      = np.empty(len_B, dtype=np.float64, order='C')
         C      = np.empty(self.len_C, dtype=np.float64, order='C')
@@ -257,7 +259,7 @@ cdef class CySolver:
         self.E3_tmp_view = E3_tmp
         self.E5_tmp_view = E5_tmp
         self.K_view      = K
-        
+
         # Populate values based on externally defined constants.
         if rk_method == 0:
             # RK23 Method
@@ -303,11 +305,16 @@ cdef class CySolver:
                 # Dummy Variables, set equal to E3
                 self.E_view[i] = DOP_E3[i]
 
+        # Setup error scale array
+        cdef np.ndarray[np.float64_t, ndim=1, mode='c'] scale_array
+        scale_array = np.empty(self.y_size, dtype=np.float64, order='C')
+        self.scale_view = scale_array
+
         # Initialize dy_new_view for start of integration (important for first_step calculation)
         if not self.capture_extra:
             # If `capture_extra` is True then this step was already performed so we can skip it.
             self.diffeq()
-        
+
         for i in range(self.y_size):
             self.dy_old_view[i] = self.dy_new_view[i]
 
@@ -386,7 +393,7 @@ cdef class CySolver:
     @cython.exceptval(check=False)
     cdef double calc_first_step(self):
         """ Determine initial step size. """
-        
+
         cdef double step_size, d0, d1, d2, d0_abs, d1_abs, d2_abs, h0, h1, scale
 
         # Select an initial step size based on the differential equation.
@@ -418,7 +425,7 @@ cdef class CySolver:
             self.t_new = self.t_old + h0_direction
             for i in range(self.y_size):
                 self.y_new_view[i] = self.y_old_view[i] + h0_direction * self.dy_old_view[i]
-            
+
             # Update dy_new_view
             self.diffeq()
 
@@ -438,7 +445,7 @@ cdef class CySolver:
 
             step_size = max(10. * fabs(nextafter(self.t_old, self.direction_inf) - self.t_old),
                             min(100. * h0, h1))
-            
+
         return step_size
 
 
@@ -457,13 +464,14 @@ cdef class CySolver:
 
         # Setup loop variables
         cdef Py_ssize_t s, i, j
-        
+
         # Initialize other variables
         cdef double error_norm5, error_norm3, error_norm, error_norm_abs, error_norm3_abs, error_norm5_abs, error_denom, error_pow
-        
+
         # Avoid method lookups for variables in tight loops
         cdef double[:] B_view, E_view, E3_view, E5_view, E_tmp_view, E3_tmp_view, E5_tmp_view, C_view
         cdef double[:, :] A_view, K_view
+        cdef double A_at_sj, B_at_j, E_at_j, E5_at_j, E3_at_j
         A_view      = self.A_view
         B_view      = self.B_view
         C_view      = self.C_view
@@ -474,7 +482,7 @@ cdef class CySolver:
         E3_tmp_view = self.E3_tmp_view
         E5_tmp_view = self.E5_tmp_view
         K_view      = self.K_view
-        
+
         # Setup storage arrays
         # These arrays are built to fit a number of points equal to `self.expected_size`
         # If the integration needs more than that then a new array will be concatenated (with performance costs) to these.
@@ -495,7 +503,7 @@ cdef class CySolver:
         cdef np.ndarray[np.float64_t, ndim=1, mode='c'] time_domain_array_new
         cdef double[:, :] y_results_array_new_view, extra_array_new_view
         cdef double[:] time_domain_array_new_view
-        
+
         # Load initial conditions into output arrays
         time_domain_array_view[0] = self.t_start
         for i in range(self.y_size):
@@ -512,14 +520,14 @@ cdef class CySolver:
         # Set current and old time variables equal to t0
         self.t_old = self.t_start
         self.t_new = self.t_start
-        
+
         # Set integration flags
         cdef bool_cpp_t step_accepted, step_rejected, step_error
         self.success  = False
         step_accepted = False
         step_rejected = False
         step_error    = False
-        
+
         # # Main integration loop
         cdef double min_step, step_factor, step, time_tmp
         cdef double c
@@ -534,7 +542,7 @@ cdef class CySolver:
         self.status  = 0
         # There is an initial condition provided so the time length is already 1
         self.len_t = 1
-        
+
         while self.status == 0:
             if self.t_new == self.t_end or self.y_size == 0:
                 self.t_old = self.t_end
@@ -581,65 +589,71 @@ cdef class CySolver:
                 for i in range(self.y_size):
                     K_view[0, i] = self.dy_old_view[i]
 
-                # t_new must be updated for each loop of s in order to make the diffeq calls. 
+                # t_new must be updated for each loop of s in order to make the diffeq calls.
                 # But we need to return to its original value later on. Store in temp variable.
                 time_tmp = self.t_new
                 for s in range(1, self.len_C):
                     c = C_view[s]
-                    
+
                     # Update t_new so it can be used in the diffeq call.
                     self.t_new = self.t_old + c * step
 
                     # Dot Product (K, a) * step
                     for j in range(s):
+                        A_at_sj = A_view[s, j]
                         for i in range(self.y_size):
                             if j == 0:
                                 # Initialize
                                 self.y_new_view[i] = self.y_old_view[i]
 
-                            self.y_new_view[i] = self.y_new_view[i] + (K_view[j, i] * A_view[s, j] * step)
-                    
+                            self.y_new_view[i] = self.y_new_view[i] + (K_view[j, i] * A_at_sj * step)
+
                     self.diffeq()
 
                     for i in range(self.y_size):
                         K_view[s, i] = self.dy_new_view[i]
-                
+
                 # Restore t_new to its previous value.
                 self.t_new = time_tmp
 
                 # Dot Product (K, B) * step
                 for j in range(self.rk_n_stages):
+                    B_at_j = B_view[j]
                     # We do not use rk_n_stages_plus1 here because we are chopping off the last row of K to match
                     #  the shape of B.
                     for i in range(self.y_size):
                         if j == 0:
                             # Initialize
                             self.y_new_view[i] = self.y_old_view[i]
-                        self.y_new_view[i] = self.y_new_view[i] + (K_view[j, i] * B_view[j] * step)
-                
+                        self.y_new_view[i] = self.y_new_view[i] + (K_view[j, i] * B_at_j * step)
+
                 self.diffeq()
 
+
+                for i in range(self.y_size):
+                    # Find scale of y for error calculations
+                    self.scale_view[i] = self.atol + max(fabs(self.y_old_view[i]), fabs(self.y_new_view[i])) * self.rtol
+
+                    # Set last array of K equal to dydt
+                    K_view[self.rk_n_stages, i] = self.dy_new_view[i]
+
+                # Check how well this step performed by calculating its error
                 if self.rk_method == 2:
                     # Calculate Error for DOP853
 
                     # Dot Product (K, E5) / scale and Dot Product (K, E3) * step / scale
-                    for i in range(self.y_size):
-                        # Check how well this step performed.
-                        scale = self.atol + max(fabs(self.y_old_view[i]), fabs(self.y_new_view[i])) * self.rtol
-
-                        for j in range(self.rk_n_stages_plus1):
+                    for j in range(self.rk_n_stages_plus1):
+                        E5_at_j = E5_view[j]
+                        E3_at_j = E3_view[j]
+                        for i in range(self.y_size):
                             if j == 0:
                                 # Initialize
                                 E5_tmp_view[i] = 0.
                                 E3_tmp_view[i] = 0.
 
-                            elif j == self.rk_n_stages:
-                                # Set last array of the K array.
-                                K_view[j, i] = self.dy_new_view[i]
-
-                            K_scale = K_view[j, i] / scale
-                            E5_tmp_view[i] = E5_tmp_view[i] + (K_scale * E5_view[j])
-                            E3_tmp_view[i] = E3_tmp_view[i] + (K_scale * E3_view[j])
+                            K_scale = K_view[j, i] / self.scale_view[i]
+                            E5_tmp_view[i] = E5_tmp_view[i] + (K_scale * E5_at_j)
+                            E3_tmp_view[i] = E3_tmp_view[i] + (K_scale * E3_at_j)
 
                     # Find norms for each error
                     error_norm5 = 0.
@@ -662,24 +676,19 @@ cdef class CySolver:
 
                 else:
                     # Calculate Error for RK23 and RK45
-                    error_norm = 0.
                     # Dot Product (K, E) * step / scale
-                    for i in range(self.y_size):
-
-                        # Check how well this step performed.
-                        scale = self.atol + max(fabs(self.y_old_view[i]), fabs(self.y_new_view[i])) * self.rtol
-
-                        for j in range(self.rk_n_stages_plus1):
+                    for j in range(self.rk_n_stages_plus1):
+                        E_at_j = E_view[j]
+                        for i in range(self.y_size):
                             if j == 0:
                                 # Initialize
                                 E_tmp_view[i] = 0.
-                            elif j == self.rk_n_stages:
-                                # Set last array of the K array.
-                                K_view[j, i] = self.dy_new_view[i]
 
-                            K_scale = self.K_view[j, i] / scale
-                            E_tmp_view[i] = E_tmp_view[i] + (K_scale * E_view[j] * step)
+                            K_scale = self.K_view[j, i] / self.scale_view[i]
+                            E_tmp_view[i] = E_tmp_view[i] + (K_scale * E_at_j * step)
 
+                    error_norm = 0.
+                    for i in range(self.y_size):
                         error_norm_abs = fabs(E_tmp_view[i])
                         error_norm += (error_norm_abs * error_norm_abs)
                     error_norm = sqrt(error_norm) / self.y_size_sqrt
@@ -704,7 +713,6 @@ cdef class CySolver:
                     self.step_size = self.step_size * max(MIN_FACTOR, SAFETY * error_pow)
                     step_rejected = True
 
-           
             if step_error:
                 # Issue with step convergence
                 self.status = -1
@@ -721,10 +729,10 @@ cdef class CySolver:
                 self.dy_old_view[i] = self.dy_new_view[i]
 
             # Save data
-            if self.len_t >= (self.num_concats * self.expected_size):                
-                # There is more data than we have room in our arrays. 
+            if self.len_t >= (self.num_concats * self.expected_size):
+                # There is more data than we have room in our arrays.
                 # Build new arrays with more space.
-                # OPT: Note this is an expensive operation. 
+                # OPT: Note this is an expensive operation.
                 self.num_concats += 1
                 new_size = self.num_concats * self.expected_size
                 time_domain_array_new = np.empty(new_size, dtype=np.float64, order='C')
@@ -736,29 +744,30 @@ cdef class CySolver:
                     extra_array_new_view = extra_array_new
 
                 # Loop through time to fill in these new arrays with the old values
-                for i in range(self.len_t):
-                    time_domain_array_new_view[i] = time_domain_array_view[i]
-
-                    for j in range(self.y_size):
+                for j in range(self.y_size):
+                    for i in range(self.len_t):
+                        if j == 0:
+                            time_domain_array_new_view[i] = time_domain_array_view[i]
                         y_results_array_new_view[j, i] = y_results_array_view[j, i]
-                    
-                    if self.capture_extra:
-                        for j in range(self.num_extra):
+
+                if self.capture_extra:
+                    for j in range(self.num_extra):
+                        for i in range(self.len_t):
                             extra_array_new_view[j, i] = extra_array_view[j, i]
-                
+
                 # No longer need the old arrays. Change where the view is pointing and delete them.
                 y_results_array_view = y_results_array_new
                 time_domain_array_view = time_domain_array_new
                 # TODO: Delete the old arrays?
                 if self.capture_extra:
                     extra_array_view = extra_array_new
-            
+
             # There should be room in the arrays to add new data.
             time_domain_array_view[self.len_t] = self.t_new
             # To match the format that scipy follows, we will take the transpose of y.
             for i in range(self.y_size):
                 y_results_array_view[i, self.len_t] = self.y_new_view[i]
-            
+
             if self.capture_extra:
                 for i in range(self.num_extra):
                     extra_array_view[i, self.len_t] = self.extra_output_view[i]
@@ -803,12 +812,14 @@ cdef class CySolver:
                 self.solution_extra_view = extra_output_out_array
 
             # Populate values
-            for i in range(self.len_t):
-                self.solution_t_view[i] = time_domain_array_view[i]
-                for j in range(self.y_size):
+            for j in range(self.y_size):
+                for i in range(self.len_t):
+                    if j == 0:
+                        self.solution_t_view[i] = time_domain_array_view[i]
                     self.solution_y_view[j, i] = y_results_array_view[j, i]
-                if self.capture_extra:
-                    for j in range(self.num_extra):
+            if self.capture_extra:
+                for j in range(self.num_extra):
+                    for i in range(self.len_t):
                         self.solution_extra_view[j, i] = extra_array_view[j, i]
         else:
             # Build nan arrays
@@ -916,7 +927,7 @@ cdef class CySolver:
                     self.t_new = self.t_eval_view[i]
                     for j in range(self.y_size):
                         self.y_new_view[j] = y_results_reduced_view[j, i]
-                    
+
                     # Call diffeq to recalculate extra outputs
                     self.diffeq()
 
@@ -1096,7 +1107,7 @@ cdef class CySolver:
     @cython.exceptval(check=False)
     cdef void diffeq(self):
         # This is a template function that should be overriden by the user's subclass.
-        
+
         # The diffeq can use live variables which are automatically updated before each call.
         # self.t_new: The current "time" (of course, depending on your problem, it may not actually be _time_ per se).
         # self.y_new_view[:]: The current y value(s) stored as an array.
@@ -1108,7 +1119,7 @@ cdef class CySolver:
         # y0 = self.y_new_view[0]
         # y1 = self.y_new_view[1]
         # ```
-        
+
         # Can also use other optional global attributes like...
         # self.arg_array_view  (size of self.arg_array_view is self.num_args). For example...
         # ```python
@@ -1117,7 +1128,7 @@ cdef class CySolver:
         # b = self.arg_array_view[1]
         # ```
         # Currently, these args must be doubles (floats).
-        
+
         # This function *must* set new values to the dy_new_view variable (size of array is self.y_size). For example...
         # ```python
         # self.dy_new_view[0] = b * t_sin - y1
@@ -1133,7 +1144,7 @@ cdef class CySolver:
         # Currently, these additional outputs must be stored as doubles (floats).
         # Note that if extra output is used then the variables `capture_extra` and `num_extra` must be set in CySolver's
         #  `__init__` method.
-        
+
         # The default template simply sets all dy to 0.
         cdef Py_ssize_t i
         for i in range(self.y_size):

@@ -41,6 +41,7 @@ cdef class CySolver:
     cdef double first_step
     cdef Py_ssize_t expected_size
     cdef unsigned int num_concats
+    cdef double[:] scale_view
     
     # -- Optional args info
     cdef Py_ssize_t num_args
