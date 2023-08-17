@@ -43,7 +43,7 @@ cdef class CySolver:
                  unsigned char rk_method = 1,
                  const double[:] t_eval = None,
                  bool_cpp_t capture_extra = False,
-                 unsigned short num_extra = 0,
+                 Py_ssize_t num_extra = 0,
                  bool_cpp_t interpolate_extra = False,
                  unsigned int expected_size = 0,
                  bool_cpp_t auto_solve = True):
@@ -103,7 +103,7 @@ cdef class CySolver:
             temp_expected_size = 100. * self.t_delta_abs * fmax(1., (1.e-6 / rtol))
             temp_expected_size = fmax(temp_expected_size, 100.)
             temp_expected_size = fmin(temp_expected_size, 10_000_000.)
-            self.expected_size = <unsigned int>temp_expected_size
+            self.expected_size = <Py_ssize_t>temp_expected_size
         else:
             self.expected_size = expected_size
         # This variable tracks how many times the storage arrays have been appended.
@@ -176,7 +176,7 @@ cdef class CySolver:
         
         # Determine RK scheme
         self.rk_method = rk_method
-        cdef unsigned char len_B, len_E, len_E3, len_E5, len_A0, len_A1
+        cdef Py_ssize_t len_B, len_E, len_E3, len_E5, len_A0, len_A1
         # Note, len_C is used during the solving phase so it is declared at the class level.
 
         if rk_method == 0:

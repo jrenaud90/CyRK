@@ -14,12 +14,12 @@ cdef class CySolver:
     # Class attributes    
     # -- Live variables
     cdef double t_new, t_old
-    cdef unsigned int len_t
+    cdef Py_ssize_t len_t
     cdef double[:] y_new_view, y_old_view, dy_new_view, dy_old_view
     cdef double[:] extra_output_view, extra_output_init_view
     
     # -- Dependent (y0) variable information
-    cdef unsigned short y_size
+    cdef Py_ssize_t y_size
     cdef double y_size_dbl, y_size_sqrt
     cdef const double[:] y0_view
     
@@ -27,7 +27,7 @@ cdef class CySolver:
     cdef unsigned char rk_method
     cdef unsigned char rk_order, error_order, rk_n_stages, rk_n_stages_plus1, rk_n_stages_extended
     cdef double error_expo
-    cdef unsigned char len_C
+    cdef Py_ssize_t len_C
     cdef double[:] B_view, E_view, E3_view, E5_view, E_tmp_view, E3_tmp_view, E5_tmp_view, C_view
     cdef double[:, :] A_view, K_view
     
@@ -39,21 +39,21 @@ cdef class CySolver:
     cdef double rtol, atol
     cdef double step_size, max_step
     cdef double first_step
-    cdef unsigned int expected_size
+    cdef Py_ssize_t expected_size
     cdef unsigned int num_concats
     
     # -- Optional args info
-    cdef unsigned short num_args
+    cdef Py_ssize_t num_args
     cdef double[:] arg_array_view
 
     # -- Extra output info
     cdef bool_cpp_t capture_extra
-    cdef unsigned short num_extra
+    cdef Py_ssize_t num_extra
 
     # -- Interpolation info
     cdef bool_cpp_t run_interpolation
     cdef bool_cpp_t interpolate_extra
-    cdef unsigned int len_t_eval
+    cdef Py_ssize_t len_t_eval
     cdef double[:] t_eval_view
 
     # -- Solution variables

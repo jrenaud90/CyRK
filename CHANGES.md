@@ -11,6 +11,7 @@ New Features
 Bug Fixes:
 - Fixed issue where `CySolver` could give incorrect results if the `solve()` method was called multiple times on the same instance.
 - Removed extraneous code from `CySolver.__init__`.
+- Changed several cython integer variables to all use Py_ssize_t types. Corrected type conversions.
 
 #### v0.6.1
 
