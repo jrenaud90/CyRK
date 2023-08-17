@@ -1161,5 +1161,5 @@ cdef class CySolver:
 
     @property
     def size_growths(self):
-        # How many times the array had to grow during integration
-        return self.num_concats
+        # How many times the output arrays had to grow during integration
+        return self.num_concats - 1

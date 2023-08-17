@@ -6,6 +6,7 @@
 
 Other Changes
 - Improved documentation for `CySolver`'s `diffeq` method template.
+- To make more logical sense with the wording, `CySolver.size_growths` now gives one less than the solver's growths attribute.
 
 Bug Fixes:
 - Fixed potential seg fault when accessing `CySolver`'s arg_array_view.
