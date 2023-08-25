@@ -553,6 +553,7 @@ def cyrk_ode(
     #   -1 = Failed
     #   1  = Finished with no obvious issues
     cdef char status
+    cdef str message
     cdef Py_ssize_t len_t
     status = 0
     len_t  = 1  # There is an initial condition provided so the time length is already 1
@@ -797,7 +798,6 @@ def cyrk_ode(
         len_t += 1
 
     # # Clean up output.
-    cdef str message
     message = 'Not Defined.'
     if status == 1:
         success = True
