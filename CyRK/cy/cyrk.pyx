@@ -390,6 +390,7 @@ def cyrk_ode(
     # Setup memory views.
     cdef double_numeric[:] B_view, E_view, E3_view, E5_view, E_tmp_view, E3_tmp_view, E5_tmp_view
     cdef double_numeric[:, :] A_view, K_view
+    cdef double_numeric A_at_sj, B_at_j, E5_at_j, E3_at_j, E_at_j
     cdef double[:] C_view
     A_view      = A
     B_view      = B
@@ -472,6 +473,12 @@ def cyrk_ode(
     y_results_array_view   = y_results_array
     time_domain_array_view = time_domain_array
 
+    cdef np.ndarray[np.float64_t, ndim=1, mode='c'] scale_arr
+    cdef double[:] scale_view
+    scale_arr = np.empty(y_size, dtype=np.float64, order='C')
+    scale_view = scale_arr
+
+
     # Load initial conditions into output arrays
     time_domain_array_view[0] = t_start
     for i in range(store_loop_size):
@@ -481,7 +488,7 @@ def cyrk_ode(
             y_results_array_view[i] = y0[i]
 
     # # Determine size of first step.
-    cdef double step_size, d0, d1, d2, d0_abs, d1_abs, d2_abs, h0, h1, scale
+    cdef double step_size, d0, d1, d2, d0_abs, d1_abs, d2_abs, h0, h1
     if first_step == 0.:
         # Select an initial step size based on the differential equation.
         # .. [1] E. Hairer, S. P. Norsett G. Wanner, "Solving Ordinary Differential
@@ -493,10 +500,10 @@ def cyrk_ode(
             d0 = 0.
             d1 = 0.
             for i in range(y_size):
-                scale = atol + dabs(y_old_view[i]) * rtol
+                scale_view[i] = atol + dabs(y_old_view[i]) * rtol
 
-                d0_abs = dabs(y_old_view[i] / scale)
-                d1_abs = dabs(dydt_old_view[i] / scale)
+                d0_abs = dabs(y_old_view[i] / scale_view[i])
+                d1_abs = dabs(dydt_old_view[i] / scale_view[i])
                 d0 += (d0_abs * d0_abs)
                 d1 += (d1_abs * d1_abs)
 
@@ -525,8 +532,8 @@ def cyrk_ode(
             d2 = 0.
             for i in range(y_size):
                 dydt_new_view[i] = diffeq_out_view[i]
-                scale = atol + dabs(y_old_view[i]) * rtol
-                d2_abs = dabs( (dydt_new_view[i] - dydt_old_view[i]) / scale)
+                scale_view[i] = atol + dabs(y_old_view[i]) * rtol
+                d2_abs = dabs( (dydt_new_view[i] - dydt_old_view[i]) / scale_view[i])
                 d2 += (d2_abs * d2_abs)
 
             d2 = sqrt(d2) / (h0 * y_size_sqrt)
@@ -621,12 +628,13 @@ def cyrk_ode(
 
                 # Dot Product (K, a) * step
                 for j in range(s):
+                    A_at_sj = A_view[s, j]
                     for i in range(y_size):
                         if j == 0:
                             # Initialize
                             y_new_view[i] = y_old_view[i]
 
-                        y_new_view[i] = y_new_view[i] + (K_view[j, i] * A_view[s, j] * step)
+                        y_new_view[i] = y_new_view[i] + (K_view[j, i] * A_at_sj * step)
 
                 if use_args:
                     diffeq(time_, y_new, diffeq_out, *args)
@@ -638,23 +646,32 @@ def cyrk_ode(
 
             # Dot Product (K, B) * step
             for j in range(rk_n_stages):
+                B_at_j = B_view[j]
                 # We do not use rk_n_stages_plus1 here because we are chopping off the last row of K to match
                 #  the shape of B.
                 for i in range(y_size):
                     if j == 0:
                         # Initialize
                         y_new_view[i] = y_old_view[i]
-                    y_new_view[i] = y_new_view[i] + (K_view[j, i] * B_view[j] * step)
+                    y_new_view[i] = y_new_view[i] + (K_view[j, i] * B_at_j * step)
 
             if use_args:
                 diffeq(t_new, y_new, diffeq_out, *args)
             else:
                 diffeq(t_new, y_new, diffeq_out)
 
+
             for i in range(store_loop_size):
                 if i < extra_start:
                     # Set diffeq results
                     dydt_new_view[i] = diffeq_out_view[i]
+
+                    # Find scale of y for error calculations
+                    scale_view[i] = atol + max(cabs(y_old_view[i]), cabs(y_new_view[i])) * rtol
+
+                    # Set last array of K equal to dydt
+                    K_view[rk_n_stages, i] = dydt_new_view[i]
+
                 else:
                     # Set extra results
                     extra_result_view[i - extra_start] = diffeq_out_view[i]
@@ -677,7 +694,7 @@ def cyrk_ode(
                             # Set last array of the K array.
                             K_view[j, i] = dydt_new_view[i]
 
-                        K_scale = K_view[j, i] / scale
+                        K_scale = K_view[j, i] / scale_view[i]
                         E5_tmp_view[i] = E5_tmp_view[i] + (K_scale * E5_view[j])
                         E3_tmp_view[i] = E3_tmp_view[i] + (K_scale * E3_view[j])
 
@@ -704,20 +721,15 @@ def cyrk_ode(
                 # Calculate Error for RK23 and RK45
                 error_norm = 0.
                 # Dot Product (K, E) * step / scale
-                for i in range(y_size):
 
-                    # Check how well this step performed.
-                    scale = atol + max(dabs(y_old_view[i]), dabs(y_new_view[i])) * rtol
+                for i in range(y_size):
 
                     for j in range(rk_n_stages_plus1):
                         if j == 0:
                             # Initialize
                             E_tmp_view[i] = 0.
-                        elif j == rk_n_stages:
-                            # Set last array of the K array.
-                            K_view[j, i] = dydt_new_view[i]
 
-                        K_scale = K_view[j, i] / scale
+                        K_scale = K_view[j, i] / scale_view[i]
                         E_tmp_view[i] = E_tmp_view[i] + (K_scale * E_view[j] * step)
 
                     error_norm_abs = dabs(E_tmp_view[i])
