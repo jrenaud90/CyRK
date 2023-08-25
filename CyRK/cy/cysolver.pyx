@@ -260,9 +260,6 @@ cdef class CySolver:
         self.E_view      = E
         self.E3_view     = E3
         self.E5_view     = E5
-        self.E_tmp_view  = E_tmp
-        self.E3_tmp_view = E3_tmp
-        self.E5_tmp_view = E5_tmp
         self.K_view      = K
 
         # Populate values based on externally defined constants.
@@ -478,18 +475,15 @@ cdef class CySolver:
         cdef double t_delta_check
 
         # Avoid method lookups for variables in tight loops
-        cdef double[:] B_view, E_view, E3_view, E5_view, E_tmp_view, E3_tmp_view, E5_tmp_view, C_view
+        cdef double[:] B_view, E_view, E3_view, E5_view, C_view
         cdef double[:, :] A_view, K_view
-        cdef double A_at_sj, B_at_j, E_at_j, E5_at_j, E3_at_j
+        cdef double A_at_sj, B_at_j, error_dot_1, error_dot_2
         A_view      = self.A_view
         B_view      = self.B_view
         C_view      = self.C_view
         E_view      = self.E_view
         E3_view     = self.E3_view
         E5_view     = self.E5_view
-        E_tmp_view  = self.E_tmp_view
-        E3_tmp_view = self.E3_tmp_view
-        E5_tmp_view = self.E5_tmp_view
         K_view      = self.K_view
 
         # Setup storage arrays
@@ -660,32 +654,25 @@ cdef class CySolver:
                 # Check how well this step performed by calculating its error
                 if self.rk_method == 2:
                     # Calculate Error for DOP853
-
                     # Dot Product (K, E5) / scale and Dot Product (K, E3) * step / scale
-                    for j in range(self.rk_n_stages_plus1):
-                        E5_at_j = E5_view[j]
-                        E3_at_j = E3_view[j]
-                        for i in range(self.y_size):
+                    error_norm3 = 0.
+                    error_norm5 = 0.
+                    for i in range(self.y_size):
+                        for j in range(self.rk_n_stages_plus1):
                             if j == 0:
                                 # Initialize
-                                E5_tmp_view[i] = 0.
-                                E3_tmp_view[i] = 0.
+                                error_dot_1 = 0.
+                                error_dot_2 = 0.
 
                             K_scale = K_view[j, i] / self.scale_view[i]
-                            E5_tmp_view[i] = E5_tmp_view[i] + (K_scale * E5_at_j)
-                            E3_tmp_view[i] = E3_tmp_view[i] + (K_scale * E3_at_j)
+                            error_dot_1 += K_scale * E3_view[j]
+                            error_dot_2 += K_scale * E5_view[j]
 
-                    # Find norms for each error
-                    error_norm5 = 0.
-                    error_norm3 = 0.
+                        error_norm3_abs = fabs(error_dot_1)
+                        error_norm5_abs = fabs(error_dot_2)
 
-                    # Perform summation
-                    for i in range(self.y_size):
-                        error_norm5_abs = fabs(E5_tmp_view[i])
-                        error_norm3_abs = fabs(E3_tmp_view[i])
-
-                        error_norm5 += (error_norm5_abs * error_norm5_abs)
                         error_norm3 += (error_norm3_abs * error_norm3_abs)
+                        error_norm5 += (error_norm5_abs * error_norm5_abs)
 
                     # Check if errors are zero
                     if (error_norm5 == 0.) and (error_norm3 == 0.):
@@ -697,19 +684,17 @@ cdef class CySolver:
                 else:
                     # Calculate Error for RK23 and RK45
                     # Dot Product (K, E) * step / scale
-                    for j in range(self.rk_n_stages_plus1):
-                        E_at_j = E_view[j]
-                        for i in range(self.y_size):
-                            if j == 0:
-                                # Initialize
-                                E_tmp_view[i] = 0.
-
-                            K_scale = self.K_view[j, i] / self.scale_view[i]
-                            E_tmp_view[i] = E_tmp_view[i] + (K_scale * E_at_j * step)
-
                     error_norm = 0.
                     for i in range(self.y_size):
-                        error_norm_abs = fabs(E_tmp_view[i])
+                        for j in range(self.rk_n_stages_plus1):
+                            if j == 0:
+                                # Initialize
+                                error_dot_1 = 0.
+
+                            K_scale = self.K_view[j, i] / self.scale_view[i]
+                            error_dot_1 += K_scale * E_view[j] * step
+
+                        error_norm_abs = fabs(error_dot_1)
                         error_norm += (error_norm_abs * error_norm_abs)
                     error_norm = sqrt(error_norm) / self.y_size_sqrt
 

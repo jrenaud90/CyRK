@@ -382,15 +382,12 @@ def cyrk_ode(
     E      = np.empty(len_E, dtype=DTYPE, order='C')
     E3     = np.empty(len_E3, dtype=DTYPE, order='C')
     E5     = np.empty(len_E5, dtype=DTYPE, order='C')
-    E_tmp  = np.empty(y_size, dtype=DTYPE, order='C')
-    E3_tmp = np.empty(y_size, dtype=DTYPE, order='C')
-    E5_tmp = np.empty(y_size, dtype=DTYPE, order='C')
     K      = np.zeros((rk_n_stages_plus1, y_size), dtype=DTYPE, order='C')  # It is important K be initialized with 0s
 
     # Setup memory views.
-    cdef double_numeric[:] B_view, E_view, E3_view, E5_view, E_tmp_view, E3_tmp_view, E5_tmp_view
+    cdef double_numeric[:] B_view, E_view, E3_view, E5_view
     cdef double_numeric[:, :] A_view, K_view
-    cdef double_numeric A_at_sj, B_at_j, E5_at_j, E3_at_j, E_at_j
+    cdef double_numeric A_at_sj, B_at_j, error_dot_1, error_dot_2
     cdef double[:] C_view
     A_view      = A
     B_view      = B
@@ -398,9 +395,6 @@ def cyrk_ode(
     E_view      = E
     E3_view     = E3
     E5_view     = E5
-    E_tmp_view  = E_tmp
-    E3_tmp_view = E3_tmp
-    E5_tmp_view = E5_tmp
     K_view      = K
 
     # Populate values based on externally defined constants.
@@ -678,37 +672,26 @@ def cyrk_ode(
 
             if rk_method == 2:
                 # Calculate Error for DOP853
-
-                # Dot Product (K, E5) / scale and Dot Product (K, E3) * step / scale
-                for i in range(y_size):
-                    # Check how well this step performed.
-                    scale = atol + max(dabs(y_old_view[i]), dabs(y_new_view[i])) * rtol
-
-                    for j in range(rk_n_stages_plus1):
-                        if j == 0:
-                            # Initialize
-                            E5_tmp_view[i] = 0.
-                            E3_tmp_view[i] = 0.
-
-                        elif j == rk_n_stages:
-                            # Set last array of the K array.
-                            K_view[j, i] = dydt_new_view[i]
-
-                        K_scale = K_view[j, i] / scale_view[i]
-                        E5_tmp_view[i] = E5_tmp_view[i] + (K_scale * E5_view[j])
-                        E3_tmp_view[i] = E3_tmp_view[i] + (K_scale * E3_view[j])
-
                 # Find norms for each error
                 error_norm5 = 0.
                 error_norm3 = 0.
-
-                # Perform summation
+                # Dot Product (K, E5) / scale and Dot Product (K, E3) * step / scale
                 for i in range(y_size):
-                    error_norm5_abs = dabs(E5_tmp_view[i])
-                    error_norm3_abs = dabs(E3_tmp_view[i])
+                    for j in range(rk_n_stages_plus1):
+                        if j == 0:
+                            # Initialize
+                            error_dot_1 = 0.
+                            error_dot_2 = 0.
 
-                    error_norm5 += (error_norm5_abs * error_norm5_abs)
+                        K_scale = K_view[j, i] / scale_view[i]
+                        error_dot_1 += K_scale * E3_view[j]
+                        error_dot_2 += K_scale * E5_view[j]
+
+                    error_norm3_abs = dabs(error_dot_1)
+                    error_norm5_abs = dabs(error_dot_2)
+
                     error_norm3 += (error_norm3_abs * error_norm3_abs)
+                    error_norm5 += (error_norm5_abs * error_norm5_abs)
 
                 # Check if errors are zero
                 if (error_norm5 == 0.) and (error_norm3 == 0.):
@@ -719,20 +702,18 @@ def cyrk_ode(
 
             else:
                 # Calculate Error for RK23 and RK45
-                error_norm = 0.
                 # Dot Product (K, E) * step / scale
-
+                error_norm = 0.
                 for i in range(y_size):
-
                     for j in range(rk_n_stages_plus1):
                         if j == 0:
                             # Initialize
-                            E_tmp_view[i] = 0.
+                            error_dot_1 = 0.
 
                         K_scale = K_view[j, i] / scale_view[i]
-                        E_tmp_view[i] = E_tmp_view[i] + (K_scale * E_view[j] * step)
+                        error_dot_1 += K_scale * E_view[j] * step
 
-                    error_norm_abs = dabs(E_tmp_view[i])
+                    error_norm_abs = dabs(error_dot_1)
                     error_norm += (error_norm_abs * error_norm_abs)
                 error_norm = sqrt(error_norm) / y_size_sqrt
 
