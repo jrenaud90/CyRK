@@ -35,7 +35,8 @@ cdef class CySolver:
     cdef public char status
     cdef public str message
     cdef public bool_cpp_t success
-    cdef double t_start, t_end, t_delta, t_delta_abs, direction, direction_inf
+    cdef double t_start, t_end, t_delta, t_delta_abs, direction_inf
+    cdef bool_cpp_t direction_flag
     cdef double rtol, atol
     cdef double step_size, max_step
     cdef double first_step

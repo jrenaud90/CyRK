@@ -80,11 +80,15 @@ cdef class CySolver:
         self.t_end   = t_span[1]
         self.t_delta = self.t_end - self.t_start
         self.t_delta_abs = fabs(self.t_delta)
+
         if self.t_delta >= 0.:
-            self.direction = 1.
+            # Integration is moving forward in time.
+            self.direction_flag = True
+            self.direction_inf  = INF
         else:
-            self.direction = -1.
-        self.direction_inf = self.direction * INF
+            # Integration is moving backwards in time.
+            self.direction_flag = False
+            self.direction_inf  = -INF
 
         # # Determine integration parameters
         # Add tolerances
@@ -421,7 +425,10 @@ cdef class CySolver:
             else:
                 h0 = 0.01 * d0 / d1
 
-            h0_direction = h0 * self.direction
+            if self.direction_flag:
+                h0_direction = h0
+            else:
+                h0_direction = -h0
             self.t_new = self.t_old + h0_direction
             for i in range(self.y_size):
                 self.y_new_view[i] = self.y_old_view[i] + h0_direction * self.dy_old_view[i]
@@ -467,6 +474,7 @@ cdef class CySolver:
 
         # Initialize other variables
         cdef double error_norm5, error_norm3, error_norm, error_norm_abs, error_norm3_abs, error_norm5_abs, error_denom, error_pow
+        cdef double t_delta_check
 
         # Avoid method lookups for variables in tight loops
         cdef double[:] B_view, E_view, E3_view, E5_view, E_tmp_view, E3_tmp_view, E5_tmp_view, C_view
@@ -577,16 +585,24 @@ cdef class CySolver:
                     break
 
                 # Move time forward for this particular step size
-                step = self.step_size * self.direction
+                if self.direction_flag:
+                    step = self.step_size
+                    t_delta_check = self.t_new - self.t_end
+                else:
+                    step = -self.step_size
+                    t_delta_check = self.t_end - self.t_new
                 self.t_new = self.t_old + step
 
                 # Check that we are not at the end of integration with that move
-                if self.direction * (self.t_new - self.t_end) > 0.:
+                if t_delta_check > 0.:
                     self.t_new = self.t_end
 
                     # Correct the step if we were at the end of integration
                     step = self.t_new - self.t_old
-                    self.step_size = fabs(step)
+                    if self.direction_flag:
+                        self.step_size = step
+                    else:
+                        self.step_size = -step
 
                 # Calculate derivative using RK method
                 for i in range(self.y_size):
@@ -953,10 +969,11 @@ cdef class CySolver:
         self.t_delta     = self.t_end - self.t_start
         self.t_delta_abs = fabs(self.t_delta)
         if self.t_delta >= 0.:
-            self.direction = 1.
+            self.direction_flag = True
+            self.direction_inf  = INF
         else:
-            self.direction = -1.
-        self.direction_inf = self.direction * INF
+            self.direction_flag = False
+            self.direction_inf  = -INF
 
         if auto_reset_state:
             self.reset_state()

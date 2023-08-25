@@ -181,16 +181,21 @@ def cyrk_ode(
         raise Exception('Unexpected type found for initial conditions (y0).')
 
     # Build time domain
-    cdef double t_start, t_end, t_delta, t_delta_abs, direction, direction_inf, t_old, t_new, time_
+    cdef double t_start, t_end, t_delta, t_delta_check, t_delta_abs, direction_inf, t_old, t_new, time_
+    cdef bool_cpp_t direction_flag
     t_start = t_span[0]
     t_end   = t_span[1]
     t_delta = t_end - t_start
     t_delta_abs = fabs(t_delta)
+    t_delta_check = t_delta_abs
     if t_delta >= 0.:
-        direction = 1.
+        # Integration is moving forward in time.
+        direction_flag = True
+        direction_inf = INF
     else:
-        direction = -1.
-    direction_inf = direction * INF
+        # Integration is moving backwards in time.
+        direction_flag = False
+        direction_inf = -INF
 
     # Pull out information on t-eval
     cdef Py_ssize_t len_teval
@@ -503,7 +508,10 @@ def cyrk_ode(
             else:
                 h0 = 0.01 * d0 / d1
 
-            h0_direction = h0 * direction
+            if direction_flag:
+                h0_direction = h0
+            else:
+                h0_direction = -h0
             t_new = t_old + h0_direction
             for i in range(y_size):
                 y_new_view[i] = y_old_view[i] + h0_direction * dydt_old_view[i]
@@ -583,16 +591,24 @@ def cyrk_ode(
                 break
 
             # Move time forward for this particular step size
-            step = step_size * direction
+            if direction_flag:
+                step = step_size
+                t_delta_check = t_new - t_end
+            else:
+                step = -step_size
+                t_delta_check = t_end - t_new
             t_new = t_old + step
 
             # Check that we are not at the end of integration with that move
-            if direction * (t_new - t_end) > 0.:
+            if t_delta_check > 0.:
                 t_new = t_end
 
                 # Correct the step if we were at the end of integration
                 step = t_new - t_old
-                step_size = fabs(step)
+                if direction_flag:
+                    step_size = step
+                else:
+                    step_size = -step
 
             # Calculate derivative using RK method
             for i in range(y_size):
