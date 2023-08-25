@@ -240,15 +240,15 @@ def cyrk_ode(
 
     # Expected size of output arrays.
     cdef double temp_expected_size
-    cdef unsigned int expected_size_to_use, num_concats
+    cdef Py_ssize_t expected_size_to_use, num_concats
     if expected_size == 0:
         # CySolver will attempt to guess on a best size for the arrays.
         temp_expected_size = 100. * t_delta_abs * fmax(1., (1.e-6 / rtol))
         temp_expected_size = fmax(temp_expected_size, 100.)
         temp_expected_size = fmin(temp_expected_size, 10_000_000.)
-        expected_size_to_use = <unsigned int>temp_expected_size
+        expected_size_to_use = <Py_ssize_t>temp_expected_size
     else:
-        expected_size_to_use = expected_size
+        expected_size_to_use = <Py_ssize_t>expected_size
     # This variable tracks how many times the storage arrays have been appended.
     # It starts at 1 since there is at least one storage array present.
     num_concats = 1

@@ -112,7 +112,7 @@ cdef class CySolver:
             temp_expected_size = fmin(temp_expected_size, 10_000_000.)
             self.expected_size = <Py_ssize_t>temp_expected_size
         else:
-            self.expected_size = expected_size
+            self.expected_size = <Py_ssize_t>expected_size
         # This variable tracks how many times the storage arrays have been appended.
         # It starts at 1 since there is at least one storage array present.
         self.num_concats = 1
