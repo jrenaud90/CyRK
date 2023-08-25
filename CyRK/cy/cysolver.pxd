@@ -28,7 +28,7 @@ cdef class CySolver:
     cdef unsigned char rk_order, error_order, rk_n_stages, rk_n_stages_plus1, rk_n_stages_extended
     cdef double error_expo
     cdef Py_ssize_t len_C
-    cdef double[:] B_view, E_view, E3_view, E5_view, E_tmp_view, E3_tmp_view, E5_tmp_view, C_view
+    cdef double[:] B_view, E_view, E3_view, E5_view, C_view
     cdef double[:, :] A_view, K_view
     
     # -- Integration information

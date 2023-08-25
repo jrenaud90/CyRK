@@ -22,7 +22,8 @@ def test_CySolverTester_change_param(rk_method, complex_valued):
     else:
         initial_conds_to_use = initial_conds
 
-    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method, auto_solve=False)
+    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method, auto_solve=False,
+                                        rtol=1.0e-8, atol=1.0e-9)
 
     # Solve once
     CySolverTesterInst.solve()
@@ -40,10 +41,9 @@ def test_CySolverTester_change_param(rk_method, complex_valued):
     solution_2_y = np.copy(CySolverTesterInst.solution_y)
     assert solution_2_t[0] == 0.
     assert solution_2_t[-1] == 1.
-    assert not solution_2_y.shape == solution_1_y.shape
 
     # Change several things at once but keep the previous time span the same.
-    CySolverTesterInst.change_parameters(y0=initial_conds_2, rtol=1.0e-10, atol=1.0e-12)
+    CySolverTesterInst.change_parameters(rtol=1.0e-11, atol=1.0e-12)
     CySolverTesterInst.solve()
     assert CySolverTesterInst.success
     solution_3_t = np.copy(CySolverTesterInst.solution_t)

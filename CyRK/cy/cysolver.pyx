@@ -254,13 +254,13 @@ cdef class CySolver:
         K      = np.zeros((self.rk_n_stages_plus1, self.y_size), dtype=np.float64, order='C')
 
         # Setup memory views.
-        self.A_view      = A
-        self.B_view      = B
-        self.C_view      = C
-        self.E_view      = E
-        self.E3_view     = E3
-        self.E5_view     = E5
-        self.K_view      = K
+        self.A_view  = A
+        self.B_view  = B
+        self.C_view  = C
+        self.E_view  = E
+        self.E3_view = E3
+        self.E5_view = E5
+        self.K_view  = K
 
         # Populate values based on externally defined constants.
         if rk_method == 0:
@@ -380,11 +380,11 @@ cdef class CySolver:
         cdef np.ndarray[np.float64_t, ndim=2, mode='c'] solution_extra_fake, solution_y_fake
         cdef np.ndarray[np.float64_t, ndim=1, mode='c'] solution_t_fake
         solution_extra_fake = np.nan * np.ones((1, 1), dtype=np.float64, order='C')
-        solution_y_fake = np.nan * np.ones((1, 1), dtype=np.float64, order='C')
-        solution_t_fake = np.nan * np.ones(1, dtype=np.float64, order='C')
-        self.solution_t_view = solution_t_fake
+        solution_y_fake     = np.nan * np.ones((1, 1), dtype=np.float64, order='C')
+        solution_t_fake     = np.nan * np.ones(1, dtype=np.float64, order='C')
+        self.solution_t_view     = solution_t_fake
         self.solution_extra_view = solution_extra_fake
-        self.solution_y_view = solution_y_fake
+        self.solution_y_view     = solution_y_fake
 
         # Other flags and messages
         self.success = False
@@ -478,13 +478,13 @@ cdef class CySolver:
         cdef double[:] B_view, E_view, E3_view, E5_view, C_view
         cdef double[:, :] A_view, K_view
         cdef double A_at_sj, B_at_j, error_dot_1, error_dot_2
-        A_view      = self.A_view
-        B_view      = self.B_view
-        C_view      = self.C_view
-        E_view      = self.E_view
-        E3_view     = self.E3_view
-        E5_view     = self.E5_view
-        K_view      = self.K_view
+        A_view  = self.A_view
+        B_view  = self.B_view
+        C_view  = self.C_view
+        E_view  = self.E_view
+        E3_view = self.E3_view
+        E5_view = self.E5_view
+        K_view  = self.K_view
 
         # Setup storage arrays
         # These arrays are built to fit a number of points equal to `self.expected_size`
