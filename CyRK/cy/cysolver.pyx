@@ -2,6 +2,7 @@
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 
 import cython
+import sys
 import numpy as np
 cimport numpy as np
 np.import_array()
@@ -27,6 +28,7 @@ cdef double INF = np.inf
 cdef double EPS = np.finfo(np.float64).eps
 cdef double EPS_10 = EPS * 10.
 cdef double EPS_100 = EPS * 100.
+cdef Py_ssize_t MAX_INT_SIZE = int(0.95 * sys.maxsize)
 
 cdef (double, double) EMPTY_T_SPAN = (NAN, NAN)
 
@@ -40,7 +42,7 @@ cdef class CySolver:
                  tuple args = None,
                  double rtol = 1.e-6,
                  double atol = 1.e-8,
-                 double max_step = MAX_STEP,
+                 double max_step_size = MAX_STEP,
                  double first_step = 0.,
                  unsigned char rk_method = 1,
                  const double[:] t_eval = None,
@@ -48,13 +50,14 @@ cdef class CySolver:
                  Py_ssize_t num_extra = 0,
                  bool_cpp_t interpolate_extra = False,
                  unsigned int expected_size = 0,
+                 unsigned int max_steps = 0,
                  bool_cpp_t auto_solve = True):
 
         # Setup loop variables
         cdef Py_ssize_t i, j
 
         # Set integration information
-        self.status  = -3  # Status code to indicate that integration has not started.
+        self.status  = -4  # Status code to indicate that integration has not started.
         self.message = 'Integration has not started.'
         self.success = False
         self.recalc_firststep = False
@@ -102,6 +105,18 @@ cdef class CySolver:
         #     if atol_arr.ndim > 0 and atol_arr.shape[0] != y_size:
         #         # atol must be either the same for all y or must be provided as an array, one for each y.
         #         raise Exception
+
+        # Determine maximum number of steps
+        if max_steps == 0:
+            self.use_max_steps = False
+            self.max_steps = 0
+        elif max_steps < 0:
+            self.status = -8
+            self.message = "Attribute error."
+            raise AttributeError('Negative number of max steps provided.')
+        else:
+            self.use_max_steps = True
+            self.max_steps = min(max_steps, MAX_INT_SIZE)
 
         # Expected size of output arrays.
         cdef double temp_expected_size
@@ -228,6 +243,8 @@ cdef class CySolver:
 
             self.rk_n_stages_extended = DOP_n_stages_extended
         else:
+            self.status = -8
+            self.message = "Attribute error."
             raise AttributeError(
                 'Unexpected rk_method provided. Currently supported versions are:\n'
                 '\t0 = RK23\n'
@@ -326,11 +343,15 @@ cdef class CySolver:
             self.step_size = self.calc_first_step()
         else:
             if self.first_step <= 0.:
+                self.status = -8
+                self.message = "Attribute error."
                 raise AttributeError('Error in user-provided step size: Step size must be a positive number.')
             elif self.first_step > self.t_delta_abs:
+                self.status = -8
+                self.message = "Attribute error."
                 raise AttributeError('Error in user-provided step size: Step size can not exceed bounds.')
             self.step_size = self.first_step
-        self.max_step = max_step
+        self.max_step_size = max_step_size
 
         # Run solver if requested
         if auto_solve:
@@ -368,8 +389,12 @@ cdef class CySolver:
             self.step_size = self.calc_first_step()
         else:
             if self.first_step <= 0.:
+                self.status = -8
+                self.message = "Attribute error."
                 raise AttributeError('Error in user-provided step size: Step size must be a positive number.')
             elif self.first_step > self.t_delta_abs:
+                self.status = -8
+                self.message = "Attribute error."
                 raise AttributeError('Error in user-provided step size: Step size can not exceed bounds.')
             self.step_size = self.first_step
 
@@ -535,34 +560,40 @@ cdef class CySolver:
         cdef double min_step, step_factor, step, time_tmp
         cdef double c
         cdef double K_scale
-        # Integrator Status Codes
-        #   0  = Running
-        #   -1 = Failed (step size too small)
-        #   -2 = Failed (step size failed to converge)
-        #   -3 = Integration has not started yet.
-        #   1  = Finished with no obvious issues
-        self.message = 'Integrator is running.'
+        self.message = "Integration is/was ongoing (perhaps it was interrupted?)."
         self.status  = 0
         # There is an initial condition provided so the time length is already 1
         self.len_t = 1
 
         if self.y_size == 0:
             self.status = -6
-            self.message = 'Integration never started: y-size is zero.'
+            self.message = "Integration never started: y-size is zero."
 
         while self.status == 0:
             if self.t_new == self.t_end:
                 self.t_old = self.t_end
                 self.status = 1
+                self.message = "Integration completed without issue."
                 break
+
+            if self.use_max_steps:
+                if self.len_t > self.max_steps:
+                    self.status = -2
+                    self.message = "Maximum number of steps (set by user) exceeded during integration."
+                    break
+            else:
+                if self.len_t > MAX_INT_SIZE:
+                    self.status = -3
+                    self.message = "Maximum number of steps (set by system architecture) exceeded during integration."
+                    break
 
             # Run RK integration step
             # Determine step size based on previous loop
             # Find minimum step size based on the value of t (less floating point numbers between numbers when t is large)
             min_step = 10. * fabs(nextafter(self.t_old, self.direction_inf) - self.t_old)
             # Look for over/undershoots in previous step size
-            if self.step_size > self.max_step:
-                self.step_size = self.max_step
+            if self.step_size > self.max_step_size:
+                self.step_size = self.max_step_size
             elif self.step_size < min_step:
                 self.step_size = min_step
 
@@ -721,10 +752,12 @@ cdef class CySolver:
             if step_error:
                 # Issue with step convergence
                 self.status = -1
+                self.message = "Error in step size calculation:\n\tRequired step size is less than spacing between numbers."
                 break
             elif not step_accepted:
                 # Issue with step convergence
-                self.status = -2
+                self.status = -7
+                self.message = "Error in step size calculation:\n\tError in step size acceptance."
                 break
 
             # End of step loop. Update the _now variables
@@ -781,20 +814,11 @@ cdef class CySolver:
             self.len_t += 1
 
         # # Clean up output.
-        self.message = 'Integration completed.'
         if self.status == 1:
             self.success = True
-            self.message = 'Integration finished with no issue.'
-        elif self.status == -1:
-            self.message = 'Integration Failed: Error in step size calculation: Required step size is less than spacing between numbers.'
-        elif self.status == -2:
-            # Don't think this should ever come up.
-            self.message = 'Integration Failed: Other issue with step size.'
-        elif self.status == -3:
-            # Don't think this should ever come up.
-            self.message = 'Integration never started.'
-        elif self.status < -3:
-            self.message = 'Integration Failed.'
+            self.message = "Integration completed without issue."
+        else:
+            self.success = False
 
         # Create output arrays. To match the format that scipy follows, we will take the transpose of y.
         cdef np.ndarray[np.float64_t, ndim=2, mode='c'] y_results_out_array, y_results_out_array_bad
@@ -848,6 +872,9 @@ cdef class CySolver:
     cdef void interpolate(self):
         """ Interpolate the results of a successful integration over the user provided time domain, `t_eval`."""
         # User only wants data at specific points.
+        cdef char old_status
+        old_status = self.status
+        self.status = 2
 
         # Setup loop variables
         cdef Py_ssize_t i, j
@@ -946,6 +973,8 @@ cdef class CySolver:
         if self.capture_extra:
             self.solution_extra_view = extra_reduced_view
 
+        self.status = old_status
+
 
     cpdef void change_t_span(self, (double, double) t_span, bool_cpp_t auto_reset_state = False):
 
@@ -977,7 +1006,8 @@ cdef class CySolver:
         if self.y_size != y_size_new:
             # So many things need to update if ysize changes that the user might as well just
             #  create a new class instance.
-            self.status = -6  # Bad update status
+            self.status = -8
+            self.message = "Attribute error."
             raise AttributeError('New y0 must be the same size as the original y0 used to create CySolver class.'
                                  'Create new CySolver instance instead.')
 
@@ -1032,9 +1062,9 @@ cdef class CySolver:
             self.reset_state()
 
 
-    cpdef void change_max_step(self, double max_step, bool_cpp_t auto_reset_state = False):
+    cpdef void change_max_step_size(self, double max_step_size, bool_cpp_t auto_reset_state = False):
 
-        self.max_step = max_step
+        self.max_step_size = max_step_size
 
         if auto_reset_state:
             self.reset_state()
@@ -1047,8 +1077,12 @@ cdef class CySolver:
             self.step_size = self.calc_first_step()
         else:
             if self.first_step <= 0.:
+                self.status = -8
+                self.message = "Attribute error."
                 raise AttributeError('Error in user-provided step size: Step size must be a positive number.')
             elif self.first_step > self.t_delta_abs:
+                self.status = -8
+                self.message = "Attribute error."
                 raise AttributeError('Error in user-provided step size: Step size can not exceed bounds.')
             self.step_size = self.first_step
 
@@ -1083,7 +1117,7 @@ cdef class CySolver:
             tuple args = None,
             double rtol = NAN,
             double atol = NAN,
-            double max_step = NAN,
+            double max_step_size = NAN,
             double first_step = NAN,
             const double[:] t_eval = None,
             bool_cpp_t auto_reset_state = True,
@@ -1105,8 +1139,8 @@ cdef class CySolver:
         elif not isnan(atol):
             self.change_tols(atol=atol, auto_reset_state=False)
 
-        if not isnan(max_step):
-            self.change_max_step(max_step, auto_reset_state=False)
+        if not isnan(max_step_size):
+            self.change_max_step_size(max_step_size, auto_reset_state=False)
 
         if not isnan(first_step):
             self.change_first_step(first_step, auto_reset_state=False)

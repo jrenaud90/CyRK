@@ -2,6 +2,7 @@
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 
 import cython
+import sys
 import numpy as np
 cimport numpy as np
 np.import_array()
@@ -27,6 +28,7 @@ cdef double INF = np.inf
 cdef double EPS = np.finfo(np.float64).eps
 cdef double EPS_10 = EPS * 10.
 cdef double EPS_100 = EPS * 100.
+cdef Py_ssize_t MAX_INT_SIZE = int(0.95 * sys.maxsize)
 
 
 cdef double cabs(double complex value) nogil:
@@ -86,14 +88,15 @@ def cyrk_ode(
     tuple args = None,
     double rtol = 1.e-6,
     double atol = 1.e-8,
-    double max_step = MAX_STEP,
+    double max_step_size = MAX_STEP,
     double first_step = 0.,
     unsigned char rk_method = 1,
     double[:] t_eval = None,
     bool_cpp_t capture_extra = False,
     Py_ssize_t num_extra = 0,
     bool_cpp_t interpolate_extra = False,
-    unsigned int expected_size = 0
+    unsigned int expected_size = 0,
+    unsigned int max_steps = 0
     ):
     """ A Numba-safe Runge-Kutta Integrator based on Scipy's solve_ivp RK integrator.
 
@@ -111,7 +114,7 @@ def cyrk_ode(
         Integration relative tolerance used to determine optimal step size.
     atol : float = 1.e-8
         Integration absolute tolerance used to determine optimal step size.
-    max_step : float = np.inf
+    max_step_size : float = np.inf
         Maximum allowed step size.
     first_step : float = None
         Initial step size. If `None`, then the function will attempt to determine an appropriate initial step.
@@ -145,6 +148,9 @@ def cyrk_ode(
         The integrator must pre-allocate memory to store results from the integration. It will attempt to use arrays sized to `expected_size`. However, if this is too small or too large then performance will be impacted. It is recommended you try out different values based on the problem you are trying to solve.
         If `expected_size=0` (the default) then the solver will attempt to guess a best size. Currently this is a very basic guess so it is not recommended.
         It is better to overshoot than undershoot this guess.
+    max_steps : int = 0
+        Maximum number of steps integrator is allowed to take.
+        If set to 0 (the default) then an infinite number of steps are allowed.
 
     Returns
     -------
@@ -160,6 +166,10 @@ def cyrk_ode(
     """
     # Setup loop variables
     cdef Py_ssize_t s, i, j
+
+    # Setup integration variables
+    cdef char status, old_status
+    cdef str message
 
     # Determine information about the differential equation based on its initial conditions
     cdef Py_ssize_t y_size
@@ -178,6 +188,8 @@ def cyrk_ode(
         y_is_complex = True
     else:
         # Cyrk only supports float64 and complex128.
+        status = -8
+        message = "Attribute error."
         raise Exception('Unexpected type found for initial conditions (y0).')
 
     # Build time domain
@@ -237,6 +249,18 @@ def cyrk_ode(
     #     if atol_arr.ndim > 0 and atol_arr.shape[0] != y_size:
     #         # atol must be either the same for all y or must be provided as an array, one for each y.
     #         raise Exception
+
+    # Determine maximum number of steps
+    cdef Py_ssize_t max_steps_touse
+    cdef bool_cpp_t use_max_steps
+    if max_steps == 0:
+        use_max_steps = False
+        max_steps_touse = 0
+    elif max_steps < 0:
+        raise AttributeError('Negative number of max steps provided.')
+    else:
+        use_max_steps = True
+        max_steps_touse = min(max_steps, MAX_INT_SIZE)
 
     # Expected size of output arrays.
     cdef double temp_expected_size
@@ -366,7 +390,9 @@ def cyrk_ode(
 
         rk_n_stages_extended = DOP_n_stages_extended
     else:
-        raise Exception(
+        status = -8
+        message = "Attribute error."
+        raise AttributeError(
             'Unexpected rk_method provided. Currently supported versions are:\n'
             '\t0 = RK23\n'
             '\t1 = RK34\n'
@@ -540,28 +566,27 @@ def cyrk_ode(
             step_size = max(10. * fabs(nextafter(t_old, direction_inf) - t_old), min(100. * h0, h1))
     else:
         if first_step <= 0.:
-            raise Exception('Error in user-provided step size: Step size must be a positive number.')
+            status = -8
+            message = "Attribute error."
+            raise AttributeError('Error in user-provided step size: Step size must be a positive number.')
         elif first_step > t_delta_abs:
-            raise Exception('Error in user-provided step size: Step size can not exceed bounds.')
+            status = -8
+            message = "Attribute error."
+            raise AttributeError('Error in user-provided step size: Step size can not exceed bounds.')
         step_size = first_step
 
     # # Main integration loop
     cdef double min_step, step_factor, step
     cdef double c
     cdef double_numeric K_scale
-    # Integrator Status Codes
-    #   0  = Running
-    #   -1 = Failed
-    #   1  = Finished with no obvious issues
-    cdef char status
-    cdef str message
     cdef Py_ssize_t len_t
     status = 0
+    message = "Integration is/was ongoing (perhaps it was interrupted?)."
     len_t  = 1  # There is an initial condition provided so the time length is already 1
 
     if y_size == 0:
         status = -6
-        message = 'Integration never started: y-size is zero.'
+        message = "Integration never started: y-size is zero."
 
     while status == 0:
         if t_new == t_end:
@@ -569,13 +594,24 @@ def cyrk_ode(
             status = 1
             break
 
+        if use_max_steps:
+            if len_t > max_steps_touse:
+                status = -2
+                message = "Maximum number of steps (set by user) exceeded during integration."
+                break
+        else:
+            if len_t > MAX_INT_SIZE:
+                status = -3
+                message = "Maximum number of steps (set by system architecture) exceeded during integration."
+                break
+
         # Run RK integration step
         # Determine step size based on previous loop
         # Find minimum step size based on the value of t (less floating point numbers between numbers when t is large)
         min_step = 10. * fabs(nextafter(t_old, direction_inf) - t_old)
         # Look for over/undershoots in previous step size
-        if step_size > max_step:
-            step_size = max_step
+        if step_size > max_step_size:
+            step_size = max_step_size
         elif step_size < min_step:
             step_size = min_step
 
@@ -737,13 +773,15 @@ def cyrk_ode(
                 step_size = step_size * max(MIN_FACTOR, SAFETY * error_pow)
                 step_rejected = True
 
-        if not step_accepted:
-            # Issue with step convergence
-            status = -2
-            break
-        elif step_error:
+        if step_error:
             # Issue with step convergence
             status = -1
+            message = "Error in step size calculation:\n\tRequired step size is less than spacing between numbers."
+            break
+        elif not step_accepted:
+            # Issue with step convergence
+            status = -7
+            message = "Error in step size calculation:\n\tError in step size acceptance."
             break
 
         # End of step loop. Update the _now variables
@@ -791,15 +829,9 @@ def cyrk_ode(
         len_t += 1
 
     # # Clean up output.
-    message = 'Not Defined.'
     if status == 1:
         success = True
-        message = 'Integration finished with no issue.'
-    elif status == -1:
-        message = 'Error in step size calculation: Required step size is less than spacing between numbers.'
-    elif status < -1:
-        message = 'Integration Failed.'
-
+        message = "Integration completed without issue."
 
     # Create output arrays. To match the format that scipy follows, we will take the transpose of y.
     if success:
@@ -831,6 +863,8 @@ def cyrk_ode(
     cdef double_numeric[:] y_result_timeslice_view, y_result_temp_view
 
     if run_interpolation and success:
+        old_status = status
+        status = 2
         # User only wants data at specific points.
 
         # The current version of this function has not implemented sicpy's dense output.
@@ -930,5 +964,6 @@ def cyrk_ode(
             for j in range(total_size):
                 # To match the format that scipy follows, we will take the transpose of y.
                 solution_y_view[j, i] = y_results_reduced_view[j, i]
+        status = old_status
 
     return solution_t, solution_y, success, message

@@ -87,9 +87,9 @@ def _norm(x):
 def nbrk_ode(
         diffeq: callable, t_span: Tuple[float, float], y0: np.ndarray, args: tuple = tuple(),
         rtol: float = 1.e-6, atol: float = 1.e-8,
-        max_step: float = np.inf, first_step: float = None,
+        max_step_size: float = np.inf, first_step: float = None,
         rk_method: int = 1, t_eval: np.ndarray = EMPTY_ARR,
-        capture_extra: bool = False, interpolate_extra: bool = False
+        capture_extra: bool = False, interpolate_extra: bool = False, max_steps: int = 0
         ):
     """ A Numba-safe Runge-Kutta Integrator based on Scipy's solve_ivp RK integrator.
 
@@ -107,7 +107,7 @@ def nbrk_ode(
         Integration relative tolerance used to determine optimal step size.
     atol : float = 1.e-8
         Integration absolute tolerance used to determine optimal step size.
-    max_step : float = np.inf
+    max_step_size : float = np.inf
         Maximum allowed step size.
     first_step : float = None
         Initial step size. If `None`, then the function will attempt to determine an appropriate initial step.
@@ -125,6 +125,9 @@ def nbrk_ode(
     interpolate_extra : bool = False
         If True, then extra output will be interpolated (along with y) at t_eval. Otherwise, y will be interpolated
          and then differential equation will be called to find the output at each t in t_eval.
+    max_steps : int = 0
+        Maximum number of steps integrator is allowed to take.
+        If set to 0 (the default) then an infinite number of steps are allowed.
 
     References
     ----------
@@ -212,10 +215,8 @@ def nbrk_ode(
     y_result_list = [np.copy(y0_to_store)]
 
     # Integrator Status Codes
-    #   0  = Running
-    #   -1 = Failed
-    #   1  = Finished with no obvious issues
     status = 0
+    message = "Integration is/was ongoing (perhaps it was interrupted?)."
 
     # Determine RK constants
     if rk_method == 0:
@@ -276,7 +277,9 @@ def nbrk_ode(
         K_extended = np.empty((N_STAGES_EXTENDED_DOP, y_size), dtype=dtype)
         K = np.ascontiguousarray(K_extended[:rk_n_stages_plus1, :])
     else:
-        raise Exception(
+        status = -8
+        message = "Attribute error."
+        raise AttributeError(
             'Unexpected rk_method provided. Currently supported versions are:\n'
             '\t0 = RK23\n'
             '\t1 = RK34\n'
@@ -296,6 +299,14 @@ def nbrk_ode(
     if atol.ndim > 0 and atol.shape != (y_size,):
         # atol must be either the same for all y or must be provided as an array, one for each y.
         raise Exception
+
+    # Determine maximum number of steps
+    if max_steps == 0:
+        use_max_steps = False
+    elif max_steps < 0:
+        raise AttributeError('Negative number of max steps provided.')
+    else:
+        use_max_steps = True
 
     # Initialize variables for start of integration
     t_old    = t_start
@@ -322,13 +333,15 @@ def nbrk_ode(
     # Find first step size
     first_step_found = False
     if first_step is not None:
-        step_size = max_step
-        if first_step < 0.:
-            # Step size must be a positive number
-            raise Exception
+        step_size = max_step_size
+        if first_step <= 0.:
+            status = -8
+            message = "Attribute error."
+            raise AttributeError('Error in user-provided step size: Step size must be a positive number.')
         elif first_step > np.abs(t_end - t_start):
-            # Step size can not exceed bounds
-            raise Exception
+            status = -8
+            message = "Attribute error."
+            raise AttributeError('Error in user-provided step size: Step size can not exceed bounds.')
         elif first_step != 0.:
             step_size = first_step
             first_step_found = True
@@ -384,14 +397,25 @@ def nbrk_ode(
             step_size  = max(next_after, min(100. * h0, h1))
 
     # Main integration loop
+    if y_size == 0:
+        status = -6
+        message = "Integration never started: y-size is zero."
+
     # # Time Loop
+    len_t = 0
     while status == 0:
 
-        if t_new == t_end or y_size == 0:
+        if t_new == t_end:
             t_old = t_end
             t_new = t_end
             status = 1
             break
+
+        if use_max_steps:
+            if len_t > max_steps:
+                status = -7
+                message = "Maximum number of steps (set by user) exceeded during integration."
+                break
 
         # Run RK integration step
         # Determine step size based on previous loop
@@ -400,8 +424,8 @@ def nbrk_ode(
         min_step   = next_after
 
         # Look for over/undershoots in previous step size
-        if step_size > max_step:
-            step_size = max_step
+        if step_size > max_step_size:
+            step_size = max_step_size
         elif step_size < min_step:
             step_size = min_step
 
@@ -558,9 +582,15 @@ def nbrk_ode(
                         )
                 step_rejected = True
 
-        if not step_accepted or step_error:
+        if step_error:
             # Issue with step convergence
             status = -1
+            message = "Error in step size calculation:\n\tRequired step size is less than spacing between numbers."
+            break
+        elif not step_accepted:
+            # Issue with step convergence
+            status = -7
+            message = "Error in step size calculation:\n\tError in step size acceptance."
             break
 
         # End of step loop. Update the _now variables
@@ -582,19 +612,25 @@ def nbrk_ode(
 
         time_domain_list.append(t_new)
         y_result_list.append(np.copy(y_result_store))
-
-    t_size = len(time_domain_list)
+        len_t += 1
 
     # To match the format that scipy follows, we will take the transpose of y.
-    time_domain = np.empty(t_size, dtype=np.float64)
-    y_results = np.empty((store_loop_size, t_size), dtype=dtype)
-    for t_i in range(t_size):
+    time_domain = np.empty(len_t, dtype=np.float64)
+    y_results = np.empty((store_loop_size, len_t), dtype=dtype)
+    for t_i in range(len_t):
         time_domain[t_i] = time_domain_list[t_i]
         y_results_list_at_t = y_result_list[t_i]
         for y_i in range(store_loop_size):
             y_results[y_i, t_i] = y_results_list_at_t[y_i]
 
+    success = False
+    if status == 1:
+        success = True
+        message = "Integration completed without issue."
+
     if t_eval_size > 0:
+        old_status = status
+        status = 2
         # User only wants data at specific points.
         # The current version of this function has not implemented sicpy's dense output, so we must use an interpolation.
         t_eval = np.asarray(t_eval, dtype=np.float64)
@@ -627,15 +663,7 @@ def nbrk_ode(
 
         y_results = y_results_reduced
         time_domain = t_eval
-    success = status == 1
 
-    if status == 1:
-        message = 'Integration finished.'
-    elif status == 0:
-        message = 'Integration interrupted.'
-    elif status == -1:
-        message = 'Error in step size calculation:\n\tRequired step size is less than spacing between numbers.'
-    else:
-        message = 'An unknown integration error occurred.'
+        status = old_status
 
     return time_domain, y_results, success, message

@@ -4,9 +4,19 @@
 
 ### v0.7.0
 
+New Features
+- Added new optional argument to all solvers `max_steps` which allows the user to control how many steps the solver is allowed to take.
+  - If exceeded the integration with fail (softly). 
+  - Defaults to 95% of `sys.maxsize` (depends on system architecture).
+
 Other Changes
+- Refactored `max_step` to `max_step_size` argument for all solvers to avoid confusion with new `max_steps` argument. 
 - Improved documentation for `CySolver`'s `diffeq` method template.
 - To make more logical sense with the wording, `CySolver.size_growths` now gives one less than the solver's growths attribute.
+- Cleaned up status codes and created new status code description document under "Documentation/Status and Error Codes.md"
+
+Performance
+- Various minor performance gains for cython-based solvers.
 
 Bug Fixes:
 - Fixed potential seg fault when accessing `CySolver`'s arg_array_view.

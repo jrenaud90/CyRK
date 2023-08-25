@@ -158,7 +158,7 @@ def test_different_tols_CySolverTester(rk_method, complex_valued):
 
 @pytest.mark.parametrize('complex_valued', (True, False))
 @pytest.mark.parametrize('rk_method', (0, 1, 2))
-def test_max_step(rk_method, complex_valued):
+def test_max_step_size(rk_method, complex_valued):
     """Check that the cython function solver is able to run with different maximum step size"""
 
     if complex_valued:
@@ -167,7 +167,7 @@ def test_max_step(rk_method, complex_valued):
         initial_conds_to_use = initial_conds
 
     time_domain, y_results, success, message = \
-        cyrk_ode(diffeq, time_span, initial_conds_to_use, rk_method=rk_method, max_step=time_span[1] / 2.)
+        cyrk_ode(diffeq, time_span, initial_conds_to_use, rk_method=rk_method, max_step_size=time_span[1] / 2.)
 
     # Check that the ndarrays make sense
     assert type(time_domain) == np.ndarray
@@ -188,7 +188,7 @@ def test_max_step(rk_method, complex_valued):
 
 @pytest.mark.parametrize('complex_valued', (False,))
 @pytest.mark.parametrize('rk_method', (0, 1, 2))
-def test_max_step_CySolverTester(rk_method, complex_valued):
+def test_max_step_size_CySolverTester(rk_method, complex_valued):
     """Check that the cython class solver is able to run with different maximum step size"""
 
     if complex_valued:
@@ -196,7 +196,7 @@ def test_max_step_CySolverTester(rk_method, complex_valued):
     else:
         initial_conds_to_use = initial_conds
 
-    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method, max_step=time_span[1] / 2., auto_solve=True)
+    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method, max_step_size=time_span[1] / 2., auto_solve=True)
 
     # Check that the ndarrays make sense
     assert type(CySolverTesterInst.solution_t) == np.ndarray
@@ -548,3 +548,78 @@ def test_accuracy_CySolverTester(rk_method):
     # ax.plot(CySolverAccuracyTestInst.solution_t, real_answer[0], 'b', label='Analytic')
     # ax.plot(CySolverAccuracyTestInst.solution_t, real_answer[1], 'b:')
     # plt.show()
+
+@pytest.mark.parametrize('complex_valued', (True, False))
+@pytest.mark.parametrize('rk_method', (0, 1, 2))
+def test_maxsteps(rk_method, complex_valued):
+    """Check that the cython function cyrk_ode can use max_steps argument """
+
+    if complex_valued:
+        initial_conds_to_use = initial_conds_complex
+    else:
+        initial_conds_to_use = initial_conds
+
+    # First test a number of max steps which is fine.
+    time_domain, y_results, success, message = \
+        cyrk_ode(diffeq, time_span_large, initial_conds_to_use, rk_method=rk_method, max_steps=1000000)
+
+    # Check that the ndarrays make sense
+    assert type(time_domain) == np.ndarray
+    assert time_domain.dtype == np.float64
+    if complex_valued:
+        assert y_results.dtype == np.complex128
+    else:
+        assert y_results.dtype == np.float64
+    assert time_domain.size > 1
+    assert time_domain.size == y_results[0].size
+    assert len(y_results.shape) == 2
+    assert y_results[0].size == y_results[1].size
+
+    # Check that the other output makes sense
+    assert type(success) == bool
+    assert success
+    assert type(message) == str
+
+    # Now test an insufficient number of steps
+    time_domain, y_results, success, message = \
+        cyrk_ode(diffeq, time_span_large, initial_conds_to_use, rk_method=rk_method, max_steps=4)
+
+    assert not success
+    assert message == "Maximum number of steps (set by user) exceeded during integration."
+
+@pytest.mark.parametrize('complex_valued', (False,))
+@pytest.mark.parametrize('rk_method', (0, 1, 2))
+def test_maxsteps_CySolverTester(rk_method, complex_valued):
+    """Check that the cython class solver is able to run using the DOP853 method. Using a larger ending time value """
+
+    if complex_valued:
+        initial_conds_to_use = initial_conds_complex
+    else:
+        initial_conds_to_use = initial_conds
+
+    # First test a number of max steps which is fine.
+    CySolverTesterInst = CySolverTester(time_span_large, initial_conds_to_use, rk_method=rk_method, auto_solve=True, max_steps=1000000)
+
+    # Check that the ndarrays make sense
+    assert type(CySolverTesterInst.solution_t) == np.ndarray
+    assert CySolverTesterInst.solution_t.dtype == np.float64
+    if complex_valued:
+        assert CySolverTesterInst.solution_y.dtype == np.complex128
+    else:
+        assert CySolverTesterInst.solution_y.dtype == np.float64
+    assert CySolverTesterInst.solution_t.size > 1
+    assert CySolverTesterInst.solution_t.size == CySolverTesterInst.solution_y[0].size
+    assert len(CySolverTesterInst.solution_y.shape) == 2
+    assert CySolverTesterInst.solution_y[0].size == CySolverTesterInst.solution_y[1].size
+
+    # Check that the other output makes sense
+    assert type(CySolverTesterInst.success) == bool
+    assert CySolverTesterInst.success
+    assert type(CySolverTesterInst.message) == str
+
+    # Now test an insufficient number of steps
+    CySolverTesterInst = CySolverTester(
+        time_span_large, initial_conds_to_use, rk_method=rk_method, auto_solve=True, max_steps=4)
+
+    assert not CySolverTesterInst.success
+    assert CySolverTesterInst.status == -2

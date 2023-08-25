@@ -38,10 +38,10 @@ cdef class CySolver:
     cdef double t_start, t_end, t_delta, t_delta_abs, direction_inf
     cdef bool_cpp_t direction_flag
     cdef double rtol, atol
-    cdef double step_size, max_step
+    cdef double step_size, max_step_size
     cdef double first_step
-    cdef Py_ssize_t expected_size
-    cdef unsigned int num_concats
+    cdef Py_ssize_t expected_size, num_concats, max_steps
+    cdef bool_cpp_t use_max_steps
     cdef double[:] scale_view
     cdef bool_cpp_t recalc_firststep
     
@@ -74,9 +74,9 @@ cdef class CySolver:
     cpdef void change_y0(self, const double[:] y0, bool_cpp_t auto_reset_state = *)
     cpdef void change_args(self, tuple args, bool_cpp_t auto_reset_state = *)
     cpdef void change_tols(self, double rtol = *, double atol = *, bool_cpp_t auto_reset_state = *)
-    cpdef void change_max_step(self, double max_step, bool_cpp_t auto_reset_state = *)
+    cpdef void change_max_step_size(self, double max_step_size, bool_cpp_t auto_reset_state = *)
     cpdef void change_first_step(self, double first_step, bool_cpp_t auto_reset_state = *)
     cpdef void change_t_eval(self, const double[:] t_eval, bool_cpp_t auto_reset_state = *)
     cpdef void change_parameters(self, (double, double) t_span = *, const double[:] y0 = *, tuple args = *,
-                                double rtol = *, double atol = *, double max_step = *, double first_step = *,
+                                double rtol = *, double atol = *, double max_step_size = *, double first_step = *,
                                 const double[:] t_eval = *, bool_cpp_t auto_reset_state = *, bool_cpp_t auto_solve = *)

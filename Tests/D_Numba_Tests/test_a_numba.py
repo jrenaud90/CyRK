@@ -107,7 +107,7 @@ def test_max_step(rk_method, complex_valued):
         initial_conds_to_use = initial_conds
 
     time_domain, y_results, success, message = \
-        nbrk_ode(diffeq, time_span, initial_conds_to_use, rk_method=rk_method, max_step=time_span[1] / 2.)
+        nbrk_ode(diffeq, time_span, initial_conds_to_use, rk_method=rk_method, max_step_size=time_span[1] / 2.)
 
     # Check that the ndarrays make sense
     assert type(time_domain) == np.ndarray
@@ -301,3 +301,42 @@ def test_accuracy(rk_method):
     # ax.plot(time_domain, real_answer[0], 'b', label='Analytic')
     # ax.plot(time_domain, real_answer[1], 'b:')
     # plt.show()
+
+@pytest.mark.parametrize('complex_valued', (True, False))
+@pytest.mark.parametrize('rk_method', (0, 1, 2))
+def test_max_steps(rk_method, complex_valued):
+    """Check that the numba solver is able to utilize the max_steps argument """
+
+    if complex_valued:
+        initial_conds_to_use = initial_conds_complex
+    else:
+        initial_conds_to_use = initial_conds
+
+    # First test a number of max steps which is fine.
+    time_domain, y_results, success, message = \
+        nbrk_ode(diffeq, time_span_large, initial_conds_to_use, rk_method=rk_method, max_steps=1000000)
+
+    # Check that the ndarrays make sense
+    assert type(time_domain) == np.ndarray
+    assert time_domain.dtype == np.float64
+    if complex_valued:
+        assert y_results.dtype == np.complex128
+    else:
+        assert y_results.dtype == np.float64
+    assert time_domain.size > 1
+    assert time_domain.size == y_results[0].size
+    assert len(y_results.shape) == 2
+    assert y_results[0].size == y_results[1].size
+
+    # Check that the other output makes sense
+    assert type(success) == bool
+    assert success
+    assert type(message) == str
+
+    # Now test an insufficient number of steps
+    time_domain, y_results, success, message = \
+        nbrk_ode(diffeq, time_span_large, initial_conds_to_use, rk_method=rk_method, max_steps=4)
+
+    # Check that the ndarrays make sense
+    assert not success
+    assert message == "Maximum number of steps (set by user) exceeded during integration."
