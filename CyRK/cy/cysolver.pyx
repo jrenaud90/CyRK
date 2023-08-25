@@ -122,7 +122,7 @@ cdef class CySolver:
         if args is None:
             self.num_args = 0
             # Even though there are no args, initialize the array to something to avoid seg faults
-            arg_array = np.empty(0, dype=np.float64, order='C')
+            arg_array = np.empty(0, dtype=np.float64, order='C')
             self.arg_array_view = arg_array
         else:
             self.num_args = len(args)
