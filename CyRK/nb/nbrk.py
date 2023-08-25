@@ -334,7 +334,7 @@ def nbrk_ode(
     first_step_found = False
     if first_step is not None:
         step_size = max_step_size
-        if first_step <= 0.:
+        if first_step < 0.:
             status = -8
             message = "Attribute error."
             raise AttributeError('Error in user-provided step size: Step size must be a positive number.')
@@ -402,7 +402,7 @@ def nbrk_ode(
         message = "Integration never started: y-size is zero."
 
     # # Time Loop
-    len_t = 0
+    len_t = 1  # Already one time step due to initial conditions.
     while status == 0:
 
         if t_new == t_end:
