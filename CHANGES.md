@@ -10,6 +10,7 @@ Other Changes
 
 Bug Fixes:
 - Fixed potential seg fault when accessing `CySolver`'s arg_array_view.
+- Fixed potential issue where `CySolver`'s first step size may not be reset when variables that affect it are.
 
 #### v0.6.2
 New Features

@@ -57,6 +57,7 @@ cdef class CySolver:
         self.status  = -3  # Status code to indicate that integration has not started.
         self.message = 'Integration has not started.'
         self.success = False
+        self.recalc_firststep = False
 
         # Declare public variables to avoid memory access violations if solve() is not called.
         cdef np.ndarray[np.float64_t, ndim=2, mode='c'] solution_extra_fake, solution_y_fake
@@ -366,7 +367,7 @@ cdef class CySolver:
             self.dy_old_view[i] = self.dy_new_view[i]
 
         # Determine first step size
-        if self.first_step == 0.:
+        if self.first_step == 0. or self.recalc_firststep:
             self.step_size = self.calc_first_step()
         else:
             if self.first_step <= 0.:
@@ -975,6 +976,9 @@ cdef class CySolver:
             self.direction_flag = False
             self.direction_inf  = -INF
 
+        # A change to t-span will affect the first step's size
+        self.recalc_firststep = True
+
         if auto_reset_state:
             self.reset_state()
 
@@ -995,6 +999,9 @@ cdef class CySolver:
         # Store y0 values for later
         self.y0_view = y0
 
+        # A change to y0 will affect the first step's size
+        self.recalc_firststep = True
+
         if auto_reset_state:
             self.reset_state()
 
@@ -1009,6 +1016,9 @@ cdef class CySolver:
         self.arg_array_view = arg_array
         for i in range(self.num_args):
             self.arg_array_view[i] = args[i]
+
+        # A change to args will affect the first step's size
+        self.recalc_firststep = True
 
         if auto_reset_state:
             self.reset_state()
@@ -1029,6 +1039,9 @@ cdef class CySolver:
         #     if atol_arr.ndim > 0 and atol_arr.shape[0] != y_size:
         #         # atol must be either the same for all y or must be provided as an array, one for each y.
         #         raise Exception
+
+        # A change to tolerances will affect the first step's size
+        self.recalc_firststep = True
 
         if auto_reset_state:
             self.reset_state()
@@ -1053,6 +1066,9 @@ cdef class CySolver:
             elif self.first_step > self.t_delta_abs:
                 raise AttributeError('Error in user-provided step size: Step size can not exceed bounds.')
             self.step_size = self.first_step
+
+        # If first step has already been reset then no need to call it again later.
+        self.recalc_firststep = False
 
         if auto_reset_state:
             self.reset_state()
@@ -1114,6 +1130,10 @@ cdef class CySolver:
             self.change_t_eval(t_eval, auto_reset_state=False)
 
         # Now that everything has been set, reset the solver's state.
+        # If first step has already been reset then no need to call it again later.
+        if not isnan(first_step):
+            self.recalc_firststep = False
+
         if auto_reset_state:
             self.reset_state()
 
