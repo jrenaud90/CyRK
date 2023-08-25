@@ -548,10 +548,14 @@ def cyrk_ode(
     cdef Py_ssize_t len_t
     status = 0
     len_t  = 1  # There is an initial condition provided so the time length is already 1
+
+    if y_size == 0:
+        status = -6
+        message = 'Integration never started: y-size is zero.'
+
     while status == 0:
-        if t_new == t_end or y_size == 0:
+        if t_new == t_end:
             t_old = t_end
-            t_new = t_end
             status = 1
             break
 

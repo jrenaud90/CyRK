@@ -543,10 +543,13 @@ cdef class CySolver:
         # There is an initial condition provided so the time length is already 1
         self.len_t = 1
 
+        if self.y_size == 0:
+            self.status = -6
+            self.message = 'Integration never started: y-size is zero.'
+
         while self.status == 0:
-            if self.t_new == self.t_end or self.y_size == 0:
+            if self.t_new == self.t_end:
                 self.t_old = self.t_end
-                self.t_new = self.t_end
                 self.status = 1
                 break
 
