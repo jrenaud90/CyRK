@@ -1,4 +1,5 @@
 [run]
+plugins = Cython.Coverage
+source = CyRK
 omit =
     Tests/*
-    CyRK/cy/_cyrk.pyx
