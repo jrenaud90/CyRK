@@ -6,6 +6,7 @@ import sys
 import numpy as np
 cimport numpy as np
 np.import_array()
+
 from libcpp cimport bool as bool_cpp_t
 from libc.math cimport sqrt, fabs, nextafter, fmax, fmin
 
@@ -495,6 +496,7 @@ def cyrk_ode(
 
     cdef np.ndarray[np.float64_t, ndim=1, mode='c'] scale_arr
     cdef double[:] scale_view
+    cdef double scale
     scale_arr = np.empty(y_size, dtype=np.float64, order='C')
     scale_view = scale_arr
 
@@ -520,10 +522,10 @@ def cyrk_ode(
             d0 = 0.
             d1 = 0.
             for i in range(y_size):
-                scale_view[i] = atol + dabs(y_old_view[i]) * rtol
+                scale = atol + dabs(y_old_view[i]) * rtol
 
-                d0_abs = dabs(y_old_view[i] / scale_view[i])
-                d1_abs = dabs(dydt_old_view[i] / scale_view[i])
+                d0_abs = dabs(y_old_view[i] / scale)
+                d1_abs = dabs(dydt_old_view[i] / scale)
                 d0 += (d0_abs * d0_abs)
                 d1 += (d1_abs * d1_abs)
 
@@ -552,8 +554,8 @@ def cyrk_ode(
             d2 = 0.
             for i in range(y_size):
                 dydt_new_view[i] = diffeq_out_view[i]
-                scale_view[i] = atol + dabs(y_old_view[i]) * rtol
-                d2_abs = dabs( (dydt_new_view[i] - dydt_old_view[i]) / scale_view[i])
+                scale = atol + dabs(y_old_view[i]) * rtol
+                d2_abs = dabs( (dydt_new_view[i] - dydt_old_view[i]) / scale)
                 d2 += (d2_abs * d2_abs)
 
             d2 = sqrt(d2) / (h0 * y_size_sqrt)
@@ -697,7 +699,7 @@ def cyrk_ode(
                     dydt_new_view[i] = diffeq_out_view[i]
 
                     # Find scale of y for error calculations
-                    scale_view[i] = atol + max(cabs(y_old_view[i]), cabs(y_new_view[i])) * rtol
+                    scale_view[i] = atol + max(dabs(y_old_view[i]), dabs(y_new_view[i])) * rtol
 
                     # Set last array of K equal to dydt
                     K_view[rk_n_stages, i] = dydt_new_view[i]
@@ -719,7 +721,8 @@ def cyrk_ode(
                             error_dot_1 = 0.
                             error_dot_2 = 0.
 
-                        K_scale = K_view[j, i] / scale_view[i]
+                        scale = scale_view[i]
+                        K_scale = K_view[j, i] / <double_numeric>scale
                         error_dot_1 += K_scale * E3_view[j]
                         error_dot_2 += K_scale * E5_view[j]
 
@@ -746,7 +749,8 @@ def cyrk_ode(
                             # Initialize
                             error_dot_1 = 0.
 
-                        K_scale = K_view[j, i] / scale_view[i]
+                        scale = scale_view[i]
+                        K_scale = K_view[j, i] / <double_numeric> scale
                         error_dot_1 += K_scale * E_view[j] * step
 
                     error_norm_abs = dabs(error_dot_1)

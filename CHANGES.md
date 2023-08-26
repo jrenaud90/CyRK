@@ -14,6 +14,7 @@ Other Changes
 - Improved documentation for `CySolver`'s `diffeq` method template.
 - To make more logical sense with the wording, `CySolver.size_growths` now gives one less than the solver's growths attribute.
 - Cleaned up status codes and created new status code description document under "Documentation/Status and Error Codes.md"
+- Fixed compile warning related to NPY_NO_DEPRECATED_API.
 
 Performance
 - Various minor performance gains for cython-based solvers.
