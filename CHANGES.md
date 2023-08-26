@@ -4,6 +4,10 @@
 
 ### v0.7.0
 
+Major Changes
+- Added support for Cython 3.0.0
+  - Added `noexcept` to pure cython functions to avoid a potential python error check.
+
 New Features
 - Added new optional argument to all solvers `max_steps` which allows the user to control how many steps the solver is allowed to take.
   - If exceeded the integration with fail (softly). 
@@ -22,6 +26,7 @@ Performance
 Bug Fixes:
 - Fixed potential seg fault when accessing `CySolver`'s arg_array_view.
 - Fixed potential issue where `CySolver`'s first step size may not be reset when variables that affect it are.
+- Fixed missed declaration in `cyrk_ode`.
 
 #### v0.6.2
 New Features

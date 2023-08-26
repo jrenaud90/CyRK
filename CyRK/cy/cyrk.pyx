@@ -32,7 +32,7 @@ cdef double EPS_100 = EPS * 100.
 cdef Py_ssize_t MAX_INT_SIZE = int(0.95 * sys.maxsize)
 
 
-cdef double cabs(double complex value) nogil:
+cdef double cabs(double complex value) noexcept nogil:
     """ Absolute value function for complex-valued inputs.
     
     Parameters
@@ -59,7 +59,7 @@ ctypedef fused double_numeric:
     double complex
 
 
-cdef double dabs(double_numeric value) nogil:
+cdef double dabs(double_numeric value) noexcept nogil:
     """ Absolute value function for either float or complex-valued inputs.
     
     Checks the type of value and either utilizes `cabs` (for double complex) or `fabs` (for floats).
@@ -864,7 +864,7 @@ def cyrk_ode(
         solution_t_view = solution_t
 
     cdef double_numeric[:, :] y_results_reduced_view
-    cdef double_numeric[:] y_result_timeslice_view, y_result_temp_view
+    cdef double_numeric[:] y_result_timeslice_view, y_result_temp_view, y_interp_view
 
     if run_interpolation and success:
         old_status = status

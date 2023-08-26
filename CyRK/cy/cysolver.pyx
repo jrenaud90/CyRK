@@ -417,7 +417,6 @@ cdef class CySolver:
         self.message = "CySolver has been reset."
 
 
-    @cython.exceptval(check=False)
     cdef double calc_first_step(self):
         """ Determine initial step size. """
 
@@ -479,12 +478,10 @@ cdef class CySolver:
         return step_size
 
 
-    @cython.exceptval(check=False)
     cpdef void solve(self, bool_cpp_t reset = True):
         self._solve()
 
 
-    @cython.exceptval(check=False)
     cdef void _solve(self, bool_cpp_t reset = True):
         """ Perform Runge-Kutta integration on `self.diffeq` function."""
 
@@ -868,7 +865,6 @@ cdef class CySolver:
             self.interpolate()
 
 
-    @cython.exceptval(check=False)
     cdef void interpolate(self):
         """ Interpolate the results of a successful integration over the user provided time domain, `t_eval`."""
         # User only wants data at specific points.
@@ -1163,7 +1159,6 @@ cdef class CySolver:
             self._solve(reset=(not auto_reset_state))
 
 
-    @cython.exceptval(check=False)
     cdef void diffeq(self):
         # This is a template function that should be overriden by the user's subclass.
 
