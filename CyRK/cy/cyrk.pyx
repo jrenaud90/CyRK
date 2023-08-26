@@ -96,8 +96,8 @@ def cyrk_ode(
     bool_cpp_t capture_extra = False,
     Py_ssize_t num_extra = 0,
     bool_cpp_t interpolate_extra = False,
-    unsigned int expected_size = 0,
-    unsigned int max_steps = 0
+    Py_ssize_t expected_size = 0,
+    Py_ssize_t max_steps = 0
     ):
     """ A Numba-safe Runge-Kutta Integrator based on Scipy's solve_ivp RK integrator.
 
@@ -347,7 +347,7 @@ def cyrk_ode(
             y0_to_store_view[i] = y0[i]
 
     # # Determine RK scheme
-    cdef unsigned char rk_order, error_order
+    cdef Py_ssize_t rk_order, error_order
     cdef Py_ssize_t rk_n_stages, rk_n_stages_plus1, rk_n_stages_extended
     cdef Py_ssize_t len_C, len_B, len_E, len_E3, len_E5, len_A0, len_A1
     cdef double error_pow, error_expo, error_norm5, error_norm3, error_norm, error_norm_abs, error_norm3_abs, error_norm5_abs, error_denom

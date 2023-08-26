@@ -19,6 +19,7 @@ Other Changes
 - To make more logical sense with the wording, `CySolver.size_growths` now gives one less than the solver's growths attribute.
 - Cleaned up status codes and created new status code description document under "Documentation/Status and Error Codes.md"
 - Fixed compile warning related to NPY_NO_DEPRECATED_API.
+- Converted RK variable lengths to Py_ssize_t types.
 
 Performance
 - Various minor performance gains for cython-based solvers.
