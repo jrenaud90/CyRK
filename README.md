@@ -83,7 +83,7 @@ def diffeq_nb(t, y):
     dy[1] = (0.02 * y[0] - 1.) * y[1]
     return dy
 
-initial_conds = np.asarray((20., 20.), dtype=np.complex128)
+initial_conds = np.asarray((20., 20.), dtype=np.complex128, order='C')
 time_span = (0., 50.)
 rtol = 1.0e-7
 atol = 1.0e-8
@@ -146,8 +146,7 @@ from CyRK.cy.cysolver cimport CySolver
 
 cdef class MyCyRKDiffeq(CySolver):
 
-    @cython.exceptval(check=False)
-    cdef void diffeq(self):
+    cdef void diffeq(self) noexcept nogil:
         
         # Unpack dependent variables using the `self.y_new_view` variable.
         # In this example we have a system of two dependent variables, but any number can be used.
@@ -175,6 +174,10 @@ Once you compile the differential equation it can be imported in a regular pytho
 ```python
 """run.py"""
 from ODE import MyCyRKDiffeq
+
+# It is important that any arrays passed to the CySolver are C-contiguous (set with numpy with "order=C")
+# Also, currently, CySolver only works with floats/doubles. Not complex.
+initial_conds = np.asarray((20., 20.), dtype=np.float64, order='C')
 
 # Need to make an instance of the integrator.
 # The diffeq no longer needs to be passed to the class.
