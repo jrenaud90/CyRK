@@ -17,12 +17,15 @@ def diffeq_args(t, y, dy, a, b):
     dy[0] = (1. - a * y[1]) * y[0]
     dy[1] = (b * y[0] - 1.) * y[1]
 
-initial_conds = np.asarray((20., 20.), dtype=np.float64)
-initial_conds_complex = np.asarray((20. + 0.01j, 20. - 0.01j), dtype=np.complex128)
+initial_conds = np.asarray((20., 20.), dtype=np.float64, order='C')
+initial_conds_complex = np.asarray((20. + 0.01j, 20. - 0.01j), dtype=np.complex128, order='C')
 time_span = (0., 10.)
 time_span_large = (0., 1000.)
 rtol = 1.0e-7
 atol = 1.0e-8
+
+rtols = np.asarray((1.0e-7, 1.0e-8), dtype=np.float64, order='C')
+atols = np.asarray((1.0e-8, 1.0e-9), dtype=np.float64, order='C')
 
 
 def test_cyrk_test():
@@ -39,7 +42,9 @@ def test_cysolver_test():
 
 @pytest.mark.parametrize('complex_valued', (True, False))
 @pytest.mark.parametrize('rk_method', (0, 1, 2))
-def test_basic_integration_cyrk_ode(rk_method, complex_valued):
+@pytest.mark.parametrize('use_rtol_array', (True, False))
+@pytest.mark.parametrize('use_atol_array', (True, False))
+def test_basic_integration_cyrk_ode(use_atol_array, use_rtol_array, rk_method, complex_valued):
     """Check that the cython function solver is able to run with its default arguments"""
 
     if complex_valued:
@@ -47,8 +52,18 @@ def test_basic_integration_cyrk_ode(rk_method, complex_valued):
     else:
         initial_conds_to_use = initial_conds
 
+    if use_atol_array:
+        atols_use = atols
+    else:
+        atols_use = None
+    if use_rtol_array:
+        rtols_use = rtols
+    else:
+        rtols_use = None
+
     time_domain, y_results, success, message = \
-        cyrk_ode(diffeq, time_span, initial_conds_to_use, rk_method=rk_method)
+        cyrk_ode(diffeq, time_span, initial_conds_to_use,
+                 rk_method=rk_method, rtol=rtol, atol=atol, rtols=rtols_use, atols=atols_use)
 
     # Check that the ndarrays make sense
     assert type(time_domain) == np.ndarray
@@ -69,7 +84,9 @@ def test_basic_integration_cyrk_ode(rk_method, complex_valued):
 
 @pytest.mark.parametrize('complex_valued', (False,))
 @pytest.mark.parametrize('rk_method', (0, 1, 2))
-def test_basic_integration_CySolverTester(rk_method, complex_valued):
+@pytest.mark.parametrize('use_rtol_array', (True, False))
+@pytest.mark.parametrize('use_atol_array', (True, False))
+def test_basic_integration_CySolverTester(use_atol_array, use_rtol_array, rk_method, complex_valued):
     """Check that the cython class solver is able to run with its default arguments"""
 
     if complex_valued:
@@ -77,7 +94,18 @@ def test_basic_integration_CySolverTester(rk_method, complex_valued):
     else:
         initial_conds_to_use = initial_conds
 
-    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method, auto_solve=True)
+    if use_atol_array:
+        atols_use = atols
+    else:
+        atols_use = None
+    if use_rtol_array:
+        rtols_use = rtols
+    else:
+        rtols_use = None
+
+    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use,
+                                        rtol=rtol, atol=atol, rtols=rtols_use, atols=atols_use,
+                                        rk_method=rk_method, auto_solve=True)
 
     # Check that the ndarrays make sense
     assert type(CySolverTesterInst.solution_t) == np.ndarray
@@ -137,7 +165,8 @@ def test_different_tols_CySolverTester(rk_method, complex_valued):
     else:
         initial_conds_to_use = initial_conds
 
-    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method, rtol=1.0e-10, atol=1.0e-12, auto_solve=True)
+    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method,
+                                        rtol=1.0e-10, atol=1.0e-12, auto_solve=True)
 
     # Check that the ndarrays make sense
     assert type(CySolverTesterInst.solution_t) == np.ndarray
@@ -623,3 +652,32 @@ def test_maxsteps_CySolverTester(rk_method, complex_valued):
 
     assert not CySolverTesterInst.success
     assert CySolverTesterInst.status == -2
+
+def test_bad_tols_cyrk():
+
+    # Too many rtols and atols
+    bad_rtols = np.asarray((1.0e-6, 1.0e-7, 1.0e-8), dtype=np.float64, order='C')
+    bad_atols = np.asarray((1.0e-7, 1.0e-8, 1.0e-9), dtype=np.float64, order='C')
+
+    with pytest.raises(AttributeError):
+        time_domain, y_results, success, message = \
+            cyrk_ode(diffeq, time_span_large, initial_conds, rk_method=1, rtols=bad_rtols)
+
+    with pytest.raises(AttributeError):
+        time_domain, y_results, success, message = \
+            cyrk_ode(diffeq, time_span_large, initial_conds, rk_method=1, atols=bad_atols)
+
+
+def test_bad_tols_CySolver():
+
+    # Too many rtols and atols
+    bad_rtols = np.asarray((1.0e-6, 1.0e-7, 1.0e-8), dtype=np.float64, order='C')
+    bad_atols = np.asarray((1.0e-7, 1.0e-8, 1.0e-9), dtype=np.float64, order='C')
+
+    with pytest.raises(AttributeError):
+        CySolverTesterInst = CySolverTester(time_span_large, initial_conds,
+                                            rk_method=1, rtols=bad_rtols, auto_solve=True)
+
+    with pytest.raises(AttributeError):
+        CySolverTesterInst = CySolverTester(time_span_large, initial_conds,
+                                            rk_method=1, atols=bad_atols, auto_solve=True)

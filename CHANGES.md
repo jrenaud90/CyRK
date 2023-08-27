@@ -9,6 +9,10 @@ Major Changes
   - Added `noexcept` to pure cython functions to avoid a potential python error check.
 
 New Features
+- Added the ability to pass arrayed versions of rtol and atol to both the numba and cython-based solvers (cyrk_ode and CySolver).
+  - For both solvers, you can pass the optional argument "rtols" and/or "atols". These must be C-contiguous numpy arrays with float64 dtypes. They must have the same size as y0.
+  - Added tests to check functionality for all solvers.
+  - This resolves [https://github.com/jrenaud90/CyRK/issues/31][Issue 31].
 - Added new optional argument to all solvers `max_steps` which allows the user to control how many steps the solver is allowed to take.
   - If exceeded the integration with fail (softly). 
   - Defaults to 95% of `sys.maxsize` (depends on system architecture).

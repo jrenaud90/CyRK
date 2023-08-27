@@ -29,6 +29,9 @@ time_span_large = (0., 1000.)
 rtol = 1.0e-7
 atol = 1.0e-8
 
+rtols = np.asarray((1.0e-7, 1.0e-8), dtype=np.float64, order='C')
+atols = np.asarray((1.0e-8, 1.0e-9), dtype=np.float64, order='C')
+
 
 def test_nbrk_test():
     """Check that the builtin test function for the nbrk integrator is working"""
@@ -38,7 +41,9 @@ def test_nbrk_test():
 
 @pytest.mark.parametrize('complex_valued', (True, False))
 @pytest.mark.parametrize('rk_method', (0, 1, 2))
-def test_basic_integration(rk_method, complex_valued):
+@pytest.mark.parametrize('use_rtol_array', (True, False))
+@pytest.mark.parametrize('use_atol_array', (True, False))
+def test_basic_integration(use_atol_array, use_rtol_array, rk_method, complex_valued):
     """Check that the numba solver is able to run with its default arguments"""
 
     if complex_valued:
@@ -46,8 +51,18 @@ def test_basic_integration(rk_method, complex_valued):
     else:
         initial_conds_to_use = initial_conds
 
+    tol_dict = dict()
+    if use_atol_array:
+        tol_dict['atols'] = atols
+    else:
+        tol_dict['atol'] = atol
+    if use_rtol_array:
+        tol_dict['rtols'] = rtols
+    else:
+        tol_dict['rtol'] = rtol
+
     time_domain, y_results, success, message = \
-        nbrk_ode(diffeq, time_span, initial_conds_to_use, rk_method=rk_method)
+        nbrk_ode(diffeq, time_span, initial_conds_to_use, rk_method=rk_method, **tol_dict)
 
     # Check that the ndarrays make sense
     assert type(time_domain) == np.ndarray

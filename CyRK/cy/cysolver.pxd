@@ -38,7 +38,7 @@ cdef class CySolver:
     cdef public bool_cpp_t success
     cdef double t_start, t_end, t_delta, t_delta_abs, direction_inf
     cdef bool_cpp_t direction_flag
-    cdef double rtol, atol
+    cdef double[::1] rtols_view, atols_view
     cdef double step_size, max_step_size
     cdef double first_step
     cdef Py_ssize_t expected_size, num_concats, max_steps
@@ -65,20 +65,48 @@ cdef class CySolver:
 
     # Class functions
     cpdef void reset_state(self)
+
     cdef double calc_first_step(self) noexcept nogil
+
     cdef void rk_step(self) noexcept nogil
+
     cpdef void solve(self, bool_cpp_t reset = *)
+
     cdef void _solve(self, bool_cpp_t reset = *)
+
     cdef void interpolate(self)
+
     cpdef void change_t_span(self, (double, double) t_span, bool_cpp_t auto_reset_state = *)
+
     cpdef void change_y0(self, const double[::1] y0, bool_cpp_t auto_reset_state = *)
+
     cpdef void change_args(self, tuple args, bool_cpp_t auto_reset_state = *)
-    cpdef void change_tols(self, double rtol = *, double atol = *, bool_cpp_t auto_reset_state = *)
+
+    cpdef void change_tols(self, double rtol = *,
+                           double atol = *,
+                           double[::1] rtols = *,
+                           double[::1] atols = *,
+                           bool_cpp_t auto_reset_state = *)
+
     cpdef void change_max_step_size(self, double max_step_size, bool_cpp_t auto_reset_state = *)
+
     cpdef void change_first_step(self, double first_step, bool_cpp_t auto_reset_state = *)
+
     cpdef void change_t_eval(self, const double[:] t_eval, bool_cpp_t auto_reset_state = *)
-    cpdef void change_parameters(self, (double, double) t_span = *, const double[::1] y0 = *, tuple args = *,
-                                double rtol = *, double atol = *, double max_step_size = *, double first_step = *,
-                                const double[::1] t_eval = *, bool_cpp_t auto_reset_state = *, bool_cpp_t auto_solve = *)
+
+    cpdef void change_parameters(self, (double, double) t_span = *,
+                                const double[::1] y0 = *,
+                                tuple args = *,
+                                double rtol = *,
+                                double atol = *,
+                                double[::1] rtols = *,
+                                double[::1] atols = *,
+                                double max_step_size = *,
+                                double first_step = *,
+                                const double[::1] t_eval = *,
+                                bool_cpp_t auto_reset_state = *,
+                                bool_cpp_t auto_solve = *)
+
     cdef void update_constants(self) noexcept nogil
+
     cdef void diffeq(self) noexcept nogil

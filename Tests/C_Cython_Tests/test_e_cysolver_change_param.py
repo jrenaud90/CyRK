@@ -11,6 +11,8 @@ time_span_large = (0., 1000.)
 rtol = 1.0e-7
 atol = 1.0e-8
 
+rtols = np.asarray((1.0e-7, 1.0e-8), dtype=np.float64, order='C')
+atols = np.asarray((1.0e-8, 1.0e-9), dtype=np.float64, order='C')
 
 @pytest.mark.parametrize('complex_valued', (False,))
 @pytest.mark.parametrize('rk_method', (0, 1, 2))
@@ -65,6 +67,11 @@ def test_CySolverTester_change_param(rk_method, complex_valued):
     assert solution_4_t.size == 10
     assert solution_4_y.shape == (2, 10)
 
+    # Check changing rtols/atols array
+    CySolverTesterInst.change_parameters(rtols=rtols, atols=atols)
+    CySolverTesterInst.solve()
+    assert CySolverTesterInst.success
+
     # Check that the correct error is raised when an incorrect y0 is provided
     y0_bad = np.asarray((-10., 0., 10.), dtype=np.float64)  # Should only have 2 values
     with pytest.raises(AttributeError):
@@ -73,3 +80,13 @@ def test_CySolverTester_change_param(rk_method, complex_valued):
     # Check again with the wrapper change function
     with pytest.raises(AttributeError):
         CySolverTesterInst.change_parameters(y0=y0_bad)
+
+    # Check changing rtol/atol to a bad array
+    # Too many rtols and atols
+    bad_rtols = np.asarray((1.0e-6, 1.0e-7, 1.0e-8), dtype=np.float64, order='C')
+    bad_atols = np.asarray((1.0e-7, 1.0e-8, 1.0e-9), dtype=np.float64, order='C')
+    # Check again with the wrapper change function
+    with pytest.raises(AttributeError):
+        CySolverTesterInst.change_parameters(rtols=bad_rtols)
+    with pytest.raises(AttributeError):
+        CySolverTesterInst.change_parameters(atols=bad_atols)

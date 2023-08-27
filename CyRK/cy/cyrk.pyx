@@ -89,6 +89,8 @@ def cyrk_ode(
     tuple args = None,
     double rtol = 1.e-6,
     double atol = 1.e-8,
+    double[::1] rtols = None,
+    double[::1] atols = None,
     double max_step_size = MAX_STEP,
     double first_step = 0.,
     unsigned char rk_method = 1,
@@ -241,15 +243,43 @@ def cyrk_ode(
         #  on computation.
         store_extras_during_integration = False
 
-    # # Determine integration parameters
-    # Check tolerances
-    if rtol < EPS_100:
-        rtol = EPS_100
+    # # Determine integration tolerances
+    cdef double rtol_tmp, atol_tmp
+    use_arg_arrays = False
+    use_atol_array = False
+    cdef np.ndarray[np.float64_t, ndim=1, mode='c'] rtol_array, atol_array
+    rtol_array = np.empty(y_size, dtype=np.float64, order='C')
+    atol_array = np.empty(y_size, dtype=np.float64, order='C')
+    cdef double[::1] rtols_view, atols_view
+    rtols_view = rtol_array
+    atols_view = atol_array
 
-    #     atol_arr = np.asarray(atol, dtype=np.complex128)
-    #     if atol_arr.ndim > 0 and atol_arr.shape[0] != y_size:
-    #         # atol must be either the same for all y or must be provided as an array, one for each y.
-    #         raise Exception
+    if rtols is not None:
+        # Using arrayed rtol
+        if len(rtols) != y_size:
+            raise AttributeError('rtols must be the same size as y0.')
+        for i in range(y_size):
+            rtol_tmp = rtols[i]
+            if rtol_tmp < EPS_100:
+                rtol_tmp = EPS_100
+            rtols_view[i] = rtol_tmp
+    else:
+        # Using constant rtol
+        # Check tolerances
+        if rtol < EPS_100:
+            rtol = EPS_100
+        for i in range(y_size):
+            rtols_view[i] = rtol
+
+    if atols is not None:
+        # Using arrayed atol
+        if len(atols) != y_size:
+            raise AttributeError('atols must be the same size as y0.')
+        for i in range(y_size):
+            atols_view[i] = atols[i]
+    else:
+        for i in range(y_size):
+            atols_view[i] = atol
 
     # Determine maximum number of steps
     cdef Py_ssize_t max_steps_touse
@@ -522,8 +552,8 @@ def cyrk_ode(
             d0 = 0.
             d1 = 0.
             for i in range(y_size):
-                scale = atol + dabs(y_old_view[i]) * rtol
 
+                scale = atols_view[i] + dabs(y_old_view[i]) * rtols_view[i]
                 d0_abs = dabs(y_old_view[i] / scale)
                 d1_abs = dabs(dydt_old_view[i] / scale)
                 d0 += (d0_abs * d0_abs)
@@ -554,7 +584,7 @@ def cyrk_ode(
             d2 = 0.
             for i in range(y_size):
                 dydt_new_view[i] = diffeq_out_view[i]
-                scale = atol + dabs(y_old_view[i]) * rtol
+                scale = atols_view[i] + dabs(y_old_view[i]) * rtols_view[i]
                 d2_abs = dabs( (dydt_new_view[i] - dydt_old_view[i]) / scale)
                 d2 += (d2_abs * d2_abs)
 
@@ -697,9 +727,7 @@ def cyrk_ode(
                 if i < extra_start:
                     # Set diffeq results
                     dydt_new_view[i] = diffeq_out_view[i]
-
-                    # Find scale of y for error calculations
-                    scale_view[i] = atol + max(dabs(y_old_view[i]), dabs(y_new_view[i])) * rtol
+                    scale_view[i] = atols_view[i] + max(dabs(y_old_view[i]), dabs(y_new_view[i])) * rtols_view[i]
 
                     # Set last array of K equal to dydt
                     K_view[rk_n_stages, i] = dydt_new_view[i]

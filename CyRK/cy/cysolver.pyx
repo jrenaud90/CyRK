@@ -36,21 +36,23 @@ cdef class CySolver:
 
 
     def __init__(self,
-                 (double, double) t_span,
-                 const double[::1] y0,
-                 tuple args = None,
-                 double rtol = 1.e-6,
-                 double atol = 1.e-8,
-                 double max_step_size = MAX_STEP,
-                 double first_step = 0.,
-                 unsigned char rk_method = 1,
-                 const double[::1] t_eval = None,
-                 bool_cpp_t capture_extra = False,
-                 Py_ssize_t num_extra = 0,
-                 bool_cpp_t interpolate_extra = False,
-                 Py_ssize_t expected_size = 0,
-                 Py_ssize_t max_steps = 0,
-                 bool_cpp_t auto_solve = True):
+            (double, double) t_span,
+            const double[::1] y0,
+            tuple args = None,
+            double rtol = 1.e-6,
+            double atol = 1.e-8,
+            double[::1] rtols = None,
+            double[::1] atols = None,
+            double max_step_size = MAX_STEP,
+            double first_step = 0.,
+            unsigned char rk_method = 1,
+            const double[::1] t_eval = None,
+            bool_cpp_t capture_extra = False,
+            Py_ssize_t num_extra = 0,
+            bool_cpp_t interpolate_extra = False,
+            Py_ssize_t expected_size = 0,
+            Py_ssize_t max_steps = 0,
+            bool_cpp_t auto_solve = True):
 
         # Setup loop variables
         cdef Py_ssize_t i, j
@@ -93,17 +95,40 @@ cdef class CySolver:
             self.direction_flag = False
             self.direction_inf  = -INF
 
-        # # Determine integration parameters
-        # Add tolerances
-        self.rtol = rtol
-        self.atol = atol
-        if self.rtol < EPS_100:
-            self.rtol = EPS_100
-        # TODO: array based atol
-        #     atol_arr = np.asarray(atol, dtype=)
-        #     if atol_arr.ndim > 0 and atol_arr.shape[0] != y_size:
-        #         # atol must be either the same for all y or must be provided as an array, one for each y.
-        #         raise Exception
+        # # Determine integration tolerances
+        cdef double rtol_tmp
+        cdef np.ndarray[np.float64_t, ndim=1, mode='c'] rtol_array, atol_array
+        rtol_array = np.empty(self.y_size, dtype=np.float64, order='C')
+        atol_array = np.empty(self.y_size, dtype=np.float64, order='C')
+        self.rtols_view = rtol_array
+        self.atols_view = atol_array
+
+        if rtols is not None:
+            # Using arrayed rtol
+            if len(rtols) != self.y_size:
+                raise AttributeError('rtols must be the same size as y0.')
+            for i in range(self.y_size):
+                rtol_tmp = rtols[i]
+                if rtol_tmp < EPS_100:
+                    rtol_tmp = EPS_100
+                self.rtols_view[i] = rtol_tmp
+        else:
+            # Using constant rtol
+            # Check tolerances
+            if rtol < EPS_100:
+                rtol = EPS_100
+            for i in range(self.y_size):
+                self.rtols_view[i] = rtol
+
+        if atols is not None:
+            # Using arrayed atol
+            if len(atols) != self.y_size:
+                raise AttributeError('atols must be the same size as y0.')
+            for i in range(self.y_size):
+                self.atols_view[i] = atols[i]
+        else:
+            for i in range(self.y_size):
+                self.atols_view[i] = atol
 
         # Determine maximum number of steps
         if max_steps == 0:
@@ -376,7 +401,8 @@ cdef class CySolver:
             d1 = 0.
             for i in range(self.y_size):
                 y_old_tmp = self.y_old_view[i]
-                scale = self.atol + fabs(y_old_tmp) * self.rtol
+
+                scale = self.atols_view[i] + fabs(y_old_tmp) * self.rtols_view[i]
 
                 d0_abs = fabs(y_old_tmp / scale)
                 d1_abs = fabs(self.dy_old_view[i] / scale)
@@ -406,7 +432,8 @@ cdef class CySolver:
             # Find the norm for d2
             d2 = 0.
             for i in range(self.y_size):
-                scale = self.atol + fabs(self.y_old_view[i]) * self.rtol
+
+                scale = self.atols_view[i] + fabs(self.y_old_view[i]) * self.rtols_view[i]
                 d2_abs = fabs( (self.dy_new_view[i] - self.dy_old_view[i]) / scale)
                 d2 += (d2_abs * d2_abs)
 
@@ -539,7 +566,8 @@ cdef class CySolver:
                 error_norm5 = 0.
                 for i in range(self.y_size):
                     # Find scale of y for error calculations
-                    scale = self.atol + max(fabs(self.y_old_view[i]), fabs(self.y_new_view[i])) * self.rtol
+                    scale = (self.atols_view[i] +
+                             max(fabs(self.y_old_view[i]), fabs(self.y_new_view[i])) * self.rtols_view[i])
 
                     # Set last array of K equal to dydt
                     self.K_view[self.rk_n_stages, i] = self.dy_new_view[i]
@@ -574,7 +602,8 @@ cdef class CySolver:
                 error_norm = 0.
                 for i in range(self.y_size):
                     # Find scale of y for error calculations
-                    scale = self.atol + max(fabs(self.y_old_view[i]), fabs(self.y_new_view[i])) * self.rtol
+                    scale = (self.atols_view[i] +
+                             max(fabs(self.y_old_view[i]), fabs(self.y_new_view[i])) * self.rtols_view[i])
 
                     # Set last array of K equal to dydt
                     self.K_view[self.rk_n_stages, i] = self.dy_new_view[i]
@@ -998,21 +1027,44 @@ cdef class CySolver:
             self.reset_state()
 
 
-    cpdef void change_tols(self, double rtol = NAN, double atol = NAN, bool_cpp_t auto_reset_state = False):
+    cpdef void change_tols(self, double rtol = NAN, double atol = NAN,
+                           double[::1] rtols = None, double[::1] atols = None,
+                           bool_cpp_t auto_reset_state = False):
 
         # Update tolerances
-        if not isnan(rtol):
-            self.rtol = rtol
-        if not isnan(atol):
-            self.atol = atol
+        cdef double rtol_tmp
+        cdef np.ndarray[np.float64_t, ndim=1, mode='c'] rtol_array, atol_array
+        rtol_array = np.empty(self.y_size, dtype=np.float64, order='C')
+        atol_array = np.empty(self.y_size, dtype=np.float64, order='C')
+        self.rtols_view = rtol_array
+        self.atols_view = atol_array
 
-        if self.rtol < EPS_100:
-            self.rtol = EPS_100
-        # TODO: array based atol
-        #     atol_arr = np.asarray(atol, dtype=)
-        #     if atol_arr.ndim > 0 and atol_arr.shape[0] != y_size:
-        #         # atol must be either the same for all y or must be provided as an array, one for each y.
-        #         raise Exception
+        if rtols is not None:
+            # Using arrayed rtol
+            if len(rtols) != self.y_size:
+                raise AttributeError('rtols must be the same size as y0.')
+            for i in range(self.y_size):
+                rtol_tmp = rtols[i]
+                if rtol_tmp < EPS_100:
+                    rtol_tmp = EPS_100
+                self.rtols_view[i] = rtol_tmp
+        elif not isnan(rtol):
+            # Using constant rtol
+            # Check tolerances
+            if rtol < EPS_100:
+                rtol = EPS_100
+            for i in range(self.y_size):
+                self.rtols_view[i] = rtol
+
+        if atols is not None:
+            # Using arrayed atol
+            if len(atols) != self.y_size:
+                raise AttributeError('atols must be the same size as y0.')
+            for i in range(self.y_size):
+                self.atols_view[i] = atols[i]
+        elif not isnan(atol):
+            for i in range(self.y_size):
+                self.atols_view[i] = atol
 
         # A change to tolerances will affect the first step's size
         self.recalc_firststep = True
@@ -1076,6 +1128,8 @@ cdef class CySolver:
             tuple args = None,
             double rtol = NAN,
             double atol = NAN,
+            double[::1] rtols = None,
+            double[::1] atols = None,
             double max_step_size = NAN,
             double first_step = NAN,
             const double[::1] t_eval = None,
@@ -1091,8 +1145,8 @@ cdef class CySolver:
         if args is not None:
             self.change_args(args, auto_reset_state=False)
 
-        if not isnan(rtol) or not isnan(atol):
-            self.change_tols(rtol=rtol, atol=atol, auto_reset_state=False)
+        if (not isnan(rtol)) or (not isnan(atol)) or (rtols is not None) or (atols is not None):
+            self.change_tols(rtol=rtol, atol=atol, rtols=rtols, atols=atols, auto_reset_state=False)
 
         if not isnan(max_step_size):
             self.change_max_step_size(max_step_size, auto_reset_state=False)

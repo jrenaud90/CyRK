@@ -85,11 +85,21 @@ def _norm(x):
 
 @njit(cache=False, fastmath=False)
 def nbrk_ode(
-        diffeq: callable, t_span: Tuple[float, float], y0: np.ndarray, args: tuple = tuple(),
-        rtol: float = 1.e-6, atol: float = 1.e-8,
-        max_step_size: float = np.inf, first_step: float = None,
-        rk_method: int = 1, t_eval: np.ndarray = EMPTY_ARR,
-        capture_extra: bool = False, interpolate_extra: bool = False, max_steps: int = 0
+        diffeq: callable,
+        t_span: Tuple[float, float],
+        y0: np.ndarray,
+        args: tuple = tuple(),
+        rtol: float = 1.e-6,
+        atol: float = 1.e-8,
+        rtols: np.ndarray = EMPTY_ARR,
+        atols: np.ndarray = EMPTY_ARR,
+        max_step_size: float = np.inf,
+        first_step: float = None,
+        rk_method: int = 1,
+        t_eval: np.ndarray = EMPTY_ARR,
+        capture_extra: bool = False,
+        interpolate_extra: bool = False,
+        max_steps: int = 0
         ):
     """ A Numba-safe Runge-Kutta Integrator based on Scipy's solve_ivp RK integrator.
 
@@ -291,14 +301,33 @@ def nbrk_ode(
 
     error_expo = 1. / (error_order + 1.)
 
-    # Check tolerances
-    if rtol < 100. * EPS:
-        rtol = 100. * EPS
+    # Setup tolerances
+    rtol_array = np.empty(y_size, dtype=np.float64)
+    rtol_size = rtols.size
+    if rtol_size > 0:
+        if rtol_size != y_size:
+            raise AttributeError('rtols must be the same size as y0.')
+        for i in range(y_size):
+            rtol_ = rtols[i]
+            if rtol_ < (100 * EPS):
+                rtol_ = (100 * EPS)
+            rtol_array[i] = rtol_
+    else:
+        if rtol < (100 * EPS):
+            rtol = (100 * EPS)
+        for i in range(y_size):
+            rtol_array[i] = rtol
 
-    atol = np.asarray(atol)
-    if atol.ndim > 0 and atol.shape != (y_size,):
-        # atol must be either the same for all y or must be provided as an array, one for each y.
-        raise Exception
+    atol_array = np.empty(y_size, dtype=np.float64)
+    atol_size = atols.size
+    if atol_size > 0:
+        if atol_size != y_size:
+            raise AttributeError('atols must be the same size as y0.')
+        for i in range(y_size):
+            atol_array[i] = atols[i]
+    else:
+        for i in range(y_size):
+            atol_array[i] = atol
 
     # Determine maximum number of steps
     if max_steps == 0:
@@ -358,7 +387,7 @@ def nbrk_ode(
             d0 = 0.
             d1 = 0.
             for i in range(y_size):
-                scale = atol + np.abs(y_old[i]) * rtol
+                scale = atol_array[i] + np.abs(y_old[i]) * rtol_array[i]
 
                 d0_abs = np.abs(y_old[i] / scale)
                 d1_abs = np.abs(dydt_old[i] / scale)
@@ -383,7 +412,7 @@ def nbrk_ode(
 
             d2 = 0.
             for i in range(y_size):
-                scale = atol + np.abs(y_old[i]) * rtol
+                scale = atol_array[i] + np.abs(y_old[i]) * rtol_array[i]
                 d2_abs = np.abs((dydt1[i] - dydt_old[i]) / scale)
                 d2 += (d2_abs * d2_abs)
             d2 = np.sqrt(d2) / (h0 * y_size_sqrt)
@@ -506,7 +535,7 @@ def nbrk_ode(
                 # Dot Product (K, E5) / Scale and (K, E3) / scale
                 for i in range(y_size):
                     # Check how well this step performed
-                    scale = atol + np.maximum(np.abs(y_old[i]), np.abs(y_new[i])) * rtol
+                    scale = atol_array[i] + np.maximum(np.abs(y_old[i]), np.abs(y_new[i])) * rtol_array[i]
                     for j in range(rk_n_stages_plus1):
                         if j == 0:
                             # Initialize
@@ -543,7 +572,7 @@ def nbrk_ode(
                 # Dot Product (K, E) * step / scale
                 for i in range(y_size):
                     # Check how well this step performed.
-                    scale = atol + max(np.abs(y_old[i]), np.abs(y_new[i])) * rtol
+                    scale = atol_array[i] + max(np.abs(y_old[i]), np.abs(y_new[i])) * rtol_array[i]
                     for j in range(rk_n_stages_plus1):
                         if j == 0:
                             # Initialize
