@@ -12,6 +12,8 @@ New Features
 - Added new optional argument to all solvers `max_steps` which allows the user to control how many steps the solver is allowed to take.
   - If exceeded the integration with fail (softly). 
   - Defaults to 95% of `sys.maxsize` (depends on system architecture).
+- New `CySolver.update_constants` method allows for significant speed boosts for certain differential equations.
+  - See test diffeqs, which have been updated to use this feature, for examples.
 
 Other Changes
 - Refactored `max_step` to `max_step_size` argument for all solvers to avoid confusion with new `max_steps` argument. 
@@ -23,6 +25,8 @@ Other Changes
 
 Performance
 - Various minor performance gains for cython-based solvers.
+- Moved key loops in `CySolver` into self-contained method so that gil can be released.
+- New `CySolver.update_constants` method allows for significant speed boosts for certain differential equations.
 
 Bug Fixes:
 - Fixed potential seg fault when accessing `CySolver`'s arg_array_view.

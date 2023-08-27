@@ -2,21 +2,21 @@
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 
 import cython
+cimport cython
 import sys
 import numpy as np
 cimport numpy as np
 np.import_array()
+
 from libcpp cimport bool as bool_cpp_t
-from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, isnan, NAN
+from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, isnan, NAN, pow
 
 from CyRK.array.interp cimport interp_array
 from CyRK.rk.rk cimport (
-    RK23_C, RK23_B, RK23_E, RK23_A, RK23_order, RK23_error_order, RK23_n_stages, RK23_LEN_C, RK23_LEN_B, RK23_LEN_E,
-    RK23_LEN_E3, RK23_LEN_E5, RK23_LEN_A0, RK23_LEN_A1,
-    RK45_C, RK45_B, RK45_E, RK45_A, RK45_order, RK45_error_order, RK45_n_stages, RK45_LEN_C, RK45_LEN_B, RK45_LEN_E,
-    RK45_LEN_E3, RK45_LEN_E5, RK45_LEN_A0, RK45_LEN_A1,
+    RK23_C, RK23_B, RK23_E, RK23_A, RK23_order, RK23_error_order, RK23_n_stages, RK23_LEN_C,
+    RK45_C, RK45_B, RK45_E, RK45_A, RK45_order, RK45_error_order, RK45_n_stages, RK45_LEN_C,
     DOP_C_REDUCED, DOP_B, DOP_E3, DOP_E5, DOP_A_REDUCED, DOP_order, DOP_error_order, DOP_n_stages,
-    DOP_n_stages_extended, DOP_LEN_C, DOP_LEN_B, DOP_LEN_E, DOP_LEN_E3, DOP_LEN_E5, DOP_LEN_A0, DOP_LEN_A1)
+    DOP_n_stages_extended, DOP_LEN_C)
 
 # # Integration Constants
 # Multiply steps computed from asymptotic behaviour of errors by this.
@@ -32,25 +32,76 @@ cdef Py_ssize_t MAX_INT_SIZE = int(0.95 * sys.maxsize)
 
 cdef (double, double) EMPTY_T_SPAN = (NAN, NAN)
 
-
 cdef class CySolver:
+
+    # Class attributes
+    # -- Live variables
+    cdef double t_new, t_old
+    cdef Py_ssize_t len_t
+    cdef double[::1] y_new_view, y_old_view, dy_new_view, dy_old_view
+    cdef double[::1] extra_output_view, extra_output_init_view
+
+    # -- Dependent (y0) variable information
+    cdef Py_ssize_t y_size
+    cdef double y_size_dbl, y_size_sqrt
+    cdef const double[::1] y0_view
+
+    # -- RK method information
+    cdef unsigned char rk_method
+    cdef Py_ssize_t rk_order, error_order, rk_n_stages, rk_n_stages_plus1, rk_n_stages_extended
+    cdef double error_expo
+    cdef Py_ssize_t len_C
+    cdef double[::1] B_view, E_view, E3_view, E5_view, C_view
+    cdef double[:, ::1] A_view, K_view
+    cdef double[::1, :] K_T_view
+
+    # -- Integration information
+    cdef public char status
+    cdef public str message
+    cdef public bool_cpp_t success
+    cdef double t_start, t_end, t_delta, t_delta_abs, direction_inf
+    cdef bool_cpp_t direction_flag
+    cdef double rtol, atol
+    cdef double step_size, max_step_size
+    cdef double first_step
+    cdef Py_ssize_t expected_size, num_concats, max_steps
+    cdef bool_cpp_t use_max_steps
+    cdef bool_cpp_t recalc_firststep
+
+    # -- Optional args info
+    cdef Py_ssize_t num_args
+    cdef double[::1] arg_array_view
+
+    # -- Extra output info
+    cdef bool_cpp_t capture_extra
+    cdef Py_ssize_t num_extra
+
+    # -- Interpolation info
+    cdef bool_cpp_t run_interpolation
+    cdef bool_cpp_t interpolate_extra
+    cdef Py_ssize_t len_t_eval
+    cdef double[::1] t_eval_view
+
+    # -- Solution variables
+    cdef double[:, ::1] solution_y_view, solution_extra_view
+    cdef double[::1] solution_t_view
 
 
     def __init__(self,
                  (double, double) t_span,
-                 const double[:] y0,
+                 const double[::1] y0,
                  tuple args = None,
                  double rtol = 1.e-6,
                  double atol = 1.e-8,
                  double max_step_size = MAX_STEP,
                  double first_step = 0.,
                  unsigned char rk_method = 1,
-                 const double[:] t_eval = None,
+                 const double[::1] t_eval = None,
                  bool_cpp_t capture_extra = False,
                  Py_ssize_t num_extra = 0,
                  bool_cpp_t interpolate_extra = False,
-                 unsigned int expected_size = 0,
-                 unsigned int max_steps = 0,
+                 Py_ssize_t expected_size = 0,
+                 Py_ssize_t max_steps = 0,
                  bool_cpp_t auto_solve = True):
 
         # Setup loop variables
@@ -199,10 +250,8 @@ cdef class CySolver:
             for i in range(self.len_t_eval):
                 self.t_eval_view[i] = t_eval[i]
 
-        # Determine RK scheme
+        # Determine RK scheme and initalize memory views
         self.rk_method = rk_method
-        cdef Py_ssize_t len_B, len_E, len_E3, len_E5, len_A0, len_A1
-        # Note, len_C is used during the solving phase so it is declared at the class level.
 
         if rk_method == 0:
             # RK23 Method
@@ -210,38 +259,43 @@ cdef class CySolver:
             self.error_order = RK23_error_order
             self.rk_n_stages = RK23_n_stages
             self.len_C       = RK23_LEN_C
-            len_B            = RK23_LEN_B
-            len_E            = RK23_LEN_E
-            len_E3           = RK23_LEN_E3
-            len_E5           = RK23_LEN_E5
-            len_A0           = RK23_LEN_A0
-            len_A1           = RK23_LEN_A1
+            self.A_view  = RK23_A
+            self.B_view  = RK23_B
+            self.C_view  = RK23_C
+            self.E_view  = RK23_E
+
+            # Unused for RK23 but initalize it anyways
+            self.E3_view = RK23_E
+            self.E5_view = RK23_E
         elif rk_method == 1:
             # RK45 Method
             self.rk_order    = RK45_order
             self.error_order = RK45_error_order
             self.rk_n_stages = RK45_n_stages
             self.len_C       = RK45_LEN_C
-            len_B            = RK45_LEN_B
-            len_E            = RK45_LEN_E
-            len_E3           = RK45_LEN_E3
-            len_E5           = RK45_LEN_E5
-            len_A0           = RK45_LEN_A0
-            len_A1           = RK45_LEN_A1
+            self.A_view  = RK45_A
+            self.B_view  = RK45_B
+            self.C_view  = RK45_C
+            self.E_view  = RK45_E
+
+            # Unused for RK23 but initalize it anyways
+            self.E3_view = RK45_E
+            self.E5_view = RK45_E
         elif rk_method == 2:
             # DOP853 Method
             self.rk_order    = DOP_order
             self.error_order = DOP_error_order
             self.rk_n_stages = DOP_n_stages
             self.len_C       = DOP_LEN_C
-            len_B            = DOP_LEN_B
-            len_E            = DOP_LEN_E
-            len_E3           = DOP_LEN_E3
-            len_E5           = DOP_LEN_E5
-            len_A0           = DOP_LEN_A0
-            len_A1           = DOP_LEN_A1
-
+            self.A_view  = DOP_A_REDUCED
+            self.B_view  = DOP_B
+            self.C_view  = DOP_C_REDUCED
+            self.E3_view = DOP_E3
+            self.E5_view = DOP_E5
             self.rk_n_stages_extended = DOP_n_stages_extended
+
+            # Unused for DOP853 but initalize it anyways
+            self.E_view  = DOP_E3
         else:
             self.status = -8
             self.message = "Attribute error."
@@ -254,80 +308,14 @@ cdef class CySolver:
         self.rk_n_stages_plus1 = self.rk_n_stages + 1
         self.error_expo        = 1. / (<double>self.error_order + 1.)
 
-        # Initialize RK Arrays. Note that all are 1D except for A and K.
-        cdef np.ndarray[np.float64_t, ndim=2, mode='c'] A, K
-        cdef np.ndarray[np.float64_t, ndim=1, mode='c'] B, C, E, E3, E5, E_tmp, E3_tmp, E5_tmp
-
-        A      = np.empty((len_A0, len_A1), dtype=np.float64, order='C')
-        B      = np.empty(len_B, dtype=np.float64, order='C')
-        C      = np.empty(self.len_C, dtype=np.float64, order='C')
-        E      = np.empty(len_E, dtype=np.float64, order='C')
-        E3     = np.empty(len_E3, dtype=np.float64, order='C')
-        E5     = np.empty(len_E5, dtype=np.float64, order='C')
-        E_tmp  = np.empty(self.y_size, dtype=np.float64, order='C')
-        E3_tmp = np.empty(self.y_size, dtype=np.float64, order='C')
-        E5_tmp = np.empty(self.y_size, dtype=np.float64, order='C')
+        # Initialize other RK-related Arrays
+        cdef np.ndarray[np.float64_t, ndim=2, mode='c'] K
         # It is important K be initialized with 0s
-        K      = np.zeros((self.rk_n_stages_plus1, self.y_size), dtype=np.float64, order='C')
+        K = np.zeros((self.rk_n_stages_plus1, self.y_size), dtype=np.float64, order='C')
 
         # Setup memory views.
-        self.A_view  = A
-        self.B_view  = B
-        self.C_view  = C
-        self.E_view  = E
-        self.E3_view = E3
-        self.E5_view = E5
-        self.K_view  = K
-
-        # Populate values based on externally defined constants.
-        if rk_method == 0:
-            # RK23 Method
-            for i in range(len_A0):
-                for j in range(len_A1):
-                    self.A_view[i, j] = RK23_A[i][j]
-            for i in range(len_B):
-                self.B_view[i] = RK23_B[i]
-            for i in range(self.len_C):
-                self.C_view[i] = RK23_C[i]
-            for i in range(len_E):
-                self.E_view[i] = RK23_E[i]
-                # Dummy Variables, set equal to E
-                self.E3_view[i] = RK23_E[i]
-                self.E5_view[i] = RK23_E[i]
-        elif rk_method == 1:
-            # RK45 Method
-            for i in range(len_A0):
-                for j in range(len_A1):
-                    self.A_view[i, j] = RK45_A[i][j]
-            for i in range(len_B):
-                self.B_view[i] = RK45_B[i]
-            for i in range(self.len_C):
-                self.C_view[i] = RK45_C[i]
-            for i in range(len_E):
-                self.E_view[i] = RK45_E[i]
-                # Dummy Variables, set equal to E
-                self.E3_view[i] = RK45_E[i]
-                self.E5_view[i] = RK45_E[i]
-        else:
-            # DOP853 Method
-            for i in range(len_A0):
-                for j in range(len_A1):
-                    self.A_view[i, j] = DOP_A_REDUCED[i][j]
-            for i in range(len_B):
-                self.B_view[i] = DOP_B[i]
-            for i in range(self.len_C):
-                self.C_view[i] = DOP_C_REDUCED[i]
-            for i in range(len_E):
-                self.E3_view[i] = DOP_E3[i]
-                self.E5_view[i] = DOP_E5[i]
-                self.E_view[i] = DOP_E5[i]
-                # Dummy Variables, set equal to E3
-                self.E_view[i] = DOP_E3[i]
-
-        # Setup error scale array
-        cdef np.ndarray[np.float64_t, ndim=1, mode='c'] scale_array
-        scale_array = np.empty(self.y_size, dtype=np.float64, order='C')
-        self.scale_view = scale_array
+        self.K_view   = K
+        self.K_T_view = self.K_view.T
 
         # Initialize dy_new_view for start of integration (important for first_step calculation)
         if not self.capture_extra:
@@ -352,6 +340,9 @@ cdef class CySolver:
                 raise AttributeError('Error in user-provided step size: Step size can not exceed bounds.')
             self.step_size = self.first_step
         self.max_step_size = max_step_size
+
+        # Set any constant parameters that the user has set
+        self.update_constants()
 
         # Run solver if requested
         if auto_solve:
@@ -378,6 +369,9 @@ cdef class CySolver:
             for j in range(self.rk_n_stages_plus1):
                 # Reset RK variables
                 self.K_view[j, i] = 0.
+
+        # Update any constant parameters that the user has set
+        self.update_constants()
 
         # Make initial call to diffeq()
         self.diffeq()
@@ -417,10 +411,11 @@ cdef class CySolver:
         self.message = "CySolver has been reset."
 
 
-    cdef double calc_first_step(self):
+    cdef double calc_first_step(self) noexcept nogil:
         """ Determine initial step size. """
 
         cdef double step_size, d0, d1, d2, d0_abs, d1_abs, d2_abs, h0, h1, scale
+        cdef double y_old_tmp
 
         # Select an initial step size based on the differential equation.
         # .. [1] E. Hairer, S. P. Norsett G. Wanner, "Solving Ordinary Differential
@@ -432,9 +427,10 @@ cdef class CySolver:
             d0 = 0.
             d1 = 0.
             for i in range(self.y_size):
-                scale = self.atol + fabs(self.y_old_view[i]) * self.rtol
+                y_old_tmp = self.y_old_view[i]
+                scale = self.atol + fabs(y_old_tmp) * self.rtol
 
-                d0_abs = fabs(self.y_old_view[i] / scale)
+                d0_abs = fabs(y_old_tmp / scale)
                 d1_abs = fabs(self.dy_old_view[i] / scale)
                 d0 += (d0_abs * d0_abs)
                 d1 += (d1_abs * d1_abs)
@@ -451,6 +447,7 @@ cdef class CySolver:
                 h0_direction = h0
             else:
                 h0_direction = -h0
+
             self.t_new = self.t_old + h0_direction
             for i in range(self.y_size):
                 self.y_new_view[i] = self.y_old_view[i] + h0_direction * self.dy_old_view[i]
@@ -477,6 +474,211 @@ cdef class CySolver:
 
         return step_size
 
+    cdef void rk_step(self) noexcept nogil:
+
+        # Initialize step variables
+        cdef Py_ssize_t s, i, j
+        cdef double min_step, step, step_factor, time_tmp, t_delta_check
+        cdef double C_at_s, A_at_sj, A_at_10, B_at_j
+        cdef double scale, K_scale, dy_tmp
+        cdef double error_norm3, error_norm5, error_norm, error_dot_1, error_dot_2, error_denom, error_pow
+        cdef bool_cpp_t step_accepted, step_rejected, step_error
+
+        # Run RK integration step
+        # Determine step size based on previous loop
+        # Find minimum step size based on the value of t (less floating point numbers between numbers when t is large)
+        min_step = 10. * fabs(nextafter(self.t_old, self.direction_inf) - self.t_old)
+        # Look for over/undershoots in previous step size
+        if self.step_size > self.max_step_size:
+            self.step_size = self.max_step_size
+        elif self.step_size < min_step:
+            self.step_size = min_step
+
+        # Determine new step size
+        step_accepted = False
+        step_rejected = False
+        step_error    = False
+
+        # Optimization since this A is called consistently and does not change.
+        A_at_10 = self.A_view[1, 0]
+
+        # # Step Loop
+        while not step_accepted:
+
+            if self.step_size < min_step:
+                step_error  = True
+                self.status = -1
+                break
+
+            # Move time forward for this particular step size
+            if self.direction_flag:
+                step = self.step_size
+                t_delta_check = self.t_new - self.t_end
+            else:
+                step = -self.step_size
+                t_delta_check = self.t_end - self.t_new
+            self.t_new = self.t_old + step
+
+            # Check that we are not at the end of integration with that move
+            if t_delta_check > 0.:
+                self.t_new = self.t_end
+
+                # Correct the step if we were at the end of integration
+                step = self.t_new - self.t_old
+                if self.direction_flag:
+                    self.step_size = step
+                else:
+                    self.step_size = -step
+
+            # Calculate derivative using RK method
+
+            # t_new must be updated for each loop of s in order to make the diffeq calls.
+            # But we need to return to its original value later on. Store in temp variable.
+            time_tmp = self.t_new
+            for s in range(1, self.len_C):
+                C_at_s = self.C_view[s]
+
+                # Update t_new so it can be used in the diffeq call.
+                self.t_new = self.t_old + C_at_s * step
+
+                # Dot Product (K, a) * step
+                if s == 1:
+                    for i in range(self.y_size):
+                        # Set the first column of K
+                        dy_tmp = self.dy_old_view[i]
+                        self.K_view[0, i] = dy_tmp
+
+                        # Calculate y_new for s==1
+                        self.y_new_view[i] = self.y_old_view[i] + (dy_tmp * A_at_10 * step)
+                else:
+                    for j in range(s):
+                        A_at_sj = self.A_view[s, j]
+                        for i in range(self.y_size):
+                            if j == 0:
+                                # Initialize
+                                self.y_new_view[i] = self.y_old_view[i]
+
+                            self.y_new_view[i] += self.K_view[j, i] * A_at_sj * step
+
+                # Call diffeq to update K with the new dydt
+                self.diffeq()
+
+                for i in range(self.y_size):
+                    self.K_view[s, i] = self.dy_new_view[i]
+
+            # Restore t_new to its previous value.
+            self.t_new = time_tmp
+
+            # Dot Product (K, B) * step
+            for j in range(self.rk_n_stages):
+                B_at_j = self.B_view[j]
+                # We do not use rk_n_stages_plus1 here because we are chopping off the last row of K to match
+                #  the shape of B.
+                for i in range(self.y_size):
+                    if j == 0:
+                        # Initialize
+                        self.y_new_view[i] = self.y_old_view[i]
+
+                    self.y_new_view[i] += self.K_view[j, i] * B_at_j * step
+
+            self.diffeq()
+
+            # Check how well this step performed by calculating its error
+            if self.rk_method == 2:
+                # Calculate Error for DOP853
+                # Dot Product (K, E5) / scale and Dot Product (K, E3) * step / scale
+                error_norm3 = 0.
+                error_norm5 = 0.
+                for i in range(self.y_size):
+                    # Find scale of y for error calculations
+                    scale = self.atol + max(fabs(self.y_old_view[i]), fabs(self.y_new_view[i])) * self.rtol
+
+                    # Set last array of K equal to dydt
+                    self.K_view[self.rk_n_stages, i] = self.dy_new_view[i]
+                    for j in range(self.rk_n_stages_plus1):
+                        if j == 0:
+                            # Initialize
+                            error_dot_1 = 0.
+                            error_dot_2 = 0.
+
+                        K_scale = self.K_T_view[i, j] / scale
+                        error_dot_1 += K_scale * self.E3_view[j]
+                        error_dot_2 += K_scale * self.E5_view[j]
+
+                    # We need the absolute value but since we are taking the square, it is guaranteed to be positive.
+                    # TODO: This will need to change if CySolver ever accepts complex numbers
+                    # error_norm3_abs = fabs(error_dot_1)
+                    # error_norm5_abs = fabs(error_dot_2)
+
+                    error_norm3 += (error_dot_1 * error_dot_1)
+                    error_norm5 += (error_dot_2 * error_dot_2)
+
+                # Check if errors are zero
+                if (error_norm5 == 0.) and (error_norm3 == 0.):
+                    error_norm = 0.
+                else:
+                    error_denom = error_norm5 + 0.01 * error_norm3
+                    error_norm = self.step_size * error_norm5 / sqrt(error_denom * self.y_size_dbl)
+
+            else:
+                # Calculate Error for RK23 and RK45
+                # Dot Product (K, E) * step / scale
+                error_norm = 0.
+                for i in range(self.y_size):
+                    # Find scale of y for error calculations
+                    scale = self.atol + max(fabs(self.y_old_view[i]), fabs(self.y_new_view[i])) * self.rtol
+
+                    # Set last array of K equal to dydt
+                    self.K_view[self.rk_n_stages, i] = self.dy_new_view[i]
+                    for j in range(self.rk_n_stages_plus1):
+                        if j == 0:
+                            # Initialize
+                            error_dot_1 = 0.
+
+                        K_scale = self.K_T_view[i, j] / scale
+                        error_dot_1 += K_scale * self.E_view[j] * step
+
+                    # We need the absolute value but since we are taking the square, it is guaranteed to be positive.
+                    # TODO: This will need to change if CySolver ever accepts complex numbers
+                    # error_norm_abs = fabs(error_dot_1)
+                    # error_norm5_abs = fabs(error_dot_2)
+
+                    error_norm += (error_dot_1 * error_dot_1)
+                error_norm = sqrt(error_norm) / self.y_size_sqrt
+
+            if error_norm < 1.:
+                # The error is low! Let's update this step for the next time loop
+                if error_norm == 0.:
+                    step_factor = MAX_FACTOR
+                else:
+                    error_pow = pow(error_norm, -self.error_expo)
+                    step_factor = min(MAX_FACTOR, SAFETY * error_pow)
+
+                if step_rejected:
+                    # There were problems with this step size on the previous step loop. Make sure factor does
+                    #    not exasperate them.
+                    step_factor = min(step_factor, 1.)
+
+                self.step_size = self.step_size * step_factor
+                step_accepted = True
+            else:
+                error_pow = pow(error_norm, -self.error_expo)
+                self.step_size = self.step_size * max(MIN_FACTOR, SAFETY * error_pow)
+                step_rejected = True
+
+        if step_error:
+            # Issue with step convergence
+            self.status = -1
+        elif not step_accepted:
+            # Issue with step convergence
+            self.status = -7
+
+        # End of step loop. Update the old variables
+        self.t_old = self.t_new
+        for i in range(self.y_size):
+            self.y_old_view[i] = self.y_new_view[i]
+            self.dy_old_view[i] = self.dy_new_view[i]
+
 
     cpdef void solve(self, bool_cpp_t reset = True):
         self._solve()
@@ -490,31 +692,15 @@ cdef class CySolver:
             self.reset_state()
 
         # Setup loop variables
-        cdef Py_ssize_t s, i, j
-
-        # Initialize other variables
-        cdef double error_norm5, error_norm3, error_norm, error_norm_abs, error_norm3_abs, error_norm5_abs, error_denom, error_pow
-        cdef double t_delta_check
-
-        # Avoid method lookups for variables in tight loops
-        cdef double[:] B_view, E_view, E3_view, E5_view, C_view
-        cdef double[:, :] A_view, K_view
-        cdef double A_at_sj, B_at_j, error_dot_1, error_dot_2
-        A_view  = self.A_view
-        B_view  = self.B_view
-        C_view  = self.C_view
-        E_view  = self.E_view
-        E3_view = self.E3_view
-        E5_view = self.E5_view
-        K_view  = self.K_view
+        cdef Py_ssize_t i, j
 
         # Setup storage arrays
         # These arrays are built to fit a number of points equal to `self.expected_size`
         # If the integration needs more than that then a new array will be concatenated (with performance costs) to these.
         cdef np.ndarray[np.float64_t, ndim=2, mode='c'] y_results_array, extra_array
         cdef np.ndarray[np.float64_t, ndim=1, mode='c'] time_domain_array
-        cdef double[:, :] y_results_array_view, extra_array_view
-        cdef double[:] time_domain_array_view
+        cdef double[:, ::1] y_results_array_view, extra_array_view
+        cdef double[::1] time_domain_array_view
         y_results_array        = np.empty((self.y_size, self.expected_size), dtype=np.float64, order='C')
         time_domain_array      = np.empty(self.expected_size, dtype=np.float64, order='C')
         y_results_array_view   = y_results_array
@@ -526,8 +712,8 @@ cdef class CySolver:
         # The following are unused unless the previous array size is too small to capture all of the data
         cdef np.ndarray[np.float64_t, ndim=2, mode='c'] y_results_array_new, extra_array_new
         cdef np.ndarray[np.float64_t, ndim=1, mode='c'] time_domain_array_new
-        cdef double[:, :] y_results_array_new_view, extra_array_new_view
-        cdef double[:] time_domain_array_new_view
+        cdef double[:, ::1] y_results_array_new_view, extra_array_new_view
+        cdef double[::1] time_domain_array_new_view
 
         # Load initial conditions into output arrays
         time_domain_array_view[0] = self.t_start
@@ -546,222 +732,35 @@ cdef class CySolver:
         self.t_old = self.t_start
         self.t_new = self.t_start
 
-        # Set integration flags
-        cdef bool_cpp_t step_accepted, step_rejected, step_error
-        self.success  = False
-        step_accepted = False
-        step_rejected = False
-        step_error    = False
-
         # # Main integration loop
-        cdef double min_step, step_factor, step, time_tmp
-        cdef double c
-        cdef double K_scale
-        self.message = "Integration is/was ongoing (perhaps it was interrupted?)."
         self.status  = 0
         # There is an initial condition provided so the time length is already 1
         self.len_t = 1
 
         if self.y_size == 0:
             self.status = -6
-            self.message = "Integration never started: y-size is zero."
 
         while self.status == 0:
             if self.t_new == self.t_end:
                 self.t_old = self.t_end
                 self.status = 1
-                self.message = "Integration completed without issue."
                 break
 
             if self.use_max_steps:
                 if self.len_t > self.max_steps:
                     self.status = -2
-                    self.message = "Maximum number of steps (set by user) exceeded during integration."
                     break
             else:
                 if self.len_t > MAX_INT_SIZE:
                     self.status = -3
-                    self.message = "Maximum number of steps (set by system architecture) exceeded during integration."
                     break
 
-            # Run RK integration step
-            # Determine step size based on previous loop
-            # Find minimum step size based on the value of t (less floating point numbers between numbers when t is large)
-            min_step = 10. * fabs(nextafter(self.t_old, self.direction_inf) - self.t_old)
-            # Look for over/undershoots in previous step size
-            if self.step_size > self.max_step_size:
-                self.step_size = self.max_step_size
-            elif self.step_size < min_step:
-                self.step_size = min_step
+            # Perform RK Step
+            self.rk_step()
 
-            # Determine new step size
-            step_accepted = False
-            step_rejected = False
-            step_error    = False
-
-            # # Step Loop
-            while not step_accepted:
-
-                if self.step_size < min_step:
-                    step_error  = True
-                    self.status = -1
-                    break
-
-                # Move time forward for this particular step size
-                if self.direction_flag:
-                    step = self.step_size
-                    t_delta_check = self.t_new - self.t_end
-                else:
-                    step = -self.step_size
-                    t_delta_check = self.t_end - self.t_new
-                self.t_new = self.t_old + step
-
-                # Check that we are not at the end of integration with that move
-                if t_delta_check > 0.:
-                    self.t_new = self.t_end
-
-                    # Correct the step if we were at the end of integration
-                    step = self.t_new - self.t_old
-                    if self.direction_flag:
-                        self.step_size = step
-                    else:
-                        self.step_size = -step
-
-                # Calculate derivative using RK method
-                for i in range(self.y_size):
-                    K_view[0, i] = self.dy_old_view[i]
-
-                # t_new must be updated for each loop of s in order to make the diffeq calls.
-                # But we need to return to its original value later on. Store in temp variable.
-                time_tmp = self.t_new
-                for s in range(1, self.len_C):
-                    c = C_view[s]
-
-                    # Update t_new so it can be used in the diffeq call.
-                    self.t_new = self.t_old + c * step
-
-                    # Dot Product (K, a) * step
-                    for j in range(s):
-                        A_at_sj = A_view[s, j]
-                        for i in range(self.y_size):
-                            if j == 0:
-                                # Initialize
-                                self.y_new_view[i] = self.y_old_view[i]
-
-                            self.y_new_view[i] = self.y_new_view[i] + (K_view[j, i] * A_at_sj * step)
-
-                    self.diffeq()
-
-                    for i in range(self.y_size):
-                        K_view[s, i] = self.dy_new_view[i]
-
-                # Restore t_new to its previous value.
-                self.t_new = time_tmp
-
-                # Dot Product (K, B) * step
-                for j in range(self.rk_n_stages):
-                    B_at_j = B_view[j]
-                    # We do not use rk_n_stages_plus1 here because we are chopping off the last row of K to match
-                    #  the shape of B.
-                    for i in range(self.y_size):
-                        if j == 0:
-                            # Initialize
-                            self.y_new_view[i] = self.y_old_view[i]
-                        self.y_new_view[i] = self.y_new_view[i] + (K_view[j, i] * B_at_j * step)
-
-                self.diffeq()
-
-
-                for i in range(self.y_size):
-                    # Find scale of y for error calculations
-                    self.scale_view[i] = self.atol + max(fabs(self.y_old_view[i]), fabs(self.y_new_view[i])) * self.rtol
-
-                    # Set last array of K equal to dydt
-                    K_view[self.rk_n_stages, i] = self.dy_new_view[i]
-
-                # Check how well this step performed by calculating its error
-                if self.rk_method == 2:
-                    # Calculate Error for DOP853
-                    # Dot Product (K, E5) / scale and Dot Product (K, E3) * step / scale
-                    error_norm3 = 0.
-                    error_norm5 = 0.
-                    for i in range(self.y_size):
-                        for j in range(self.rk_n_stages_plus1):
-                            if j == 0:
-                                # Initialize
-                                error_dot_1 = 0.
-                                error_dot_2 = 0.
-
-                            K_scale = K_view[j, i] / self.scale_view[i]
-                            error_dot_1 += K_scale * E3_view[j]
-                            error_dot_2 += K_scale * E5_view[j]
-
-                        error_norm3_abs = fabs(error_dot_1)
-                        error_norm5_abs = fabs(error_dot_2)
-
-                        error_norm3 += (error_norm3_abs * error_norm3_abs)
-                        error_norm5 += (error_norm5_abs * error_norm5_abs)
-
-                    # Check if errors are zero
-                    if (error_norm5 == 0.) and (error_norm3 == 0.):
-                        error_norm = 0.
-                    else:
-                        error_denom = error_norm5 + 0.01 * error_norm3
-                        error_norm = self.step_size * error_norm5 / sqrt(error_denom * self.y_size_dbl)
-
-                else:
-                    # Calculate Error for RK23 and RK45
-                    # Dot Product (K, E) * step / scale
-                    error_norm = 0.
-                    for i in range(self.y_size):
-                        for j in range(self.rk_n_stages_plus1):
-                            if j == 0:
-                                # Initialize
-                                error_dot_1 = 0.
-
-                            K_scale = self.K_view[j, i] / self.scale_view[i]
-                            error_dot_1 += K_scale * E_view[j] * step
-
-                        error_norm_abs = fabs(error_dot_1)
-                        error_norm += (error_norm_abs * error_norm_abs)
-                    error_norm = sqrt(error_norm) / self.y_size_sqrt
-
-                if error_norm < 1.:
-                    # The error is low! Let's update this step for the next time loop
-                    if error_norm == 0.:
-                        step_factor = MAX_FACTOR
-                    else:
-                        error_pow = error_norm**-self.error_expo
-                        step_factor = min(MAX_FACTOR, SAFETY * error_pow)
-
-                    if step_rejected:
-                        # There were problems with this step size on the previous step loop. Make sure factor does
-                        #    not exasperate them.
-                        step_factor = min(step_factor, 1.)
-
-                    self.step_size = self.step_size * step_factor
-                    step_accepted = True
-                else:
-                    error_pow = error_norm**-self.error_expo
-                    self.step_size = self.step_size * max(MIN_FACTOR, SAFETY * error_pow)
-                    step_rejected = True
-
-            if step_error:
-                # Issue with step convergence
-                self.status = -1
-                self.message = "Error in step size calculation:\n\tRequired step size is less than spacing between numbers."
+            # Check is error occurred during step.
+            if self.status != 0:
                 break
-            elif not step_accepted:
-                # Issue with step convergence
-                self.status = -7
-                self.message = "Error in step size calculation:\n\tError in step size acceptance."
-                break
-
-            # End of step loop. Update the _now variables
-            self.t_old = self.t_new
-            for i in range(self.y_size):
-                self.y_old_view[i] = self.y_new_view[i]
-                self.dy_old_view[i] = self.dy_new_view[i]
 
             # Save data
             if self.len_t >= (self.num_concats * self.expected_size):
@@ -813,7 +812,6 @@ cdef class CySolver:
         # # Clean up output.
         if self.status == 1:
             self.success = True
-            self.message = "Integration completed without issue."
         else:
             self.success = False
 
@@ -864,6 +862,23 @@ cdef class CySolver:
         if self.success and self.run_interpolation:
             self.interpolate()
 
+        # Update integration message
+        if self.status == 1:
+            self.message = "Integration completed without issue."
+        elif self.status == 0:
+            self.message = "Integration is/was ongoing (perhaps it was interrupted?)."
+        elif self.status == -1:
+            self.message = "Error in step size calculation:\n\tRequired step size is less than spacing between numbers."
+        elif self.status == -2:
+            self.message = "Maximum number of steps (set by user) exceeded during integration."
+        elif self.status == -3:
+            self.message = "Maximum number of steps (set by system architecture) exceeded during integration."
+        elif self.status == -6:
+            self.message = "Integration never started: y-size is zero."
+        elif self.status == -7:
+             self.message = "Error in step size calculation:\n\tError in step size acceptance."
+
+
 
     cdef void interpolate(self):
         """ Interpolate the results of a successful integration over the user provided time domain, `t_eval`."""
@@ -884,8 +899,8 @@ cdef class CySolver:
         y_result_timeslice = np.empty(self.len_t, dtype=np.float64, order='C')
         y_result_temp      = np.empty(self.len_t_eval, dtype=np.float64, order='C')
 
-        cdef double[:, :] y_results_reduced_view
-        cdef double[:] y_result_timeslice_view, y_result_temp_view
+        cdef double[:, ::1] y_results_reduced_view
+        cdef double[::1] y_result_timeslice_view, y_result_temp_view
         y_results_reduced_view  = y_results_reduced
         y_result_timeslice_view = y_result_timeslice
         y_result_temp_view      = y_result_temp
@@ -893,8 +908,8 @@ cdef class CySolver:
         # Create arrays for extra output which may or may not be required.
         cdef np.ndarray[np.float64_t, ndim=2, mode='c'] extra_reduced
         cdef np.ndarray[np.float64_t, ndim=1, mode='c'] extra_timeslice, extra_temp
-        cdef double[:, :] extra_reduced_view
-        cdef double[:] extra_timeslice_view, extra_temp_view
+        cdef double[:, ::1] extra_reduced_view
+        cdef double[::1] extra_timeslice_view, extra_temp_view
 
         for j in range(self.y_size):
             # np.interp only works on 1D arrays so we must loop through each of the y variables.
@@ -993,7 +1008,7 @@ cdef class CySolver:
             self.reset_state()
 
 
-    cpdef void change_y0(self, const double[:] y0, bool_cpp_t auto_reset_state = False):
+    cpdef void change_y0(self, const double[::1] y0, bool_cpp_t auto_reset_state = False):
 
         # Check y-size information
         cdef Py_ssize_t y_size_new
@@ -1109,13 +1124,13 @@ cdef class CySolver:
     cpdef void change_parameters(
             self,
             (double, double) t_span = EMPTY_T_SPAN,
-            const double[:] y0 = None,
+            const double[::1] y0 = None,
             tuple args = None,
             double rtol = NAN,
             double atol = NAN,
             double max_step_size = NAN,
             double first_step = NAN,
-            const double[:] t_eval = None,
+            const double[::1] t_eval = None,
             bool_cpp_t auto_reset_state = True,
             bool_cpp_t auto_solve = False):
 
@@ -1128,12 +1143,8 @@ cdef class CySolver:
         if args is not None:
             self.change_args(args, auto_reset_state=False)
 
-        if not isnan(rtol) and not isnan(atol):
+        if not isnan(rtol) or not isnan(atol):
             self.change_tols(rtol=rtol, atol=atol, auto_reset_state=False)
-        elif not isnan(rtol):
-            self.change_tols(rtol=rtol, auto_reset_state=False)
-        elif not isnan(atol):
-            self.change_tols(atol=atol, auto_reset_state=False)
 
         if not isnan(max_step_size):
             self.change_max_step_size(max_step_size, auto_reset_state=False)
@@ -1158,8 +1169,12 @@ cdef class CySolver:
             # ^ This should probably be a warning. Don't see why you'd ever want to do that.
             self._solve(reset=(not auto_reset_state))
 
+    cdef void update_constants(self) noexcept nogil:
 
-    cdef void diffeq(self):
+        # Nothing to update
+        pass
+
+    cdef void diffeq(self) noexcept nogil:
         # This is a template function that should be overriden by the user's subclass.
 
         # The diffeq can use live variables which are automatically updated before each call.
