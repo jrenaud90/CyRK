@@ -149,12 +149,9 @@ cdef class CySolverPendulum(CySolver):
     cdef void diffeq(self) noexcept nogil:
 
         # Unpack y
-        cdef double y0, y1, l, m, g, torque
+        cdef double y0, y1, torque
         y0 = self.y_new_view[0]
         y1 = self.y_new_view[1]
-        l  = self.arg_array_view[0]
-        m  = self.arg_array_view[1]
-        g  = self.arg_array_view[2]
 
         # External torque
         torque = 0.1 * sin(self.t_new)
