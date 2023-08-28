@@ -227,7 +227,6 @@ All three integrators can take the following optional inputs:
 
 ## Limitations and Known Issues
 
-- [Issue 1](https://github.com/jrenaud90/CyRK/issues/1): Absolute tolerance can only be passed as a single value (same for all y's).
 - [Issue 30](https://github.com/jrenaud90/CyRK/issues/30): CyRK's CySolver does not allow for complex-valued dependent variables. 
 
 ## Citing CyRK
