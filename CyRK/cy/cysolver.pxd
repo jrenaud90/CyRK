@@ -88,7 +88,7 @@ cdef class CySolver:
                            double[::1] atols = *,
                            bool_cpp_t auto_reset_state = *)
 
-    cpdef void change_max_step_size(self, double max_step_size, bool_cpp_t auto_reset_state = *)
+    cpdef void change_max_step(self, double max_step, bool_cpp_t auto_reset_state = *)
 
     cpdef void change_first_step(self, double first_step, bool_cpp_t auto_reset_state = *)
 
@@ -101,7 +101,7 @@ cdef class CySolver:
                                 double atol = *,
                                 double[::1] rtols = *,
                                 double[::1] atols = *,
-                                double max_step_size = *,
+                                double max_step = *,
                                 double first_step = *,
                                 const double[::1] t_eval = *,
                                 bool_cpp_t auto_reset_state = *,

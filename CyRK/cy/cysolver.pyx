@@ -6,6 +6,7 @@ cimport cython
 import sys
 import numpy as np
 cimport numpy as np
+
 np.import_array()
 
 from libcpp cimport bool as bool_cpp_t
@@ -32,6 +33,7 @@ cdef Py_ssize_t MAX_INT_SIZE = int(0.95 * sys.maxsize)
 
 cdef (double, double) EMPTY_T_SPAN = (NAN, NAN)
 
+# noinspection PyUnresolvedReferences
 cdef class CySolver:
 
 
@@ -133,14 +135,14 @@ cdef class CySolver:
         # Determine maximum number of steps
         if max_num_steps == 0:
             self.use_max_steps = False
-            self.max_steps = 0
+            self.max_num_steps = 0
         elif max_num_steps < 0:
             self.status = -8
             self.message = "Attribute error."
             raise AttributeError('Negative number of max steps provided.')
         else:
             self.use_max_steps = True
-            self.max_steps = min(max_num_steps, MAX_INT_SIZE)
+            self.max_num_steps = min(max_num_steps, MAX_INT_SIZE)
 
         # Expected size of output arrays.
         cdef double temp_expected_size
@@ -312,7 +314,7 @@ cdef class CySolver:
                 self.message = "Attribute error."
                 raise AttributeError('Error in user-provided step size: Step size can not exceed bounds.')
             self.step_size = self.first_step
-        self.max_step_size = max_step_size
+        self.max_step = max_step
 
         # Set any constant parameters that the user has set
         self.update_constants()
@@ -464,8 +466,8 @@ cdef class CySolver:
         # Find minimum step size based on the value of t (less floating point numbers between numbers when t is large)
         min_step = 10. * fabs(nextafter(self.t_old, self.direction_inf) - self.t_old)
         # Look for over/undershoots in previous step size
-        if self.step_size > self.max_step_size:
-            self.step_size = self.max_step_size
+        if self.step_size > self.max_step:
+            self.step_size = self.max_step
         elif self.step_size < min_step:
             self.step_size = min_step
 
@@ -1073,9 +1075,9 @@ cdef class CySolver:
             self.reset_state()
 
 
-    cpdef void change_max_step_size(self, double max_step_size, bool_cpp_t auto_reset_state = False):
+    cpdef void change_max_step(self, double max_step, bool_cpp_t auto_reset_state = False):
 
-        self.max_step_size = max_step_size
+        self.max_step = max_step
 
         if auto_reset_state:
             self.reset_state()
@@ -1130,7 +1132,7 @@ cdef class CySolver:
             double atol = NAN,
             double[::1] rtols = None,
             double[::1] atols = None,
-            double max_step_size = NAN,
+            double max_step = NAN,
             double first_step = NAN,
             const double[::1] t_eval = None,
             bool_cpp_t auto_reset_state = True,
@@ -1148,8 +1150,8 @@ cdef class CySolver:
         if (not isnan(rtol)) or (not isnan(atol)) or (rtols is not None) or (atols is not None):
             self.change_tols(rtol=rtol, atol=atol, rtols=rtols, atols=atols, auto_reset_state=False)
 
-        if not isnan(max_step_size):
-            self.change_max_step_size(max_step_size, auto_reset_state=False)
+        if not isnan(max_step):
+            self.change_max_step(max_step, auto_reset_state=False)
 
         if not isnan(first_step):
             self.change_first_step(first_step, auto_reset_state=False)
