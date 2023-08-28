@@ -91,7 +91,7 @@ def cyrk_ode(
     double atol = 1.e-8,
     double[::1] rtols = None,
     double[::1] atols = None,
-    double max_step_size = MAX_STEP,
+    double max_step = MAX_STEP,
     double first_step = 0.,
     unsigned char rk_method = 1,
     double[:] t_eval = None,
@@ -99,7 +99,7 @@ def cyrk_ode(
     Py_ssize_t num_extra = 0,
     bool_cpp_t interpolate_extra = False,
     Py_ssize_t expected_size = 0,
-    Py_ssize_t max_steps = 0
+    Py_ssize_t max_num_steps = 0
     ):
     """ A Numba-safe Runge-Kutta Integrator based on Scipy's solve_ivp RK integrator.
 
@@ -117,7 +117,7 @@ def cyrk_ode(
         Integration relative tolerance used to determine optimal step size.
     atol : float = 1.e-8
         Integration absolute tolerance used to determine optimal step size.
-    max_step_size : float = np.inf
+    max_step : float = np.inf
         Maximum allowed step size.
     first_step : float = None
         Initial step size. If `None`, then the function will attempt to determine an appropriate initial step.
@@ -151,7 +151,7 @@ def cyrk_ode(
         The integrator must pre-allocate memory to store results from the integration. It will attempt to use arrays sized to `expected_size`. However, if this is too small or too large then performance will be impacted. It is recommended you try out different values based on the problem you are trying to solve.
         If `expected_size=0` (the default) then the solver will attempt to guess a best size. Currently this is a very basic guess so it is not recommended.
         It is better to overshoot than undershoot this guess.
-    max_steps : int = 0
+    max_num_steps : int = 0
         Maximum number of steps integrator is allowed to take.
         If set to 0 (the default) then an infinite number of steps are allowed.
 
@@ -282,16 +282,15 @@ def cyrk_ode(
             atols_view[i] = atol
 
     # Determine maximum number of steps
-    cdef Py_ssize_t max_steps_touse
     cdef bool_cpp_t use_max_steps
-    if max_steps == 0:
+    if max_num_steps == 0:
         use_max_steps = False
-        max_steps_touse = 0
-    elif max_steps < 0:
+        max_num_steps = 0
+    elif max_num_steps < 0:
         raise AttributeError('Negative number of max steps provided.')
     else:
         use_max_steps = True
-        max_steps_touse = min(max_steps, MAX_INT_SIZE)
+        max_num_steps = min(max_num_steps, MAX_INT_SIZE)
 
     # Expected size of output arrays.
     cdef double temp_expected_size
@@ -627,7 +626,7 @@ def cyrk_ode(
             break
 
         if use_max_steps:
-            if len_t > max_steps_touse:
+            if len_t > max_num_steps:
                 status = -2
                 message = "Maximum number of steps (set by user) exceeded during integration."
                 break
@@ -642,8 +641,8 @@ def cyrk_ode(
         # Find minimum step size based on the value of t (less floating point numbers between numbers when t is large)
         min_step = 10. * fabs(nextafter(t_old, direction_inf) - t_old)
         # Look for over/undershoots in previous step size
-        if step_size > max_step_size:
-            step_size = max_step_size
+        if step_size > max_step:
+            step_size = max_step
         elif step_size < min_step:
             step_size = min_step
 

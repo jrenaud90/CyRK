@@ -39,9 +39,9 @@ cdef class CySolver:
     cdef double t_start, t_end, t_delta, t_delta_abs, direction_inf
     cdef bool_cpp_t direction_flag
     cdef double[::1] rtols_view, atols_view
-    cdef double step_size, max_step_size
+    cdef double step_size, max_step
     cdef double first_step
-    cdef Py_ssize_t expected_size, num_concats, max_steps
+    cdef Py_ssize_t expected_size, num_concats, max_num_steps
     cdef bool_cpp_t use_max_steps
     cdef bool_cpp_t recalc_firststep
 

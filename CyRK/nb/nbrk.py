@@ -93,13 +93,13 @@ def nbrk_ode(
         atol: float = 1.e-8,
         rtols: np.ndarray = EMPTY_ARR,
         atols: np.ndarray = EMPTY_ARR,
-        max_step_size: float = np.inf,
+        max_step: float = np.inf,
         first_step: float = None,
         rk_method: int = 1,
         t_eval: np.ndarray = EMPTY_ARR,
         capture_extra: bool = False,
         interpolate_extra: bool = False,
-        max_steps: int = 0
+        max_num_steps: int = 0
         ):
     """ A Numba-safe Runge-Kutta Integrator based on Scipy's solve_ivp RK integrator.
 
@@ -117,7 +117,7 @@ def nbrk_ode(
         Integration relative tolerance used to determine optimal step size.
     atol : float = 1.e-8
         Integration absolute tolerance used to determine optimal step size.
-    max_step_size : float = np.inf
+    max_step : float = np.inf
         Maximum allowed step size.
     first_step : float = None
         Initial step size. If `None`, then the function will attempt to determine an appropriate initial step.
@@ -135,7 +135,7 @@ def nbrk_ode(
     interpolate_extra : bool = False
         If True, then extra output will be interpolated (along with y) at t_eval. Otherwise, y will be interpolated
          and then differential equation will be called to find the output at each t in t_eval.
-    max_steps : int = 0
+    max_num_steps : int = 0
         Maximum number of steps integrator is allowed to take.
         If set to 0 (the default) then an infinite number of steps are allowed.
 
@@ -330,9 +330,9 @@ def nbrk_ode(
             atol_array[i] = atol
 
     # Determine maximum number of steps
-    if max_steps == 0:
+    if max_num_steps == 0:
         use_max_steps = False
-    elif max_steps < 0:
+    elif max_num_steps < 0:
         raise AttributeError('Negative number of max steps provided.')
     else:
         use_max_steps = True
@@ -362,7 +362,7 @@ def nbrk_ode(
     # Find first step size
     first_step_found = False
     if first_step is not None:
-        step_size = max_step_size
+        step_size = max_step
         if first_step < 0.:
             status = -8
             message = "Attribute error."
@@ -441,7 +441,7 @@ def nbrk_ode(
             break
 
         if use_max_steps:
-            if len_t > max_steps:
+            if len_t > max_num_steps:
                 status = -7
                 message = "Maximum number of steps (set by user) exceeded during integration."
                 break
@@ -453,8 +453,8 @@ def nbrk_ode(
         min_step   = next_after
 
         # Look for over/undershoots in previous step size
-        if step_size > max_step_size:
-            step_size = max_step_size
+        if step_size > max_step:
+            step_size = max_step
         elif step_size < min_step:
             step_size = min_step
 

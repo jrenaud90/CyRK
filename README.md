@@ -203,7 +203,7 @@ All three integrators can take the following optional inputs:
 - `atol`: Absolute Tolerance (default is 1.0e-8).
 - `rtols`: A numpy ndarray of relative tolerances set for each y0 (default is None; e.g., use `rtol` for each).
 - `atols`: A numpy ndarray of absolute tolerances set for each y0 (default is None; e.g., use `atol` for each).
-- `max_step_size`: Maximum step size (default is +infinity).
+- `max_step`: Maximum step size (default is +infinity).
 - `first_step`: Initial step size (default is 0).
   - If 0, then the solver will try to determine an ideal value.
 - `args`: Python tuple of additional arguments passed to the `diffeq`.
@@ -215,7 +215,7 @@ All three integrators can take the following optional inputs:
   - `1` - "RK45" Explicit Runge-Kutta method of order 5(4).
   - `2` - "DOP853" Explicit Runge-Kutta method of order 8.
 - `capture_extra` and `interpolate_extra`: CyRK has the capability of capturing additional parameters during integration. Please see `Documentation\Extra Output.md` for more details.
-- `max_steps`: Maximum number of steps the solver is allowed to use. Defaults to system architecture's max size for ints.
+- `max_num_steps`: Maximum number of steps the solver is allowed to use. Defaults to system architecture's max size for ints.
 
 ### Additional Arguments for `cyrk_ode` and `CySolver`
 - `num_extra` : The number of extra outputs the integrator should expect.

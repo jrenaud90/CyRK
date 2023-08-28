@@ -43,7 +43,7 @@ cdef class CySolver:
             double atol = 1.e-8,
             double[::1] rtols = None,
             double[::1] atols = None,
-            double max_step_size = MAX_STEP,
+            double max_step = MAX_STEP,
             double first_step = 0.,
             unsigned char rk_method = 1,
             const double[::1] t_eval = None,
@@ -51,7 +51,7 @@ cdef class CySolver:
             Py_ssize_t num_extra = 0,
             bool_cpp_t interpolate_extra = False,
             Py_ssize_t expected_size = 0,
-            Py_ssize_t max_steps = 0,
+            Py_ssize_t max_num_steps = 0,
             bool_cpp_t auto_solve = True):
 
         # Setup loop variables
@@ -131,16 +131,16 @@ cdef class CySolver:
                 self.atols_view[i] = atol
 
         # Determine maximum number of steps
-        if max_steps == 0:
+        if max_num_steps == 0:
             self.use_max_steps = False
             self.max_steps = 0
-        elif max_steps < 0:
+        elif max_num_steps < 0:
             self.status = -8
             self.message = "Attribute error."
             raise AttributeError('Negative number of max steps provided.')
         else:
             self.use_max_steps = True
-            self.max_steps = min(max_steps, MAX_INT_SIZE)
+            self.max_steps = min(max_num_steps, MAX_INT_SIZE)
 
         # Expected size of output arrays.
         cdef double temp_expected_size
@@ -724,7 +724,7 @@ cdef class CySolver:
                 break
 
             if self.use_max_steps:
-                if self.len_t > self.max_steps:
+                if self.len_t > self.max_num_steps:
                     self.status = -2
                     break
             else:
