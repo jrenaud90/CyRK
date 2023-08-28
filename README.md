@@ -27,7 +27,7 @@ The [cython](https://cython.org/) `CySolver` class that works with cython-based 
 
 An additional benefit of the two cython implementations is that they are pre-compiled. This avoids most of the start-up performance hit experienced by just-in-time compilers like numba.
 
-<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_pendulum_v0-7-0a1.png" alt="CyRK Performance" />
+<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_predprey_v0-7-0.png" alt="CyRK Performance" />
 
 ## Installation
 
@@ -201,6 +201,8 @@ MyCyRKDiffeqInst.solution_extra  # Extra output that was captured during integra
 All three integrators can take the following optional inputs:
 - `rtol`: Relative Tolerance (default is 1.0e-6).
 - `atol`: Absolute Tolerance (default is 1.0e-8).
+- `rtols`: A numpy ndarray of relative tolerances set for each y0 (default is None; e.g., use `rtol` for each).
+- `atols`: A numpy ndarray of absolute tolerances set for each y0 (default is None; e.g., use `atol` for each).
 - `max_step_size`: Maximum step size (default is +infinity).
 - `first_step`: Initial step size (default is 0).
   - If 0, then the solver will try to determine an ideal value.
@@ -214,7 +216,7 @@ All three integrators can take the following optional inputs:
   - `2` - "DOP853" Explicit Runge-Kutta method of order 8.
 - `capture_extra` and `interpolate_extra`: CyRK has the capability of capturing additional parameters during integration. Please see `Documentation\Extra Output.md` for more details.
 - `max_steps`: Maximum number of steps the solver is allowed to use. Defaults to system architecture's max size for ints.
-- 
+
 ### Additional Arguments for `cyrk_ode` and `CySolver`
 - `num_extra` : The number of extra outputs the integrator should expect.
   - Please see `Documentation\Extra Output.md` for more details.
