@@ -23,11 +23,11 @@ functionality of [scipy's solve_ivp](https://docs.scipy.org/doc/scipy/reference/
 
 Currently, CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is **10-100x faster** than scipy's solve_ivp function.
 The [cython](https://cython.org/) `cyrk_ode` function that works with python (or numba) functions is **5-40x faster** than scipy.
-The [cython](https://cython.org/) `CySolver` class that works with cython-based cdef classes is **5-430x faster** than scipy.
+The [cython](https://cython.org/) `CySolver` class that works with cython-based cdef classes is **5-500x faster** than scipy.
 
 An additional benefit of the two cython implementations is that they are pre-compiled. This avoids most of the start-up performance hit experienced by just-in-time compilers like numba.
 
-<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_predprey_v0-7-0.png" alt="CyRK Performance" />
+<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_predprey_v0-7-0a6.png" alt="CyRK Performance" />
 
 ## Installation
 
@@ -190,9 +190,9 @@ MyCyRKDiffeqInst = MyCyRKDiffeq(time_span, initial_conds, args=(0.01, 0.02), rk_
 # Once complete, you can access the results via...
 MyCyRKDiffeqInst.success     # True / False
 MyCyRKDiffeqInst.message     # Note about integration
-MyCyRKDiffeqInst.t  # Time domain
-MyCyRKDiffeqInst.y  # y dependent variables
-MyCyRKDiffeqInst.extra  # Extra output that was captured during integration.
+MyCyRKDiffeqInst.t           # Time domain
+MyCyRKDiffeqInst.y           # y dependent variables
+MyCyRKDiffeqInst.extra       # Extra output that was captured during integration.
 # See Documentation/Extra Output.md for more information on `extra`
 ```
 
