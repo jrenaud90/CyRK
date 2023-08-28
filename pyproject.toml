@@ -1,6 +1,6 @@
 [project]
 name='CyRK'
-version = '0.6.2'
+version = '0.7.0'
 description='Runge-Kutta ODE Integrator Implemented in Cython and Numba.'
 authors= [
     {name = 'Joe P. Renaud', email = 'joe.p.renaud@gmail.com'}
@@ -47,18 +47,20 @@ classifiers = [
 "Bug Tracker" = "https://github.com/jrenaud90/CyRK/issues"
 
 [project.optional-dependencies]
+# As of August, 2023 - the latest version of line_profiler does not track cython functions. Using older vers.
 dev = [
     "jupyter",
     "matplotlib",
     "pytest",
-    "timeit"
+    "timeit",
+    "line_profiler==3.5.1"
 ]
 
 [build-system]
 requires = [
     'setuptools>=64.0.0',
     'numpy>=1.22',
-    'cython>=0.29.30',
+    'cython>=3.0.0',
     'wheel>=0.38'
 ]
 build-backend = "setuptools.build_meta"

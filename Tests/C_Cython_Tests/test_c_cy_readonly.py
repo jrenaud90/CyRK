@@ -71,16 +71,16 @@ def test_readonly_y0_CySolver(complex_valued):
     CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=1, auto_solve=True)
 
     # Check that the ndarrays make sense
-    assert type(CySolverTesterInst.solution_t) == np.ndarray
-    assert CySolverTesterInst.solution_t.dtype == np.float64
+    assert type(CySolverTesterInst.t) == np.ndarray
+    assert CySolverTesterInst.t.dtype == np.float64
     if complex_valued:
-        assert CySolverTesterInst.solution_y.dtype == np.complex128
+        assert CySolverTesterInst.y.dtype == np.complex128
     else:
-        assert CySolverTesterInst.solution_y.dtype == np.float64
-    assert CySolverTesterInst.solution_t.size > 1
-    assert CySolverTesterInst.solution_t.size == CySolverTesterInst.solution_y[0].size
-    assert len(CySolverTesterInst.solution_y.shape) == 2
-    assert CySolverTesterInst.solution_y[0].size == CySolverTesterInst.solution_y[1].size
+        assert CySolverTesterInst.y.dtype == np.float64
+    assert CySolverTesterInst.t.size > 1
+    assert CySolverTesterInst.t.size == CySolverTesterInst.y[0].size
+    assert len(CySolverTesterInst.y.shape) == 2
+    assert CySolverTesterInst.y[0].size == CySolverTesterInst.y[1].size
 
     # Check that the other output makes sense
     assert type(CySolverTesterInst.success) == bool

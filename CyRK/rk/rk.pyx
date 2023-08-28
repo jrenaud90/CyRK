@@ -9,16 +9,16 @@ cdef double RK23_C[3]
 cdef double RK23_B[3]
 cdef double RK23_E[4]
 cdef double RK23_A[3][3]
-cdef unsigned char RK23_order = 3
-cdef unsigned char RK23_error_order = 2
-cdef unsigned char RK23_n_stages = 3
-cdef unsigned char RK23_LEN_C = 3
-cdef unsigned char RK23_LEN_B = 3
-cdef unsigned char RK23_LEN_E = 4
-cdef unsigned char RK23_LEN_E3 = 4
-cdef unsigned char RK23_LEN_E5 = 4
-cdef unsigned char RK23_LEN_A0 = 3
-cdef unsigned char RK23_LEN_A1 = 3
+cdef Py_ssize_t RK23_order = 3
+cdef Py_ssize_t RK23_error_order = 2
+cdef Py_ssize_t RK23_n_stages = 3
+cdef Py_ssize_t RK23_LEN_C = 3
+cdef Py_ssize_t RK23_LEN_B = 3
+cdef Py_ssize_t RK23_LEN_E = 4
+cdef Py_ssize_t RK23_LEN_E3 = 4
+cdef Py_ssize_t RK23_LEN_E5 = 4
+cdef Py_ssize_t RK23_LEN_A0 = 3
+cdef Py_ssize_t RK23_LEN_A1 = 3
 
 RK23_C[:] = [0, 1 / 2, 3 / 4]
 RK23_B[:] = [2 / 9, 1 / 3, 4 / 9]
@@ -33,16 +33,16 @@ cdef double RK45_C[6]
 cdef double RK45_B[6]
 cdef double RK45_E[7]
 cdef double RK45_A[6][5]
-cdef unsigned char RK45_order = 5
-cdef unsigned char RK45_error_order = 4
-cdef unsigned char RK45_n_stages = 6
-cdef unsigned char RK45_LEN_C = 6
-cdef unsigned char RK45_LEN_B = 6
-cdef unsigned char RK45_LEN_E = 7
-cdef unsigned char RK45_LEN_E3 = 7
-cdef unsigned char RK45_LEN_E5 = 7
-cdef unsigned char RK45_LEN_A0 = 6
-cdef unsigned char RK45_LEN_A1 = 5
+cdef Py_ssize_t RK45_order = 5
+cdef Py_ssize_t RK45_error_order = 4
+cdef Py_ssize_t RK45_n_stages = 6
+cdef Py_ssize_t RK45_LEN_C = 6
+cdef Py_ssize_t RK45_LEN_B = 6
+cdef Py_ssize_t RK45_LEN_E = 7
+cdef Py_ssize_t RK45_LEN_E3 = 7
+cdef Py_ssize_t RK45_LEN_E5 = 7
+cdef Py_ssize_t RK45_LEN_A0 = 6
+cdef Py_ssize_t RK45_LEN_A1 = 5
 
 RK45_C[:] = [0, 1 / 5, 3 / 10, 4 / 5, 8 / 9, 1]
 RK45_B[:] = [35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84]
@@ -57,17 +57,17 @@ RK45_A[5][:] = [9017 / 3168, -355 / 33, 46732 / 5247, 49 / 176, -5103 / 18656]
 
 # DOP863 Constants
 cdef Py_ssize_t j_, i_
-cdef unsigned char DOP_order = 8
-cdef unsigned char DOP_error_order = 7
-cdef unsigned char DOP_n_stages = 12
-cdef unsigned char DOP_n_stages_extended = 16
-cdef unsigned char DOP_LEN_C = 12  ## Reduced Size
-cdef unsigned char DOP_LEN_B = 12
-cdef unsigned char DOP_LEN_E = 13
-cdef unsigned char DOP_LEN_E3 = 13
-cdef unsigned char DOP_LEN_E5 = 13
-cdef unsigned char DOP_LEN_A0 = 12  ## Reduced Size
-cdef unsigned char DOP_LEN_A1 = 12  ## Reduced Size
+cdef Py_ssize_t DOP_order = 8
+cdef Py_ssize_t DOP_error_order = 7
+cdef Py_ssize_t DOP_n_stages = 12
+cdef Py_ssize_t DOP_n_stages_extended = 16
+cdef Py_ssize_t DOP_LEN_C = 12  ## Reduced Size
+cdef Py_ssize_t DOP_LEN_B = 12
+cdef Py_ssize_t DOP_LEN_E = 13
+cdef Py_ssize_t DOP_LEN_E3 = 13
+cdef Py_ssize_t DOP_LEN_E5 = 13
+cdef Py_ssize_t DOP_LEN_A0 = 12  ## Reduced Size
+cdef Py_ssize_t DOP_LEN_A1 = 12  ## Reduced Size
 
 cdef double DOP_C[16]
 DOP_C = [

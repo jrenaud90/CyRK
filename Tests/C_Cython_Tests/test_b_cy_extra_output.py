@@ -51,17 +51,17 @@ def test_extra_output_integration_CySolver():
     CySolverExtraTestInst = CySolverExtraTest(time_span, initial_conds_float, capture_extra=True, num_extra=2, auto_solve=True)
 
     # Check that the ndarrays make sense
-    assert type(CySolverExtraTestInst.solution_t) == np.ndarray
-    assert CySolverExtraTestInst.solution_t.dtype == np.float64
-    assert CySolverExtraTestInst.solution_y.dtype == np.float64
-    assert CySolverExtraTestInst.solution_extra.dtype == np.float64
-    assert CySolverExtraTestInst.solution_t.size > 1
-    assert CySolverExtraTestInst.solution_t.size == CySolverExtraTestInst.solution_y[0].size
-    assert CySolverExtraTestInst.solution_t.size == CySolverExtraTestInst.solution_y[1].size
-    assert CySolverExtraTestInst.solution_t.size == CySolverExtraTestInst.solution_extra[0].size
-    assert CySolverExtraTestInst.solution_t.size == CySolverExtraTestInst.solution_extra[1].size
-    assert CySolverExtraTestInst.solution_y.shape[0] == 2
-    assert CySolverExtraTestInst.solution_extra.shape[0] == 2
+    assert type(CySolverExtraTestInst.t) == np.ndarray
+    assert CySolverExtraTestInst.t.dtype == np.float64
+    assert CySolverExtraTestInst.y.dtype == np.float64
+    assert CySolverExtraTestInst.extra.dtype == np.float64
+    assert CySolverExtraTestInst.t.size > 1
+    assert CySolverExtraTestInst.t.size == CySolverExtraTestInst.y[0].size
+    assert CySolverExtraTestInst.t.size == CySolverExtraTestInst.y[1].size
+    assert CySolverExtraTestInst.t.size == CySolverExtraTestInst.extra[0].size
+    assert CySolverExtraTestInst.t.size == CySolverExtraTestInst.extra[1].size
+    assert CySolverExtraTestInst.y.shape[0] == 2
+    assert CySolverExtraTestInst.extra.shape[0] == 2
 
     # Check that the other output makes sense
     assert type(CySolverExtraTestInst.success) == bool
@@ -108,17 +108,17 @@ def test_extra_output_integration_teval_no_extra_interpolation_CySolver():
                                               capture_extra=True, num_extra=2, interpolate_extra=False, auto_solve=True)
 
     # Check that the ndarrays make sense
-    assert type(CySolverExtraTestInst.solution_t) == np.ndarray
-    assert CySolverExtraTestInst.solution_t.dtype == np.float64
-    assert CySolverExtraTestInst.solution_y.dtype == np.float64
-    assert CySolverExtraTestInst.solution_extra.dtype == np.float64
-    assert CySolverExtraTestInst.solution_t.size > 1
-    assert CySolverExtraTestInst.solution_t.size == CySolverExtraTestInst.solution_y[0].size
-    assert CySolverExtraTestInst.solution_t.size == CySolverExtraTestInst.solution_y[1].size
-    assert CySolverExtraTestInst.solution_t.size == CySolverExtraTestInst.solution_extra[0].size
-    assert CySolverExtraTestInst.solution_t.size == CySolverExtraTestInst.solution_extra[1].size
-    assert CySolverExtraTestInst.solution_y.shape[0] == 2
-    assert CySolverExtraTestInst.solution_extra.shape[0] == 2
+    assert type(CySolverExtraTestInst.t) == np.ndarray
+    assert CySolverExtraTestInst.t.dtype == np.float64
+    assert CySolverExtraTestInst.y.dtype == np.float64
+    assert CySolverExtraTestInst.extra.dtype == np.float64
+    assert CySolverExtraTestInst.t.size > 1
+    assert CySolverExtraTestInst.t.size == CySolverExtraTestInst.y[0].size
+    assert CySolverExtraTestInst.t.size == CySolverExtraTestInst.y[1].size
+    assert CySolverExtraTestInst.t.size == CySolverExtraTestInst.extra[0].size
+    assert CySolverExtraTestInst.t.size == CySolverExtraTestInst.extra[1].size
+    assert CySolverExtraTestInst.y.shape[0] == 2
+    assert CySolverExtraTestInst.extra.shape[0] == 2
 
     # Check that the other output makes sense
     assert type(CySolverExtraTestInst.success) == bool
@@ -165,17 +165,17 @@ def test_extra_output_integration_teval_with_extra_interpolation_CySolver():
                                               capture_extra=True, num_extra=2, interpolate_extra=True, auto_solve=True)
 
     # Check that the ndarrays make sense
-    assert type(CySolverExtraTestInst.solution_t) == np.ndarray
-    assert CySolverExtraTestInst.solution_t.dtype == np.float64
-    assert CySolverExtraTestInst.solution_y.dtype == np.float64
-    assert CySolverExtraTestInst.solution_extra.dtype == np.float64
-    assert CySolverExtraTestInst.solution_t.size > 1
-    assert CySolverExtraTestInst.solution_t.size == CySolverExtraTestInst.solution_y[0].size
-    assert CySolverExtraTestInst.solution_t.size == CySolverExtraTestInst.solution_y[1].size
-    assert CySolverExtraTestInst.solution_t.size == CySolverExtraTestInst.solution_extra[0].size
-    assert CySolverExtraTestInst.solution_t.size == CySolverExtraTestInst.solution_extra[1].size
-    assert CySolverExtraTestInst.solution_y.shape[0] == 2
-    assert CySolverExtraTestInst.solution_extra.shape[0] == 2
+    assert type(CySolverExtraTestInst.t) == np.ndarray
+    assert CySolverExtraTestInst.t.dtype == np.float64
+    assert CySolverExtraTestInst.y.dtype == np.float64
+    assert CySolverExtraTestInst.extra.dtype == np.float64
+    assert CySolverExtraTestInst.t.size > 1
+    assert CySolverExtraTestInst.t.size == CySolverExtraTestInst.y[0].size
+    assert CySolverExtraTestInst.t.size == CySolverExtraTestInst.y[1].size
+    assert CySolverExtraTestInst.t.size == CySolverExtraTestInst.extra[0].size
+    assert CySolverExtraTestInst.t.size == CySolverExtraTestInst.extra[1].size
+    assert CySolverExtraTestInst.y.shape[0] == 2
+    assert CySolverExtraTestInst.extra.shape[0] == 2
 
     # Check that the other output makes sense
     assert type(CySolverExtraTestInst.success) == bool

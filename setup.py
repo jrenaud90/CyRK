@@ -15,6 +15,7 @@ elif install_platform.lower() == 'darwin':
 else:
     extra_compile_args = ['-fopenmp']
     extra_link_args = ['-fopenmp']
+macro_list = [("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")]
 
 # Cython extensions require a setup.py in addition to pyproject.toml in order to create platform-specific wheels.
 setup(
@@ -24,30 +25,35 @@ setup(
             sources=[os.path.join('CyRK', 'array', 'interp.pyx')],
             include_dirs=[os.path.join('CyRK', 'array'), np.get_include()],
             extra_compile_args=extra_compile_args,
+            define_macros=macro_list,
             extra_link_args=extra_link_args),
         Extension(
             name='CyRK.rk.rk',
             sources=[os.path.join('CyRK', 'rk', 'rk.pyx')],
             include_dirs=[os.path.join('CyRK', 'rk'), np.get_include()],
             extra_compile_args=extra_compile_args,
+            define_macros=macro_list,
             extra_link_args=extra_link_args),
         Extension(
             name='CyRK.cy.cyrk',
             sources=[os.path.join('CyRK', 'cy', 'cyrk.pyx')],
             include_dirs=[os.path.join('CyRK', 'cy'), np.get_include()],
             extra_compile_args=extra_compile_args,
+            define_macros=macro_list,
             extra_link_args=extra_link_args),
         Extension(
             name='CyRK.cy.cysolver',
             sources=[os.path.join('CyRK', 'cy', 'cysolver.pyx')],
             include_dirs=[os.path.join('CyRK', 'cy'), np.get_include()],
             extra_compile_args=extra_compile_args,
+            define_macros=macro_list,
             extra_link_args=extra_link_args),
         Extension(
             name='CyRK.cy.cysolvertest',
             sources=[os.path.join('CyRK', 'cy', 'cysolvertest.pyx')],
             include_dirs=[os.path.join('CyRK', 'cy'), np.get_include()],
             extra_compile_args=extra_compile_args,
+            define_macros=macro_list,
             extra_link_args=extra_link_args)
     ]
 )

@@ -20,7 +20,7 @@ EPS = np.finfo(dtype=np.float64).eps
 cdef Py_ssize_t LIKELY_IN_CACHE_SIZE = 8
 
 
-cdef Py_ssize_t binary_search_with_guess(double key, double[:] array, Py_ssize_t length, Py_ssize_t guess) nogil:
+cdef Py_ssize_t binary_search_with_guess(double key, double[:] array, Py_ssize_t length, Py_ssize_t guess) noexcept nogil:
     """ Binary search with guess.
 
     Based on `numpy`'s `binary_search_with_guess` function.
@@ -94,7 +94,7 @@ cdef Py_ssize_t binary_search_with_guess(double key, double[:] array, Py_ssize_t
 
 
 cpdef (double, Py_ssize_t) interpj(double desired_x, double[:] x_domain, double[:] dependent_values,
-                                    Py_ssize_t provided_j = -1) nogil:
+                                    Py_ssize_t provided_j = -1) noexcept nogil:
     """ Interpolation function for floats. This function will return the index that it found during interpolation.
 
     Provided a domain, `x_domain` and a dependent array `dependent_values` search domain for value closest to 
@@ -186,7 +186,7 @@ cpdef (double, Py_ssize_t) interpj(double desired_x, double[:] x_domain, double[
 
 
 cpdef (double complex, Py_ssize_t) interp_complexj(double desired_x, double[:] x_domain,
-                                                    double complex[:] dependent_values, Py_ssize_t provided_j = -1) nogil:
+                                                    double complex[:] dependent_values, Py_ssize_t provided_j = -1) noexcept nogil:
     """ Interpolation function for complex numbers.
 
     Provided a domain, `desired_x` and a dependent array `dependent_values` search domain for value closest to 
@@ -305,7 +305,7 @@ cpdef (double complex, Py_ssize_t) interp_complexj(double desired_x, double[:] x
     return result, j_out
 
 
-cpdef double interp(double desired_x, double[:] x_domain, double[:] dependent_values, Py_ssize_t provided_j = -1) nogil:
+cpdef double interp(double desired_x, double[:] x_domain, double[:] dependent_values, Py_ssize_t provided_j = -1) noexcept nogil:
     """ Interpolation function for floats.
 
     Provided a domain, `x_domain` and a dependent array `dependent_values` search domain for value closest to 
@@ -391,7 +391,7 @@ cpdef double interp(double desired_x, double[:] x_domain, double[:] dependent_va
 
 
 cpdef double complex interp_complex(double desired_x, double[:] x_domain,
-                                    double complex[:] dependent_values, Py_ssize_t provided_j = -1) nogil:
+                                    double complex[:] dependent_values, Py_ssize_t provided_j = -1) noexcept nogil:
     """ Interpolation function for complex numbers.
 
     Provided a domain, `desired_x` and a dependent array `dependent_values` search domain for value closest to 
@@ -505,7 +505,7 @@ cpdef double complex interp_complex(double desired_x, double[:] x_domain,
 
 
 cpdef void interp_array(double[:] desired_x_array, double[:] x_domain, double[:] dependent_values,
-                        double[:] desired_dependent_array) nogil:
+                        double[:] desired_dependent_array) noexcept nogil:
 
     # Array variables
     cdef Py_ssize_t index 
@@ -575,7 +575,7 @@ cpdef void interp_array(double[:] desired_x_array, double[:] x_domain, double[:]
 
 
 cpdef void interp_complex_array(double[:] desired_x_array, double[:] x_domain, double complex[:] dependent_values,
-                                double complex[:] desired_dependent_array) nogil:
+                                double complex[:] desired_dependent_array) noexcept nogil:
 
     # Array variables
     cdef Py_ssize_t index 

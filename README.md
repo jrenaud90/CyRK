@@ -11,7 +11,7 @@
 
 ---
 
-<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.6.2 Alpha-orange" alt="CyRK Version 0.6.2 Alpha" /></a>
+<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.7.0 Alpha-orange" alt="CyRK Version 0.7.0 Alpha" /></a>
 
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
@@ -23,11 +23,11 @@ functionality of [scipy's solve_ivp](https://docs.scipy.org/doc/scipy/reference/
 
 Currently, CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is **10-100x faster** than scipy's solve_ivp function.
 The [cython](https://cython.org/) `cyrk_ode` function that works with python (or numba) functions is **5-40x faster** than scipy.
-The [cython](https://cython.org/) `CySolver` class that works with cython-based cdef classes is **5-400x faster** than scipy.
+The [cython](https://cython.org/) `CySolver` class that works with cython-based cdef classes is **5-500x faster** than scipy.
 
 An additional benefit of the two cython implementations is that they are pre-compiled. This avoids most of the start-up performance hit experienced by just-in-time compilers like numba.
 
-<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_v0-6-2-dev4.png" alt="CyRK Performance" />
+<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_predprey_v0-7-0a6.png" alt="CyRK Performance" />
 
 ## Installation
 
@@ -51,13 +51,14 @@ test_cysolver()
 # Should see "CyRK's CySolver was tested successfully."
 ```
 
-### Installation Troubleshooting
+### Troubleshooting Installation and Runtime Problems
 
 *Please [report](https://github.com/jrenaud90/CyRK/issues) installation issues. We will work on a fix and/or add workaround information here.*
 
 - If you see a "Can not load module: CyRK.cy" or similar error then the cython extensions likely did not compile during installation. Try running `pip install CyRK --no-binary="CyRK"` 
 to force python to recompile the cython extensions locally (rather than via a prebuilt wheel).
 - On MacOS: If you run into problems installing CyRK then reinstall using the verbose flag (`pip install -v .`) to look at the installation log. If you see an error that looks like "clang: error: unsupported option '-fopenmp'" then you may have a problem with your `llvm` or `libomp` libraries. It is recommended that you install CyRK in an [Anaconda](https://www.anaconda.com/download) environment with the following packages `conda install numpy scipy cython llvm-openmp`. See more discussion [here](https://github.com/facebookresearch/xformers/issues/157) and the steps taken [here](https://github.com/jrenaud90/CyRK/blob/main/.github/workflows/push_tests_mac.yml).
+- CyRK has a number of runtime status codes which can be used to help determine what failed during integration. Learn more about these codes [https://github.com/jrenaud90/CyRK/blob/main/Documentation/Status%20and%20Error%20Codes.md](here).
 
 ### Development and Testing Dependencies
 
@@ -82,7 +83,7 @@ def diffeq_nb(t, y):
     dy[1] = (0.02 * y[0] - 1.) * y[1]
     return dy
 
-initial_conds = np.asarray((20., 20.), dtype=np.complex128)
+initial_conds = np.asarray((20., 20.), dtype=np.complex128, order='C')
 time_span = (0., 50.)
 rtol = 1.0e-7
 atol = 1.0e-8
@@ -145,8 +146,7 @@ from CyRK.cy.cysolver cimport CySolver
 
 cdef class MyCyRKDiffeq(CySolver):
 
-    @cython.exceptval(check=False)
-    cdef void diffeq(self):
+    cdef void diffeq(self) nogil:  # REVERT noexcept nogil:
         
         # Unpack dependent variables using the `self.y_new_view` variable.
         # In this example we have a system of two dependent variables, but any number can be used.
@@ -175,6 +175,10 @@ Once you compile the differential equation it can be imported in a regular pytho
 """run.py"""
 from ODE import MyCyRKDiffeq
 
+# It is important that any arrays passed to the CySolver are C-contiguous (set with numpy with "order=C")
+# Also, currently, CySolver only works with floats/doubles. Not complex.
+initial_conds = np.asarray((20., 20.), dtype=np.float64, order='C')
+
 # Need to make an instance of the integrator.
 # The diffeq no longer needs to be passed to the class.
 MyCyRKDiffeqInst = MyCyRKDiffeq(time_span, initial_conds, args=(0.01, 0.02), rk_method=1, rtol=rtol, atol=atol, auto_solve=True)
@@ -186,10 +190,10 @@ MyCyRKDiffeqInst = MyCyRKDiffeq(time_span, initial_conds, args=(0.01, 0.02), rk_
 # Once complete, you can access the results via...
 MyCyRKDiffeqInst.success     # True / False
 MyCyRKDiffeqInst.message     # Note about integration
-MyCyRKDiffeqInst.solution_t  # Time domain
-MyCyRKDiffeqInst.solution_y  # y dependent variables
-MyCyRKDiffeqInst.solution_extra  # Extra output that was captured during integration.
-# See Documentation/Extra Output.md for more information on `solution_extra`
+MyCyRKDiffeqInst.t           # Time domain
+MyCyRKDiffeqInst.y           # y dependent variables
+MyCyRKDiffeqInst.extra       # Extra output that was captured during integration.
+# See Documentation/Extra Output.md for more information on `extra`
 ```
 
 ## Optional Arguments
@@ -197,6 +201,8 @@ MyCyRKDiffeqInst.solution_extra  # Extra output that was captured during integra
 All three integrators can take the following optional inputs:
 - `rtol`: Relative Tolerance (default is 1.0e-6).
 - `atol`: Absolute Tolerance (default is 1.0e-8).
+- `rtols`: A numpy ndarray of relative tolerances set for each y0 (default is None; e.g., use `rtol` for each).
+- `atols`: A numpy ndarray of absolute tolerances set for each y0 (default is None; e.g., use `atol` for each).
 - `max_step`: Maximum step size (default is +infinity).
 - `first_step`: Initial step size (default is 0).
   - If 0, then the solver will try to determine an ideal value.
@@ -209,6 +215,7 @@ All three integrators can take the following optional inputs:
   - `1` - "RK45" Explicit Runge-Kutta method of order 5(4).
   - `2` - "DOP853" Explicit Runge-Kutta method of order 8.
 - `capture_extra` and `interpolate_extra`: CyRK has the capability of capturing additional parameters during integration. Please see `Documentation\Extra Output.md` for more details.
+- `max_num_steps`: Maximum number of steps the solver is allowed to use. Defaults to system architecture's max size for ints.
 
 ### Additional Arguments for `cyrk_ode` and `CySolver`
 - `num_extra` : The number of extra outputs the integrator should expect.
