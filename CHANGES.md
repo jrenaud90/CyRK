@@ -18,7 +18,7 @@ New Features
   - Defaults to 95% of `sys.maxsize` (depends on system architecture).
 - New `CySolver.update_constants` method allows for significant speed boosts for certain differential equations.
   - See test diffeqs, which have been updated to use this feature, for examples.
-co
+
 Other Changes
 - Improved documentation for most functions and classes.
 - To make more logical sense with the wording, `CySolver.size_growths` now gives one less than the solver's growths attribute.
