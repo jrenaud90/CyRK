@@ -18,13 +18,14 @@ New Features
   - Defaults to 95% of `sys.maxsize` (depends on system architecture).
 - New `CySolver.update_constants` method allows for significant speed boosts for certain differential equations.
   - See test diffeqs, which have been updated to use this feature, for examples.
-
+co
 Other Changes
-- Improved documentation for `CySolver`'s `diffeq` method template.
+- Improved documentation for most functions and classes.
 - To make more logical sense with the wording, `CySolver.size_growths` now gives one less than the solver's growths attribute.
 - Cleaned up status codes and created new status code description document under "Documentation/Status and Error Codes.md"
 - Fixed compile warning related to NPY_NO_DEPRECATED_API.
 - Converted RK variable lengths to Py_ssize_t types.
+- Changed default tolerances to match scipy: rtol=1.0e-3, atol=1.0e-6.
 
 Performance
 - Various minor performance gains for cython-based solvers.
@@ -35,6 +36,7 @@ Bug Fixes:
 - Fixed potential seg fault when accessing `CySolver`'s arg_array_view.
 - Fixed potential issue where `CySolver`'s first step size may not be reset when variables that affect it are.
 - Fixed missed declaration in `cyrk_ode`.
+- Fixed bug where the state reset flag was not being passed from `CySolver.solve` wrapper method.
 
 #### v0.6.2
 New Features

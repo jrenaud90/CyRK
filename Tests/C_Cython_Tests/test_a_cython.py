@@ -108,16 +108,16 @@ def test_basic_integration_CySolverTester(use_atol_array, use_rtol_array, rk_met
                                         rk_method=rk_method, auto_solve=True)
 
     # Check that the ndarrays make sense
-    assert type(CySolverTesterInst.solution_t) == np.ndarray
-    assert CySolverTesterInst.solution_t.dtype == np.float64
+    assert type(CySolverTesterInst.t) == np.ndarray
+    assert CySolverTesterInst.t.dtype == np.float64
     if complex_valued:
-        assert CySolverTesterInst.solution_y.dtype == np.complex128
+        assert CySolverTesterInst.y.dtype == np.complex128
     else:
-        assert CySolverTesterInst.solution_y.dtype == np.float64
-    assert CySolverTesterInst.solution_t.size > 1
-    assert CySolverTesterInst.solution_t.size == CySolverTesterInst.solution_y[0].size
-    assert len(CySolverTesterInst.solution_y.shape) == 2
-    assert CySolverTesterInst.solution_y[0].size == CySolverTesterInst.solution_y[1].size
+        assert CySolverTesterInst.y.dtype == np.float64
+    assert CySolverTesterInst.t.size > 1
+    assert CySolverTesterInst.t.size == CySolverTesterInst.y[0].size
+    assert len(CySolverTesterInst.y.shape) == 2
+    assert CySolverTesterInst.y[0].size == CySolverTesterInst.y[1].size
 
     # Check that the other output makes sense
     assert type(CySolverTesterInst.success) == bool
@@ -169,16 +169,16 @@ def test_different_tols_CySolverTester(rk_method, complex_valued):
                                         rtol=1.0e-10, atol=1.0e-12, auto_solve=True)
 
     # Check that the ndarrays make sense
-    assert type(CySolverTesterInst.solution_t) == np.ndarray
-    assert CySolverTesterInst.solution_t.dtype == np.float64
+    assert type(CySolverTesterInst.t) == np.ndarray
+    assert CySolverTesterInst.t.dtype == np.float64
     if complex_valued:
-        assert CySolverTesterInst.solution_y.dtype == np.complex128
+        assert CySolverTesterInst.y.dtype == np.complex128
     else:
-        assert CySolverTesterInst.solution_y.dtype == np.float64
-    assert CySolverTesterInst.solution_t.size > 1
-    assert CySolverTesterInst.solution_t.size == CySolverTesterInst.solution_y[0].size
-    assert len(CySolverTesterInst.solution_y.shape) == 2
-    assert CySolverTesterInst.solution_y[0].size == CySolverTesterInst.solution_y[1].size
+        assert CySolverTesterInst.y.dtype == np.float64
+    assert CySolverTesterInst.t.size > 1
+    assert CySolverTesterInst.t.size == CySolverTesterInst.y[0].size
+    assert len(CySolverTesterInst.y.shape) == 2
+    assert CySolverTesterInst.y[0].size == CySolverTesterInst.y[1].size
 
     # Check that the other output makes sense
     assert type(CySolverTesterInst.success) == bool
@@ -187,7 +187,7 @@ def test_different_tols_CySolverTester(rk_method, complex_valued):
 
 @pytest.mark.parametrize('complex_valued', (True, False))
 @pytest.mark.parametrize('rk_method', (0, 1, 2))
-def test_max_step_size(rk_method, complex_valued):
+def test_max_step(rk_method, complex_valued):
     """Check that the cython function solver is able to run with different maximum step size"""
 
     if complex_valued:
@@ -196,7 +196,7 @@ def test_max_step_size(rk_method, complex_valued):
         initial_conds_to_use = initial_conds
 
     time_domain, y_results, success, message = \
-        cyrk_ode(diffeq, time_span, initial_conds_to_use, rk_method=rk_method, max_step_size=time_span[1] / 2.)
+        cyrk_ode(diffeq, time_span, initial_conds_to_use, rk_method=rk_method, max_step=time_span[1] / 2.)
 
     # Check that the ndarrays make sense
     assert type(time_domain) == np.ndarray
@@ -217,7 +217,7 @@ def test_max_step_size(rk_method, complex_valued):
 
 @pytest.mark.parametrize('complex_valued', (False,))
 @pytest.mark.parametrize('rk_method', (0, 1, 2))
-def test_max_step_size_CySolverTester(rk_method, complex_valued):
+def test_max_step_CySolverTester(rk_method, complex_valued):
     """Check that the cython class solver is able to run with different maximum step size"""
 
     if complex_valued:
@@ -225,19 +225,19 @@ def test_max_step_size_CySolverTester(rk_method, complex_valued):
     else:
         initial_conds_to_use = initial_conds
 
-    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method, max_step_size=time_span[1] / 2., auto_solve=True)
+    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method, max_step=time_span[1] / 2., auto_solve=True)
 
     # Check that the ndarrays make sense
-    assert type(CySolverTesterInst.solution_t) == np.ndarray
-    assert CySolverTesterInst.solution_t.dtype == np.float64
+    assert type(CySolverTesterInst.t) == np.ndarray
+    assert CySolverTesterInst.t.dtype == np.float64
     if complex_valued:
-        assert CySolverTesterInst.solution_y.dtype == np.complex128
+        assert CySolverTesterInst.y.dtype == np.complex128
     else:
-        assert CySolverTesterInst.solution_y.dtype == np.float64
-    assert CySolverTesterInst.solution_t.size > 1
-    assert CySolverTesterInst.solution_t.size == CySolverTesterInst.solution_y[0].size
-    assert len(CySolverTesterInst.solution_y.shape) == 2
-    assert CySolverTesterInst.solution_y[0].size == CySolverTesterInst.solution_y[1].size
+        assert CySolverTesterInst.y.dtype == np.float64
+    assert CySolverTesterInst.t.size > 1
+    assert CySolverTesterInst.t.size == CySolverTesterInst.y[0].size
+    assert len(CySolverTesterInst.y.shape) == 2
+    assert CySolverTesterInst.y[0].size == CySolverTesterInst.y[1].size
 
     # Check that the other output makes sense
     assert type(CySolverTesterInst.success) == bool
@@ -287,16 +287,16 @@ def test_first_step_CySolverTester(rk_method, complex_valued):
     CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method, first_step=0.01, auto_solve=True)
 
     # Check that the ndarrays make sense
-    assert type(CySolverTesterInst.solution_t) == np.ndarray
-    assert CySolverTesterInst.solution_t.dtype == np.float64
+    assert type(CySolverTesterInst.t) == np.ndarray
+    assert CySolverTesterInst.t.dtype == np.float64
     if complex_valued:
-        assert CySolverTesterInst.solution_y.dtype == np.complex128
+        assert CySolverTesterInst.y.dtype == np.complex128
     else:
-        assert CySolverTesterInst.solution_y.dtype == np.float64
-    assert CySolverTesterInst.solution_t.size > 1
-    assert CySolverTesterInst.solution_t.size == CySolverTesterInst.solution_y[0].size
-    assert len(CySolverTesterInst.solution_y.shape) == 2
-    assert CySolverTesterInst.solution_y[0].size == CySolverTesterInst.solution_y[1].size
+        assert CySolverTesterInst.y.dtype == np.float64
+    assert CySolverTesterInst.t.size > 1
+    assert CySolverTesterInst.t.size == CySolverTesterInst.y[0].size
+    assert len(CySolverTesterInst.y.shape) == 2
+    assert CySolverTesterInst.y[0].size == CySolverTesterInst.y[1].size
 
     # Check that the other output makes sense
     assert type(CySolverTesterInst.success) == bool
@@ -346,16 +346,16 @@ def test_large_end_value_CySolverTester(rk_method, complex_valued):
     CySolverTesterInst = CySolverTester(time_span_large, initial_conds_to_use, rk_method=rk_method, auto_solve=True)
 
     # Check that the ndarrays make sense
-    assert type(CySolverTesterInst.solution_t) == np.ndarray
-    assert CySolverTesterInst.solution_t.dtype == np.float64
+    assert type(CySolverTesterInst.t) == np.ndarray
+    assert CySolverTesterInst.t.dtype == np.float64
     if complex_valued:
-        assert CySolverTesterInst.solution_y.dtype == np.complex128
+        assert CySolverTesterInst.y.dtype == np.complex128
     else:
-        assert CySolverTesterInst.solution_y.dtype == np.float64
-    assert CySolverTesterInst.solution_t.size > 1
-    assert CySolverTesterInst.solution_t.size == CySolverTesterInst.solution_y[0].size
-    assert len(CySolverTesterInst.solution_y.shape) == 2
-    assert CySolverTesterInst.solution_y[0].size == CySolverTesterInst.solution_y[1].size
+        assert CySolverTesterInst.y.dtype == np.float64
+    assert CySolverTesterInst.t.size > 1
+    assert CySolverTesterInst.t.size == CySolverTesterInst.y[0].size
+    assert len(CySolverTesterInst.y.shape) == 2
+    assert CySolverTesterInst.y[0].size == CySolverTesterInst.y[1].size
 
     # Check that the other output makes sense
     assert type(CySolverTesterInst.success) == bool
@@ -410,16 +410,16 @@ def test_teval_CySolverTester(rk_method, complex_valued):
     CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method, t_eval=t_eval, auto_solve=True)
 
     # Check that the ndarrays make sense
-    assert type(CySolverTesterInst.solution_t) == np.ndarray
-    assert CySolverTesterInst.solution_t.dtype == np.float64
+    assert type(CySolverTesterInst.t) == np.ndarray
+    assert CySolverTesterInst.t.dtype == np.float64
     if complex_valued:
-        assert CySolverTesterInst.solution_y.dtype == np.complex128
+        assert CySolverTesterInst.y.dtype == np.complex128
     else:
-        assert CySolverTesterInst.solution_y.dtype == np.float64
-    assert CySolverTesterInst.solution_t.size > 1
-    assert CySolverTesterInst.solution_t.size == CySolverTesterInst.solution_y[0].size
-    assert len(CySolverTesterInst.solution_y.shape) == 2
-    assert CySolverTesterInst.solution_y[0].size == CySolverTesterInst.solution_y[1].size
+        assert CySolverTesterInst.y.dtype == np.float64
+    assert CySolverTesterInst.t.size > 1
+    assert CySolverTesterInst.t.size == CySolverTesterInst.y[0].size
+    assert len(CySolverTesterInst.y.shape) == 2
+    assert CySolverTesterInst.y[0].size == CySolverTesterInst.y[1].size
 
     # Check that the other output makes sense
     assert type(CySolverTesterInst.success) == bool
@@ -469,16 +469,16 @@ def test_args_CySolverTester(rk_method, complex_valued):
     CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method, args=(0.01, 0.02), auto_solve=True)
 
     # Check that the ndarrays make sense
-    assert type(CySolverTesterInst.solution_t) == np.ndarray
-    assert CySolverTesterInst.solution_t.dtype == np.float64
+    assert type(CySolverTesterInst.t) == np.ndarray
+    assert CySolverTesterInst.t.dtype == np.float64
     if complex_valued:
-        assert CySolverTesterInst.solution_y.dtype == np.complex128
+        assert CySolverTesterInst.y.dtype == np.complex128
     else:
-        assert CySolverTesterInst.solution_y.dtype == np.float64
-    assert CySolverTesterInst.solution_t.size > 1
-    assert CySolverTesterInst.solution_t.size == CySolverTesterInst.solution_y[0].size
-    assert len(CySolverTesterInst.solution_y.shape) == 2
-    assert CySolverTesterInst.solution_y[0].size == CySolverTesterInst.solution_y[1].size
+        assert CySolverTesterInst.y.dtype == np.float64
+    assert CySolverTesterInst.t.size > 1
+    assert CySolverTesterInst.t.size == CySolverTesterInst.y[0].size
+    assert len(CySolverTesterInst.y.shape) == 2
+    assert CySolverTesterInst.y[0].size == CySolverTesterInst.y[1].size
 
     # Check that the other output makes sense
     assert type(CySolverTesterInst.success) == bool
@@ -560,28 +560,28 @@ def test_accuracy_CySolverTester(rk_method):
 
     # CyRK.CySolver
     CySolverAccuracyTestInst = CySolverAccuracyTest(time_span_, y0, rk_method=rk_method, rtol=1.0e-8, atol=1.0e-9, auto_solve=True)
-    real_answer = correct_answer(CySolverAccuracyTestInst.solution_t, c1, c2)
+    real_answer = correct_answer(CySolverAccuracyTestInst.t, c1, c2)
 
     if rk_method == 0:
-        assert np.allclose(CySolverAccuracyTestInst.solution_y, real_answer, rtol=1.0e-3, atol=1.0e-6)
+        assert np.allclose(CySolverAccuracyTestInst.y, real_answer, rtol=1.0e-3, atol=1.0e-6)
     elif rk_method == 1:
-        assert np.allclose(CySolverAccuracyTestInst.solution_y, real_answer, rtol=1.0e-4, atol=1.0e-7)
+        assert np.allclose(CySolverAccuracyTestInst.y, real_answer, rtol=1.0e-4, atol=1.0e-7)
     else:
-        assert np.allclose(CySolverAccuracyTestInst.solution_y, real_answer, rtol=1.0e-5, atol=1.0e-8)
+        assert np.allclose(CySolverAccuracyTestInst.y, real_answer, rtol=1.0e-5, atol=1.0e-8)
 
     # Check the accuracy of the results
     # import matplotlib.pyplot as plt
     # fig, ax = plt.subplots()
-    # ax.plot(CySolverAccuracyTestInst.solution_t, CySolverAccuracyTestInst.solution_y[0], 'r', label='CyRK')
-    # ax.plot(CySolverAccuracyTestInst.solution_t, CySolverAccuracyTestInst.solution_y[1], 'r:')
-    # ax.plot(CySolverAccuracyTestInst.solution_t, real_answer[0], 'b', label='Analytic')
-    # ax.plot(CySolverAccuracyTestInst.solution_t, real_answer[1], 'b:')
+    # ax.plot(CySolverAccuracyTestInst.t, CySolverAccuracyTestInst.y[0], 'r', label='CyRK')
+    # ax.plot(CySolverAccuracyTestInst.t, CySolverAccuracyTestInst.y[1], 'r:')
+    # ax.plot(CySolverAccuracyTestInst.t, real_answer[0], 'b', label='Analytic')
+    # ax.plot(CySolverAccuracyTestInst.t, real_answer[1], 'b:')
     # plt.show()
 
 @pytest.mark.parametrize('complex_valued', (True, False))
 @pytest.mark.parametrize('rk_method', (0, 1, 2))
-def test_maxsteps(rk_method, complex_valued):
-    """Check that the cython function cyrk_ode can use max_steps argument """
+def test_max_num_steps(rk_method, complex_valued):
+    """Check that the cython function cyrk_ode can use max_num_steps argument """
 
     if complex_valued:
         initial_conds_to_use = initial_conds_complex
@@ -590,7 +590,7 @@ def test_maxsteps(rk_method, complex_valued):
 
     # First test a number of max steps which is fine.
     time_domain, y_results, success, message = \
-        cyrk_ode(diffeq, time_span_large, initial_conds_to_use, rk_method=rk_method, max_steps=1000000)
+        cyrk_ode(diffeq, time_span_large, initial_conds_to_use, rk_method=rk_method, max_num_steps=1000000)
 
     # Check that the ndarrays make sense
     assert type(time_domain) == np.ndarray
@@ -611,15 +611,15 @@ def test_maxsteps(rk_method, complex_valued):
 
     # Now test an insufficient number of steps
     time_domain, y_results, success, message = \
-        cyrk_ode(diffeq, time_span_large, initial_conds_to_use, rk_method=rk_method, max_steps=4)
+        cyrk_ode(diffeq, time_span_large, initial_conds_to_use, rk_method=rk_method, max_num_steps=4)
 
     assert not success
     assert message == "Maximum number of steps (set by user) exceeded during integration."
 
 @pytest.mark.parametrize('complex_valued', (False,))
 @pytest.mark.parametrize('rk_method', (0, 1, 2))
-def test_maxsteps_CySolverTester(rk_method, complex_valued):
-    """Check that the cython class solver is able to run using the DOP853 method. Using a larger ending time value """
+def test_max_num_steps_CySolverTester(rk_method, complex_valued):
+    """Check that the cython class solver correctly uses the max_num_steps argument. """
 
     if complex_valued:
         initial_conds_to_use = initial_conds_complex
@@ -627,19 +627,19 @@ def test_maxsteps_CySolverTester(rk_method, complex_valued):
         initial_conds_to_use = initial_conds
 
     # First test a number of max steps which is fine.
-    CySolverTesterInst = CySolverTester(time_span_large, initial_conds_to_use, rk_method=rk_method, auto_solve=True, max_steps=1000000)
+    CySolverTesterInst = CySolverTester(time_span_large, initial_conds_to_use, rk_method=rk_method, auto_solve=True, max_num_steps=1000000)
 
     # Check that the ndarrays make sense
-    assert type(CySolverTesterInst.solution_t) == np.ndarray
-    assert CySolverTesterInst.solution_t.dtype == np.float64
+    assert type(CySolverTesterInst.t) == np.ndarray
+    assert CySolverTesterInst.t.dtype == np.float64
     if complex_valued:
-        assert CySolverTesterInst.solution_y.dtype == np.complex128
+        assert CySolverTesterInst.y.dtype == np.complex128
     else:
-        assert CySolverTesterInst.solution_y.dtype == np.float64
-    assert CySolverTesterInst.solution_t.size > 1
-    assert CySolverTesterInst.solution_t.size == CySolverTesterInst.solution_y[0].size
-    assert len(CySolverTesterInst.solution_y.shape) == 2
-    assert CySolverTesterInst.solution_y[0].size == CySolverTesterInst.solution_y[1].size
+        assert CySolverTesterInst.y.dtype == np.float64
+    assert CySolverTesterInst.t.size > 1
+    assert CySolverTesterInst.t.size == CySolverTesterInst.y[0].size
+    assert len(CySolverTesterInst.y.shape) == 2
+    assert CySolverTesterInst.y[0].size == CySolverTesterInst.y[1].size
 
     # Check that the other output makes sense
     assert type(CySolverTesterInst.success) == bool
@@ -648,7 +648,7 @@ def test_maxsteps_CySolverTester(rk_method, complex_valued):
 
     # Now test an insufficient number of steps
     CySolverTesterInst = CySolverTester(
-        time_span_large, initial_conds_to_use, rk_method=rk_method, auto_solve=True, max_steps=4)
+        time_span_large, initial_conds_to_use, rk_method=rk_method, auto_solve=True, max_num_steps=4)
 
     assert not CySolverTesterInst.success
     assert CySolverTesterInst.status == -2

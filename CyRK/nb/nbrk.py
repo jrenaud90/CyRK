@@ -89,8 +89,8 @@ def nbrk_ode(
         t_span: Tuple[float, float],
         y0: np.ndarray,
         args: tuple = tuple(),
-        rtol: float = 1.e-6,
-        atol: float = 1.e-8,
+        rtol: float = 1.e-3,
+        atol: float = 1.e-6,
         rtols: np.ndarray = EMPTY_ARR,
         atols: np.ndarray = EMPTY_ARR,
         max_step: float = np.inf,
@@ -113,9 +113,9 @@ def nbrk_ode(
         1D array of the initial values of the problem at t_span[0]
     args : tuple = tuple()
         Any additional arguments that are passed to dffeq.
-    rtol : float = 1.e-6
+    rtol : float = 1.e-3
         Integration relative tolerance used to determine optimal step size.
-    atol : float = 1.e-8
+    atol : float = 1.e-6
         Integration absolute tolerance used to determine optimal step size.
     max_step : float = np.inf
         Maximum allowed step size.

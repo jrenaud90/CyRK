@@ -30,8 +30,8 @@ def test_CySolverTester_change_param(rk_method, complex_valued):
     # Solve once
     CySolverTesterInst.solve()
     assert CySolverTesterInst.success
-    solution_1_t = np.copy(CySolverTesterInst.solution_t)
-    solution_1_y = np.copy(CySolverTesterInst.solution_y)
+    solution_1_t = np.copy(CySolverTesterInst.t)
+    solution_1_y = np.copy(CySolverTesterInst.y)
     assert solution_1_t[0] == 0.
     assert solution_1_t[-1] == 10.
 
@@ -39,8 +39,8 @@ def test_CySolverTester_change_param(rk_method, complex_valued):
     CySolverTesterInst.change_t_span((0., 1.))
     CySolverTesterInst.solve()
     assert CySolverTesterInst.success
-    solution_2_t = np.copy(CySolverTesterInst.solution_t)
-    solution_2_y = np.copy(CySolverTesterInst.solution_y)
+    solution_2_t = np.copy(CySolverTesterInst.t)
+    solution_2_y = np.copy(CySolverTesterInst.y)
     assert solution_2_t[0] == 0.
     assert solution_2_t[-1] == 1.
 
@@ -48,8 +48,8 @@ def test_CySolverTester_change_param(rk_method, complex_valued):
     CySolverTesterInst.change_parameters(rtol=1.0e-11, atol=1.0e-12)
     CySolverTesterInst.solve()
     assert CySolverTesterInst.success
-    solution_3_t = np.copy(CySolverTesterInst.solution_t)
-    solution_3_y = np.copy(CySolverTesterInst.solution_y)
+    solution_3_t = np.copy(CySolverTesterInst.t)
+    solution_3_y = np.copy(CySolverTesterInst.y)
     assert solution_3_t[0] == 0.
     assert solution_3_t[-1] == 1.
     # Due to the lower tolerances, we expect this solution to be larger than the previous ones.
@@ -60,8 +60,8 @@ def test_CySolverTester_change_param(rk_method, complex_valued):
     CySolverTesterInst.change_t_eval(t_eval)
     CySolverTesterInst.solve()
     assert CySolverTesterInst.success
-    solution_4_t = np.copy(CySolverTesterInst.solution_t)
-    solution_4_y = np.copy(CySolverTesterInst.solution_y)
+    solution_4_t = np.copy(CySolverTesterInst.t)
+    solution_4_y = np.copy(CySolverTesterInst.y)
     assert solution_4_t[0] == 0.
     assert solution_4_t[-1] == 0.5
     assert solution_4_t.size == 10

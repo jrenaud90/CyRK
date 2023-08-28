@@ -146,7 +146,7 @@ from CyRK.cy.cysolver cimport CySolver
 
 cdef class MyCyRKDiffeq(CySolver):
 
-    cdef void diffeq(self) noexcept nogil:
+    cdef void diffeq(self) nogil:  # REVERT noexcept nogil:
         
         # Unpack dependent variables using the `self.y_new_view` variable.
         # In this example we have a system of two dependent variables, but any number can be used.
@@ -190,10 +190,10 @@ MyCyRKDiffeqInst = MyCyRKDiffeq(time_span, initial_conds, args=(0.01, 0.02), rk_
 # Once complete, you can access the results via...
 MyCyRKDiffeqInst.success     # True / False
 MyCyRKDiffeqInst.message     # Note about integration
-MyCyRKDiffeqInst.solution_t  # Time domain
-MyCyRKDiffeqInst.solution_y  # y dependent variables
-MyCyRKDiffeqInst.solution_extra  # Extra output that was captured during integration.
-# See Documentation/Extra Output.md for more information on `solution_extra`
+MyCyRKDiffeqInst.t  # Time domain
+MyCyRKDiffeqInst.y  # y dependent variables
+MyCyRKDiffeqInst.extra  # Extra output that was captured during integration.
+# See Documentation/Extra Output.md for more information on `extra`
 ```
 
 ## Optional Arguments

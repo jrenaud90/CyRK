@@ -26,20 +26,20 @@ def test_CySolverTester_resolve(rk_method, complex_valued):
     # Solve once
     CySolverTesterInst.solve()
     assert CySolverTesterInst.success
-    solution_1_t = np.copy(CySolverTesterInst.solution_t)
-    solution_1_y = np.copy(CySolverTesterInst.solution_y)
+    solution_1_t = np.copy(CySolverTesterInst.t)
+    solution_1_y = np.copy(CySolverTesterInst.y)
 
     # Solve twice
     CySolverTesterInst.solve()
     assert CySolverTesterInst.success
-    solution_2_t = np.copy(CySolverTesterInst.solution_t)
-    solution_2_y = np.copy(CySolverTesterInst.solution_y)
+    solution_2_t = np.copy(CySolverTesterInst.t)
+    solution_2_y = np.copy(CySolverTesterInst.y)
 
     # Solve thrice
     CySolverTesterInst.solve()
     assert CySolverTesterInst.success
-    solution_3_t = np.copy(CySolverTesterInst.solution_t)
-    solution_3_y = np.copy(CySolverTesterInst.solution_y)
+    solution_3_t = np.copy(CySolverTesterInst.t)
+    solution_3_y = np.copy(CySolverTesterInst.y)
 
     # Check outputs
     # 1 and 2

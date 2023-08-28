@@ -32,7 +32,7 @@ cdef double EPS_100 = EPS * 100.
 cdef Py_ssize_t MAX_INT_SIZE = int(0.95 * sys.maxsize)
 
 
-cdef double cabs(double complex value) noexcept nogil:
+cdef double cabs(double complex value) nogil:  # REVERT noexcept nogil:
     """ Absolute value function for complex-valued inputs.
     
     Parameters
@@ -59,7 +59,7 @@ ctypedef fused double_numeric:
     double complex
 
 
-cdef double dabs(double_numeric value) noexcept nogil:
+cdef double dabs(double_numeric value) nogil:  # REVERT noexcept nogil:
     """ Absolute value function for either float or complex-valued inputs.
     
     Checks the type of value and either utilizes `cabs` (for double complex) or `fabs` (for floats).
@@ -87,8 +87,8 @@ def cyrk_ode(
     (double, double) t_span,
     const double_numeric[:] y0,
     tuple args = None,
-    double rtol = 1.e-6,
-    double atol = 1.e-8,
+    double rtol = 1.e-3,
+    double atol = 1.e-6,
     double[::1] rtols = None,
     double[::1] atols = None,
     double max_step = MAX_STEP,
@@ -101,34 +101,52 @@ def cyrk_ode(
     Py_ssize_t expected_size = 0,
     Py_ssize_t max_num_steps = 0
     ):
-    """ A Numba-safe Runge-Kutta Integrator based on Scipy's solve_ivp RK integrator.
+    """
+    cyrk_ode: A Runge-Kutta Solver Implemented in Cython.
 
     Parameters
     ----------
     diffeq : callable
-        An njit-compiled function that defines the derivatives of the problem.
-    t_span : Tuple[float, float]
-        A tuple of the beginning and end of the integration domain's dependent variables.
-    y0 : np.ndarray
-        1D array of the initial values of the problem at t_span[0]
-    args : tuple = tuple()
-        Any additional arguments that are passed to dffeq.
-    rtol : float = 1.e-6
-        Integration relative tolerance used to determine optimal step size.
-    atol : float = 1.e-8
-        Integration absolute tolerance used to determine optimal step size.
-    max_step : float = np.inf
+        A python or njit-ed numba differential equation.
+        Format should follow:
+        ```
+        def diffeq(t, y, dy, arg_1, arg_2, ...):
+            dy[0] = y[0] * t
+            ....
+        ```
+    t_span : (double, double)
+        Values of independent variable at beginning and end of integration.
+    y0 : double[::1]
+        Initial values for the dependent y variables at `t_span[0]`.
+    args : tuple or None, default=None
+        Additional arguments used by the differential equation.
+        None (default) will tell the solver to not use additional arguments.
+    rk_method : int, default=1
+        Runge-Kutta method that will be used. Currently implemented models:
+            0: ‘RK23’: Explicit Runge-Kutta method of order 3(2).
+            1: ‘RK45’ (default): Explicit Runge-Kutta method of order 5(4).
+            2: ‘DOP853’: Explicit Runge-Kutta method of order 8.
+    rtol : double, default=1.0e-3
+        Relative tolerance using in local error calculation.
+    atol : double, default=1.0e-6
+        Absolute tolerance using in local error calculation.
+    rtols : double[::1], default=None
+        np.ndarray of relative tolerances, one for each dependent y variable.
+        None (default) will use the same tolerance (set by `rtol`) for each y variable.
+    atols : double[::1], default=None
+        np.ndarray of absolute tolerances, one for each dependent y variable.
+        None (default) will use the same tolerance (set by `atol`) for each y variable.
+    max_step : double, default=+Inf
         Maximum allowed step size.
-    first_step : float = None
-        Initial step size. If `None`, then the function will attempt to determine an appropriate initial step.
-    rk_method : int = 1
-        The type of RK method used for integration
-            0 = RK23
-            1 = RK45
-            2 = DOP853
-    t_eval : np.ndarray = None
-        If provided, then the function will interpolate the integration results to provide them at the
-            requested t-steps.
+    first_step : double, default=0
+        First step's size (after `t_span[0]`).
+        If set to 0 (the default) then the solver will attempt to guess a suitable initial step size.
+    max_num_steps : Py_ssize_t, default=0
+        Maximum number of step sizes allowed before solver will auto fail.
+        If set to 0 (the default) then the maximum number of steps will be equal to max integer size
+        allowed on system architecture.
+    t_eval : double[::1], default=None
+        If not set to None, then a final interpolation will be performed on the solution to fit it to this array.
     capture_extra : bool = False
         If True, then additional output from the differential equation will be collected (but not used to determine
          integration error).
@@ -144,16 +162,16 @@ def cyrk_ode(
             ```
     num_extra : int = 0
         The number of extra outputs the integrator should expect. With the previous example there is 1 extra output.
-    interpolate_extra : bool = False
-        If True, and if `t_eval` was provided, then the integrator will interpolate the extra output values at each
-         step in `t_eval`.
-    expected_size : int = 0
-        The integrator must pre-allocate memory to store results from the integration. It will attempt to use arrays sized to `expected_size`. However, if this is too small or too large then performance will be impacted. It is recommended you try out different values based on the problem you are trying to solve.
-        If `expected_size=0` (the default) then the solver will attempt to guess a best size. Currently this is a very basic guess so it is not recommended.
-        It is better to overshoot than undershoot this guess.
-    max_num_steps : int = 0
-        Maximum number of steps integrator is allowed to take.
-        If set to 0 (the default) then an infinite number of steps are allowed.
+    interpolate_extra : bool_cpp_t, default=False
+        Flag if interpolation should be run on extra parameters.
+        If set to False when `run_interpolation=True`, then interpolation will be run on solution's y, t. These will
+        then be used to recalculate extra parameters rather than an interpolation on the extra parameters captured
+        during integration.
+    expected_size : Py_ssize_t, default=0
+        Anticipated size of integration range, i.e., how many steps will be required.
+        Used to build temporary storage arrays for the solution results.
+        If set to 0 (the default), then the solver will attempt to guess on a suitable expected size based on the
+        relative tolerances and size of the integration domain.
 
     Returns
     -------
@@ -165,7 +183,6 @@ def cyrk_ode(
         Final integration success flag.
     message : str
         Any integration messages, useful if success=False.
-
     """
     # Setup loop variables
     cdef Py_ssize_t s, i, j
@@ -244,7 +261,6 @@ def cyrk_ode(
         store_extras_during_integration = False
 
     # # Determine integration tolerances
-    cdef double rtol_tmp, atol_tmp
     use_arg_arrays = False
     use_atol_array = False
     cdef np.ndarray[np.float64_t, ndim=1, mode='c'] rtol_array, atol_array
@@ -259,10 +275,10 @@ def cyrk_ode(
         if len(rtols) != y_size:
             raise AttributeError('rtols must be the same size as y0.')
         for i in range(y_size):
-            rtol_tmp = rtols[i]
-            if rtol_tmp < EPS_100:
-                rtol_tmp = EPS_100
-            rtols_view[i] = rtol_tmp
+            rtol = rtols[i]
+            if rtol < EPS_100:
+                rtol = EPS_100
+            rtols_view[i] = rtol
     else:
         # Using constant rtol
         # Check tolerances
@@ -282,21 +298,18 @@ def cyrk_ode(
             atols_view[i] = atol
 
     # Determine maximum number of steps
-    cdef bool_cpp_t use_max_steps
     if max_num_steps == 0:
-        use_max_steps = False
-        max_num_steps = 0
+        max_num_steps = MAX_INT_SIZE
     elif max_num_steps < 0:
         raise AttributeError('Negative number of max steps provided.')
     else:
-        use_max_steps = True
         max_num_steps = min(max_num_steps, MAX_INT_SIZE)
 
     # Expected size of output arrays.
     cdef double temp_expected_size
     cdef Py_ssize_t expected_size_to_use, num_concats
     if expected_size == 0:
-        # CySolver will attempt to guess on a best size for the arrays.
+        # CySolver will attempt to guess the best size for the output arrays.
         temp_expected_size = 100. * t_delta_abs * fmax(1., (1.e-6 / rtol))
         temp_expected_size = fmax(temp_expected_size, 100.)
         temp_expected_size = fmin(temp_expected_size, 10_000_000.)
@@ -333,15 +346,15 @@ def cyrk_ode(
     extra_start = y_size
     total_size  = y_size + num_extra
     # Create arrays based on this total size
-    diffeq_out     = np.empty(total_size, dtype=DTYPE, order='C')
-    y0_plus_extra  = np.empty(total_size, dtype=DTYPE, order='C')
-    extra_result   = np.empty(num_extra, dtype=DTYPE, order='C')
+    diffeq_out    = np.empty(total_size, dtype=DTYPE, order='C')
+    y0_plus_extra = np.empty(total_size, dtype=DTYPE, order='C')
+    extra_result  = np.empty(num_extra, dtype=DTYPE, order='C')
 
     # Setup memory views
     cdef double_numeric[:] diffeq_out_view, y0_plus_extra_view, extra_result_view
-    diffeq_out_view     = diffeq_out
-    y0_plus_extra_view  = y0_plus_extra
-    extra_result_view   = extra_result
+    diffeq_out_view    = diffeq_out
+    y0_plus_extra_view = y0_plus_extra
+    extra_result_view  = extra_result
 
     # Capture the extra output for the initial condition.
     if capture_extra:
@@ -529,7 +542,6 @@ def cyrk_ode(
     scale_arr = np.empty(y_size, dtype=np.float64, order='C')
     scale_view = scale_arr
 
-
     # Load initial conditions into output arrays
     time_domain_array_view[0] = t_start
     for i in range(store_loop_size):
@@ -625,16 +637,14 @@ def cyrk_ode(
             status = 1
             break
 
-        if use_max_steps:
-            if len_t > max_num_steps:
-                status = -2
-                message = "Maximum number of steps (set by user) exceeded during integration."
-                break
-        else:
-            if len_t > MAX_INT_SIZE:
+        if len_t > max_num_steps:
+            if max_num_steps == MAX_INT_SIZE:
                 status = -3
                 message = "Maximum number of steps (set by system architecture) exceeded during integration."
-                break
+            else:
+                status = -2
+                message = "Maximum number of steps (set by user) exceeded during integration."
+            break
 
         # Run RK integration step
         # Determine step size based on previous loop

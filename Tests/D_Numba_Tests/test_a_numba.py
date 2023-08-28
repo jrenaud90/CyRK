@@ -122,7 +122,7 @@ def test_max_step(rk_method, complex_valued):
         initial_conds_to_use = initial_conds
 
     time_domain, y_results, success, message = \
-        nbrk_ode(diffeq, time_span, initial_conds_to_use, rk_method=rk_method, max_step_size=time_span[1] / 2.)
+        nbrk_ode(diffeq, time_span, initial_conds_to_use, rk_method=rk_method, max_step=time_span[1] / 2.)
 
     # Check that the ndarrays make sense
     assert type(time_domain) == np.ndarray
@@ -319,8 +319,8 @@ def test_accuracy(rk_method):
 
 @pytest.mark.parametrize('complex_valued', (True, False))
 @pytest.mark.parametrize('rk_method', (0, 1, 2))
-def test_max_steps(rk_method, complex_valued):
-    """Check that the numba solver is able to utilize the max_steps argument """
+def test_max_num_steps(rk_method, complex_valued):
+    """Check that the numba solver is able to utilize the max_num_steps argument """
 
     if complex_valued:
         initial_conds_to_use = initial_conds_complex
@@ -329,7 +329,7 @@ def test_max_steps(rk_method, complex_valued):
 
     # First test a number of max steps which is fine.
     time_domain, y_results, success, message = \
-        nbrk_ode(diffeq, time_span_large, initial_conds_to_use, rk_method=rk_method, max_steps=1000000)
+        nbrk_ode(diffeq, time_span_large, initial_conds_to_use, rk_method=rk_method, max_num_steps=1000000)
 
     # Check that the ndarrays make sense
     assert type(time_domain) == np.ndarray
@@ -350,7 +350,7 @@ def test_max_steps(rk_method, complex_valued):
 
     # Now test an insufficient number of steps
     time_domain, y_results, success, message = \
-        nbrk_ode(diffeq, time_span_large, initial_conds_to_use, rk_method=rk_method, max_steps=4)
+        nbrk_ode(diffeq, time_span_large, initial_conds_to_use, rk_method=rk_method, max_num_steps=4)
 
     # Check that the ndarrays make sense
     assert not success

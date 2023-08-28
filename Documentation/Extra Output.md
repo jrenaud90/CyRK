@@ -174,9 +174,9 @@ CySolverTesterInst.solution_t  # Time domain
 CySolverTesterInst.solution_y  # y dependent variables
 
 # Extra output that was captured during integration.
-CySolverTesterInst.solution_extra
-print(CySolverTesterInst.solution_extra[0, :])
-print(CySolverTesterInst.solution_extra[1, :])
+CySolverTesterInst.extra
+print(CySolverTesterInst.extra[0, :])
+print(CySolverTesterInst.extra[1, :])
 ```
 
 ## Additional Considerations When Using `t_eval`
