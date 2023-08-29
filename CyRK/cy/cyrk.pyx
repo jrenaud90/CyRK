@@ -733,7 +733,7 @@ def cyrk_ode(
                 # Dot Product (K, E5) / scale and Dot Product (K, E3) * step / scale
                 for i in range(y_size):
                     # Find scale of y for error calculations
-                    scale = (atols_view[i] + max(fabs(y_old_view[i]), fabs(y_new_view[i])) * rtols_view[i])
+                    scale = (atols_view[i] + max(dabs(y_old_view[i]), dabs(y_new_view[i])) * rtols_view[i])
 
                     # Set diffeq results
                     dydt_new_view[i] = diffeq_out_view[i]
@@ -769,7 +769,7 @@ def cyrk_ode(
                 error_norm = 0.
                 for i in range(y_size):
                     # Find scale of y for error calculations
-                    scale = (atols_view[i] + max(fabs(y_old_view[i]), fabs(y_new_view[i])) * rtols_view[i])
+                    scale = (atols_view[i] + max(dabs(y_old_view[i]), dabs(y_new_view[i])) * rtols_view[i])
 
                     # Set diffeq results
                     dydt_new_view[i] = diffeq_out_view[i]
