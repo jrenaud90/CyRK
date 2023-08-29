@@ -9,7 +9,7 @@ Changes
 
 Bug Fixes
 - Added back noexcepts to dabs functions used by cyrk_ode that were mistakenly removed in final dev commit of v0.7.0.
-
+- Fixed issue where cython-based solvers could overshoot t_span[1].
 
 ### v0.7.0
 

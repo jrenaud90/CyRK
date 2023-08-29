@@ -666,11 +666,12 @@ def cyrk_ode(
             # Move time forward for this particular step size
             if direction_flag:
                 step = step_size
+                t_new = t_old + step
                 t_delta_check = t_new - t_end
             else:
                 step = -step_size
+                t_new = t_old + step
                 t_delta_check = t_end - t_new
-            t_new = t_old + step
 
             # Check that we are not at the end of integration with that move
             if t_delta_check > 0.:

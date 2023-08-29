@@ -714,11 +714,12 @@ cdef class CySolver:
             # Move time forward for this particular step size
             if self.direction_flag:
                 step = self.step_size
+                self.t_new = self.t_old + step
                 t_delta_check = self.t_new - self.t_end
             else:
                 step = -self.step_size
+                self.t_new = self.t_old + step
                 t_delta_check = self.t_end - self.t_new
-            self.t_new = self.t_old + step
 
             # Check that we are not at the end of integration with that move
             if t_delta_check > 0.:
