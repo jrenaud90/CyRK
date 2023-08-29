@@ -2,6 +2,12 @@
 
 ## 2023
 
+#### v0.7.1
+
+Changes
+- Changed cyrk_ode to match the format used by CySolver for its rk_step.
+
+
 ### v0.7.0
 
 Major Changes

@@ -536,12 +536,6 @@ def cyrk_ode(
     y_results_array_view   = y_results_array
     time_domain_array_view = time_domain_array
 
-    cdef np.ndarray[np.float64_t, ndim=1, mode='c'] scale_arr
-    cdef double[:] scale_view
-    cdef double scale
-    scale_arr = np.empty(y_size, dtype=np.float64, order='C')
-    scale_view = scale_arr
-
     # Load initial conditions into output arrays
     time_domain_array_view[0] = t_start
     for i in range(store_loop_size):
@@ -551,7 +545,7 @@ def cyrk_ode(
             y_results_array_view[i] = y0[i]
 
     # # Determine size of first step.
-    cdef double step_size, d0, d1, d2, d0_abs, d1_abs, d2_abs, h0, h1
+    cdef double step_size, d0, d1, d2, d0_abs, d1_abs, d2_abs, h0, h1, scale
     if first_step == 0.:
         # Select an initial step size based on the differential equation.
         # .. [1] E. Hairer, S. P. Norsett G. Wanner, "Solving Ordinary Differential
@@ -705,7 +699,7 @@ def cyrk_ode(
                             # Initialize
                             y_new_view[i] = y_old_view[i]
 
-                        y_new_view[i] = y_new_view[i] + (K_view[j, i] * A_at_sj * step)
+                        y_new_view[i] += K_view[j, i] * A_at_sj * step
 
                 if use_args:
                     diffeq(time_, y_new, diffeq_out, *args)
@@ -724,26 +718,12 @@ def cyrk_ode(
                     if j == 0:
                         # Initialize
                         y_new_view[i] = y_old_view[i]
-                    y_new_view[i] = y_new_view[i] + (K_view[j, i] * B_at_j * step)
+                    y_new_view[i] += K_view[j, i] * B_at_j * step
 
             if use_args:
                 diffeq(t_new, y_new, diffeq_out, *args)
             else:
                 diffeq(t_new, y_new, diffeq_out)
-
-
-            for i in range(store_loop_size):
-                if i < extra_start:
-                    # Set diffeq results
-                    dydt_new_view[i] = diffeq_out_view[i]
-                    scale_view[i] = atols_view[i] + max(dabs(y_old_view[i]), dabs(y_new_view[i])) * rtols_view[i]
-
-                    # Set last array of K equal to dydt
-                    K_view[rk_n_stages, i] = dydt_new_view[i]
-
-                else:
-                    # Set extra results
-                    extra_result_view[i - extra_start] = diffeq_out_view[i]
 
             if rk_method == 2:
                 # Calculate Error for DOP853
@@ -752,13 +732,20 @@ def cyrk_ode(
                 error_norm3 = 0.
                 # Dot Product (K, E5) / scale and Dot Product (K, E3) * step / scale
                 for i in range(y_size):
+                    # Find scale of y for error calculations
+                    scale = (atols_view[i] + max(fabs(y_old_view[i]), fabs(y_new_view[i])) * rtols_view[i])
+
+                    # Set diffeq results
+                    dydt_new_view[i] = diffeq_out_view[i]
+
+                    # Set last array of K equal to dydt
+                    K_view[rk_n_stages, i] = dydt_new_view[i]
                     for j in range(rk_n_stages_plus1):
                         if j == 0:
                             # Initialize
                             error_dot_1 = 0.
                             error_dot_2 = 0.
 
-                        scale = scale_view[i]
                         K_scale = K_view[j, i] / <double_numeric>scale
                         error_dot_1 += K_scale * E3_view[j]
                         error_dot_2 += K_scale * E5_view[j]
@@ -781,13 +768,20 @@ def cyrk_ode(
                 # Dot Product (K, E) * step / scale
                 error_norm = 0.
                 for i in range(y_size):
+                    # Find scale of y for error calculations
+                    scale = (atols_view[i] + max(fabs(y_old_view[i]), fabs(y_new_view[i])) * rtols_view[i])
+
+                    # Set diffeq results
+                    dydt_new_view[i] = diffeq_out_view[i]
+
+                    # Set last array of K equal to dydt
+                    K_view[rk_n_stages, i] = dydt_new_view[i]
                     for j in range(rk_n_stages_plus1):
                         if j == 0:
                             # Initialize
                             error_dot_1 = 0.
 
-                        scale = scale_view[i]
-                        K_scale = K_view[j, i] / <double_numeric> scale
+                        K_scale = K_view[j, i] / <double_numeric>scale
                         error_dot_1 += K_scale * E_view[j] * step
 
                     error_norm_abs = dabs(error_dot_1)
