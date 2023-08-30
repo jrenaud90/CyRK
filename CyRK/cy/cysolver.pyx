@@ -14,10 +14,10 @@ from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, isnan, NAN, pow
 
 from CyRK.array.interp cimport interp_array
 from CyRK.rk.rk cimport (
-    RK23_C, RK23_B, RK23_E, RK23_A, RK23_order, RK23_error_order, RK23_n_stages, RK23_LEN_C,
-    RK45_C, RK45_B, RK45_E, RK45_A, RK45_order, RK45_error_order, RK45_n_stages, RK45_LEN_C,
-    DOP_C_REDUCED, DOP_B, DOP_E3, DOP_E5, DOP_A_REDUCED, DOP_order, DOP_error_order, DOP_n_stages,
-    DOP_n_stages_extended, DOP_LEN_C)
+    RK23_C_view, RK23_B_view, RK23_E_view, RK23_A_view, RK23_order, RK23_error_order, RK23_n_stages, RK23_LEN_C,
+    RK45_C_view, RK45_B_view, RK45_E_view, RK45_A_view, RK45_order, RK45_error_order, RK45_n_stages, RK45_LEN_C,
+    DOP_C_REDUCED_view, DOP_B_view, DOP_E3_view, DOP_E5_view, DOP_A_REDUCED_view,
+    DOP_order, DOP_error_order, DOP_n_stages, DOP_n_stages_extended, DOP_LEN_C)
 
 # # Integration Constants
 # Multiply steps computed from asymptotic behaviour of errors by this.
@@ -468,43 +468,43 @@ cdef class CySolver:
             self.error_order = RK23_error_order
             self.rk_n_stages = RK23_n_stages
             self.len_C       = RK23_LEN_C
-            self.A_view  = RK23_A
-            self.B_view  = RK23_B
-            self.C_view  = RK23_C
-            self.E_view  = RK23_E
+            self.A_view      = RK23_A_view
+            self.B_view      = RK23_B_view
+            self.C_view      = RK23_C_view
+            self.E_view      = RK23_E_view
 
             # Unused for RK23 but initalize it anyways
-            self.E3_view = RK23_E
-            self.E5_view = RK23_E
+            self.E3_view = RK23_E_view
+            self.E5_view = RK23_E_view
         elif rk_method == 1:
             # RK45 Method
             self.rk_order    = RK45_order
             self.error_order = RK45_error_order
             self.rk_n_stages = RK45_n_stages
             self.len_C       = RK45_LEN_C
-            self.A_view  = RK45_A
-            self.B_view  = RK45_B
-            self.C_view  = RK45_C
-            self.E_view  = RK45_E
+            self.A_view      = RK45_A_view
+            self.B_view      = RK45_B_view
+            self.C_view      = RK45_C_view
+            self.E_view      = RK45_E_view
 
-            # Unused for RK23 but initalize it anyways
-            self.E3_view = RK45_E
-            self.E5_view = RK45_E
+            # Unused for RK45 but initalize it anyways
+            self.E3_view = RK45_E_view
+            self.E5_view = RK45_E_view
         elif rk_method == 2:
             # DOP853 Method
             self.rk_order    = DOP_order
             self.error_order = DOP_error_order
             self.rk_n_stages = DOP_n_stages
             self.len_C       = DOP_LEN_C
-            self.A_view  = DOP_A_REDUCED
-            self.B_view  = DOP_B
-            self.C_view  = DOP_C_REDUCED
-            self.E3_view = DOP_E3
-            self.E5_view = DOP_E5
+            self.A_view      = DOP_A_REDUCED_view
+            self.B_view      = DOP_B_view
+            self.C_view      = DOP_C_REDUCED_view
+            self.E3_view     = DOP_E3_view
+            self.E5_view     = DOP_E5_view
             self.rk_n_stages_extended = DOP_n_stages_extended
 
             # Unused for DOP853 but initialize it anyways
-            self.E_view  = DOP_E3
+            self.E_view  = DOP_E3_view
         else:
             self.status = -8
             self.message = "Attribute error."
@@ -714,11 +714,12 @@ cdef class CySolver:
             # Move time forward for this particular step size
             if self.direction_flag:
                 step = self.step_size
+                self.t_new = self.t_old + step
                 t_delta_check = self.t_new - self.t_end
             else:
                 step = -self.step_size
+                self.t_new = self.t_old + step
                 t_delta_check = self.t_end - self.t_new
-            self.t_new = self.t_old + step
 
             # Check that we are not at the end of integration with that move
             if t_delta_check > 0.:
@@ -754,13 +755,13 @@ cdef class CySolver:
                         self.y_new_view[i] = self.y_old_view[i] + (dy_tmp * A_at_10 * step)
                 else:
                     for j in range(s):
-                        A_at_sj = self.A_view[s, j]
+                        A_at_sj = self.A_view[s, j] * step
                         for i in range(self.y_size):
                             if j == 0:
                                 # Initialize
                                 self.y_new_view[i] = self.y_old_view[i]
 
-                            self.y_new_view[i] += self.K_view[j, i] * A_at_sj * step
+                            self.y_new_view[i] += self.K_view[j, i] * A_at_sj
 
                 # Call diffeq to update K with the new dydt
                 self.diffeq()
@@ -773,7 +774,7 @@ cdef class CySolver:
 
             # Dot Product (K, B) * step
             for j in range(self.rk_n_stages):
-                B_at_j = self.B_view[j]
+                B_at_j = self.B_view[j] * step
                 # We do not use rk_n_stages_plus1 here because we are chopping off the last row of K to match
                 #  the shape of B.
                 for i in range(self.y_size):
@@ -781,7 +782,7 @@ cdef class CySolver:
                         # Initialize
                         self.y_new_view[i] = self.y_old_view[i]
 
-                    self.y_new_view[i] += self.K_view[j, i] * B_at_j * step
+                    self.y_new_view[i] += self.K_view[j, i] * B_at_j
 
             self.diffeq()
 

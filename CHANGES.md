@@ -2,6 +2,23 @@
 
 ## 2023
 
+#### v0.7.1
+
+Changes
+- Changed cyrk_ode to match the format used by CySolver for its rk_step.
+
+Performance
+- Minor calculation taken out of tight inner loops in cython-based solvers. 
+
+Bug Fixes
+- Added back noexcepts to dabs functions used by cyrk_ode that were mistakenly removed in final dev commit of v0.7.0.
+- Fixed issue where cython-based solvers could overshoot t_span[1].
+- Fixed issue where interp functions would give wrong result when requested x was between x_array[0] and x_array[1].
+- Fixed issue where interp functions would give wrong results if requested x was negative and x_array was positive (or vice versa).
+- The use of carrays for RK constants led to floating point rounding differences that could impact results when step sizes are small.
+  - Converted RK constants to numpy arrays which seem to handle the floats much better. 
+  - Also changed the interaction with these variables to be done solely through constant memoryviews. This may provide a bit of a performance boost.
+
 ### v0.7.0
 
 Major Changes

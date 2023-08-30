@@ -55,8 +55,10 @@ cdef class CySolver:
     cdef Py_ssize_t rk_order, error_order, rk_n_stages, rk_n_stages_plus1, rk_n_stages_extended
     cdef double error_expo
     cdef Py_ssize_t len_C
-    cdef double[::1] B_view, E_view, E3_view, E5_view, C_view
-    cdef double[:, ::1] A_view, K_view
+    cdef const double[::1] B_view, E_view, E3_view, E5_view, C_view
+    cdef const double[:, ::1] A_view
+    # K is not constant. It is a temp storage variable used in RK calculations
+    cdef double[:, ::1] K_view
     cdef double[::1, :] K_T_view
 
     # -- Live variables

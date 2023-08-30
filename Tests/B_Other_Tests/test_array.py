@@ -1,17 +1,19 @@
 import numpy as np
 
+import pytest
+
 def test_array_module():
     """ Test that the functions load correctly. """
     from CyRK.array import interpj, interp_complexj, interp, interp_complex, interp_array, interp_complex_array
 
 
-def test_interp():
+@pytest.mark.parametrize('t_test', (250.23, 650.0, 0., 1000., 1050., -30., 0.1, 0.5, 0.75, 1.25))
+def test_interp(t_test):
     """ Test custom interpolation function (floats). """
     from CyRK.array import interp
 
     t = np.linspace(0., 1000., 1001, dtype=np.float64)
     x = 100 * np.cos(t)**2
-    t_test = 250.2235
 
     numpy_interp = np.interp(t_test, t, x)
 
@@ -19,14 +21,13 @@ def test_interp():
 
     assert np.allclose([numpy_interp], [cyrk_interp])
 
-
-def test_interp_complex():
+@pytest.mark.parametrize('t_test', (250.23, 650.0, 0., 1000., 1050., -30., 0.1, 0.5, 0.75, 1.25))
+def test_interp_complex(t_test):
     """ Test custom interpolation function (complex). """
     from CyRK.array import interp_complex
 
     t = np.linspace(0., 1000., 1001, dtype=np.float64)
     x = 100 * np.cos(t)**2 - 1.j * np.sin(t)
-    t_test = 250.2235
 
     numpy_interp = np.interp(t_test, t, x)
 
@@ -34,19 +35,20 @@ def test_interp_complex():
 
     assert np.allclose([numpy_interp], [cyrk_interp])
 
-def test_interp_with_provided_j():
+@pytest.mark.parametrize('t_test', (250.23, 650.0, 0., 1000., 1050., -30., 0.1, 0.5, 0.75, 1.25))
+def test_interp_with_provided_j(t_test):
     """ Test custom interpolation function with provided j. """
     from CyRK.array import interpj, interp_complexj, interp, interp_complex
 
     # Test float function
     t = np.linspace(0., 1000., 1001, dtype=np.float64)
     x = 100 * np.cos(t)**2
-    t_test = 250.2235
 
     numpy_interp = np.interp(t_test, t, x)
 
     # Get j
     cyrk_interp_1, provided_j = interpj(t_test, t, x)
+
     # Use j
     cyrk_interp_2 = interp(t_test, t, x, provided_j=provided_j)
 
