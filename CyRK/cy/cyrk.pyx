@@ -456,8 +456,9 @@ def cyrk_ode(
     # Setup memory views.
     cdef double_numeric[:] B_view, E_view, E3_view, E5_view
     cdef double_numeric[:, :] A_view, K_view
-    cdef double_numeric A_at_sj, B_at_j, error_dot_1, error_dot_2
+    cdef double_numeric A_at_sj, A_at_10, B_at_j, error_dot_1, error_dot_2
     cdef double[:] C_view
+    cdef double C_at_s
     A_view      = A
     B_view      = B
     C_view      = C
@@ -510,6 +511,7 @@ def cyrk_ode(
             E_view[i] = DOP_E5[i]
             # Dummy Variables, set equal to E3
             E_view[i] = DOP_E3[i]
+    A_at_10 = A_view[1, 0]
 
     # Initialize variables for start of integration
     if not capture_extra:
@@ -614,7 +616,6 @@ def cyrk_ode(
 
     # # Main integration loop
     cdef double min_step, step_factor, step
-    cdef double c
     cdef double_numeric K_scale
     cdef Py_ssize_t len_t
     status = 0
@@ -685,22 +686,29 @@ def cyrk_ode(
                     step_size = -step
 
             # Calculate derivative using RK method
-            for i in range(y_size):
-                K_view[0, i] = dydt_old_view[i]
-
+            # Dot Product (K, a) * step
             for s in range(1, len_C):
                 c = C_view[s]
                 time_ = t_old + c * step
 
                 # Dot Product (K, a) * step
-                for j in range(s):
-                    A_at_sj = A_view[s, j]
+                if s == 1:
                     for i in range(y_size):
-                        if j == 0:
-                            # Initialize
-                            y_new_view[i] = y_old_view[i]
+                        # Set the first column of K
+                        dy_tmp = dydt_old_view[i]
+                        K_view[0, i] = dy_tmp
 
-                        y_new_view[i] += K_view[j, i] * A_at_sj * step
+                        # Calculate y_new for s==1
+                        y_new_view[i] = y_old_view[i] + (dy_tmp * A_at_10 * step)
+                else:
+                    for j in range(s):
+                        A_at_sj = A_view[s, j]
+                        for i in range(y_size):
+                            if j == 0:
+                                # Initialize
+                                y_new_view[i] = y_old_view[i]
+
+                            y_new_view[i] += K_view[j, i] * A_at_sj * step
 
                 if use_args:
                     diffeq(time_, y_new, diffeq_out, *args)
@@ -719,6 +727,7 @@ def cyrk_ode(
                     if j == 0:
                         # Initialize
                         y_new_view[i] = y_old_view[i]
+
                     y_new_view[i] += K_view[j, i] * B_at_j * step
 
             if use_args:
