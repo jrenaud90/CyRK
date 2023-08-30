@@ -1,7 +1,3 @@
-import numpy as np
-cimport numpy as np
-np.import_array()
-
 # RK23
 cdef const double[::1] RK23_C_view, RK23_B_view, RK23_E_view
 cdef const double[:, ::1] RK23_A_view
