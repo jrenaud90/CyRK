@@ -13,9 +13,12 @@ from libc.math cimport sqrt, fabs, nextafter, fmax, fmin
 from CyRK.array.interp cimport interp_array, interp_complex_array
 from CyRK.rk.rk cimport (
     RK23_C_view, RK23_B_view, RK23_E_view, RK23_A_view, RK23_order, RK23_error_order, RK23_n_stages, RK23_LEN_C,
+    RK23_LEN_B, RK23_LEN_E, RK23_LEN_E3, RK23_LEN_E5, RK23_LEN_A0, RK23_LEN_A1,
     RK45_C_view, RK45_B_view, RK45_E_view, RK45_A_view, RK45_order, RK45_error_order, RK45_n_stages, RK45_LEN_C,
+    RK45_LEN_B, RK45_LEN_E, RK45_LEN_E3, RK45_LEN_E5, RK45_LEN_A0, RK45_LEN_A1,
     DOP_C_REDUCED_view, DOP_B_view, DOP_E3_view, DOP_E5_view, DOP_A_REDUCED_view,
-    DOP_order, DOP_error_order, DOP_n_stages, DOP_n_stages_extended, DOP_LEN_C)
+    DOP_order, DOP_error_order, DOP_n_stages, DOP_n_stages_extended, DOP_LEN_C,
+    DOP_LEN_B, DOP_LEN_E, DOP_LEN_E3, DOP_LEN_E5, DOP_LEN_A0, DOP_LEN_A1)
 
 # # Integration Constants
 # Multiply steps computed from asymptotic behaviour of errors by this.
@@ -389,55 +392,58 @@ def cyrk_ode(
     # # Determine RK scheme
     cdef Py_ssize_t rk_order, error_order
     cdef Py_ssize_t rk_n_stages, rk_n_stages_plus1, rk_n_stages_extended
-    cdef Py_ssize_t len_C
+    cdef Py_ssize_t len_A0, len_A1, len_B, len_C, len_E, len_E3, len_E5
     cdef double error_pow, error_expo, error_norm5, error_norm3, error_norm, error_norm_abs, error_norm3_abs, error_norm5_abs, error_denom
-
-    cdef const double[::1] B_view_tmp, C_view_tmp, E_view_tmp, E3_view_tmp, E5_view_tmp
-    cdef const double[:, ::1] A_view_tmp
 
     if rk_method == 0:
         # RK23 Method
         rk_order    = RK23_order
         error_order = RK23_error_order
         rk_n_stages = RK23_n_stages
-        len_C       = RK23_LEN_C
-        A_view_tmp  = RK23_A_view
-        B_view_tmp  = RK23_B_view
-        C_view_tmp  = RK23_C_view
-        E_view_tmp  = RK23_E_view
 
-        # Unused for RK23 but initalize it anyways
-        E3_view_tmp = RK23_E_view
-        E5_view_tmp = RK23_E_view
+        len_A0 = RK23_LEN_A0
+        len_A1 = RK23_LEN_A1
+        len_B  = RK23_LEN_B
+        len_C  = RK23_LEN_C
+        len_E  = RK23_LEN_E
+
+        # These are unused for RK23, but initalize them anyways
+        len_E3 = RK23_LEN_E3
+        len_E5 = RK23_LEN_E5
+
     elif rk_method == 1:
         # RK45 Method
         rk_order    = RK45_order
         error_order = RK45_error_order
         rk_n_stages = RK45_n_stages
-        len_C       = RK45_LEN_C
-        A_view_tmp  = RK45_A_view
-        B_view_tmp  = RK45_B_view
-        C_view_tmp  = RK45_C_view
-        E_view_tmp  = RK45_E_view
 
-        # Unused for RK45 but initalize it anyways
-        E3_view_tmp = RK45_E_view
-        E5_view_tmp = RK45_E_view
+        len_A0 = RK45_LEN_A0
+        len_A1 = RK45_LEN_A1
+        len_B  = RK45_LEN_B
+        len_C  = RK45_LEN_C
+        len_E  = RK45_LEN_E
+
+        # These are unused for RK45, but initalize them anyways
+        len_E3 = RK45_LEN_E
+        len_E5 = RK45_LEN_E
+
     elif rk_method == 2:
         # DOP853 Method
         rk_order    = DOP_order
         error_order = DOP_error_order
         rk_n_stages = DOP_n_stages
         len_C       = DOP_LEN_C
-        A_view_tmp  = DOP_A_REDUCED_view
-        B_view_tmp  = DOP_B_view
-        C_view_tmp  = DOP_C_REDUCED_view
-        E3_view_tmp = DOP_E3_view
-        E5_view_tmp = DOP_E5_view
         rk_n_stages_extended = DOP_n_stages_extended
 
-        # Unused for DOP853 but initalize it anyways
-        E_view_tmp  = DOP_E3_view
+        len_A0 = DOP_LEN_A0
+        len_A1 = DOP_LEN_A1
+        len_B  = DOP_LEN_B
+        len_C  = DOP_LEN_C
+        len_E3 = DOP_LEN_E3
+        len_E5 = DOP_LEN_E5
+
+        # These are unused for DOP853, but initalize them anyways
+        len_E  = DOP_LEN_E3
     else:
         status = -8
         message = "Attribute error."
@@ -451,32 +457,69 @@ def cyrk_ode(
     error_expo = 1. / (<double>error_order + 1.)
 
     # Build RK Arrays. Note that all are 1D except for A and K.
-    # C is a double no matter what.
-    cdef const double[::1] C_view
-    C_view = C_view_tmp
-
     # Check if we need to convert RK constants (all are defined as real-valued doubles)
-    A  = np.asarray(A_view_tmp, dtype=DTYPE, order='C')
-    B  = np.asarray(B_view_tmp, dtype=DTYPE, order='C')
-    E  = np.asarray(E_view_tmp, dtype=DTYPE, order='C')
-    E3 = np.asarray(E3_view_tmp, dtype=DTYPE, order='C')
-    E5 = np.asarray(E5_view_tmp, dtype=DTYPE, order='C')
-
-    # Make these arrays readonly
-    A.setflags(write=False)
-    B.setflags(write=False)
-    E.setflags(write=False)
-    E3.setflags(write=False)
-    E5.setflags(write=False)
+    A  = np.empty((len_A0, len_A1), dtype=DTYPE, order='C')
+    B  = np.empty(len_B, dtype=DTYPE, order='C')
+    C  = np.empty(len_C, dtype=np.float64, order='C')
+    E  = np.empty(len_E, dtype=DTYPE, order='C')
+    E3 = np.empty(len_E3, dtype=DTYPE, order='C')
+    E5 = np.empty(len_E5, dtype=DTYPE, order='C')
 
     # Set memoryviews
-    cdef const double_numeric[::1] B_view, E_view, E3_view, E5_view
-    cdef const double_numeric[:, ::1] A_view
-    A_view = A
-    B_view = B
-    E_view = E
+    cdef double_numeric[::1] B_view, E_view, E3_view, E5_view
+    cdef double_numeric[:, ::1] A_view
+    # C is a double no matter what.
+    cdef double[::1] C_view
+    A_view  = A
+    B_view  = B
+    C_view  = C
+    E_view  = E
     E3_view = E3
     E5_view = E5
+
+    # Populate values based on externally defined constants.
+    if rk_method == 0:
+        # RK23 Method
+        for i in range(len_A0):
+            for j in range(len_A1):
+                A_view[i, j] = RK23_A_view[i, j]
+        for i in range(len_B):
+            B_view[i] = RK23_B_view[i]
+        for i in range(len_C):
+            C_view[i] = RK23_C_view[i]
+        for i in range(len_E):
+            E_view[i] = RK23_E_view[i]
+            # Dummy Variables, set equal to E
+            E3_view[i] = RK23_E_view[i]
+            E5_view[i] = RK23_E_view[i]
+    elif rk_method == 1:
+        # RK45 Method
+        for i in range(len_A0):
+            for j in range(len_A1):
+                A_view[i, j] = RK45_A_view[i, j]
+        for i in range(len_B):
+            B_view[i] = RK45_B_view[i]
+        for i in range(len_C):
+            C_view[i] = RK45_C_view[i]
+        for i in range(len_E):
+            E_view[i]  = RK45_E_view[i]
+            # Dummy Variables, set equal to E
+            E3_view[i] = RK45_E_view[i]
+            E5_view[i] = RK45_E_view[i]
+    else:
+        # DOP853 Method
+        for i in range(len_A0):
+            for j in range(len_A1):
+                A_view[i, j] = DOP_A_REDUCED_view[i, j]
+        for i in range(len_B):
+            B_view[i] = DOP_B_view[i]
+        for i in range(len_C):
+            C_view[i] = DOP_C_REDUCED_view[i]
+        for i in range(len_E):
+            E3_view[i] = DOP_E3_view[i]
+            E5_view[i] = DOP_E5_view[i]
+            # Dummy Variable, set equal to E3
+            E_view[i]  = DOP_E3_view[i]
 
     # Initialize other RK-related Arrays
     # It is important K be initialized with 0s
@@ -678,13 +721,13 @@ def cyrk_ode(
                         y_new_view[i] = y_old_view[i] + (dy_tmp * A_at_10 * step)
                 else:
                     for j in range(s):
-                        A_at_sj = A_view[s, j]
+                        A_at_sj = A_view[s, j] * step
                         for i in range(y_size):
                             if j == 0:
                                 # Initialize
                                 y_new_view[i] = y_old_view[i]
 
-                            y_new_view[i] += K_view[j, i] * A_at_sj * step
+                            y_new_view[i] += K_view[j, i] * A_at_sj
 
                 if use_args:
                     diffeq(time_, y_new, diffeq_out, *args)
@@ -696,7 +739,7 @@ def cyrk_ode(
 
             # Dot Product (K, B) * step
             for j in range(rk_n_stages):
-                B_at_j = B_view[j]
+                B_at_j = B_view[j] * step
                 # We do not use rk_n_stages_plus1 here because we are chopping off the last row of K to match
                 #  the shape of B.
                 for i in range(y_size):
@@ -704,7 +747,7 @@ def cyrk_ode(
                         # Initialize
                         y_new_view[i] = y_old_view[i]
 
-                    y_new_view[i] += K_view[j, i] * B_at_j * step
+                    y_new_view[i] += K_view[j, i] * B_at_j
 
             if use_args:
                 diffeq(t_new, y_new, diffeq_out, *args)
@@ -732,7 +775,7 @@ def cyrk_ode(
                             error_dot_1 = 0.
                             error_dot_2 = 0.
 
-                        K_scale = K_view[j, i] / <double_numeric>scale
+                        K_scale = K_T_view[i, j] / <double_numeric>scale
                         error_dot_1 += K_scale * E3_view[j]
                         error_dot_2 += K_scale * E5_view[j]
 
@@ -767,7 +810,7 @@ def cyrk_ode(
                             # Initialize
                             error_dot_1 = 0.
 
-                        K_scale = K_view[j, i] / <double_numeric>scale
+                        K_scale = K_T_view[i, j] / <double_numeric>scale
                         error_dot_1 += K_scale * E_view[j] * step
 
                     error_norm_abs = dabs(error_dot_1)

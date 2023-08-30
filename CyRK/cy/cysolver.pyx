@@ -755,13 +755,13 @@ cdef class CySolver:
                         self.y_new_view[i] = self.y_old_view[i] + (dy_tmp * A_at_10 * step)
                 else:
                     for j in range(s):
-                        A_at_sj = self.A_view[s, j]
+                        A_at_sj = self.A_view[s, j] * step
                         for i in range(self.y_size):
                             if j == 0:
                                 # Initialize
                                 self.y_new_view[i] = self.y_old_view[i]
 
-                            self.y_new_view[i] += self.K_view[j, i] * A_at_sj * step
+                            self.y_new_view[i] += self.K_view[j, i] * A_at_sj
 
                 # Call diffeq to update K with the new dydt
                 self.diffeq()
@@ -774,7 +774,7 @@ cdef class CySolver:
 
             # Dot Product (K, B) * step
             for j in range(self.rk_n_stages):
-                B_at_j = self.B_view[j]
+                B_at_j = self.B_view[j] * step
                 # We do not use rk_n_stages_plus1 here because we are chopping off the last row of K to match
                 #  the shape of B.
                 for i in range(self.y_size):
@@ -782,7 +782,7 @@ cdef class CySolver:
                         # Initialize
                         self.y_new_view[i] = self.y_old_view[i]
 
-                    self.y_new_view[i] += self.K_view[j, i] * B_at_j * step
+                    self.y_new_view[i] += self.K_view[j, i] * B_at_j
 
             self.diffeq()
 

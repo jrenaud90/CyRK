@@ -7,6 +7,9 @@
 Changes
 - Changed cyrk_ode to match the format used by CySolver for its rk_step.
 
+Performance
+- Minor calculation taken out of tight inner loops in cython-based solvers. 
+
 Bug Fixes
 - Added back noexcepts to dabs functions used by cyrk_ode that were mistakenly removed in final dev commit of v0.7.0.
 - Fixed issue where cython-based solvers could overshoot t_span[1].
