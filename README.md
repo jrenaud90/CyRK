@@ -27,7 +27,8 @@ The [cython](https://cython.org/) `CySolver` class that works with cython-based 
 
 An additional benefit of the two cython implementations is that they are pre-compiled. This avoids most of the start-up performance hit experienced by just-in-time compilers like numba.
 
-<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_predprey_v0-7-0a6.png" alt="CyRK Performance" />
+
+<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_predprey_v0-7-1.png" alt="CyRK Performance Graphic" />
 
 ## Installation
 
