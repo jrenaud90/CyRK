@@ -48,7 +48,7 @@ cdef Py_ssize_t binary_search_with_guess(double key, double[:] array, Py_ssize_t
     if key > array[length - 1]:
         return length
     elif key < array[0]:
-        return 0
+        return -1
 
     # If len <= 4 use linear search.
     # if length <= 4:
@@ -153,15 +153,14 @@ cpdef (double, Py_ssize_t) interpj(double desired_x, double[:] x_domain, double[
         # TODO: How to handle exception handling in a cdef function... For now just repeat the search.
         j = binary_search_with_guess(desired_x, x_domain, lenx, j)
     else:
-        # provided_j is strictly positive and smaller size in this block so the conversion is safe.
         j = provided_j
 
     cdef Py_ssize_t j_out
     j_out = j
 
-    if j == -1:
+    if j <= -1:
         result = left_value
-    elif j == lenx:
+    elif j >= lenx:
         result = right_value
     else:
         fp_at_j = dependent_values[j]
@@ -252,16 +251,15 @@ cpdef (double complex, Py_ssize_t) interp_complexj(double desired_x, double[:] x
         # TODO: How to handle exception handling in a cdef function... For now just repeat the search.
         j = binary_search_with_guess(desired_x, x_domain, lenx, j)
     else:
-        # provided_j is strictly positive and smaller size in this block so the conversion is safe.
         j = provided_j
 
     cdef Py_ssize_t j_out
     j_out =  j
 
-    if j == -1:
+    if j <= -1:
         result_real = left_value.real
         result_imag = left_value.imag
-    elif j == lenx:
+    elif j >= lenx:
         result_real = right_value.real
         result_imag = right_value.imag
     else:
@@ -361,12 +359,11 @@ cpdef double interp(double desired_x, double[:] x_domain, double[:] dependent_va
         # TODO: How to handle exception handling in a cdef function... For now just repeat the search.
         j = binary_search_with_guess(desired_x, x_domain, lenx, j)
     else:
-        # provided_j is strictly positive and smaller size in this block so the conversion is safe.
-        j =  provided_j
+        j = provided_j
 
-    if j == -1:
+    if j <= -1:
         result = left_value
-    elif j == lenx:
+    elif j >= lenx:
         result = right_value
     else:
         fp_at_j = dependent_values[j]
@@ -454,13 +451,12 @@ cpdef double complex interp_complex(double desired_x, double[:] x_domain,
         # TODO: How to handle exception handling in a cdef function... For now just repeat the search.
         j = binary_search_with_guess(desired_x, x_domain, lenx, j)
     else:
-        # provided_j is strictly positive and smaller size in this block so the conversion is safe.
         j = provided_j
 
-    if j == -1:
+    if j <= -1:
         result_real = left_value.real
         result_imag = left_value.imag
-    elif j == lenx:
+    elif j >= lenx:
         result_real = right_value.real
         result_imag = right_value.imag
     else:
@@ -548,9 +544,9 @@ cpdef void interp_array(double[:] desired_x_array, double[:] x_domain, double[:]
         guess = <Py_ssize_t>x_slope * index
         j = binary_search_with_guess(desired_x, x_domain, lenx, guess)
 
-        if j == -1:
+        if j <= -1:
             result = left_value
-        elif j == lenx:
+        elif j >= lenx:
             result = right_value
         else:
             fp_at_j = dependent_values[j]
@@ -630,10 +626,10 @@ cpdef void interp_complex_array(double[:] desired_x_array, double[:] x_domain, d
         # Perform binary search with guess
         j = binary_search_with_guess(desired_x, x_domain, lenx, guess)
 
-        if j == -1:
+        if j <= -1:
             result_real = left_value.real
             result_imag = left_value.imag
-        elif j == lenx:
+        elif j >= lenx:
             result_real = right_value.real
             result_imag = right_value.imag
         else:

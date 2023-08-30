@@ -48,6 +48,7 @@ def test_interp_with_provided_j(t_test):
 
     # Get j
     cyrk_interp_1, provided_j = interpj(t_test, t, x)
+
     # Use j
     cyrk_interp_2 = interp(t_test, t, x, provided_j=provided_j)
 

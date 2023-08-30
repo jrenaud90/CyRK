@@ -11,6 +11,7 @@ Bug Fixes
 - Added back noexcepts to dabs functions used by cyrk_ode that were mistakenly removed in final dev commit of v0.7.0.
 - Fixed issue where cython-based solvers could overshoot t_span[1].
 - Fixed issue where interp functions would give wrong result when requested x was between x_array[0] and x_array[1].
+- Fixed issue where interp functions would give wrong results if requested x was negative and x_array was positive (or vice versa).
 
 ### v0.7.0
 
