@@ -12,12 +12,10 @@ from libc.math cimport sqrt, fabs, nextafter, fmax, fmin
 
 from CyRK.array.interp cimport interp_array, interp_complex_array
 from CyRK.rk.rk cimport (
-    RK23_C, RK23_B, RK23_E, RK23_A, RK23_order, RK23_error_order, RK23_n_stages, RK23_LEN_C, RK23_LEN_B, RK23_LEN_E,
-    RK23_LEN_E3, RK23_LEN_E5, RK23_LEN_A0, RK23_LEN_A1,
-    RK45_C, RK45_B, RK45_E, RK45_A, RK45_order, RK45_error_order, RK45_n_stages, RK45_LEN_C, RK45_LEN_B, RK45_LEN_E,
-    RK45_LEN_E3, RK45_LEN_E5, RK45_LEN_A0, RK45_LEN_A1,
-    DOP_C_REDUCED, DOP_B, DOP_E3, DOP_E5, DOP_A_REDUCED, DOP_order, DOP_error_order, DOP_n_stages,
-    DOP_n_stages_extended, DOP_LEN_C, DOP_LEN_B, DOP_LEN_E, DOP_LEN_E3, DOP_LEN_E5, DOP_LEN_A0, DOP_LEN_A1)
+    RK23_C_view, RK23_B_view, RK23_E_view, RK23_A_view, RK23_order, RK23_error_order, RK23_n_stages, RK23_LEN_C,
+    RK45_C_view, RK45_B_view, RK45_E_view, RK45_A_view, RK45_order, RK45_error_order, RK45_n_stages, RK45_LEN_C,
+    DOP_C_REDUCED_view, DOP_B_view, DOP_E3_view, DOP_E5_view, DOP_A_REDUCED_view,
+    DOP_order, DOP_error_order, DOP_n_stages, DOP_n_stages_extended, DOP_LEN_C)
 
 # # Integration Constants
 # Multiply steps computed from asymptotic behaviour of errors by this.
@@ -391,8 +389,11 @@ def cyrk_ode(
     # # Determine RK scheme
     cdef Py_ssize_t rk_order, error_order
     cdef Py_ssize_t rk_n_stages, rk_n_stages_plus1, rk_n_stages_extended
-    cdef Py_ssize_t len_C, len_B, len_E, len_E3, len_E5, len_A0, len_A1
+    cdef Py_ssize_t len_C
     cdef double error_pow, error_expo, error_norm5, error_norm3, error_norm, error_norm_abs, error_norm3_abs, error_norm5_abs, error_denom
+
+    cdef const double[::1] B_view_tmp, C_view_tmp, E_view_tmp, E3_view_tmp, E5_view_tmp
+    cdef const double[:, ::1] A_view_tmp
 
     if rk_method == 0:
         # RK23 Method
@@ -400,38 +401,43 @@ def cyrk_ode(
         error_order = RK23_error_order
         rk_n_stages = RK23_n_stages
         len_C       = RK23_LEN_C
-        len_B       = RK23_LEN_B
-        len_E       = RK23_LEN_E
-        len_E3      = RK23_LEN_E3
-        len_E5      = RK23_LEN_E5
-        len_A0      = RK23_LEN_A0
-        len_A1      = RK23_LEN_A1
+        A_view_tmp  = RK23_A_view
+        B_view_tmp  = RK23_B_view
+        C_view_tmp  = RK23_C_view
+        E_view_tmp  = RK23_E_view
+
+        # Unused for RK23 but initalize it anyways
+        E3_view_tmp = RK23_E_view
+        E5_view_tmp = RK23_E_view
     elif rk_method == 1:
         # RK45 Method
         rk_order    = RK45_order
         error_order = RK45_error_order
         rk_n_stages = RK45_n_stages
         len_C       = RK45_LEN_C
-        len_B       = RK45_LEN_B
-        len_E       = RK45_LEN_E
-        len_E3      = RK45_LEN_E3
-        len_E5      = RK45_LEN_E5
-        len_A0      = RK45_LEN_A0
-        len_A1      = RK45_LEN_A1
+        A_view_tmp  = RK45_A_view
+        B_view_tmp  = RK45_B_view
+        C_view_tmp  = RK45_C_view
+        E_view_tmp  = RK45_E_view
+
+        # Unused for RK45 but initalize it anyways
+        E3_view_tmp = RK45_E_view
+        E5_view_tmp = RK45_E_view
     elif rk_method == 2:
         # DOP853 Method
         rk_order    = DOP_order
         error_order = DOP_error_order
         rk_n_stages = DOP_n_stages
         len_C       = DOP_LEN_C
-        len_B       = DOP_LEN_B
-        len_E       = DOP_LEN_E
-        len_E3      = DOP_LEN_E3
-        len_E5      = DOP_LEN_E5
-        len_A0      = DOP_LEN_A0
-        len_A1      = DOP_LEN_A1
-
+        A_view_tmp  = DOP_A_REDUCED_view
+        B_view_tmp  = DOP_B_view
+        C_view_tmp  = DOP_C_REDUCED_view
+        E3_view_tmp = DOP_E3_view
+        E5_view_tmp = DOP_E5_view
         rk_n_stages_extended = DOP_n_stages_extended
+
+        # Unused for DOP853 but initalize it anyways
+        E_view_tmp  = DOP_E3_view
     else:
         status = -8
         message = "Attribute error."
@@ -445,72 +451,42 @@ def cyrk_ode(
     error_expo = 1. / (<double>error_order + 1.)
 
     # Build RK Arrays. Note that all are 1D except for A and K.
-    A      = np.empty((len_A0, len_A1), dtype=DTYPE, order='C')
-    B      = np.empty(len_B, dtype=DTYPE, order='C')
-    C      = np.empty(len_C, dtype=np.float64, order='C')  # C is always float no matter what y0 is.
-    E      = np.empty(len_E, dtype=DTYPE, order='C')
-    E3     = np.empty(len_E3, dtype=DTYPE, order='C')
-    E5     = np.empty(len_E5, dtype=DTYPE, order='C')
-    K      = np.zeros((rk_n_stages_plus1, y_size), dtype=DTYPE, order='C')  # It is important K be initialized with 0s
+    # C is a double no matter what.
+    cdef const double[::1] C_view
+    C_view = C_view_tmp
 
-    # Setup memory views.
-    cdef double_numeric[:] B_view, E_view, E3_view, E5_view
-    cdef double_numeric[:, :] A_view, K_view
-    cdef double_numeric A_at_sj, A_at_10, B_at_j, error_dot_1, error_dot_2
-    cdef double[:] C_view
-    cdef double C_at_s
-    A_view      = A
-    B_view      = B
-    C_view      = C
-    E_view      = E
-    E3_view     = E3
-    E5_view     = E5
-    K_view      = K
+    # Check if we need to convert RK constants (all are defined as real-valued doubles)
+    A  = np.asarray(A_view_tmp, dtype=DTYPE, order='C')
+    B  = np.asarray(B_view_tmp, dtype=DTYPE, order='C')
+    E  = np.asarray(E_view_tmp, dtype=DTYPE, order='C')
+    E3 = np.asarray(E3_view_tmp, dtype=DTYPE, order='C')
+    E5 = np.asarray(E5_view_tmp, dtype=DTYPE, order='C')
 
-    # Populate values based on externally defined constants.
-    if rk_method == 0:
-        # RK23 Method
-        for i in range(len_A0):
-            for j in range(len_A1):
-                A_view[i, j] = RK23_A[i][j]
-        for i in range(len_B):
-            B_view[i] = RK23_B[i]
-        for i in range(len_C):
-            C_view[i] = RK23_C[i]
-        for i in range(len_E):
-            E_view[i] = RK23_E[i]
-            # Dummy Variables, set equal to E
-            E3_view[i] = RK23_E[i]
-            E5_view[i] = RK23_E[i]
-    elif rk_method == 1:
-        # RK45 Method
-        for i in range(len_A0):
-            for j in range(len_A1):
-                A_view[i, j] = RK45_A[i][j]
-        for i in range(len_B):
-            B_view[i] = RK45_B[i]
-        for i in range(len_C):
-            C_view[i] = RK45_C[i]
-        for i in range(len_E):
-            E_view[i] = RK45_E[i]
-            # Dummy Variables, set equal to E
-            E3_view[i] = RK45_E[i]
-            E5_view[i] = RK45_E[i]
-    else:
-        # DOP853 Method
-        for i in range(len_A0):
-            for j in range(len_A1):
-                A_view[i, j] = DOP_A_REDUCED[i][j]
-        for i in range(len_B):
-            B_view[i] = DOP_B[i]
-        for i in range(len_C):
-            C_view[i] = DOP_C_REDUCED[i]
-        for i in range(len_E):
-            E3_view[i] = DOP_E3[i]
-            E5_view[i] = DOP_E5[i]
-            E_view[i] = DOP_E5[i]
-            # Dummy Variables, set equal to E3
-            E_view[i] = DOP_E3[i]
+    # Make these arrays readonly
+    A.setflags(write=False)
+    B.setflags(write=False)
+    E.setflags(write=False)
+    E3.setflags(write=False)
+    E5.setflags(write=False)
+
+    # Set memoryviews
+    cdef const double_numeric[::1] B_view, E_view, E3_view, E5_view
+    cdef const double_numeric[:, ::1] A_view
+    A_view = A
+    B_view = B
+    E_view = E
+    E3_view = E3
+    E5_view = E5
+
+    # Initialize other RK-related Arrays
+    # It is important K be initialized with 0s
+    cdef double_numeric[:, ::1] K_view
+    cdef double_numeric[::1, :] K_T_view
+    K = np.zeros((rk_n_stages_plus1, y_size), dtype=DTYPE, order='C')
+    K_view   = K
+    K_T_view = K_view.T
+
+    # Other RK Optimizations
     A_at_10 = A_view[1, 0]
 
     # Initialize variables for start of integration
