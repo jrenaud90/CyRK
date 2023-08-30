@@ -146,7 +146,7 @@ from CyRK.cy.cysolver cimport CySolver
 
 cdef class MyCyRKDiffeq(CySolver):
 
-    cdef void diffeq(self) nogil:  # REVERT noexcept nogil:
+    cdef void diffeq(self) noexcept nogil:
         
         # Unpack dependent variables using the `self.y_new_view` variable.
         # In this example we have a system of two dependent variables, but any number can be used.
