@@ -2,6 +2,11 @@
 
 ## 2023
 
+### v0.8.0
+
+Performance
+- Transitioned many arrays from numpy to c arrays allocated with PyMem_Malloc, etc. These changes cause significant performance boost to cython-based solvers.
+
 #### v0.7.1
 
 Changes

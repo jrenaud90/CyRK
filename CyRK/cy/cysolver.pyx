@@ -9,6 +9,8 @@ cimport numpy as np
 
 np.import_array()
 
+from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
+
 from libcpp cimport bool as bool_cpp_t
 from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, isnan, NAN, pow
 
@@ -65,8 +67,8 @@ cdef class CySolver:
         Floating point version of y_size.
     y_size_sqrt : double
         Square-root of y_size.
-    y0_view : double[::1]
-        Memoryview of dependent variable initial conditions (y0 at t_start).
+    y0_ptr : double*
+        Pointer of dependent variable initial conditions (y0 at t_start).
     t_start : double
         Value of independent variable at beginning of integration (t0).
     t_end : double
@@ -82,8 +84,8 @@ cdef class CySolver:
         If True, then integration is in the forward direction.
     num_args : Py_ssize_t
         Number of additional arguments that the `diffeq` method requires.
-    arg_array_view double[::1]
-        Memoryview of additional arguments used in the `diffeq` method.
+    arg_array_ptr : double*
+        Pointer of additional arguments used in the `diffeq` method.
     capture_extra bool_cpp_t
         Flag used if extra parameters should be captured during integration.
     num_extra Py_ssize_t
@@ -95,10 +97,10 @@ cdef class CySolver:
         Verbal message to accompany `self.status` explaining the state (and potential errors) of the integrator.
     success : bool_cpp_t; public
         Flag indicating if the integration was successful or not.
-    rtols_view : double[::1]
-        Memoryview of relative tolerances for each dependent y variable.
-    atols_view : double[::1]
-        Memoryview of absolute tolerances for each dependent y variable.
+    rtols_ptr : double*
+        Pointer of relative tolerances for each dependent y variable.
+    atols_ptr : double*
+        Pointer of absolute tolerances for each dependent y variable.
     first_step : double
         Absolute size of the first step to be taken after t_start.
     max_step : double
@@ -125,8 +127,8 @@ cdef class CySolver:
         during integration.
     len_t_eval : Py_ssize_t
         Length of user requested independent domain, `t_eval`.
-    t_eval_view : double[::1]
-        Memoryview of user requested independent domain, `t_eval`.
+    t_eval_ptr : double*
+        Pointer of user requested independent domain, `t_eval`.
     rk_method : unsigned char
         Runge-Kutta method that will be used. Currently implemented models:
             0: ‘RK23’: Explicit Runge-Kutta method of order 3(2).
@@ -170,14 +172,14 @@ cdef class CySolver:
         Current step's absolute size.
     len_t : Py_ssize_t
         Number of steps taken.
-    y_new_view : double[::1]
-        Current Memoryview of the dependent y variables.
-    y_old_view : double[::1]
-        Memoryview of the dependent y variables at the previous step.
-    y_new_view : double[::1]
-        Current Memoryview of dy/dt.
-    y_old_view : double[::1]
-        Memoryview of dy/dt at the previous step.
+    y_new_ptr : double*
+        Current Pointer of the dependent y variables.
+    y_old_ptr : double*
+        Pointer of the dependent y variables at the previous step.
+    y_new_ptr : double*
+        Current Pointer of dy/dt.
+    y_old_ptr : double*
+        Pointer of dy/dt at the previous step.
     extra_output_init_view : double[::1]
         Memoryview of extra outputs at the initial step (t=t0; y=y0).
         Extra outputs are parameters captured during diffeq calculation.
@@ -223,6 +225,7 @@ cdef class CySolver:
         The system of differential equations that will be solved by the integrator.
         This method is expected to be overriden by user constructed subclasses.
     """
+
 
     def __init__(self,
             (double, double) t_span,
@@ -321,10 +324,14 @@ cdef class CySolver:
         self.recalc_first_step = False
 
         # Store y0 values and determine y-size information
-        self.y0_view     = y0
-        self.y_size      = self.y0_view.size
-        self.y_size_dbl  = <double>self.y_size
+        self.y_size = y0.size
+        self.y_size_dbl = <double> self.y_size
         self.y_size_sqrt = sqrt(self.y_size_dbl)
+        self.y0_ptr = <double *> PyMem_Malloc(self.y_size * sizeof(double))
+        if not self.y0_ptr:
+            raise MemoryError()
+        for i in range(self.y_size):
+            self.y0_ptr[i] = y0[i]
 
         # Determine time domain information
         self.t_start = t_span[0]
@@ -343,11 +350,13 @@ cdef class CySolver:
 
         # Determine integration tolerances
         cdef double rtol_tmp
-        cdef np.ndarray[np.float64_t, ndim=1, mode='c'] rtol_array, atol_array
-        rtol_array = np.empty(self.y_size, dtype=np.float64, order='C')
-        atol_array = np.empty(self.y_size, dtype=np.float64, order='C')
-        self.rtols_view = rtol_array
-        self.atols_view = atol_array
+        self.rtols_ptr = <double *> PyMem_Malloc(self.y_size * sizeof(double))
+        if not self.rtols_ptr:
+            raise MemoryError()
+
+        self.atols_ptr = <double *> PyMem_Malloc(self.y_size * sizeof(double))
+        if not self.atols_ptr:
+            raise MemoryError()
 
         if rtols is not None:
             # User provided an arrayed version of rtol.
@@ -358,25 +367,25 @@ cdef class CySolver:
                 # Check that the tolerances are not too small.
                 if rtol_tmp < EPS_100:
                     rtol_tmp = EPS_100
-                self.rtols_view[i] = rtol_tmp
+                self.rtols_ptr[i] = rtol_tmp
         else:
             # No array provided. Use the same rtol for all ys.
             # Check that the tolerances are not too small.
             if rtol < EPS_100:
                 rtol = EPS_100
             for i in range(self.y_size):
-                self.rtols_view[i] = rtol
+                self.rtols_ptr[i] = rtol
 
         if atols is not None:
             # User provided an arrayed version of atol.
             if len(atols) != self.y_size:
                 raise AttributeError('atol array must be the same size as y0.')
             for i in range(self.y_size):
-                self.atols_view[i] = atols[i]
+                self.atols_ptr[i] = atols[i]
         else:
             # No array provided. Use the same atol for all ys.
             for i in range(self.y_size):
-                self.atols_view[i] = atol
+                self.atols_ptr[i] = atol
 
         # Determine maximum number of steps
         if max_num_steps == 0:
@@ -403,29 +412,32 @@ cdef class CySolver:
         self.num_concats = 1
 
         # Determine optional arguments
-        cdef np.ndarray[np.float64_t, ndim=1, mode='c'] arg_array
         if args is None:
             self.num_args = 0
             # Even though there are no args, initialize the array to something to avoid seg faults
-            arg_array = np.empty(0, dtype=np.float64, order='C')
-            self.arg_array_view = arg_array
+            self.arg_array_ptr = <double *> PyMem_Malloc(sizeof(double))
+            self.arg_array_ptr[0] = 0.
         else:
             self.num_args = len(args)
-            arg_array = np.empty(self.num_args, dtype=np.float64, order='C')
-            self.arg_array_view = arg_array
+            self.arg_array_ptr = <double *> PyMem_Malloc(self.num_args * sizeof(double))
+            if not self.arg_array_ptr:
+                raise MemoryError()
             for i in range(self.num_args):
-                self.arg_array_view[i] = args[i]
+                self.arg_array_ptr[i] = args[i]
 
         # Initialize live variable arrays
-        cdef np.ndarray[np.float64_t, ndim=1, mode='c'] y_new, y_old, dy_new, dy_old
-        y_new  = np.empty(self.y_size, dtype=np.float64, order='C')
-        y_old  = np.empty(self.y_size, dtype=np.float64, order='C')
-        dy_new = np.empty(self.y_size, dtype=np.float64, order='C')
-        dy_old = np.empty(self.y_size, dtype=np.float64, order='C')
-        self.y_new_view  = y_new
-        self.y_old_view  = y_old
-        self.dy_new_view = dy_new
-        self.dy_old_view = dy_old
+        self.y_new_ptr = <double *> PyMem_Malloc(self.y_size * sizeof(double))
+        if not self.y_new_ptr:
+            raise MemoryError()
+        self.y_old_ptr = <double *> PyMem_Malloc(self.y_size * sizeof(double))
+        if not self.y_old_ptr:
+            raise MemoryError()
+        self.dy_new_ptr = <double *> PyMem_Malloc(self.y_size * sizeof(double))
+        if not self.dy_new_ptr:
+            raise MemoryError()
+        self.dy_old_ptr = <double *> PyMem_Malloc(self.y_size * sizeof(double))
+        if not self.dy_old_ptr:
+            raise MemoryError()
 
         # Determine extra outputs
         cdef np.ndarray[np.float64_t, ndim=1, mode='c'] extra_output_init, extra_output
@@ -437,15 +449,27 @@ cdef class CySolver:
                 self.status = -8
                 raise AttributeError('Capture extra set to True, but number of extra set to 0.')
             self.num_extra = num_extra
+            self.extra_output_init_ptr = <double *> PyMem_Malloc(self.num_extra * sizeof(double))
+            if not self.extra_output_init_ptr:
+                raise MemoryError()
+            self.extra_output_ptr = <double *> PyMem_Malloc(self.num_extra * sizeof(double))
+            if not self.extra_output_ptr:
+                raise MemoryError()
+            for i in range(self.num_extra):
+                self.extra_output_init_ptr[i] = NAN
+                self.extra_output_ptr[i] = NAN
         else:
             self.num_extra = 0
-        extra_output_init = np.empty(self.num_extra, dtype=np.float64, order='C')
-        extra_output      = np.empty(self.num_extra, dtype=np.float64, order='C')
-        self.extra_output_init_view = extra_output_init
-        self.extra_output_view      = extra_output
+            self.extra_output_init_ptr = <double *> PyMem_Malloc(sizeof(double))
+            if not self.extra_output_init_ptr:
+                raise MemoryError()
+            self.extra_output_ptr = <double *> PyMem_Malloc(sizeof(double))
+            if not self.extra_output_ptr:
+                raise MemoryError()
+            self.extra_output_init_ptr[0] = NAN
+            self.extra_output_ptr[0] = NAN
 
         # Determine interpolation information
-        cdef np.ndarray[np.float64_t, ndim=1, mode='c'] t_eval_array
         if t_eval is None:
             self.run_interpolation = False
             self.interpolate_extra = False
@@ -454,11 +478,7 @@ cdef class CySolver:
             self.run_interpolation = True
             self.interpolate_extra = interpolate_extra
             self.len_t_eval = len(t_eval)
-
-            t_eval_array = np.empty(self.len_t_eval, dtype=np.float64, order='C')
-            self.t_eval_view = t_eval_array
-            for i in range(self.len_t_eval):
-                self.t_eval_view[i] = t_eval[i]
+            self.t_eval_view = t_eval
 
         # Determine RK scheme and initialize RK memory views
         self.rk_method = rk_method
@@ -518,11 +538,9 @@ cdef class CySolver:
         self.error_expo        = 1. / (<double>self.error_order + 1.)
 
         # Initialize other RK-related Arrays
-        cdef np.ndarray[np.float64_t, ndim=2, mode='c'] K
-        # It is important K be initialized with 0s
-        K = np.zeros((self.rk_n_stages_plus1, self.y_size), dtype=np.float64, order='C')
-        self.K_view   = K
-        self.K_T_view = self.K_view.T
+        self.K_ptr = <double *> PyMem_Malloc(self.rk_n_stages_plus1 * self.y_size * sizeof(double))
+        if not self.K_ptr:
+            raise MemoryError()
 
         # Store user provided step information
         self.first_step = first_step
@@ -548,15 +566,14 @@ cdef class CySolver:
         self.t_new = self.t_start
         self.len_t = 1
 
-        # Reset y variables back to initial conditions
-        for i in range(self.y_size):
-            # Set current and old y variables equal to y0
-            self.y_new_view[i] = self.y0_view[i]
-            self.y_old_view[i] = self.y0_view[i]
+        # It is important K be initialized with 0s
+        for i in range(self.rk_n_stages_plus1):
+            for j in range(self.y_size):
+                self.K_ptr[i * self.y_size + j] = 0.
 
-            for j in range(self.rk_n_stages_plus1):
-                # Reset RK variables
-                self.K_view[j, i] = 0.
+                # While we have this loop; set y back to initial conditions
+                if i == 0:
+                    self.y_old_ptr[j] = self.y_new_ptr[j] = self.y0_ptr[j]
 
         # Update any constant parameters that the user has set
         self.update_constants()
@@ -566,12 +583,12 @@ cdef class CySolver:
 
         # Store first dydt
         for i in range(self.y_size):
-            self.dy_old_view[i] = self.dy_new_view[i]
+            self.dy_old_ptr[i] = self.dy_new_ptr[i]
 
         # Store extra outputs for the first time step
         if self.capture_extra:
             for i in range(self.num_extra):
-                self.extra_output_init_view[i] = self.extra_output_view[i]
+                self.extra_output_init_ptr[i] = self.extra_output_view[i]
 
         # Determine first step's size
         if self.first_step == 0. or self.recalc_first_step:
@@ -624,12 +641,12 @@ cdef class CySolver:
             d0 = 0.
             d1 = 0.
             for i in range(self.y_size):
-                y_old_tmp = self.y_old_view[i]
+                y_old_tmp = self.y_old_ptr[i]
 
-                scale = self.atols_view[i] + fabs(y_old_tmp) * self.rtols_view[i]
+                scale = self.atols_ptr[i] + fabs(y_old_tmp) * self.rtols_ptr[i]
 
                 d0_abs = fabs(y_old_tmp / scale)
-                d1_abs = fabs(self.dy_old_view[i] / scale)
+                d1_abs = fabs(self.dy_old_ptr[i] / scale)
                 d0 += (d0_abs * d0_abs)
                 d1 += (d1_abs * d1_abs)
 
@@ -648,7 +665,7 @@ cdef class CySolver:
 
             self.t_new = self.t_old + h0_direction
             for i in range(self.y_size):
-                self.y_new_view[i] = self.y_old_view[i] + h0_direction * self.dy_old_view[i]
+                self.y_new_ptr[i] = self.y_old_ptr[i] + h0_direction * self.dy_old_ptr[i]
 
             # Update dy_new_view
             self.diffeq()
@@ -657,8 +674,8 @@ cdef class CySolver:
             d2 = 0.
             for i in range(self.y_size):
 
-                scale = self.atols_view[i] + fabs(self.y_old_view[i]) * self.rtols_view[i]
-                d2_abs = fabs( (self.dy_new_view[i] - self.dy_old_view[i]) / scale)
+                scale = self.atols_ptr[i] + fabs(self.y_old_ptr[i]) * self.rtols_ptr[i]
+                d2_abs = fabs( (self.dy_new_ptr[i] - self.dy_old_ptr[i]) / scale)
                 d2 += (d2_abs * d2_abs)
 
             d2 = sqrt(d2) / (h0 * self.y_size_sqrt)
@@ -680,7 +697,7 @@ cdef class CySolver:
         # Initialize step variables
         cdef Py_ssize_t s, i, j
         cdef double min_step, step, step_factor, time_tmp, t_delta_check
-        cdef double scale, K_scale, dy_tmp
+        cdef double scale, dy_tmp
         cdef double error_norm3, error_norm5, error_norm, error_dot_1, error_dot_2, error_denom, error_pow
         cdef bool_cpp_t step_accepted, step_rejected, step_error
 
@@ -700,7 +717,7 @@ cdef class CySolver:
         step_error    = False
 
         # Optimization variables
-        cdef double C_at_s, A_at_sj, A_at_10, B_at_j
+        cdef double A_at_sj, A_at_10, B_at_j, K_
         # Define a very specific A now since it is called consistently and does not change.
         A_at_10 = self.A_view[1, 0]
 
@@ -739,35 +756,34 @@ cdef class CySolver:
             time_tmp = self.t_new
 
             for s in range(1, self.len_C):
-                C_at_s = self.C_view[s]
-
                 # Update t_new so it can be used in the diffeq call.
-                self.t_new = self.t_old + C_at_s * step
+                self.t_new = self.t_old + self.C_view[s] * step
 
                 # Dot Product (K, a) * step
                 if s == 1:
                     for i in range(self.y_size):
                         # Set the first column of K
-                        dy_tmp = self.dy_old_view[i]
-                        self.K_view[0, i] = dy_tmp
+                        dy_tmp = self.dy_old_ptr[i]
+                        # K[0, :] == first part of the array
+                        self.K_ptr[i] = dy_tmp
 
                         # Calculate y_new for s==1
-                        self.y_new_view[i] = self.y_old_view[i] + (dy_tmp * A_at_10 * step)
+                        self.y_new_ptr[i] = self.y_old_ptr[i] + (dy_tmp * A_at_10 * step)
                 else:
                     for j in range(s):
                         A_at_sj = self.A_view[s, j] * step
                         for i in range(self.y_size):
                             if j == 0:
                                 # Initialize
-                                self.y_new_view[i] = self.y_old_view[i]
+                                self.y_new_ptr[i] = self.y_old_ptr[i]
 
-                            self.y_new_view[i] += self.K_view[j, i] * A_at_sj
+                            self.y_new_ptr[i] += self.K_ptr[j * self.y_size + i] * A_at_sj
 
                 # Call diffeq to update K with the new dydt
                 self.diffeq()
 
                 for i in range(self.y_size):
-                    self.K_view[s, i] = self.dy_new_view[i]
+                    self.K_ptr[s * self.y_size + i] = self.dy_new_ptr[i]
 
             # Restore t_new to its previous value.
             self.t_new = time_tmp
@@ -780,9 +796,9 @@ cdef class CySolver:
                 for i in range(self.y_size):
                     if j == 0:
                         # Initialize
-                        self.y_new_view[i] = self.y_old_view[i]
+                        self.y_new_ptr[i] = self.y_old_ptr[i]
 
-                    self.y_new_view[i] += self.K_view[j, i] * B_at_j
+                    self.y_new_ptr[i] += self.K_ptr[j * self.y_size + i] * B_at_j
 
             self.diffeq()
 
@@ -794,25 +810,27 @@ cdef class CySolver:
                 error_norm5 = 0.
                 for i in range(self.y_size):
                     # Find scale of y for error calculations
-                    scale = (self.atols_view[i] +
-                             max(fabs(self.y_old_view[i]), fabs(self.y_new_view[i])) * self.rtols_view[i])
+                    scale = (self.atols_ptr[i] +
+                             max(fabs(self.y_old_ptr[i]), fabs(self.y_new_ptr[i])) * self.rtols_ptr[i])
 
                     # Set last array of K equal to dydt
-                    self.K_view[self.rk_n_stages, i] = self.dy_new_view[i]
+                    self.K_ptr[self.rk_n_stages * self.y_size + i] = self.dy_new_ptr[i]
                     for j in range(self.rk_n_stages_plus1):
                         if j == 0:
                             # Initialize
                             error_dot_1 = 0.
                             error_dot_2 = 0.
 
-                        K_scale = self.K_T_view[i, j] / scale
-                        error_dot_1 += K_scale * self.E3_view[j]
-                        error_dot_2 += K_scale * self.E5_view[j]
+                        K_ = self.K_ptr[j * self.y_size + i]
+                        error_dot_1 += K_ * self.E3_view[j]
+                        error_dot_2 += K_ * self.E5_view[j]
 
                     # We need the absolute value but since we are taking the square, it is guaranteed to be positive.
                     # TODO: This will need to change if CySolver ever accepts complex numbers
                     # error_norm3_abs = fabs(error_dot_1)
                     # error_norm5_abs = fabs(error_dot_2)
+                    error_dot_1 /= scale
+                    error_dot_2 /= scale
 
                     error_norm3 += (error_dot_1 * error_dot_1)
                     error_norm5 += (error_dot_2 * error_dot_2)
@@ -830,22 +848,22 @@ cdef class CySolver:
                 error_norm = 0.
                 for i in range(self.y_size):
                     # Find scale of y for error calculations
-                    scale = (self.atols_view[i] +
-                             max(fabs(self.y_old_view[i]), fabs(self.y_new_view[i])) * self.rtols_view[i])
+                    scale = (self.atols_ptr[i] +
+                             max(fabs(self.y_old_ptr[i]), fabs(self.y_new_ptr[i])) * self.rtols_ptr[i])
 
                     # Set last array of K equal to dydt
-                    self.K_view[self.rk_n_stages, i] = self.dy_new_view[i]
+                    self.K_ptr[self.rk_n_stages * self.y_size + i] = self.dy_new_ptr[i]
                     for j in range(self.rk_n_stages_plus1):
                         if j == 0:
                             # Initialize
                             error_dot_1 = 0.
 
-                        K_scale = self.K_T_view[i, j] / scale
-                        error_dot_1 += K_scale * self.E_view[j] * step
+                        error_dot_1 += self.K_ptr[j * self.y_size + i] * self.E_view[j]
 
                     # We need the absolute value but since we are taking the square, it is guaranteed to be positive.
                     # TODO: This will need to change if CySolver ever accepts complex numbers
                     # error_norm_abs = fabs(error_dot_1)
+                    error_dot_1 *= (step / scale)
 
                     error_norm += (error_dot_1 * error_dot_1)
                 error_norm = sqrt(error_norm) / self.y_size_sqrt
@@ -880,8 +898,8 @@ cdef class CySolver:
         # End of step loop. Update the 'old' variables
         self.t_old = self.t_new
         for i in range(self.y_size):
-            self.y_old_view[i]  = self.y_new_view[i]
-            self.dy_old_view[i] = self.dy_new_view[i]
+            self.y_old_ptr[i]  = self.y_new_ptr[i]
+            self.dy_old_ptr[i] = self.dy_new_ptr[i]
 
 
     cpdef void solve(self, bool_cpp_t reset = True):
@@ -911,36 +929,32 @@ cdef class CySolver:
             self.reset_state()
 
         # Setup loop variables
-        cdef Py_ssize_t i, j
+        cdef Py_ssize_t i, j, new_size
 
         # Setup storage arrays
         # These arrays are built to fit a number of points equal to `self.expected_size`
         # If the integration needs more than that then a new array will be concatenated (with performance costs) to these.
-        cdef np.ndarray[np.float64_t, ndim=2, mode='c'] y_results_array, extra_array
-        cdef np.ndarray[np.float64_t, ndim=1, mode='c'] time_domain_array
-        cdef double[:, ::1] y_results_array_view, extra_array_view
-        cdef double[::1] time_domain_array_view
-        y_results_array        = np.empty((self.y_size, self.expected_size), dtype=np.float64, order='C')
-        time_domain_array      = np.empty(self.expected_size, dtype=np.float64, order='C')
-        y_results_array_view   = y_results_array
-        time_domain_array_view = time_domain_array
+        cdef double* y_results_array_ptr
+        cdef double* extra_array_ptr
+        cdef double* time_domain_array_ptr
+        y_results_array_ptr = <double *> PyMem_Malloc(self.y_size * self.expected_size * sizeof(double))
+        if not y_results_array_ptr:
+            raise MemoryError()
+        time_domain_array_ptr = <double *> PyMem_Malloc(self.expected_size * sizeof(double))
+        if not time_domain_array_ptr:
+            raise MemoryError()
         if self.capture_extra:
-            extra_array      = np.empty((self.num_extra, self.expected_size), dtype=np.float64, order='C')
-            extra_array_view = extra_array
-
-        # The following are unused unless the previous array size is too small to capture all of the data
-        cdef np.ndarray[np.float64_t, ndim=2, mode='c'] y_results_array_new, extra_array_new
-        cdef np.ndarray[np.float64_t, ndim=1, mode='c'] time_domain_array_new
-        cdef double[:, ::1] y_results_array_new_view, extra_array_new_view
-        cdef double[::1] time_domain_array_new_view
+            extra_array_ptr = <double *> PyMem_Malloc(self.num_extra * self.expected_size * sizeof(double))
+            if not extra_array_ptr:
+                raise MemoryError()
 
         # Load initial conditions into output arrays
-        time_domain_array_view[0] = self.t_start
+        time_domain_array_ptr[0] = self.t_start
         for i in range(self.y_size):
-            y_results_array_view[i, 0] = self.y0_view[i]
+            y_results_array_ptr[i] = self.y0_ptr[i]
         if self.capture_extra:
             for i in range(self.num_extra):
-                extra_array_view[i, 0] = self.extra_output_init_view[i]
+                extra_array_ptr[i] = self.extra_output_init_ptr[i]
 
         # # Main integration loop
         self.status = 0
@@ -979,42 +993,31 @@ cdef class CySolver:
                 self.num_concats += 1
                 new_size = self.num_concats * self.expected_size
 
-                time_domain_array_new = np.empty(new_size, dtype=np.float64, order='C')
-                y_results_array_new   = np.empty((self.y_size, new_size), dtype=np.float64, order='C')
-                time_domain_array_new_view = time_domain_array_new
-                y_results_array_new_view   = y_results_array_new
-                if self.capture_extra:
-                    extra_array_new = np.empty((self.num_extra, new_size), dtype=np.float64, order='C')
-                    extra_array_new_view = extra_array_new
+                y_results_array_ptr = <double *> PyMem_Realloc(y_results_array_ptr,
+                                                                   self.y_size * new_size * sizeof(double))
+                if not y_results_array_ptr:
+                    raise MemoryError()
 
-                # Fill in these new arrays with the old values (new values will be added later)
-                for j in range(self.y_size):
-                    for i in range(self.len_t):
-                        if j == 0:
-                            time_domain_array_new_view[i] = time_domain_array_view[i]
-                        y_results_array_new_view[j, i] = y_results_array_view[j, i]
+                time_domain_array_ptr = <double *> PyMem_Realloc(time_domain_array_ptr,
+                                                                     new_size * sizeof(double))
+                if not time_domain_array_ptr:
+                    raise MemoryError()
 
                 if self.capture_extra:
-                    for j in range(self.num_extra):
-                        for i in range(self.len_t):
-                            extra_array_new_view[j, i] = extra_array_view[j, i]
-
-                # No longer need the old arrays. Change where the memory-views are pointing
-                y_results_array_view = y_results_array_new
-                time_domain_array_view = time_domain_array_new
-                # TODO: Delete the old arrays?
-                if self.capture_extra:
-                    extra_array_view = extra_array_new
+                    extra_array_ptr = <double *> PyMem_Realloc(extra_array_ptr,
+                                                                   self.num_extra * new_size * sizeof(double))
+                    if not extra_array_ptr:
+                        raise MemoryError()
 
             # There is room to add this step's results to our storage arrays.
-            time_domain_array_view[self.len_t] = self.t_new
+            time_domain_array_ptr[self.len_t] = self.t_new
             # To match the format that scipy follows, we will take the transpose of y.
             for i in range(self.y_size):
-                y_results_array_view[i, self.len_t] = self.y_new_view[i]
+                y_results_array_ptr[self.len_t * self.y_size + i] = self.y_new_ptr[i]
 
             if self.capture_extra:
                 for i in range(self.num_extra):
-                    extra_array_view[i, self.len_t] = self.extra_output_view[i]
+                    extra_array_ptr[self.len_t * self.num_extra + i] = self.extra_output_ptr[i]
 
             # Increase number of independent variable points.
             self.len_t += 1
@@ -1046,17 +1049,15 @@ cdef class CySolver:
                 self.solution_extra_view = extra_output_out_array
 
             # Populate values
-            for j in range(self.y_size):
-                for i in range(self.len_t):
+            for i in range(self.len_t):
+                self.solution_t_view[i] = time_domain_array_ptr[i]
+                for j in range(self.y_size):
                     # Since this loop is only going to len_t, it will cut off any extraneous data the storage arrays
                     # hold beyond that point.
-                    if j == 0:
-                        self.solution_t_view[i] = time_domain_array_view[i]
-                    self.solution_y_view[j, i] = y_results_array_view[j, i]
-            if self.capture_extra:
-                for j in range(self.num_extra):
-                    for i in range(self.len_t):
-                        self.solution_extra_view[j, i] = extra_array_view[j, i]
+                    self.solution_y_view[j, i] = y_results_array_ptr[i * self.y_size + j]
+                if self.capture_extra:
+                    for j in range(self.num_extra):
+                        self.solution_extra_view[j, i] = extra_array_ptr[i * self.num_extra + j]
         else:
             # Integration was not successful. But we still need to build solution arrays so that accessing the solution
             # will not cause access violations.
@@ -1071,6 +1072,10 @@ cdef class CySolver:
             self.solution_t_view = time_domain_out_array_bad
             if self.capture_extra:
                 self.solution_extra_view = extra_output_out_array_bad
+
+        PyMem_Free(y_results_array_ptr)
+        PyMem_Free(extra_array_ptr)
+        PyMem_Free(time_domain_array_ptr)
 
         # Integration is complete. Check if interpolation was requested.
         if self.success and self.run_interpolation:
@@ -1181,14 +1186,14 @@ cdef class CySolver:
                     # Set state variables
                     self.t_new = self.t_eval_view[i]
                     for j in range(self.y_size):
-                        self.y_new_view[j] = y_results_reduced_view[j, i]
+                        self.y_new_ptr[j] = y_results_reduced_view[j, i]
 
                     # Call diffeq to recalculate extra outputs
                     self.diffeq()
 
                     # Capture extras
                     for j in range(self.num_extra):
-                        extra_reduced_view[j, i] = self.extra_output_view[j]
+                        extra_reduced_view[j, i] = self.extra_output_ptr[j]
 
         # Replace the solution variables with the new interpolated ones
         self.solution_t_view = self.t_eval_view
@@ -1247,7 +1252,7 @@ cdef class CySolver:
         """
 
         # Check y-size information
-        cdef Py_ssize_t y_size_new
+        cdef Py_ssize_t i, y_size_new
         y_size_new = len(y0)
 
         if self.y_size != y_size_new:
@@ -1258,7 +1263,8 @@ cdef class CySolver:
                                  'Create new CySolver instance instead.')
 
         # Store y0 values for later
-        self.y0_view = y0
+        for i in range(self.y_size):
+            self.y0_ptr[i] = y0[i]
 
         # A change to y0 will affect the first step's size
         self.recalc_first_step = True
@@ -1283,10 +1289,23 @@ cdef class CySolver:
         cdef np.ndarray[np.float64_t, ndim=1, mode='c'] arg_array
 
         self.num_args = len(args)
-        arg_array = np.empty(self.num_args, dtype=np.float64, order='C')
-        self.arg_array_view = arg_array
-        for i in range(self.num_args):
-            self.arg_array_view[i] = args[i]
+
+        # Free old arg array - we no longer need it.
+        PyMem_Free(self.arg_array_ptr)
+
+        # Build new arg array.
+        if args is None:
+            self.num_args = 0
+            # Even though there are no args, initialize the array to something to avoid seg faults
+            self.arg_array_ptr = <double *> PyMem_Malloc(sizeof(double))
+            self.arg_array_ptr[0] = 0.
+        else:
+            self.num_args = len(args)
+            self.arg_array_ptr = <double *> PyMem_Malloc(self.num_args * sizeof(double))
+            if not self.arg_array_ptr:
+                raise MemoryError()
+            for i in range(self.num_args):
+                self.arg_array_ptr[i] = args[i]
 
         # A change to args will affect the first step's size
         self.recalc_first_step = True
@@ -1326,13 +1345,10 @@ cdef class CySolver:
 
         # Update tolerances
         cdef double rtol_tmp
-        cdef np.ndarray[np.float64_t, ndim=1, mode='c'] rtol_array, atol_array
 
         if rtols is not None or not isnan(rtol):
             # Change to rtol
             something_changed = True
-            rtol_array = np.empty(self.y_size, dtype=np.float64, order='C')
-            self.rtols_view = rtol_array
 
             if rtols is not None:
                 # Using arrayed rtol
@@ -1342,30 +1358,28 @@ cdef class CySolver:
                     rtol_tmp = rtols[i]
                     if rtol_tmp < EPS_100:
                         rtol_tmp = EPS_100
-                    self.rtols_view[i] = rtol_tmp
+                    self.rtols_ptr[i] = rtol_tmp
             elif not isnan(rtol):
                 # Using constant rtol
                 # Check tolerances
                 if rtol < EPS_100:
                     rtol = EPS_100
                 for i in range(self.y_size):
-                    self.rtols_view[i] = rtol
+                    self.rtols_ptr[i] = rtol
 
         if atols is not None or not isnan(atol):
             # Change to atol
             something_changed = True
-            atol_array = np.empty(self.y_size, dtype=np.float64, order='C')
-            self.atols_view = atol_array
 
             if atols is not None:
                 # Using arrayed atol
                 if len(atols) != self.y_size:
                     raise AttributeError('atols must be the same size as y0.')
                 for i in range(self.y_size):
-                    self.atols_view[i] = atols[i]
+                    self.atols_ptr[i] = atols[i]
             elif not isnan(atol):
                 for i in range(self.y_size):
-                    self.atols_view[i] = atol
+                    self.atols_ptr[i] = atol
 
         if something_changed:
             # A change to tolerances will affect the first step's size
@@ -1429,7 +1443,7 @@ cdef class CySolver:
     cpdef void change_t_eval(self, const double[:] t_eval, bool_cpp_t auto_reset_state = False):
         """
         Public method to change user requested independent domain, `t_eval`.
-        
+
         Parameters
         ----------
         t_eval : double[:]
@@ -1439,15 +1453,9 @@ cdef class CySolver:
         """
 
         # Determine interpolation information
-        cdef np.ndarray[np.float64_t, ndim=1, mode='c'] t_eval_array
-
         self.run_interpolation = True
         self.len_t_eval = t_eval.size
-
-        t_eval_array = np.empty(self.len_t_eval, dtype=np.float64, order='C')
-        self.t_eval_view = t_eval_array
-        for i in range(self.len_t_eval):
-            self.t_eval_view[i] = t_eval[i]
+        self.t_eval_view = t_eval
 
         if auto_reset_state:
             self.reset_state()
@@ -1556,8 +1564,8 @@ cdef class CySolver:
         # ```python
         # ...
         #     cdef void update_constants(self) noexcept nogil:
-        #         a = self.arg_array_view[0]
-        #         b = self.arg_array_view[1]
+        #         a = self.arg_array_ptr[0]
+        #         b = self.arg_array_ptr[1]
         #         self.coeff_1 = (2. * a - sin(b))
         # ...
         # ```
@@ -1566,7 +1574,7 @@ cdef class CySolver:
         # ```python
         # ...
         #     cdef void diffeq(self) noexcept nogil:
-        #         self.dy_new_view[0] = self.ceoff_1 * self.y_new_view[0] * sin(self.t_new)
+        #         self.dy_new_ptr[0] = self.ceoff_1 * self.y_new_ptr[0] * sin(self.t_new)
         # ...
         # ```
         #
@@ -1580,36 +1588,36 @@ cdef class CySolver:
 
         # The diffeq can use live variables which are automatically updated before each call.
         # self.t_new: The current "time" (of course, depending on your problem, it may not actually be _time_ per se).
-        # self.y_new_view[:]: The current y value(s) stored as an array.
+        # self.y_new_ptr[:]: The current y value(s) stored as an array.
         # For example...
         # ```python
         # cdef double t_sin
         # # You will want to import the c version of sin "from libc.math cimport sin" at the top of your file.
         # t_sin = sin(self.t_new)
-        # y0 = self.y_new_view[0]
-        # y1 = self.y_new_view[1]
+        # y0 = self.y_new_ptr[0]
+        # y1 = self.y_new_ptr[1]
         # ```
 
         # Can also use other optional global attributes like...
-        # self.arg_array_view  (size of self.arg_array_view is self.num_args). For example...
+        # self.arg_array_ptr  (size of self.arg_array_ptr is self.num_args). For example...
         # ```python
         # cdef double a, b
-        # a = self.arg_array_view[0]
-        # b = self.arg_array_view[1]
+        # a = self.arg_array_ptr[0]
+        # b = self.arg_array_ptr[1]
         # ```
         # Currently, these args must be doubles (floats).
 
         # This function *must* set new values to the dy_new_view variable (size of array is self.y_size). For example...
         # ```python
-        # self.dy_new_view[0] = b * t_sin - y1
-        # self.dy_new_view[1] = a * sin(y0)
+        # self.dy_new_ptr[0] = b * t_sin - y1
+        # self.dy_new_ptr[1] = a * sin(y0)
         # ```
 
         # CySolver can also set additional outputs that the user may want to capture without having to make new calls
         #  to the differential equation or its sub-methods. For example...
         # ```python
-        # self.extra_output_view[0] = t_sin
-        # self.extra_output_view[1] = b * t_sin
+        # self.extra_output_ptr[0] = t_sin
+        # self.extra_output_ptr[1] = b * t_sin
         # ```
         # Currently, these additional outputs must be stored as doubles (floats).
         # Note that if extra output is used then the variables `capture_extra` and `num_extra` must be set in CySolver's
@@ -1618,7 +1626,7 @@ cdef class CySolver:
         # The default template simply sets all dy to 0.
         cdef Py_ssize_t i
         for i in range(self.y_size):
-            self.dy_new_view[i] = 0.
+            self.dy_new_ptr[i] = 0.
 
 
     # Public accessed properties
@@ -1644,3 +1652,16 @@ cdef class CySolver:
     def growths(self):
         # How many times the output arrays had to grow during integration
         return self.num_concats - 1
+
+    def __dealloc__(self):
+        PyMem_Free(self.y0_ptr)
+        PyMem_Free(self.rtols_ptr)
+        PyMem_Free(self.atols_ptr)
+        PyMem_Free(self.arg_array_ptr)
+        PyMem_Free(self.y_new_ptr)
+        PyMem_Free(self.y_old_ptr)
+        PyMem_Free(self.dy_new_ptr)
+        PyMem_Free(self.dy_old_ptr)
+        PyMem_Free(self.extra_output_init_ptr)
+        PyMem_Free(self.extra_output_ptr)
+        PyMem_Free(self.K_ptr)

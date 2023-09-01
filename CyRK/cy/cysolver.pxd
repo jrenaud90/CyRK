@@ -20,7 +20,7 @@ cdef class CySolver:
     # -- Dependent (y0) variable information
     cdef Py_ssize_t y_size
     cdef double y_size_dbl, y_size_sqrt
-    cdef const double[::1] y0_view
+    cdef double* y0_ptr
 
     # -- Time information
     cdef double t_start, t_end, t_delta, t_delta_abs, direction_inf
@@ -28,7 +28,7 @@ cdef class CySolver:
 
     # -- Optional args info
     cdef Py_ssize_t num_args
-    cdef double[::1] arg_array_view
+    cdef double* arg_array_ptr
 
     # -- Extra output info
     cdef bool_cpp_t capture_extra
@@ -38,7 +38,8 @@ cdef class CySolver:
     cdef readonly char status
     cdef readonly str message
     cdef public bool_cpp_t success
-    cdef double[::1] rtols_view, atols_view
+    cdef double* rtols_ptr
+    cdef double* atols_ptr
     cdef double first_step, max_step
     cdef Py_ssize_t max_num_steps
     cdef Py_ssize_t expected_size, num_concats,
@@ -48,7 +49,7 @@ cdef class CySolver:
     cdef bool_cpp_t run_interpolation
     cdef bool_cpp_t interpolate_extra
     cdef Py_ssize_t len_t_eval
-    cdef double[::1] t_eval_view
+    cdef const double[::1] t_eval_view
 
     # -- RK method information
     cdef unsigned char rk_method
@@ -58,14 +59,17 @@ cdef class CySolver:
     cdef const double[::1] B_view, E_view, E3_view, E5_view, C_view
     cdef const double[:, ::1] A_view
     # K is not constant. It is a temp storage variable used in RK calculations
-    cdef double[:, ::1] K_view
-    cdef double[::1, :] K_T_view
+    cdef double* K_ptr
 
     # -- Live variables
     cdef double t_new, t_old, step_size
     cdef Py_ssize_t len_t
-    cdef double[::1] y_new_view, y_old_view, dy_new_view, dy_old_view
-    cdef double[::1] extra_output_init_view, extra_output_view
+    cdef double* y_new_ptr
+    cdef double* y_old_ptr
+    cdef double* dy_new_ptr
+    cdef double* dy_old_ptr
+    cdef double* extra_output_init_ptr
+    cdef double* extra_output_ptr
 
     # Class functions
     cpdef void reset_state(self)
