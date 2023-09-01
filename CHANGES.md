@@ -4,6 +4,16 @@
 
 ### v0.8.0
 
+New Features
+- Added new interp functions that work with c pointers. These can only be cimported.
+
+Changes:
+- Refactored many `CySolver` internal attributes to reflect to change from memoryviews to pointers. The most important ones for the user are:
+  - `CySolver.y_new_view` -> `CySolver.y_ptr`
+  - `CySolver.dy_new_view` -> `CySolver.dy_ptr`
+  - `CySolver.t_new` -> `CySolver.t_now`
+  - `CySolver.arg_array_view` -> `CySolver.args_ptr`
+
 Performance
 - Transitioned many arrays from numpy to c arrays allocated with PyMem_Malloc, etc. These changes cause significant performance boost to cython-based solvers.
 

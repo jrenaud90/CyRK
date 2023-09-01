@@ -123,20 +123,20 @@ cdef class CySolverTester(CySolver):
     @cython.exceptval(check=False)
     cdef void diffeq(self):
         
-        # Unpack dependent variables using the `self.y_new_view` variable.
+        # Unpack dependent variables using the `self.y_ptr` variable.
         cdef double y0, y1
-        y0 = self.y_new_view[0]
-        y1 = self.y_new_view[1]
+        y0 = self.y_ptr[0]
+        y1 = self.y_ptr[1]
 
-        # If needed, unpack the time variable using `self.t_new`
+        # If needed, unpack the time variable using `self.t_now`
         cdef double t
-        t = self.t_new
+        t = self.t_now
 
-        # Unpack any additional arguments that do not change with time using the `self.arg_array_view` variable.
+        # Unpack any additional arguments that do not change with time using the `self.args_ptr` variable.
         cdef double a, b
         # These must be float64s
-        a  = self.arg_array_view[0]
-        b  = self.arg_array_view[1]
+        a  = self.args_ptr[0]
+        b  = self.args_ptr[1]
 
         # Define extra variables that you are interested in storing and accessing later.
         cdef double extra_0, extra_1
@@ -144,12 +144,12 @@ cdef class CySolverTester(CySolver):
         extra_0 = (1. - a * y1)
         extra_1 = (b * y0 - 1.)
         # These are then stored in the self.
-        self.extra_output_view[0] = extra_0
-        self.extra_output_view[0] = extra_1
+        self.extra_output_ptr[0] = extra_0
+        self.extra_output_ptr[0] = extra_1
 
-        # This function must set the dydt variable `self.dy_new_view`
-        self.dy_new_view[0] = extra_0 * y0
-        self.dy_new_view[1] = extra_1 * y1
+        # This function must set the dydt variable `self.dy_ptr`
+        self.dy_ptr[0] = extra_0 * y0
+        self.dy_ptr[1] = extra_1 * y1
 ```
 
 Once you compile the differential equation it can be imported in a regular python file and used in a similar fashion to the other integrators.
@@ -184,7 +184,7 @@ print(CySolverTesterInst.extra[1, :])
 _This is applicable to either the numba- or cython-based solver._
 
 By setting the `t_eval` argument for either the `nbrk_ode` or `cyrk_ode` solver, an interpolation will occur at the end of integration.
-This uses the solved `y`s and `time_domain` to find a new reduced `y_reduced` at `t_eval` intervals using `numpy.interp` function. 
+This uses the solved `y`s and `time_domain` to find a new reduced `y_reduced` at `t_eval` intervals using a method similar to `numpy.interp` function. 
 Since we are potentially storing extra parameters during integration, we need to tell the solvers how to handle any potential interpolation on these new parameters.
 
 - **Option 1**: Solve for the extra parameters at the new interpolated `y` values
@@ -202,4 +202,4 @@ Since we are potentially storing extra parameters during integration, we need to
     - The same amount of information is stored during integration as if `t_eval` were not set in the first place. This can have a negative impact on memory and performance depending on the number of extra parameters and the number of integration steps.
   - Cons:
     - Results may be less accurate because the extra parameters are interpolated _independent_ of `y`'s interpolation. Parameters that depend on `y` may no longer match expectations, particularly when `y` is changing quickly. For example, if an extra output is defined as `x = y[0] * 2.0`, then at some time `t` where `y[0]` was interpolated to be 5.0, `x` may differ from its definition (we expect it to be equal to 10.0): `x(t) = 9.8`.
-    - More call(s) to `numpy.interp` will be made (once for each extra parameter) this may have a negative impact on performance, particularly for many extra parameters.
+    - More call(s) to `interp` will be made (once for each extra parameter) this may have a negative impact on performance, particularly for many extra parameters.

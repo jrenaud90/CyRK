@@ -11,7 +11,7 @@
 
 ---
 
-<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.7.1 Alpha-orange" alt="CyRK Version 0.7.1 Alpha" /></a>
+<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.8.0 Alpha-orange" alt="CyRK Version 0.8.0 Alpha" /></a>
 
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
@@ -21,9 +21,9 @@ CyRK provides fast integration tools to solve systems of ODEs using an adaptive 
 The purpose of this package is to provide some 
 functionality of [scipy's solve_ivp](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html) with greatly improved performance.
 
-Currently, CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is **10-100x faster** than scipy's solve_ivp function.
-The [cython](https://cython.org/) `cyrk_ode` function that works with python (or numba) functions is **5-40x faster** than scipy.
-The [cython](https://cython.org/) `CySolver` class that works with cython-based cdef classes is **5-500x faster** than scipy.
+Currently, CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is **10-100+x faster** than scipy's solve_ivp function.
+The [cython](https://cython.org/) `cyrk_ode` function that works with python (or numba) functions is **5-40+x faster** than scipy.
+The [cython](https://cython.org/) `CySolver` class that works with cython-based cdef classes is **5-500+x faster** than scipy.
 
 An additional benefit of the two cython implementations is that they are pre-compiled. This avoids most of the start-up performance hit experienced by just-in-time compilers like numba.
 
@@ -149,25 +149,25 @@ cdef class MyCyRKDiffeq(CySolver):
 
     cdef void diffeq(self) noexcept nogil:
         
-        # Unpack dependent variables using the `self.y_new_view` variable.
+        # Unpack dependent variables using the `self.y_ptr` variable.
         # In this example we have a system of two dependent variables, but any number can be used.
         cdef double y0, y1
-        y0 = self.y_new_view[0]
-        y1 = self.y_new_view[1]
+        y0 = self.y_ptr[0]
+        y1 = self.y_ptr[1]
 
-        # Unpack any additional arguments that do not change with time using the `self.arg_array_view` variable.
+        # Unpack any additional arguments that do not change with time using the `self.args_ptr` variable.
         cdef double a, b
         # These must be float64s
-        a  = self.arg_array_view[0]
-        b  = self.arg_array_view[1]
+        a  = self.args_ptr[0]
+        b  = self.args_ptr[1]
 
-        # If needed, unpack the time variable using `self.t_new`
+        # If needed, unpack the time variable using `self.t_now`
         cdef double t
-        t = self.t_new
+        t = self.t_now
 
-        # This then updates dydt by setting the values of `self.dy_new_view`
-        self.dy_new_view[0] = (1. - a * y1) * y0
-        self.dy_new_view[1] = (b * y0 - 1.) * y1
+        # This then updates dydt by setting the values of `self.dy_ptr`
+        self.dy_ptr[0] = (1. - a * y1) * y0
+        self.dy_ptr[1] = (b * y0 - 1.) * y1
 ```
 
 Once you compile the differential equation it can be imported in a regular python file and used in a similar fashion to the other integrators.

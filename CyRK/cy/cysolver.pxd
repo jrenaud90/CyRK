@@ -14,8 +14,10 @@ cdef class CySolver:
     # Class attributes
 
     # -- Solution variables
-    cdef double[:, ::1] solution_y_view, solution_extra_view
-    cdef double[::1] solution_t_view
+    cdef double* solution_y_ptr
+    cdef double* solution_t_ptr
+    cdef double* solution_extra_ptr
+    cdef double[::1] solution_t_view, solution_y_view, solution_extra_view
 
     # -- Dependent (y0) variable information
     cdef Py_ssize_t y_size
@@ -28,7 +30,7 @@ cdef class CySolver:
 
     # -- Optional args info
     cdef Py_ssize_t num_args
-    cdef double* arg_array_ptr
+    cdef double* args_ptr
 
     # -- Extra output info
     cdef bool_cpp_t capture_extra
@@ -49,7 +51,7 @@ cdef class CySolver:
     cdef bool_cpp_t run_interpolation
     cdef bool_cpp_t interpolate_extra
     cdef Py_ssize_t len_t_eval
-    cdef const double[::1] t_eval_view
+    cdef double* t_eval_ptr
 
     # -- RK method information
     cdef unsigned char rk_method
@@ -62,11 +64,11 @@ cdef class CySolver:
     cdef double* K_ptr
 
     # -- Live variables
-    cdef double t_new, t_old, step_size
-    cdef Py_ssize_t len_t
-    cdef double* y_new_ptr
+    cdef double t_now, t_old, step_size
+    cdef Py_ssize_t len_t, len_t_touse
+    cdef double* y_ptr
     cdef double* y_old_ptr
-    cdef double* dy_new_ptr
+    cdef double* dy_ptr
     cdef double* dy_old_ptr
     cdef double* extra_output_init_ptr
     cdef double* extra_output_ptr
@@ -92,23 +94,23 @@ cdef class CySolver:
 
     cpdef void change_tols(self, double rtol = *,
                            double atol = *,
-                           double[::1] rtols = *,
-                           double[::1] atols = *,
+                           const double[::1] rtols = *,
+                           const double[::1] atols = *,
                            bool_cpp_t auto_reset_state = *)
 
     cpdef void change_max_step(self, double max_step, bool_cpp_t auto_reset_state = *)
 
     cpdef void change_first_step(self, double first_step, bool_cpp_t auto_reset_state = *)
 
-    cpdef void change_t_eval(self, const double[:] t_eval, bool_cpp_t auto_reset_state = *)
+    cpdef void change_t_eval(self, const double[::1] t_eval, bool_cpp_t auto_reset_state = *)
 
     cpdef void change_parameters(self, (double, double) t_span = *,
                                 const double[::1] y0 = *,
                                 tuple args = *,
                                 double rtol = *,
                                 double atol = *,
-                                double[::1] rtols = *,
-                                double[::1] atols = *,
+                                const double[::1] rtols = *,
+                                const double[::1] atols = *,
                                 double max_step = *,
                                 double first_step = *,
                                 const double[::1] t_eval = *,
