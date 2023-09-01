@@ -417,19 +417,20 @@ cdef class CySolver:
 
         # Determine optional arguments
         if args is None:
-            self.num_args = 0
-            # Even though there are no args, initialize the array to something to avoid seg faults
-            self.args_ptr = <double *> PyMem_Malloc(sizeof(double))
-            if not self.args_ptr:
-                raise MemoryError()
-            self.args_ptr[0] = NAN
+            self.use_args = False
+            # Even though there are no args set arg size to 1 to initialize nan arrays
+            self.num_args = 1
         else:
+            self.use_args = True
             self.num_args = len(args)
-            self.args_ptr = <double *> PyMem_Malloc(self.num_args * sizeof(double))
-            if not self.args_ptr:
-                raise MemoryError()
-            for i in range(self.num_args):
+        self.args_ptr = <double *> PyMem_Malloc(self.num_args * sizeof(double))
+        if not self.args_ptr:
+            raise MemoryError()
+        for i in range(self.num_args):
+            if self.use_args:
                 self.args_ptr[i] = args[i]
+            else:
+                self.args_ptr[i] = NAN
 
         # Initialize live variable arrays
         self.y_ptr = <double *> PyMem_Malloc(self.y_size * sizeof(double))
@@ -1392,21 +1393,22 @@ cdef class CySolver:
             If True, then the `reset_state` method will be called once parameter is changed.
         """
 
-        # Build new arg array.
+        # Determine optional arguments
         if args is None:
-            self.num_args = 0
-            # Even though there are no args, initialize the array to something to avoid seg faults
-            self.args_ptr = <double *> PyMem_Realloc(self.args_ptr, sizeof(double))
-            if not self.args_ptr:
-                raise MemoryError()
-            self.args_ptr[0] = NAN
+            self.use_args = False
+            # Even though there are no args set arg size to 1 to initialize nan arrays
+            self.num_args = 1
         else:
+            self.use_args = True
             self.num_args = len(args)
-            self.args_ptr = <double *> PyMem_Realloc(self.args_ptr, self.num_args * sizeof(double))
-            if not self.args_ptr:
-                raise MemoryError()
-            for i in range(self.num_args):
+        self.args_ptr = <double *> PyMem_Realloc(self.num_args * sizeof(double))
+        if not self.args_ptr:
+            raise MemoryError()
+        for i in range(self.num_args):
+            if self.use_args:
                 self.args_ptr[i] = args[i]
+            else:
+                self.args_ptr[i] = NAN
 
         # A change to args will affect the first step's size
         self.recalc_first_step = True

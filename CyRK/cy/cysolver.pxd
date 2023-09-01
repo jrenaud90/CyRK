@@ -31,6 +31,7 @@ cdef class CySolver:
     # -- Optional args info
     cdef Py_ssize_t num_args
     cdef double* args_ptr
+    cdef bool_cpp_t use_args
 
     # -- Extra output info
     cdef bool_cpp_t capture_extra
