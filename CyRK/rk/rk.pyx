@@ -4,10 +4,6 @@
 Based off Scipy's implementation and references.
 """
 
-ctypedef fused double_numeric:
-    double
-    double complex
-
 cdef (Py_ssize_t, Py_ssize_t, Py_ssize_t, Py_ssize_t, Py_ssize_t) find_rk_properties(Py_ssize_t rk_method) noexcept nogil:
     
     cdef Py_ssize_t order, error_order, n_stages, A_rows, A_cols

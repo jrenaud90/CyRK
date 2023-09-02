@@ -13,7 +13,7 @@ from libcpp cimport bool as bool_cpp_t
 from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, NAN
 
 from CyRK.array.interp cimport interp_array, interp_complex_array
-from CyRK.rk.rk cimport find_rk_properties, populate_rk_arrays
+from CyRK.rk.rk cimport double_numeric, find_rk_properties, populate_rk_arrays
 
 # # Integration Constants
 # Multiply steps computed from asymptotic behaviour of errors by this.
@@ -48,11 +48,6 @@ cdef double cabs(double complex value) noexcept nogil:
     v_imag = value.imag
 
     return sqrt(v_real * v_real + v_imag * v_imag)
-
-# Define fused type to handle both float and complex-valued versions of y and dydt.
-ctypedef fused double_numeric:
-    double
-    double complex
 
 
 cdef double dabs(double_numeric value) noexcept nogil:
@@ -191,10 +186,10 @@ def cyrk_ode(
     cdef Py_ssize_t y_size
     cdef double y_size_dbl, y_size_sqrt
     cdef bool_cpp_t y_is_complex
-    y_size = y0.size
+    y_size       = y0.size
     y_is_complex = False
-    y_size_dbl = <double>y_size
-    y_size_sqrt = sqrt(y_size_dbl)
+    y_size_dbl   = <double>y_size
+    y_size_sqrt  = sqrt(y_size_dbl)
 
     # Check the type of the values in y0
     if double_numeric is cython.double:
@@ -209,13 +204,14 @@ def cyrk_ode(
         raise Exception('Unexpected type found for initial conditions (y0).')
 
     # Build time domain
-    cdef double t_start, t_end, t_delta, t_delta_check, t_delta_abs, direction_inf, t_old, t_new, time_
+    cdef double t_start, t_end, t_delta, t_delta_check, t_delta_abs, direction_inf, t_old, t_now, time_
     cdef bool_cpp_t direction_flag
-    t_start = t_span[0]
-    t_end   = t_span[1]
-    t_delta = t_end - t_start
-    t_delta_abs = fabs(t_delta)
+    t_start       = t_span[0]
+    t_end         = t_span[1]
+    t_delta       = t_end - t_start
+    t_delta_abs   = fabs(t_delta)
     t_delta_check = t_delta_abs
+
     if t_delta >= 0.:
         # Integration is moving forward in time.
         direction_flag = True
@@ -256,42 +252,46 @@ def cyrk_ode(
         #  on computation.
         store_extras_during_integration = False
 
-    # # Determine integration tolerances
-    use_arg_arrays = False
-    use_atol_array = False
-    cdef np.ndarray[np.float64_t, ndim=1, mode='c'] rtol_array, atol_array
-    rtol_array = np.empty(y_size, dtype=np.float64, order='C')
-    atol_array = np.empty(y_size, dtype=np.float64, order='C')
-    cdef double[::1] rtols_view, atols_view
-    rtols_view = rtol_array
-    atols_view = atol_array
+    # Determine integration tolerances
+    cdef double rtol_tmp
+    cdef double* rtols_ptr
+    cdef double* atols_ptr
+    rtols_ptr = <double *> PyMem_Malloc(y_size * sizeof(double))
+    if not rtols_ptr:
+        raise MemoryError()
+
+    atols_ptr = <double *> PyMem_Malloc(y_size * sizeof(double))
+    if not atols_ptr:
+        raise MemoryError()
 
     if rtols is not None:
-        # Using arrayed rtol
+        # User provided an arrayed version of rtol.
         if len(rtols) != y_size:
-            raise AttributeError('rtols must be the same size as y0.')
+            raise AttributeError('rtol array must be the same size as y0.')
         for i in range(y_size):
-            rtol = rtols[i]
-            if rtol < EPS_100:
-                rtol = EPS_100
-            rtols_view[i] = rtol
+            rtol_tmp = rtols[i]
+            # Check that the tolerances are not too small.
+            if rtol_tmp < EPS_100:
+                rtol_tmp = EPS_100
+            rtols_ptr[i] = rtol_tmp
     else:
-        # Using constant rtol
-        # Check tolerances
+        # No array provided. Use the same rtol for all ys.
+        # Check that the tolerances are not too small.
         if rtol < EPS_100:
             rtol = EPS_100
         for i in range(y_size):
-            rtols_view[i] = rtol
+            rtols_ptr[i] = rtol
 
     if atols is not None:
-        # Using arrayed atol
+        # User provided an arrayed version of atol.
         if len(atols) != y_size:
-            raise AttributeError('atols must be the same size as y0.')
+            raise AttributeError('atol array must be the same size as y0.')
         for i in range(y_size):
-            atols_view[i] = atols[i]
+            atols_ptr[i] = atols[i]
     else:
+        # No array provided. Use the same atol for all ys.
         for i in range(y_size):
-            atols_view[i] = atol
+            atols_ptr[i] = atol
 
     # Determine maximum number of steps
     if max_num_steps == 0:
@@ -319,14 +319,14 @@ def cyrk_ode(
     # Initialize arrays that are based on y's size and type.
     y_new    = np.empty(y_size, dtype=DTYPE, order='C')
     y_old    = np.empty(y_size, dtype=DTYPE, order='C')
-    dydt_new = np.empty(y_size, dtype=DTYPE, order='C')
+    dydt_now = np.empty(y_size, dtype=DTYPE, order='C')
     dydt_old = np.empty(y_size, dtype=DTYPE, order='C')
 
     # Setup memory views for these arrays
-    cdef double_numeric[:] y_new_view, y_old_view, dydt_new_view, dydt_old_view
+    cdef double_numeric[:] y_new_view, y_old_view, dydt_now_view, dydt_old_view
     y_new_view    = y_new
     y_old_view    = y_old
-    dydt_new_view = dydt_new
+    dydt_now_view = dydt_now
     dydt_old_view = dydt_old
 
     # Store y0 into the y arrays
@@ -385,6 +385,12 @@ def cyrk_ode(
             y0_to_store_view[i] = y0[i]
 
     # Determine RK scheme and initialize RK memory views
+    cdef double_numeric* A_ptr
+    cdef double_numeric* B_ptr
+    cdef double* C_ptr
+    cdef double_numeric* E_ptr
+    cdef double_numeric* E3_ptr
+    cdef double_numeric* E5_ptr
     cdef Py_ssize_t rk_order, error_order, rk_n_stages, len_Arows, len_Acols, len_C, rk_n_stages_plus1
     cdef double error_expo, error_pow
     rk_order, error_order, rk_n_stages, len_Arows, len_Acols = find_rk_properties(rk_method)
@@ -462,11 +468,11 @@ def cyrk_ode(
             diffeq(t_start, y_new, diffeq_out)
 
     t_old = t_start
-    t_new = t_start
+    t_now = t_start
     # Initialize dydt arrays.
     for i in range(y_size):
-        dydt_new_view[i] = diffeq_out_view[i]
-        dydt_old_view[i] = dydt_new_view[i]
+        dydt_now_view[i] = diffeq_out_view[i]
+        dydt_old_view[i] = dydt_now_view[i]
     
     # Setup storage arrays
     # These arrays are built to fit a number of points equal to `expected_size_to_use`
@@ -502,7 +508,7 @@ def cyrk_ode(
             d1 = 0.
             for i in range(y_size):
 
-                scale = atols_view[i] + dabs(y_old_view[i]) * rtols_view[i]
+                scale = atols_ptr[i] + dabs(y_old_view[i]) * rtols_ptr[i]
                 d0_abs = dabs(y_old_view[i]) / scale
                 d1_abs = dabs(dydt_old_view[i]) / scale
                 d0 += (d0_abs * d0_abs)
@@ -520,21 +526,21 @@ def cyrk_ode(
                 h0_direction = h0
             else:
                 h0_direction = -h0
-            t_new = t_old + h0_direction
+            t_now = t_old + h0_direction
             for i in range(y_size):
                 y_new_view[i] = y_old_view[i] + h0_direction * dydt_old_view[i]
 
             if use_args:
-                diffeq(t_new, y_new, diffeq_out, *args)
+                diffeq(t_now, y_new, diffeq_out, *args)
             else:
-                diffeq(t_new, y_new, diffeq_out)
+                diffeq(t_now, y_new, diffeq_out)
 
             # Find the norm for d2
             d2 = 0.
             for i in range(y_size):
-                dydt_new_view[i] = diffeq_out_view[i]
-                scale = atols_view[i] + dabs(y_old_view[i]) * rtols_view[i]
-                d2_abs = dabs( (dydt_new_view[i] - dydt_old_view[i]) ) / scale
+                dydt_now_view[i] = diffeq_out_view[i]
+                scale = atols_ptr[i] + dabs(y_old_view[i]) * rtols_ptr[i]
+                d2_abs = dabs( (dydt_now_view[i] - dydt_old_view[i]) ) / scale
                 d2 += (d2_abs * d2_abs)
 
             d2 = sqrt(d2) / (h0 * y_size_sqrt)
@@ -567,7 +573,7 @@ def cyrk_ode(
         message = "Integration never started: y-size is zero."
 
     while status == 0:
-        if t_new == t_end:
+        if t_now == t_end:
             t_old = t_end
             status = 1
             break
@@ -607,19 +613,19 @@ def cyrk_ode(
             # Move time forward for this particular step size
             if direction_flag:
                 step = step_size
-                t_new = t_old + step
-                t_delta_check = t_new - t_end
+                t_now = t_old + step
+                t_delta_check = t_now - t_end
             else:
                 step = -step_size
-                t_new = t_old + step
-                t_delta_check = t_end - t_new
+                t_now = t_old + step
+                t_delta_check = t_end - t_now
 
             # Check that we are not at the end of integration with that move
             if t_delta_check > 0.:
-                t_new = t_end
+                t_now = t_end
 
                 # Correct the step if we were at the end of integration
-                step = t_new - t_old
+                step = t_now - t_old
                 if direction_flag:
                     step_size = step
                 else:
@@ -671,9 +677,9 @@ def cyrk_ode(
                     y_new_view[i] += K_ptr[j * y_size + i] * B_at_j
 
             if use_args:
-                diffeq(t_new, y_new, diffeq_out, *args)
+                diffeq(t_now, y_new, diffeq_out, *args)
             else:
-                diffeq(t_new, y_new, diffeq_out)
+                diffeq(t_now, y_new, diffeq_out)
 
             if rk_method == 2:
                 # Calculate Error for DOP853
@@ -683,13 +689,13 @@ def cyrk_ode(
                 # Dot Product (K, E5) / scale and Dot Product (K, E3) * step / scale
                 for i in range(y_size):
                     # Find scale of y for error calculations
-                    scale = atols_view[i] + max(dabs(y_old_view[i]), dabs(y_new_view[i])) * rtols_view[i]
+                    scale = atols_ptr[i] + max(dabs(y_old_view[i]), dabs(y_new_view[i])) * rtols_ptr[i]
 
                     # Set diffeq results
-                    dydt_new_view[i] = diffeq_out_view[i]
+                    dydt_now_view[i] = diffeq_out_view[i]
 
                     # Set last array of K equal to dydt
-                    K_ptr[rk_n_stages * y_size + i] = dydt_new_view[i]
+                    K_ptr[rk_n_stages * y_size + i] = dydt_now_view[i]
                     for j in range(rk_n_stages_plus1):
                         if j == 0:
                             # Initialize
@@ -719,13 +725,13 @@ def cyrk_ode(
                 error_norm = 0.
                 for i in range(y_size):
                     # Find scale of y for error calculations
-                    scale = atols_view[i] + max(dabs(y_old_view[i]), dabs(y_new_view[i])) * rtols_view[i]
+                    scale = atols_ptr[i] + max(dabs(y_old_view[i]), dabs(y_new_view[i])) * rtols_ptr[i]
 
                     # Set diffeq results
-                    dydt_new_view[i] = diffeq_out_view[i]
+                    dydt_now_view[i] = diffeq_out_view[i]
 
                     # Set last array of K equal to dydt
-                    K_ptr[rk_n_stages * y_size + i] = dydt_new_view[i]
+                    K_ptr[rk_n_stages * y_size + i] = dydt_now_view[i]
                     for j in range(rk_n_stages_plus1):
                         if j == 0:
                             # Initialize
@@ -769,10 +775,10 @@ def cyrk_ode(
             break
 
         # End of step loop. Update the _now variables
-        t_old = t_new
+        t_old = t_now
         for i in range(y_size):
             y_old_view[i] = y_new_view[i]
-            dydt_old_view[i] = dydt_new_view[i]
+            dydt_old_view[i] = dydt_now_view[i]
 
         # Save data
         if len_t >= (num_concats * expected_size_to_use):                
@@ -799,7 +805,7 @@ def cyrk_ode(
             # TODO: Delete the old arrays?
         
         # There should be room in the arrays to add new data.
-        time_domain_array_view[len_t] = t_new
+        time_domain_array_view[len_t] = t_now
         # To match the format that scipy follows, we will take the transpose of y.
         for i in range(store_loop_size):
             if i < extra_start:
@@ -950,6 +956,10 @@ def cyrk_ode(
                 solution_y_view[j, i] = y_results_reduced_view[j, i]
         status = old_status
 
+    # Free pointers made from user inputs
+    PyMem_Free(rtols_ptr)
+    PyMem_Free(atols_ptr)
+    
     # Free RK Constants
     PyMem_Free(A_ptr)
     PyMem_Free(B_ptr)

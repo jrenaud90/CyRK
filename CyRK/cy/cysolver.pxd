@@ -1,7 +1,5 @@
 from libcpp cimport bool as bool_cpp_t
 
-from CyRK.rk.rk cimport RKConstants
-
 cdef double SAFETY
 cdef double MIN_FACTOR
 cdef double MAX_FACTOR

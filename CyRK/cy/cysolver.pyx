@@ -15,7 +15,7 @@ from libcpp cimport bool as bool_cpp_t
 from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, isnan, NAN, pow
 
 from CyRK.array.interp cimport interp_array_ptr
-from CyRK.rk.rk cimport find_rk_properties
+from CyRK.rk.rk cimport find_rk_properties, populate_rk_arrays
 
 # # Integration Constants
 # Multiply steps computed from asymptotic behaviour of errors by this.
@@ -547,10 +547,10 @@ cdef class CySolver:
                 raise MemoryError()
             self.E_ptr[0] = NAN
 
-            self.E3_ptr = <double *> PyMem_Malloc(rk_n_stages_plus1 * sizeof(double))
+            self.E3_ptr = <double *> PyMem_Malloc(self.rk_n_stages_plus1 * sizeof(double))
             if not self.E3_ptr:
                 raise MemoryError()
-            self.E5_ptr = <double *> PyMem_Malloc(rk_n_stages_plus1 * sizeof(double))
+            self.E5_ptr = <double *> PyMem_Malloc(self.rk_n_stages_plus1 * sizeof(double))
             if not self.E5_ptr:
                 raise MemoryError()
         else:
@@ -564,7 +564,7 @@ cdef class CySolver:
             self.E3_ptr[0] = NAN
             self.E5_ptr[0] = NAN
 
-            self.E_ptr = <double *> PyMem_Malloc(rk_n_stages_plus1 * sizeof(double))
+            self.E_ptr = <double *> PyMem_Malloc(self.rk_n_stages_plus1 * sizeof(double))
             if not self.E_ptr:
                 raise MemoryError()
 
@@ -1800,5 +1800,6 @@ cdef class CySolver:
         PyMem_Free(self.E_ptr)
         PyMem_Free(self.E3_ptr)
         PyMem_Free(self.E5_ptr)
+
         # Free RK Temp Storage Array
         PyMem_Free(self.K_ptr)
