@@ -517,12 +517,14 @@ cdef class CySolver:
         self.rk_method = rk_method
         cdef Py_ssize_t order, error_order, n_stages, A_rows, A_cols
         order, error_order, n_stages, A_rows, A_cols = find_rk_properties(self.rk_method)
-        self.rk_order    = order
-        self.error_order = error_order
-        self.rk_n_stages = n_stages
-        self.len_Arows   = A_rows
-        self.len_Acols   = A_cols
-        self.len_C       = self.rk_n_stages
+        self.rk_order          = order
+        self.error_order       = error_order
+        self.rk_n_stages       = n_stages
+        self.len_Arows         = A_rows
+        self.len_Acols         = A_cols
+        self.len_C             = self.rk_n_stages
+        self.rk_n_stages_plus1 = self.rk_n_stages + 1
+        self.error_expo        = 1. / (<double>self.error_order + 1.)
 
         if order == -1:
             raise AttributeError('Unknown RK Method Provided.')
@@ -545,10 +547,10 @@ cdef class CySolver:
                 raise MemoryError()
             self.E_ptr[0] = NAN
 
-            self.E3_ptr = <double *> PyMem_Malloc((self.rk_n_stages + 1) * sizeof(double))
+            self.E3_ptr = <double *> PyMem_Malloc(rk_n_stages_plus1 * sizeof(double))
             if not self.E3_ptr:
                 raise MemoryError()
-            self.E5_ptr = <double *> PyMem_Malloc((self.rk_n_stages + 1) * sizeof(double))
+            self.E5_ptr = <double *> PyMem_Malloc(rk_n_stages_plus1 * sizeof(double))
             if not self.E5_ptr:
                 raise MemoryError()
         else:
@@ -562,15 +564,12 @@ cdef class CySolver:
             self.E3_ptr[0] = NAN
             self.E5_ptr[0] = NAN
 
-            self.E_ptr = <double *> PyMem_Malloc((self.rk_n_stages + 1) * sizeof(double))
+            self.E_ptr = <double *> PyMem_Malloc(rk_n_stages_plus1 * sizeof(double))
             if not self.E_ptr:
                 raise MemoryError()
 
         # Populate arrays with RK constants
         populate_rk_arrays(self.rk_method, self.A_ptr, self.B_ptr, self.C_ptr, self.E_ptr, self.E3_ptr, self.E5_ptr)
-
-        self.rk_n_stages_plus1 = self.rk_n_stages + 1
-        self.error_expo        = 1. / (<double>self.error_order + 1.)
 
         # Initialize other RK-related Arrays
         self.K_ptr = <double *> PyMem_Malloc(self.rk_n_stages_plus1 * self.y_size * sizeof(double))
@@ -1781,9 +1780,6 @@ cdef class CySolver:
         PyMem_Free(self.args_ptr)
         PyMem_Free(self.t_eval_ptr)
 
-        # Free pointers used in RK step
-        PyMem_Free(self.K_ptr)
-
         # Free pointers used to track y, dydt, and any extra outputs
         PyMem_Free(self.y_ptr)
         PyMem_Free(self.y_old_ptr)
@@ -1804,3 +1800,5 @@ cdef class CySolver:
         PyMem_Free(self.E_ptr)
         PyMem_Free(self.E3_ptr)
         PyMem_Free(self.E5_ptr)
+        # Free RK Temp Storage Array
+        PyMem_Free(self.K_ptr)

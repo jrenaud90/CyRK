@@ -7,18 +7,13 @@ import numpy as np
 cimport numpy as np
 np.import_array()
 
+from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
+
 from libcpp cimport bool as bool_cpp_t
-from libc.math cimport sqrt, fabs, nextafter, fmax, fmin
+from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, NAN
 
 from CyRK.array.interp cimport interp_array, interp_complex_array
-from CyRK.rk.rk cimport (
-    RK23_C_view, RK23_B_view, RK23_E_view, RK23_A_view, RK23_order, RK23_error_order, RK23_n_stages, RK23_LEN_C,
-    RK23_LEN_B, RK23_LEN_E, RK23_LEN_E3, RK23_LEN_E5, RK23_LEN_A0, RK23_LEN_A1,
-    RK45_C_view, RK45_B_view, RK45_E_view, RK45_A_view, RK45_order, RK45_error_order, RK45_n_stages, RK45_LEN_C,
-    RK45_LEN_B, RK45_LEN_E, RK45_LEN_E3, RK45_LEN_E5, RK45_LEN_A0, RK45_LEN_A1,
-    DOP_C_REDUCED_view, DOP_B_view, DOP_E3_view, DOP_E5_view, DOP_A_REDUCED_view,
-    DOP_order, DOP_error_order, DOP_n_stages, DOP_n_stages_extended, DOP_LEN_C,
-    DOP_LEN_B, DOP_LEN_E, DOP_LEN_E3, DOP_LEN_E5, DOP_LEN_A0, DOP_LEN_A1)
+from CyRK.rk.rk cimport find_rk_properties, populate_rk_arrays
 
 # # Integration Constants
 # Multiply steps computed from asymptotic behaviour of errors by this.
@@ -389,148 +384,74 @@ def cyrk_ode(
         else:
             y0_to_store_view[i] = y0[i]
 
-    # # Determine RK scheme
-    cdef Py_ssize_t rk_order, error_order
-    cdef Py_ssize_t rk_n_stages, rk_n_stages_plus1, rk_n_stages_extended
-    cdef Py_ssize_t len_A0, len_A1, len_B, len_C, len_E, len_E3, len_E5
-    cdef double error_pow, error_expo, error_norm5, error_norm3, error_norm, error_norm_abs, error_norm3_abs, error_norm5_abs, error_denom
-
-    if rk_method == 0:
-        # RK23 Method
-        rk_order    = RK23_order
-        error_order = RK23_error_order
-        rk_n_stages = RK23_n_stages
-
-        len_A0 = RK23_LEN_A0
-        len_A1 = RK23_LEN_A1
-        len_B  = RK23_LEN_B
-        len_C  = RK23_LEN_C
-        len_E  = RK23_LEN_E
-
-        # These are unused for RK23, but initalize them anyways
-        len_E3 = RK23_LEN_E3
-        len_E5 = RK23_LEN_E5
-
-    elif rk_method == 1:
-        # RK45 Method
-        rk_order    = RK45_order
-        error_order = RK45_error_order
-        rk_n_stages = RK45_n_stages
-
-        len_A0 = RK45_LEN_A0
-        len_A1 = RK45_LEN_A1
-        len_B  = RK45_LEN_B
-        len_C  = RK45_LEN_C
-        len_E  = RK45_LEN_E
-
-        # These are unused for RK45, but initalize them anyways
-        len_E3 = RK45_LEN_E
-        len_E5 = RK45_LEN_E
-
-    elif rk_method == 2:
-        # DOP853 Method
-        rk_order    = DOP_order
-        error_order = DOP_error_order
-        rk_n_stages = DOP_n_stages
-        len_C       = DOP_LEN_C
-        rk_n_stages_extended = DOP_n_stages_extended
-
-        len_A0 = DOP_LEN_A0
-        len_A1 = DOP_LEN_A1
-        len_B  = DOP_LEN_B
-        len_C  = DOP_LEN_C
-        len_E3 = DOP_LEN_E3
-        len_E5 = DOP_LEN_E5
-
-        # These are unused for DOP853, but initalize them anyways
-        len_E  = DOP_LEN_E3
-    else:
-        status = -8
-        message = "Attribute error."
-        raise AttributeError(
-            'Unexpected rk_method provided. Currently supported versions are:\n'
-            '\t0 = RK23\n'
-            '\t1 = RK34\n'
-            '\t2 = DOP853')
-
+    # Determine RK scheme and initialize RK memory views
+    cdef Py_ssize_t rk_order, error_order, rk_n_stages, len_Arows, len_Acols, len_C, rk_n_stages_plus1
+    cdef double error_expo, error_pow
+    rk_order, error_order, rk_n_stages, len_Arows, len_Acols = find_rk_properties(rk_method)
+    len_C             = rk_n_stages
     rk_n_stages_plus1 = rk_n_stages + 1
-    error_expo = 1. / (<double>error_order + 1.)
+    error_expo        = 1. / (<double> error_order + 1.)
 
-    # Build RK Arrays. Note that all are 1D except for A and K.
-    # Check if we need to convert RK constants (all are defined as real-valued doubles)
-    A  = np.empty((len_A0, len_A1), dtype=DTYPE, order='C')
-    B  = np.empty(len_B, dtype=DTYPE, order='C')
-    C  = np.empty(len_C, dtype=np.float64, order='C')
-    E  = np.empty(len_E, dtype=DTYPE, order='C')
-    E3 = np.empty(len_E3, dtype=DTYPE, order='C')
-    E5 = np.empty(len_E5, dtype=DTYPE, order='C')
+    cdef double error_norm5, error_norm3, error_norm, error_norm_abs, error_norm3_abs, error_norm5_abs, error_denom
 
-    # Set memoryviews
-    cdef double_numeric[::1] B_view, E_view, E3_view, E5_view
-    cdef double_numeric[:, ::1] A_view
-    # C is a double no matter what.
-    cdef double[::1] C_view
-    A_view  = A
-    B_view  = B
-    C_view  = C
-    E_view  = E
-    E3_view = E3
-    E5_view = E5
+    if rk_order == -1:
+        raise AttributeError('Unknown RK Method Provided.')
 
-    # Populate values based on externally defined constants.
-    if rk_method == 0:
-        # RK23 Method
-        for i in range(len_A0):
-            for j in range(len_A1):
-                A_view[i, j] = RK23_A_view[i, j]
-        for i in range(len_B):
-            B_view[i] = RK23_B_view[i]
-        for i in range(len_C):
-            C_view[i] = RK23_C_view[i]
-        for i in range(len_E):
-            E_view[i] = RK23_E_view[i]
-            # Dummy Variables, set equal to E
-            E3_view[i] = RK23_E_view[i]
-            E5_view[i] = RK23_E_view[i]
-    elif rk_method == 1:
-        # RK45 Method
-        for i in range(len_A0):
-            for j in range(len_A1):
-                A_view[i, j] = RK45_A_view[i, j]
-        for i in range(len_B):
-            B_view[i] = RK45_B_view[i]
-        for i in range(len_C):
-            C_view[i] = RK45_C_view[i]
-        for i in range(len_E):
-            E_view[i]  = RK45_E_view[i]
-            # Dummy Variables, set equal to E
-            E3_view[i] = RK45_E_view[i]
-            E5_view[i] = RK45_E_view[i]
+    # Initialize RK arrays
+    A_ptr = <double_numeric *> PyMem_Malloc(len_Arows * len_Acols * sizeof(double_numeric))
+    if not A_ptr:
+        raise MemoryError()
+    B_ptr = <double_numeric *> PyMem_Malloc(rk_n_stages * sizeof(double_numeric))
+    if not B_ptr:
+        raise MemoryError()
+    # Note: C is always a double no matter if y is complex or not.
+    C_ptr = <double *> PyMem_Malloc(rk_n_stages * sizeof(double))
+    if not C_ptr:
+        raise MemoryError()
+
+    if rk_method == 2:
+        # DOP853 requires 2 error array pointers. Set the other error array to nan
+        E_ptr = <double_numeric *> PyMem_Malloc(1 * sizeof(double_numeric))
+        if not E_ptr:
+            raise MemoryError()
+        E_ptr[0] = NAN
+
+        E3_ptr = <double_numeric *> PyMem_Malloc(rk_n_stages_plus1 * sizeof(double_numeric))
+        if not E3_ptr:
+            raise MemoryError()
+        E5_ptr = <double_numeric *> PyMem_Malloc(rk_n_stages_plus1 * sizeof(double_numeric))
+        if not E5_ptr:
+            raise MemoryError()
     else:
-        # DOP853 Method
-        for i in range(len_A0):
-            for j in range(len_A1):
-                A_view[i, j] = DOP_A_REDUCED_view[i, j]
-        for i in range(len_B):
-            B_view[i] = DOP_B_view[i]
-        for i in range(len_C):
-            C_view[i] = DOP_C_REDUCED_view[i]
-        for i in range(len_E):
-            E3_view[i] = DOP_E3_view[i]
-            E5_view[i] = DOP_E5_view[i]
-            # Dummy Variable, set equal to E3
-            E_view[i]  = DOP_E3_view[i]
+        # RK23/RK45 only require 1 error array pointers. Set the other error arrays to nan
+        E3_ptr = <double_numeric *> PyMem_Malloc(1 * sizeof(double_numeric))
+        if not E3_ptr:
+            raise MemoryError()
+        E5_ptr = <double_numeric *> PyMem_Malloc(1 * sizeof(double_numeric))
+        if not E5_ptr:
+            raise MemoryError()
+        E3_ptr[0] = NAN
+        E5_ptr[0] = NAN
+
+        E_ptr = <double_numeric *> PyMem_Malloc(rk_n_stages_plus1 * sizeof(double_numeric))
+        if not E_ptr:
+            raise MemoryError()
+
+    # Populate arrays with RK constants
+    populate_rk_arrays(rk_method, A_ptr, B_ptr, C_ptr, E_ptr, E3_ptr, E5_ptr)
 
     # Initialize other RK-related Arrays
+    K_ptr = <double_numeric *> PyMem_Malloc(rk_n_stages_plus1 * y_size * sizeof(double_numeric))
+    if not K_ptr:
+        raise MemoryError()
     # It is important K be initialized with 0s
-    cdef double_numeric[:, ::1] K_view
-    cdef double_numeric[::1, :] K_T_view
-    K = np.zeros((rk_n_stages_plus1, y_size), dtype=DTYPE, order='C')
-    K_view   = K
-    K_T_view = K_view.T
+    for i in range(rk_n_stages_plus1):
+        for j in range(y_size):
+            K_ptr[i * y_size + j] = 0.
 
     # Other RK Optimizations
-    A_at_10 = A_view[1, 0]
+    cdef double_numeric A_at_sj, A_at_10, B_at_j, K_
+    A_at_10 = A_ptr[1 * len_Acols + 0]
 
     # Initialize variables for start of integration
     if not capture_extra:
@@ -566,7 +487,9 @@ def cyrk_ode(
             y_results_array_view[i] = y0[i]
 
     # # Determine size of first step.
-    cdef double step_size, d0, d1, d2, d0_abs, d1_abs, d2_abs, h0, h1, scale
+    cdef double d0, d1, d2, d0_abs, d1_abs, d2_abs, h0, h1, scale
+    cdef double step, step_size, min_step, step_factor
+    cdef double_numeric step_numeric
     if first_step == 0.:
         # Select an initial step size based on the differential equation.
         # .. [1] E. Hairer, S. P. Norsett G. Wanner, "Solving Ordinary Differential
@@ -580,8 +503,8 @@ def cyrk_ode(
             for i in range(y_size):
 
                 scale = atols_view[i] + dabs(y_old_view[i]) * rtols_view[i]
-                d0_abs = dabs(y_old_view[i] / scale)
-                d1_abs = dabs(dydt_old_view[i] / scale)
+                d0_abs = dabs(y_old_view[i]) / scale
+                d1_abs = dabs(dydt_old_view[i]) / scale
                 d0 += (d0_abs * d0_abs)
                 d1 += (d1_abs * d1_abs)
 
@@ -611,7 +534,7 @@ def cyrk_ode(
             for i in range(y_size):
                 dydt_new_view[i] = diffeq_out_view[i]
                 scale = atols_view[i] + dabs(y_old_view[i]) * rtols_view[i]
-                d2_abs = dabs( (dydt_new_view[i] - dydt_old_view[i]) / scale)
+                d2_abs = dabs( (dydt_new_view[i] - dydt_old_view[i]) ) / scale
                 d2 += (d2_abs * d2_abs)
 
             d2 = sqrt(d2) / (h0 * y_size_sqrt)
@@ -634,8 +557,6 @@ def cyrk_ode(
         step_size = first_step
 
     # # Main integration loop
-    cdef double min_step, step_factor, step
-    cdef double_numeric K_scale
     cdef Py_ssize_t len_t
     status = 0
     message = "Integration is/was ongoing (perhaps it was interrupted?)."
@@ -703,31 +624,31 @@ def cyrk_ode(
                     step_size = step
                 else:
                     step_size = -step
+            step_numeric = <double_numeric>step
 
             # Calculate derivative using RK method
             # Dot Product (K, a) * step
             for s in range(1, len_C):
-                c = C_view[s]
-                time_ = t_old + c * step
+                time_ = t_old + C_ptr[s] * step
 
                 # Dot Product (K, a) * step
                 if s == 1:
                     for i in range(y_size):
                         # Set the first column of K
                         dy_tmp = dydt_old_view[i]
-                        K_view[0, i] = dy_tmp
+                        K_ptr[i] = dy_tmp
 
                         # Calculate y_new for s==1
-                        y_new_view[i] = y_old_view[i] + (dy_tmp * A_at_10 * step)
+                        y_new_view[i] = y_old_view[i] + (dy_tmp * A_at_10 * step_numeric)
                 else:
                     for j in range(s):
-                        A_at_sj = A_view[s, j] * step
+                        A_at_sj = A_ptr[s * len_Acols + j] * step_numeric
                         for i in range(y_size):
                             if j == 0:
                                 # Initialize
                                 y_new_view[i] = y_old_view[i]
 
-                            y_new_view[i] += K_view[j, i] * A_at_sj
+                            y_new_view[i] += K_ptr[j * y_size + i] * A_at_sj
 
                 if use_args:
                     diffeq(time_, y_new, diffeq_out, *args)
@@ -735,11 +656,11 @@ def cyrk_ode(
                     diffeq(time_, y_new, diffeq_out)
 
                 for i in range(y_size):
-                    K_view[s, i] = diffeq_out_view[i]
+                    K_ptr[s * y_size + i] = diffeq_out_view[i]
 
             # Dot Product (K, B) * step
             for j in range(rk_n_stages):
-                B_at_j = B_view[j] * step
+                B_at_j = B_ptr[j] * step_numeric
                 # We do not use rk_n_stages_plus1 here because we are chopping off the last row of K to match
                 #  the shape of B.
                 for i in range(y_size):
@@ -747,7 +668,7 @@ def cyrk_ode(
                         # Initialize
                         y_new_view[i] = y_old_view[i]
 
-                    y_new_view[i] += K_view[j, i] * B_at_j
+                    y_new_view[i] += K_ptr[j * y_size + i] * B_at_j
 
             if use_args:
                 diffeq(t_new, y_new, diffeq_out, *args)
@@ -762,25 +683,25 @@ def cyrk_ode(
                 # Dot Product (K, E5) / scale and Dot Product (K, E3) * step / scale
                 for i in range(y_size):
                     # Find scale of y for error calculations
-                    scale = (atols_view[i] + max(dabs(y_old_view[i]), dabs(y_new_view[i])) * rtols_view[i])
+                    scale = atols_view[i] + max(dabs(y_old_view[i]), dabs(y_new_view[i])) * rtols_view[i]
 
                     # Set diffeq results
                     dydt_new_view[i] = diffeq_out_view[i]
 
                     # Set last array of K equal to dydt
-                    K_view[rk_n_stages, i] = dydt_new_view[i]
+                    K_ptr[rk_n_stages * y_size + i] = dydt_new_view[i]
                     for j in range(rk_n_stages_plus1):
                         if j == 0:
                             # Initialize
                             error_dot_1 = 0.
                             error_dot_2 = 0.
 
-                        K_scale = K_T_view[i, j] / <double_numeric>scale
-                        error_dot_1 += K_scale * E3_view[j]
-                        error_dot_2 += K_scale * E5_view[j]
+                        K_ = K_ptr[j * y_size + i]
+                        error_dot_1 += K_ * E3_ptr[j]
+                        error_dot_2 += K_ * E5_ptr[j]
 
-                    error_norm3_abs = dabs(error_dot_1)
-                    error_norm5_abs = dabs(error_dot_2)
+                    error_norm3_abs = dabs(error_dot_1) / scale
+                    error_norm5_abs = dabs(error_dot_2) / scale
 
                     error_norm3 += (error_norm3_abs * error_norm3_abs)
                     error_norm5 += (error_norm5_abs * error_norm5_abs)
@@ -798,22 +719,21 @@ def cyrk_ode(
                 error_norm = 0.
                 for i in range(y_size):
                     # Find scale of y for error calculations
-                    scale = (atols_view[i] + max(dabs(y_old_view[i]), dabs(y_new_view[i])) * rtols_view[i])
+                    scale = atols_view[i] + max(dabs(y_old_view[i]), dabs(y_new_view[i])) * rtols_view[i]
 
                     # Set diffeq results
                     dydt_new_view[i] = diffeq_out_view[i]
 
                     # Set last array of K equal to dydt
-                    K_view[rk_n_stages, i] = dydt_new_view[i]
+                    K_ptr[rk_n_stages * y_size + i] = dydt_new_view[i]
                     for j in range(rk_n_stages_plus1):
                         if j == 0:
                             # Initialize
                             error_dot_1 = 0.
 
-                        K_scale = K_T_view[i, j] / <double_numeric>scale
-                        error_dot_1 += K_scale * E_view[j] * step
+                        error_dot_1 += K_ptr[j * y_size + i] * E_ptr[j]
 
-                    error_norm_abs = dabs(error_dot_1)
+                    error_norm_abs = dabs(error_dot_1) * (step / scale)
                     error_norm += (error_norm_abs * error_norm_abs)
                 error_norm = sqrt(error_norm) / y_size_sqrt
 
@@ -1029,5 +949,15 @@ def cyrk_ode(
                 # To match the format that scipy follows, we will take the transpose of y.
                 solution_y_view[j, i] = y_results_reduced_view[j, i]
         status = old_status
+
+    # Free RK Constants
+    PyMem_Free(A_ptr)
+    PyMem_Free(B_ptr)
+    PyMem_Free(C_ptr)
+    PyMem_Free(E_ptr)
+    PyMem_Free(E3_ptr)
+    PyMem_Free(E5_ptr)
+    # Free RK Temp Storage Array
+    PyMem_Free(K_ptr)
 
     return solution_t, solution_y, success, message
