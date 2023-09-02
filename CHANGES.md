@@ -13,6 +13,7 @@ Changes:
   - `CySolver.dy_new_view` -> `CySolver.dy_ptr`
   - `CySolver.t_new` -> `CySolver.t_now`
   - `CySolver.arg_array_view` -> `CySolver.args_ptr`
+- Changed RK constants back to c arrays initialized with PyMem_Malloc. The memory for these arrays are setup in the cython-based solvers. Afterwards, there are helper functions in `CyRK.rk` to populate the arrays with correct values. 
 
 Performance
 - Transitioned many arrays from numpy to c arrays allocated with PyMem_Malloc, etc. These changes cause significant performance boost to cython-based solvers.

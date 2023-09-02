@@ -15,11 +15,7 @@ from libcpp cimport bool as bool_cpp_t
 from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, isnan, NAN, pow
 
 from CyRK.array.interp cimport interp_array_ptr
-from CyRK.rk.rk cimport (
-    RK23_C_view, RK23_B_view, RK23_E_view, RK23_A_view, RK23_order, RK23_error_order, RK23_n_stages, RK23_LEN_C,
-    RK45_C_view, RK45_B_view, RK45_E_view, RK45_A_view, RK45_order, RK45_error_order, RK45_n_stages, RK45_LEN_C,
-    DOP_C_REDUCED_view, DOP_B_view, DOP_E3_view, DOP_E5_view, DOP_A_REDUCED_view,
-    DOP_order, DOP_error_order, DOP_n_stages, DOP_n_stages_extended, DOP_LEN_C)
+from CyRK.rk.rk cimport find_rk_properties
 
 # # Integration Constants
 # Multiply steps computed from asymptotic behaviour of errors by this.
@@ -135,8 +131,8 @@ cdef class CySolver:
         Length of user requested independent domain, `t_eval`.
     t_eval_ptr : double*
         Pointer of user requested independent domain, `t_eval`.
-    rk_method : unsigned char
-        Runge-Kutta method that will be used. Currently implemented models:
+    rk : RKConstants
+        Instance of a Runge-Kutta Constants class that initializes various RK parameters.
             0: ‘RK23’: Explicit Runge-Kutta method of order 3(2).
             1: ‘RK45’ (default): Explicit Runge-Kutta method of order 5(4).
             2: ‘DOP853’: Explicit Runge-Kutta method of order 8.
@@ -153,19 +149,23 @@ cdef class CySolver:
     error_expo : double
         Exponential used during error calculation. Utilizes `error_order`.
     len_C : Py_ssize_t
-        Size of the RK C array.
-    B_view : double[::1]
-        Memoryview of the RK B parameter.
-    E_view : double[::1]
-        Memoryview of the RK E parameter.
-    E3_view : double[::1]
-        Memoryview of the RK E3 parameter.
-    E5_view : double[::1]
-        Memoryview of the RK E5 parameter.
-    C_view : double[::1]
-        Memoryview of the RK C parameter.
-    A_view : double[:, ::1]
-        Memoryview of the RK A parameter.
+        Size of RK C array.
+    len_Arows : Py_ssize_t
+        Number of rows in (unflattened) RK A 2D array.
+    len_Acols : Py_ssize_t
+        Number of columns in (unflattened) RK A 2D array.
+    A_ptr : double*
+        Pointer of (flattened) RK A parameter (data initialized in self.rk instance)
+    B_ptr : double*
+        Pointer of RK B parameter (data initialized in self.rk instance)
+    C_ptr : double*
+        Pointer of RK C parameter (data initialized in self.rk instance)
+    E_ptr : double*
+        Pointer of RK E parameter (data initialized in self.rk instance)
+    E3_ptr : double*
+        Pointer of RK E3 parameter (data initialized in self.rk instance)
+    E5_ptr : double*
+        Pointer of RK E5 parameter (data initialized in self.rk instance)
     K_ptr : double*
         Pointer of the RK K parameter.
     t_now : double
@@ -515,57 +515,59 @@ cdef class CySolver:
 
         # Determine RK scheme and initialize RK memory views
         self.rk_method = rk_method
-        if rk_method == 0:
-            # RK23 Method
-            self.rk_order    = RK23_order
-            self.error_order = RK23_error_order
-            self.rk_n_stages = RK23_n_stages
-            self.len_C       = RK23_LEN_C
-            self.A_view      = RK23_A_view
-            self.B_view      = RK23_B_view
-            self.C_view      = RK23_C_view
-            self.E_view      = RK23_E_view
+        cdef Py_ssize_t order, error_order, n_stages, A_rows, A_cols
+        order, error_order, n_stages, A_rows, A_cols = find_rk_properties(self.rk_method)
+        self.rk_order    = order
+        self.error_order = error_order
+        self.rk_n_stages = n_stages
+        self.len_Arows   = A_rows
+        self.len_Acols   = A_cols
+        self.len_C       = self.rk_n_stages
 
-            # Unused for RK23 but initalize it anyways
-            self.E3_view = RK23_E_view
-            self.E5_view = RK23_E_view
-        elif rk_method == 1:
-            # RK45 Method
-            self.rk_order    = RK45_order
-            self.error_order = RK45_error_order
-            self.rk_n_stages = RK45_n_stages
-            self.len_C       = RK45_LEN_C
-            self.A_view      = RK45_A_view
-            self.B_view      = RK45_B_view
-            self.C_view      = RK45_C_view
-            self.E_view      = RK45_E_view
+        if order == -1:
+            raise AttributeError('Unknown RK Method Provided.')
 
-            # Unused for RK45 but initalize it anyways
-            self.E3_view = RK45_E_view
-            self.E5_view = RK45_E_view
-        elif rk_method == 2:
-            # DOP853 Method
-            self.rk_order    = DOP_order
-            self.error_order = DOP_error_order
-            self.rk_n_stages = DOP_n_stages
-            self.len_C       = DOP_LEN_C
-            self.A_view      = DOP_A_REDUCED_view
-            self.B_view      = DOP_B_view
-            self.C_view      = DOP_C_REDUCED_view
-            self.E3_view     = DOP_E3_view
-            self.E5_view     = DOP_E5_view
-            self.rk_n_stages_extended = DOP_n_stages_extended
+        # Initialize RK arrays
+        self.A_ptr = <double *> PyMem_Malloc(self.len_Arows * self.len_Acols * sizeof(double))
+        if not self.A_ptr:
+            raise MemoryError()
+        self.B_ptr = <double *> PyMem_Malloc(self.rk_n_stages * sizeof(double))
+        if not self.B_ptr:
+            raise MemoryError()
+        self.C_ptr = <double *> PyMem_Malloc(self.rk_n_stages * sizeof(double))
+        if not self.C_ptr:
+            raise MemoryError()
 
-            # Unused for DOP853 but initialize it anyways
-            self.E_view  = DOP_E3_view
+        if self.rk_method == 2:
+            # DOP853 requires 2 error array pointers. Set the other error array to nan
+            self.E_ptr = <double *> PyMem_Malloc(1 * sizeof(double))
+            if not self.E_ptr:
+                raise MemoryError()
+            self.E_ptr[0] = NAN
+
+            self.E3_ptr = <double *> PyMem_Malloc((self.rk_n_stages + 1) * sizeof(double))
+            if not self.E3_ptr:
+                raise MemoryError()
+            self.E5_ptr = <double *> PyMem_Malloc((self.rk_n_stages + 1) * sizeof(double))
+            if not self.E5_ptr:
+                raise MemoryError()
         else:
-            self.status = -8
-            self.message = "Attribute error."
-            raise AttributeError(
-                'Unexpected rk_method provided. Currently supported versions are:\n'
-                '\t0 = RK23\n'
-                '\t1 = RK34\n'
-                '\t2 = DOP853')
+            # RK23/RK45 only require 1 error array pointers. Set the other error arrays to nan
+            self.E3_ptr = <double *> PyMem_Malloc(1 * sizeof(double))
+            if not self.E3_ptr:
+                raise MemoryError()
+            self.E5_ptr = <double *> PyMem_Malloc(1 * sizeof(double))
+            if not self.E5_ptr:
+                raise MemoryError()
+            self.E3_ptr[0] = NAN
+            self.E5_ptr[0] = NAN
+
+            self.E_ptr = <double *> PyMem_Malloc((self.rk_n_stages + 1) * sizeof(double))
+            if not self.E_ptr:
+                raise MemoryError()
+
+        # Populate arrays with RK constants
+        populate_rk_arrays(self.rk_method, self.A_ptr, self.B_ptr, self.C_ptr, self.E_ptr, self.E3_ptr, self.E5_ptr)
 
         self.rk_n_stages_plus1 = self.rk_n_stages + 1
         self.error_expo        = 1. / (<double>self.error_order + 1.)
@@ -763,8 +765,8 @@ cdef class CySolver:
 
         # Optimization variables
         cdef double A_at_sj, A_at_10, B_at_j, K_
-        # Define a very specific A now since it is called consistently and does not change.
-        A_at_10 = self.A_view[1, 0]
+        # Define a very specific A (Row 1; Col 0) now since it is called consistently and does not change.
+        A_at_10 = self.A_ptr[1 * self.len_Acols + 0]
 
         # # Step Loop
         while not step_accepted:
@@ -802,7 +804,7 @@ cdef class CySolver:
 
             for s in range(1, self.len_C):
                 # Update t_now so it can be used in the diffeq call.
-                self.t_now = self.t_old + self.C_view[s] * step
+                self.t_now = self.t_old + self.C_ptr[s] * step
 
                 # Dot Product (K, a) * step
                 if s == 1:
@@ -816,7 +818,7 @@ cdef class CySolver:
                         self.y_ptr[i] = self.y_old_ptr[i] + (dy_tmp * A_at_10 * step)
                 else:
                     for j in range(s):
-                        A_at_sj = self.A_view[s, j] * step
+                        A_at_sj = self.A_ptr[s * self.len_Acols + j] * step
                         for i in range(self.y_size):
                             if j == 0:
                                 # Initialize
@@ -835,7 +837,7 @@ cdef class CySolver:
 
             # Dot Product (K, B) * step
             for j in range(self.rk_n_stages):
-                B_at_j = self.B_view[j] * step
+                B_at_j = self.B_ptr[j] * step
                 # We do not use rk_n_stages_plus1 here because we are chopping off the last row of K to match
                 #  the shape of B.
                 for i in range(self.y_size):
@@ -867,8 +869,8 @@ cdef class CySolver:
                             error_dot_2 = 0.
 
                         K_ = self.K_ptr[j * self.y_size + i]
-                        error_dot_1 += K_ * self.E3_view[j]
-                        error_dot_2 += K_ * self.E5_view[j]
+                        error_dot_1 += K_ * self.E3_ptr[j]
+                        error_dot_2 += K_ * self.E5_ptr[j]
 
                     # We need the absolute value but since we are taking the square, it is guaranteed to be positive.
                     # TODO: This will need to change if CySolver ever accepts complex numbers
@@ -903,7 +905,7 @@ cdef class CySolver:
                             # Initialize
                             error_dot_1 = 0.
 
-                        error_dot_1 += self.K_ptr[j * self.y_size + i] * self.E_view[j]
+                        error_dot_1 += self.K_ptr[j * self.y_size + i] * self.E_ptr[j]
 
                     # We need the absolute value but since we are taking the square, it is guaranteed to be positive.
                     # TODO: This will need to change if CySolver ever accepts complex numbers
@@ -1401,7 +1403,7 @@ cdef class CySolver:
         else:
             self.use_args = True
             self.num_args = len(args)
-        self.args_ptr = <double *> PyMem_Realloc(self.num_args * sizeof(double))
+        self.args_ptr = <double *> PyMem_Realloc(self.args_ptr, self.num_args * sizeof(double))
         if not self.args_ptr:
             raise MemoryError()
         for i in range(self.num_args):
@@ -1794,3 +1796,11 @@ cdef class CySolver:
         PyMem_Free(self.solution_y_ptr)
         PyMem_Free(self.solution_t_ptr)
         PyMem_Free(self.solution_extra_ptr)
+
+        # Free RK Constants
+        PyMem_Free(self.A_ptr)
+        PyMem_Free(self.B_ptr)
+        PyMem_Free(self.C_ptr)
+        PyMem_Free(self.E_ptr)
+        PyMem_Free(self.E3_ptr)
+        PyMem_Free(self.E5_ptr)

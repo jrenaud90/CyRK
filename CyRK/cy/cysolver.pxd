@@ -1,5 +1,7 @@
 from libcpp cimport bool as bool_cpp_t
 
+from CyRK.rk.rk cimport RKConstants
+
 cdef double SAFETY
 cdef double MIN_FACTOR
 cdef double MAX_FACTOR
@@ -55,12 +57,15 @@ cdef class CySolver:
     cdef double* t_eval_ptr
 
     # -- RK method information
-    cdef unsigned char rk_method
-    cdef Py_ssize_t rk_order, error_order, rk_n_stages, rk_n_stages_plus1, rk_n_stages_extended
+    cdef Py_ssize_t rk_method, rk_order, error_order, rk_n_stages, rk_n_stages_plus1
     cdef double error_expo
-    cdef Py_ssize_t len_C
-    cdef const double[::1] B_view, E_view, E3_view, E5_view, C_view
-    cdef const double[:, ::1] A_view
+    cdef Py_ssize_t len_C, len_Arows, len_Acols
+    cdef double* A_ptr
+    cdef double* B_ptr
+    cdef double* C_ptr
+    cdef double* E_ptr
+    cdef double* E3_ptr
+    cdef double* E5_ptr
     # K is not constant. It is a temp storage variable used in RK calculations
     cdef double* K_ptr
 
