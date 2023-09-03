@@ -1,0 +1,44 @@
+{
+  "interp": {
+    "name": "CyRK.array.interp",
+    "sources": [["CyRK", "array", "interp.pyx"]],
+    "include_dirs": [["CyRK", "array"]],
+    "compile_args": [],
+    "link_args": []
+  },
+  "rk": {
+    "name": "CyRK.rk.rk",
+    "sources": [["CyRK", "rk", "rk.pyx"]],
+    "include_dirs": [["CyRK", "rk"]],
+    "compile_args": [],
+    "link_args": []
+  },
+  "common": {
+    "name": "CyRK.cy.common",
+    "sources": [["CyRK", "cy", "common.pyx"]],
+    "include_dirs": [["CyRK", "cy"]],
+    "compile_args": [],
+    "link_args": []
+  },
+  "cyrk_ode": {
+    "name": "CyRK.cy.cyrk",
+    "sources": [["CyRK", "cy", "cyrk.pyx"]],
+    "include_dirs": [["CyRK", "cy"]],
+    "compile_args": [],
+    "link_args": []
+  },
+  "cysolver": {
+    "name": "CyRK.cy.cysolver",
+    "sources": [["CyRK", "cy", "cysolver.pyx"]],
+    "include_dirs": [["CyRK", "cy"]],
+    "compile_args": [],
+    "link_args": []
+  },
+  "cysolver_test": {
+    "name": "CyRK.cy.cysolvertest",
+    "sources": [["CyRK", "cy", "cysolvertest.pyx"]],
+    "include_dirs": [["CyRK", "cy"]],
+    "compile_args": [],
+    "link_args": []
+  }
+}

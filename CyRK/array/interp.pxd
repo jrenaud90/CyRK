@@ -24,3 +24,6 @@ cdef void interp_array_ptr(double* desired_x_array, double* x_domain, double* de
 
 cpdef void interp_complex_array(double[:] desired_x_array, double[:] x_domain, double complex[:] dependent_values,
                                 double complex[:] desired_dependent_array) noexcept nogil
+
+cdef void interp_complex_array_ptr(double* desired_x_array, double* x_domain, double complex* dependent_values,
+                                   double complex* desired_dependent_array, Py_ssize_t len_x, Py_ssize_t desired_len) noexcept nogil

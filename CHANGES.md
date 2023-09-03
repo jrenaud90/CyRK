@@ -6,6 +6,8 @@
 
 New Features
 - Added new interp functions that work with c pointers. These can only be cimported.
+- Added new "CyRK.cy.common.pyx" file for functions that are used by both `cyrk_ode` and `CySolver`.
+  - Moved interpolation functionality into `CyRK.cy.common`. Restructured `cyrk_ode` and `CySolver` to use this new function for interpolations.
 
 Changes:
 - Refactored many `CySolver` internal attributes to reflect to change from memoryviews to pointers. The most important ones for the user are:
@@ -13,10 +15,11 @@ Changes:
   - `CySolver.dy_new_view` -> `CySolver.dy_ptr`
   - `CySolver.t_new` -> `CySolver.t_now`
   - `CySolver.arg_array_view` -> `CySolver.args_ptr`
-- Changed RK constants back to c arrays initialized with PyMem_Malloc. The memory for these arrays are setup in the cython-based solvers. Afterwards, there are helper functions in `CyRK.rk` to populate the arrays with correct values. 
+- Changed RK constants back to c arrays initialized with PyMem_Malloc. The memory for these arrays are setup in the cython-based solvers. Afterwards, there are helper functions in `CyRK.rk` to populate the arrays with correct values.
+- Moved to a more generalized scheme for compiling cython files. See "cython_extensions.json", "_build_cyrk.py", and "setup.py" for details.
 
 Performance
-- Transitioned many arrays from numpy to c arrays allocated with PyMem_Malloc, etc. These changes cause significant performance boost to cython-based solvers.
+- Transitioned many arrays from numpy to c arrays allocated with PyMem_Malloc, etc. These changes led to a significant performance boost for cython-based solvers.
 
 #### v0.7.1
 

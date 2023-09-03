@@ -806,3 +806,99 @@ cpdef void interp_complex_array(double[:] desired_x_array, double[:] x_domain, d
         result = result_real + 1.0j * result_imag
 
         desired_dependent_array[index] = result
+
+cdef void interp_complex_array_ptr(double* desired_x_array, double* x_domain, double complex* dependent_values,
+                                   double complex* desired_dependent_array, Py_ssize_t len_x, Py_ssize_t desired_len) noexcept nogil:
+
+    # Array variables
+    cdef Py_ssize_t index
+
+    # Note: Needs to be at least 3 item long array. Add exception here?
+
+    # Interpolation variables
+    cdef double complex left_value
+    left_value = dependent_values[0]
+    cdef double complex right_value
+    right_value = dependent_values[len_x - 1]
+
+    # Binary Search with Guess
+    cdef Py_ssize_t j
+    cdef double slope_real
+    cdef double slope_imag
+    cdef double x_slope_inverse
+    cdef double result_real
+    cdef double result_imag
+    cdef double complex fp_at_j
+    cdef double fp_at_j_real
+    cdef double fp_at_j_imag
+    cdef double xp_at_j
+    cdef double complex fp_at_jp1
+    cdef double fp_at_jp1_real
+    cdef double fp_at_jp1_imag
+    cdef double xp_at_jp1
+
+    # Since most of the use cases for this function are subsampling an array with another array, we can improve our
+    #  guess by increasing it alongside the index variable. There are problems with this:
+    #    1 - If the desired array is randomly distributed, rather than increasing, this will be slow.
+    #    2 - The actual x domain is likely not linear. So the linear increase we are performing with this guess variable
+    #        is not correct.
+    cdef double x_slope
+    cdef Py_ssize_t guess
+    x_slope = <double>len_x / <double>desired_len
+    if x_slope < 1.:
+        x_slope = 1.
+
+    cdef double desired_x
+    cdef double complex result
+    for index in prange(desired_len, nogil=True):
+        desired_x = desired_x_array[index]
+
+        # Perform binary search with guess
+        guess = <Py_ssize_t>x_slope * index
+        # Perform binary search with guess
+        j = binary_search_with_guess_ptr(desired_x, x_domain, len_x, guess)
+
+        if j <= -1:
+            result_real = left_value.real
+            result_imag = left_value.imag
+        elif j >= len_x:
+            result_real = right_value.real
+            result_imag = right_value.imag
+        else:
+            fp_at_j = dependent_values[j]
+            fp_at_j_real = fp_at_j.real
+            fp_at_j_imag = fp_at_j.imag
+            xp_at_j = x_domain[j]
+            if j == len_x - 1:
+                result_real = fp_at_j_real
+                result_imag = fp_at_j_imag
+            elif xp_at_j == desired_x:
+                result_real = fp_at_j_real
+                result_imag = fp_at_j_imag
+            else:
+                fp_at_jp1 = dependent_values[j + 1]
+                fp_at_jp1_real = fp_at_jp1.real
+                fp_at_jp1_imag = fp_at_jp1.imag
+                xp_at_jp1 = x_domain[j + 1]
+                x_slope_inverse = 1.0 / (xp_at_jp1 - xp_at_j)
+                slope_real = (fp_at_jp1_real - fp_at_j_real) * x_slope_inverse
+                slope_imag = (fp_at_jp1_imag - fp_at_j_imag) * x_slope_inverse
+
+                # If we get nan in one direction try the other
+                # Real Part
+                result_real = slope_real * (desired_x - xp_at_j) + fp_at_j_real
+                if isnan(result_real):
+                    result_real = slope_real * (desired_x - xp_at_jp1) + fp_at_jp1_real
+                    if isnan(result_real) and (fp_at_jp1_real == fp_at_j_real):
+                        result_real = fp_at_j_real
+
+                # Imaginary Part
+                result_imag = slope_imag * (desired_x - xp_at_j) + fp_at_j_imag
+                if isnan(result_imag):
+                    result_imag = slope_imag * (desired_x - xp_at_jp1) + fp_at_jp1_imag
+                    if isnan(result_imag) and (fp_at_jp1_imag == fp_at_j_imag):
+                        result_imag = fp_at_j_imag
+
+        result = result_real + 1.0j * result_imag
+
+        desired_dependent_array[index] = result

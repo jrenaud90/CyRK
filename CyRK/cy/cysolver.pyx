@@ -1,21 +1,19 @@
 # distutils: language = c++
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 
-import cython
-cimport cython
+from libcpp cimport bool as bool_cpp_t
+from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, isnan, NAN, pow
+
+from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
+
 import sys
 import numpy as np
 cimport numpy as np
 
 np.import_array()
 
-from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
-
-from libcpp cimport bool as bool_cpp_t
-from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, isnan, NAN, pow
-
-from CyRK.array.interp cimport interp_array_ptr
 from CyRK.rk.rk cimport find_rk_properties, populate_rk_arrays
+from CyRK.cy.common cimport interpolate
 
 # # Integration Constants
 # Multiply steps computed from asymptotic behaviour of errors by this.
@@ -598,6 +596,8 @@ cdef class CySolver:
         # Set current and old time variables equal to t0
         self.t_old = self.t_start
         self.t_now = self.t_start
+        # Track number of steps.
+        # Initial conditions were provided so the number of steps is already 1
         self.len_t = 1
 
         # It is important K be initialized with 0s
@@ -994,7 +994,7 @@ cdef class CySolver:
             if not extra_array_ptr:
                 raise MemoryError()
 
-        # Load initial conditions into output arrays
+        # Load initial conditions into storage arrays
         time_domain_array_ptr[0] = self.t_start
         for i in range(self.y_size):
             y_results_array_ptr[i] = self.y0_ptr[i]
@@ -1039,14 +1039,14 @@ cdef class CySolver:
                 self.num_concats += 1
                 new_size = self.num_concats * self.expected_size
 
-                y_results_array_ptr = <double *> PyMem_Realloc(y_results_array_ptr,
-                                                               self.y_size * new_size * sizeof(double))
-                if not y_results_array_ptr:
-                    raise MemoryError()
-
                 time_domain_array_ptr = <double *> PyMem_Realloc(time_domain_array_ptr,
                                                                  new_size * sizeof(double))
                 if not time_domain_array_ptr:
+                    raise MemoryError()
+
+                y_results_array_ptr = <double *> PyMem_Realloc(y_results_array_ptr,
+                                                               self.y_size * new_size * sizeof(double))
+                if not y_results_array_ptr:
                     raise MemoryError()
 
                 if self.capture_extra:
@@ -1102,11 +1102,13 @@ cdef class CySolver:
                 if not self.solution_extra_ptr:
                     raise MemoryError()
         else:
-            # Integration was not successful. No longer need the storage pointers
+            # Integration was not successful. Make solution pointers length 1 nan arrays.
+
+            # Clear the storage arrays used during the step loop
             PyMem_Free(time_domain_array_ptr)
             PyMem_Free(y_results_array_ptr)
             if self.capture_extra:
-                PyMem_Free(y_results_array_ptr)
+                PyMem_Free(extra_array_ptr)
 
             # We still need to build solution arrays so that accessing the solution will not cause access violations.
             # Build size-1 arrays. Since the solution was not successful, set all arrays to NANs
@@ -1185,50 +1187,21 @@ cdef class CySolver:
         if not interpolated_solution_t_ptr:
             raise MemoryError()
 
-        # Build a pointer array that will only contain 1 y at a time for all of self.len_t
-        cdef double* solution_y_slice_ptr
-        solution_y_slice_ptr = <double *> PyMem_Malloc(self.len_t * sizeof(double))
-        if not solution_y_slice_ptr:
-            raise MemoryError()
-        # Build a pointer that will store the interpolated values for 1 y at a time; size of self.len_t_eval
-        cdef double* interpolated_y_slice_ptr
-        interpolated_y_slice_ptr = <double *> PyMem_Malloc(self.len_t_eval * sizeof(double))
-        if not interpolated_y_slice_ptr:
-            raise MemoryError()
         # Build final interpolated solution arrays
         cdef double* interpolated_solution_y_ptr
         interpolated_solution_y_ptr = <double *> PyMem_Malloc(self.y_size * self.len_t_eval * sizeof(double))
         if not interpolated_solution_y_ptr:
             raise MemoryError()
 
-        for j in range(self.y_size):
-            # The interpolation function only works on 1D arrays, so we must loop through each of the y variables.
-            # # Set timeslice equal to the time values at this y_j
-            for i in range(self.len_t):
-                # OPT: Inefficient memory looping
-                solution_y_slice_ptr[i] = self.solution_y_ptr[i * self.y_size + j]
+        # Perform interpolation on y values
+        interpolate(self.solution_t_ptr, self.t_eval_ptr, self.solution_y_ptr, interpolated_solution_y_ptr,
+                    self.len_t, self.len_t_eval, self.y_size, False)
 
-            # Perform numerical interpolation
-            interp_array_ptr(
-                self.t_eval_ptr,
-                self.solution_t_ptr,
-                solution_y_slice_ptr,
-                interpolated_y_slice_ptr,
-                self.len_t,
-                self.len_t_eval)
+        # Make a copy of t_eval (issues can arise if we store the t_eval pointer in solution array).
+        for i in range(self.len_t_eval):
+            interpolated_solution_t_ptr[i] = self.t_eval_ptr[i]
 
-            # Store result.
-            for i in range(self.len_t_eval):
-                # OPT: Inefficient memory looping
-                interpolated_solution_y_ptr[i * self.y_size + j] = interpolated_y_slice_ptr[i]
-
-                # While we have this loop, let's populate the final solution_t_ptr
-                if j == 0:
-                    interpolated_solution_t_ptr[i] = self.t_eval_ptr[i]
-
-        # Initialize extra pointers which may be needed.
-        cdef double* solution_extra_slice_ptr
-        cdef double* interpolated_extra_slice_ptr
+        # Initialize extra pointers which _may_ be needed.
         cdef double* interpolated_solution_extra_ptr
 
         if self.capture_extra:
@@ -1246,40 +1219,10 @@ cdef class CySolver:
                 raise MemoryError()
 
             if self.interpolate_extra:
-                # Continue the interpolation for the extra values.
-                # Build a pointer array that will only contain 1 extra at a time for all of self.len_t
-                solution_extra_slice_ptr = <double *> PyMem_Malloc(self.len_t * sizeof(double))
-                if not solution_extra_slice_ptr:
-                    raise MemoryError()
-                # Build a pointer that will store the interpolated values for 1 y at a time; size of self.len_t_eval
-                interpolated_extra_slice_ptr = <double *> PyMem_Malloc(self.len_t_eval * sizeof(double))
-                if not interpolated_extra_slice_ptr:
-                    raise MemoryError()
-
-                for j in range(self.num_extra):
-                    # np.interp only works on 1D arrays so we must loop through each of the variables:
-                    # # Set timeslice equal to the time values at this y_j
-                    for i in range(self.len_t):
-                        # OPT: Inefficient memory looping
-                        solution_extra_slice_ptr[i] = self.solution_extra_ptr[i * self.num_extra + j]
-
-                    # Perform numerical interpolation
-                    interp_array_ptr(
-                            self.t_eval_ptr,
-                            self.solution_t_ptr,
-                            solution_extra_slice_ptr,
-                            interpolated_extra_slice_ptr,
-                            self.len_t,
-                            self.len_t_eval)
-
-                    # Store result.
-                    for i in range(self.len_t_eval):
-                        # OPT: Inefficient memory looping
-                        interpolated_solution_extra_ptr[i * self.num_extra + j] = interpolated_extra_slice_ptr[i]
-
-                # Release memory of any temporary variables
-                PyMem_Free(solution_extra_slice_ptr)
-                PyMem_Free(interpolated_extra_slice_ptr)
+                # Perform interpolation on extra outputs
+                interpolate(
+                    self.solution_t_ptr, self.t_eval_ptr, self.solution_extra_ptr, interpolated_solution_extra_ptr,
+                    self.len_t, self.len_t_eval, self.num_extra, False)
             else:
                 # Use the new interpolated y and t values to recalculate the extra outputs with self.diffeq
                 for i in range(self.len_t_eval):
@@ -1304,10 +1247,6 @@ cdef class CySolver:
         PyMem_Free(self.solution_y_ptr)
         self.solution_t_ptr = interpolated_solution_t_ptr
         self.solution_y_ptr = interpolated_solution_y_ptr
-
-        # Release memory of any temporary variables
-        PyMem_Free(solution_y_slice_ptr)
-        PyMem_Free(interpolated_y_slice_ptr)
 
         # Interpolation is done.
         self.status = old_status
@@ -1752,7 +1691,7 @@ cdef class CySolver:
     @property
     def t(self):
         # Need to convert the memory view back into a numpy array
-        return np.ascontiguousarray(self.solution_t_view)
+        return np.ascontiguousarray(self.solution_t_view, dtype=np.float64)
 
 
     @property

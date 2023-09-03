@@ -1,8 +1,11 @@
 """ Commands to build the cython extensions of CyRK (a hack to work with pyproject.toml) """
 import os
 import platform
+import json
 from setuptools.extension import Extension
 from setuptools.command.build_py import build_py as _build_py
+
+import numpy as np
 
 install_platform = platform.system()
 
@@ -17,6 +20,25 @@ else:
     extra_link_args = ['-fopenmp']
 macro_list = [("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")]
 
+# Load TidalPy's cython extensions
+absolute_path = os.path.dirname(__file__)
+cython_ext_path = os.path.join(absolute_path, 'cython_extensions.json')
+with open(cython_ext_path, 'r') as cython_ext_file:
+    cython_ext_dict = json.load(cython_ext_file)
+
+cython_extensions = list()
+for cython_ext, ext_data in cython_ext_dict.items():
+    cython_extensions.append(
+        Extension(
+            name=ext_data['name'],
+            sources=[os.path.join(*tuple(source_path)) for source_path in ext_data['sources']],
+            # Always add numpy to any includes
+            include_dirs=[os.path.join(*tuple(dir_path)) for dir_path in ext_data['include_dirs']] + [np.get_include()],
+            extra_compile_args=ext_data['compile_args'] + extra_compile_args,
+            define_macros=macro_list,
+            extra_link_args=ext_data['link_args'] + extra_link_args,
+            )
+        )
 
 class build_cyrk(_build_py):
 
@@ -26,73 +48,18 @@ class build_cyrk(_build_py):
 
     def initialize_options(self):
         super().initialize_options()
-        import numpy as np
         from Cython.Build import cythonize
         print('!-- Cythonizing CyRK')
         if self.distribution.ext_modules == None:
             self.distribution.ext_modules = []
 
-        # Add array to ext_modules list
-        self.distribution.ext_modules.append(
-                Extension(
-                        name='CyRK.array.interp',
-                        sources=[os.path.join('CyRK', 'array', 'interp.pyx')],
-                        include_dirs=[os.path.join('CyRK', 'array'), np.get_include()],
-                        extra_compile_args=extra_compile_args,
-                        define_macros=macro_list,
-                        extra_link_args=extra_link_args
-                        )
-                )
+        # Add cython extensions to ext_modules list
+        for extension in cython_extensions:
+            self.distribution.ext_modules.append(
+                    extension
+                    )
 
-        # Add RK constants to ext_modules list
-        self.distribution.ext_modules.append(
-                Extension(
-                        name='CyRK.rk.rk',
-                        sources=[os.path.join('CyRK', 'rk', 'rk.pyx')],
-                        include_dirs=[os.path.join('CyRK', 'rk'), np.get_include()],
-                        extra_compile_args=extra_compile_args,
-                        define_macros=macro_list,
-                        extra_link_args=extra_link_args
-                        )
-                )
-
-        # Add cyrk to ext_modules list
-        self.distribution.ext_modules.append(
-                Extension(
-                        'CyRK.cy.cyrk',
-                        sources=[os.path.join('CyRK', 'cy', 'cyrk.pyx')],
-                        include_dirs=[os.path.join('CyRK', 'cy'), np.get_include()],
-                        extra_compile_args=extra_compile_args,
-                        define_macros=macro_list,
-                        extra_link_args=extra_link_args
-                        )
-                )
-        
-        # Add CySolver to ext_modules list
-        self.distribution.ext_modules.append(
-                Extension(
-                        'CyRK.cy.cysolver',
-                        sources=[os.path.join('CyRK', 'cy', 'cysolver.pyx')],
-                        include_dirs=[os.path.join('CyRK', 'cy'), np.get_include()],
-                        extra_compile_args=extra_compile_args,
-                        define_macros=macro_list,
-                        extra_link_args=extra_link_args
-                        )
-                )
-        
-        # Add CySolverTest to ext_modules list
-        self.distribution.ext_modules.append(
-                Extension(
-                        'CyRK.cy.cysolvertest',
-                        sources=[os.path.join('CyRK', 'cy', 'cysolvertest.pyx')],
-                        include_dirs=[os.path.join('CyRK', 'cy'), np.get_include()],
-                        extra_compile_args=extra_compile_args,
-                        define_macros=macro_list,
-                        extra_link_args=extra_link_args
-                        )
-                )
-
-        # Add cythonize ext_modules
+        # Cythonize ext_modules
         self.distribution.ext_modules = cythonize(
                 self.distribution.ext_modules,
                 compiler_directives={'language_level': "3"},
