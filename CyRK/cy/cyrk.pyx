@@ -300,14 +300,10 @@ def cyrk_ode(
     num_concats = 1
 
     # Initialize live variable arrays
-    cdef double_numeric* y_ptr
     cdef double_numeric* y_old_ptr
     cdef double_numeric* dy_ptr
     cdef double_numeric* dy_old_ptr
 
-    y_ptr = <double_numeric *> PyMem_Malloc(y_size * sizeof(double_numeric))
-    if not y_ptr:
-        raise MemoryError()
     y_old_ptr = <double_numeric *> PyMem_Malloc(y_size * sizeof(double_numeric))
     if not y_old_ptr:
         raise MemoryError()
@@ -318,10 +314,17 @@ def cyrk_ode(
     if not dy_old_ptr:
         raise MemoryError()
 
+    # Build memoryviews based on y_view and dy_ptr that can be passed to the diffeq.
+    # This is process is different than CySolver which strictly uses c pointers.
+    # These memoryviews allow for user-provided diffeqs that are not cython/compiled.
+    y_array = np.empty(y_size, dtype=DTYPE, order='C')
+    cdef double_numeric[::1] y_view
+    y_view = y_array
+
     # Store y0 into the y arrays
     for i in range(y_size):
         temp_double_numeric = y0[i]
-        y_ptr[i]     = temp_double_numeric
+        y_view[i]     = temp_double_numeric
         y_old_ptr[i] = temp_double_numeric
 
     # Determine extra outputs
@@ -360,17 +363,9 @@ def cyrk_ode(
         total_size = y_size
 
     # Build pointer to store results of diffeq
-    cdef double_numeric* diffeq_out_ptr
-    diffeq_out_ptr = <double_numeric *> PyMem_Malloc(total_size * sizeof(double_numeric))
-    if not diffeq_out_ptr:
-        raise MemoryError()
-
-    # Build memoryviews based on y_ptr and dy_ptr that can be passed to the diffeq.
-    # This is process is different than CySolver which strictly uses c pointers.
-    # These memoryviews allow for user-provided diffeqs that are not cython/compiled.
-    cdef double_numeric[::1] y_view, diffeq_out_view
-    y_view          = <double_numeric[:y_size]> y_ptr
-    diffeq_out_view = <double_numeric[:total_size]> diffeq_out_ptr
+    diffeq_out_array = np.empty(total_size, dtype=DTYPE, order='C')
+    cdef double_numeric[::1] diffeq_out_view
+    diffeq_out_view = diffeq_out_array
 
     # Determine interpolation information
     cdef bool_cpp_t run_interpolation
@@ -397,15 +392,15 @@ def cyrk_ode(
 
     # Make initial call to diffeq to get initial dydt and any extra outputs (if requested) at t0.
     if use_args:
-        diffeq(t_start, y_view, diffeq_out_view, *args)
+        diffeq(t_start, y_array, diffeq_out_array, *args)
     else:
-        diffeq(t_start, y_view, diffeq_out_view)
+        diffeq(t_start, y_array, diffeq_out_array)
 
     # Setup initial conditions
     t_old = t_start
     t_now = t_start
     for i in range(y_size):
-        temp_double_numeric = diffeq_out_ptr[i]
+        temp_double_numeric = diffeq_out_view[i]
         dy_ptr[i]     = temp_double_numeric
         dy_old_ptr[i] = temp_double_numeric
 
@@ -413,7 +408,7 @@ def cyrk_ode(
     if capture_extra:
         for i in range(num_extra):
             # Pull from extra output
-            extra_output_init_ptr[i] = diffeq_out_ptr[extra_start + i]
+            extra_output_init_ptr[i] = diffeq_out_view[extra_start + i]
 
     # Determine RK scheme and initialize RK memory views
     cdef double_numeric* A_ptr
@@ -554,17 +549,17 @@ def cyrk_ode(
                 h0_direction = -h0
             t_now = t_old + h0_direction
             for i in range(y_size):
-                y_ptr[i] = y_old_ptr[i] + h0_direction * dy_old_ptr[i]
+                y_view[i] = y_old_ptr[i] + h0_direction * dy_old_ptr[i]
 
             if use_args:
-                diffeq(t_now, y_view, diffeq_out_view, *args)
+                diffeq(t_now, y_array, diffeq_out_array, *args)
             else:
-                diffeq(t_now, y_view, diffeq_out_view)
+                diffeq(t_now, y_array, diffeq_out_array)
 
             # Find the norm for d2
             d2 = 0.
             for i in range(y_size):
-                temp_double_numeric = diffeq_out_ptr[i]
+                temp_double_numeric = diffeq_out_view[i]
                 dy_ptr[i] = temp_double_numeric
                 scale = atols_ptr[i] + dabs(y_old_ptr[i]) * rtols_ptr[i]
                 d2_abs = dabs( (temp_double_numeric - dy_old_ptr[i]) ) / scale
@@ -681,24 +676,24 @@ def cyrk_ode(
                         K_ptr[i] = temp_double_numeric
 
                         # Calculate y_new for s==1
-                        y_ptr[i] = y_old_ptr[i] + (temp_double_numeric * A_at_10 * step_numeric)
+                        y_view[i] = y_old_ptr[i] + (temp_double_numeric * A_at_10 * step_numeric)
                 else:
                     for j in range(s):
                         A_at_sj = A_ptr[s * len_Acols + j] * step_numeric
                         for i in range(y_size):
                             if j == 0:
                                 # Initialize
-                                y_ptr[i] = y_old_ptr[i]
+                                y_view[i] = y_old_ptr[i]
 
-                            y_ptr[i] += K_ptr[j * y_size + i] * A_at_sj
+                            y_view[i] += K_ptr[j * y_size + i] * A_at_sj
 
                 if use_args:
-                    diffeq(time_, y_view, diffeq_out_view, *args)
+                    diffeq(time_, y_array, diffeq_out_array, *args)
                 else:
-                    diffeq(time_, y_view, diffeq_out_view)
+                    diffeq(time_, y_array, diffeq_out_array)
 
                 for i in range(y_size):
-                    K_ptr[s * y_size + i] = diffeq_out_ptr[i]
+                    K_ptr[s * y_size + i] = diffeq_out_view[i]
 
             # Dot Product (K, B) * step
             for j in range(rk_n_stages):
@@ -708,19 +703,19 @@ def cyrk_ode(
                 for i in range(y_size):
                     if j == 0:
                         # Initialize
-                        y_ptr[i] = y_old_ptr[i]
+                        y_view[i] = y_old_ptr[i]
 
-                    y_ptr[i] += K_ptr[j * y_size + i] * B_at_j
+                    y_view[i] += K_ptr[j * y_size + i] * B_at_j
 
             if use_args:
-                diffeq(t_now, y_view, diffeq_out_view, *args)
+                diffeq(t_now, y_array, diffeq_out_array, *args)
             else:
-                diffeq(t_now, y_view, diffeq_out_view)
+                diffeq(t_now, y_array, diffeq_out_array)
 
             # Store extra
             if capture_extra:
                 for i in range(num_extra):
-                    extra_output_ptr[i] = diffeq_out_ptr[extra_start + i]
+                    extra_output_ptr[i] = diffeq_out_view[extra_start + i]
 
             if rk_method == 2:
                 # Calculate Error for DOP853
@@ -730,10 +725,10 @@ def cyrk_ode(
                 # Dot Product (K, E5) / scale and Dot Product (K, E3) * step / scale
                 for i in range(y_size):
                     # Find scale of y for error calculations
-                    scale = atols_ptr[i] + max(dabs(y_old_ptr[i]), dabs(y_ptr[i])) * rtols_ptr[i]
+                    scale = atols_ptr[i] + max(dabs(y_old_ptr[i]), dabs(y_view[i])) * rtols_ptr[i]
 
                     # Set diffeq results
-                    temp_double_numeric = diffeq_out_ptr[i]
+                    temp_double_numeric = diffeq_out_view[i]
                     dy_ptr[i] = temp_double_numeric
 
                     # Set last array of K equal to dydt
@@ -767,10 +762,10 @@ def cyrk_ode(
                 error_norm = 0.
                 for i in range(y_size):
                     # Find scale of y for error calculations
-                    scale = atols_ptr[i] + max(dabs(y_old_ptr[i]), dabs(y_ptr[i])) * rtols_ptr[i]
+                    scale = atols_ptr[i] + max(dabs(y_old_ptr[i]), dabs(y_view[i])) * rtols_ptr[i]
 
                     # Set diffeq results
-                    temp_double_numeric = diffeq_out_ptr[i]
+                    temp_double_numeric = diffeq_out_view[i]
                     dy_ptr[i] = temp_double_numeric
 
                     # Set last array of K equal to dydt
@@ -820,7 +815,7 @@ def cyrk_ode(
         # End of step loop. Update the _now variables
         t_old = t_now
         for i in range(y_size):
-            y_old_ptr[i] = y_ptr[i]
+            y_old_ptr[i] = y_view[i]
             dy_old_ptr[i] = dy_ptr[i]
 
         # Store data
@@ -850,7 +845,7 @@ def cyrk_ode(
         # Add this step's results to our storage arrays.
         time_domain_array_ptr[len_t] = t_now
         for i in range(y_size):
-            y_results_array_ptr[len_t * y_size + i] = y_ptr[i]
+            y_results_array_ptr[len_t * y_size + i] = y_view[i]
 
         if capture_extra:
             for i in range(num_extra):
@@ -984,13 +979,13 @@ def cyrk_ode(
                     # Set state variables
                     t_now = t_eval_ptr[i]
                     for j in range(y_size):
-                        y_ptr[j] = interpolated_solution_y_ptr[i * y_size + j]
+                        y_view[j] = interpolated_solution_y_ptr[i * y_size + j]
 
                     # Call diffeq to recalculate extra outputs
                     if use_args:
-                        diffeq(t_now, y_view, diffeq_out_view, *args)
+                        diffeq(t_now, y_array, diffeq_out_array, *args)
                     else:
-                        diffeq(t_now, y_view, diffeq_out_view)
+                        diffeq(t_now, y_array, diffeq_out_array)
 
                     # Capture extras
                     for j in range(num_extra):
@@ -1052,7 +1047,6 @@ def cyrk_ode(
     PyMem_Free(t_eval_ptr)
 
     # Free pointers used to track y, dydt, and any extra outputs
-    PyMem_Free(y_ptr)
     PyMem_Free(y_old_ptr)
     PyMem_Free(dy_ptr)
     PyMem_Free(dy_old_ptr)
@@ -1074,8 +1068,5 @@ def cyrk_ode(
 
     # Free RK Temp Storage Array
     PyMem_Free(K_ptr)
-
-    # Free diffeq Output Array
-    PyMem_Free(diffeq_out_ptr)
 
     return solution_t, solution_y, success, message
