@@ -289,9 +289,9 @@ def cyrk_ode(
     cdef Py_ssize_t expected_size_to_use, num_concats, new_size
     if expected_size == 0:
         # CySolver will attempt to guess the best size for the output arrays.
-        temp_expected_size = 100. * t_delta_abs * fmax(1., (1.e-6 / rtol_min))
-        temp_expected_size = fmax(temp_expected_size, 100.)
-        temp_expected_size = fmin(temp_expected_size, 10_000_000.)
+        temp_expected_size = t_delta_abs * fmax(1., (1.e-6 / rtol_min))
+        temp_expected_size = fmax(temp_expected_size, 500.)
+        temp_expected_size = fmin(temp_expected_size, 1_000_000.)
         expected_size_to_use = <Py_ssize_t>temp_expected_size
     else:
         expected_size_to_use = <Py_ssize_t>expected_size
@@ -321,16 +321,16 @@ def cyrk_ode(
     # Store y0 into the y arrays
     for i in range(y_size):
         temp_double_numeric = y0[i]
-        y_ptr[i] = temp_double_numeric
+        y_ptr[i]     = temp_double_numeric
         y_old_ptr[i] = temp_double_numeric
 
     # Determine extra outputs
     # To avoid memory access violations we need to set the extra output arrays no matter if they are used.
     # If not used, just set them to size zero.
     if capture_extra:
-        if num_extra == 0:
+        if num_extra <= 0:
             status = -8
-            raise AttributeError('Capture extra set to True, but number of extra set to 0.')
+            raise AttributeError('Capture extra set to True, but number of extra set to 0 (or negative).')
     else:
         # Even though we are not capturing extra, we still want num_extra to be equal to 1 so that nan arrays
         # are properly initialized
@@ -354,7 +354,10 @@ def cyrk_ode(
     # Determine that extra size by calling the diffeq and checking its size.
     cdef Py_ssize_t extra_start, total_size
     extra_start = y_size
-    total_size  = y_size + num_extra
+    if capture_extra:
+        total_size = y_size + num_extra
+    else:
+        total_size = y_size
 
     # Build pointer to store results of diffeq
     cdef double_numeric* diffeq_out_ptr
@@ -1011,17 +1014,21 @@ def cyrk_ode(
     y_size_touse = y_size * len_t_touse
     extra_size_touse = num_extra * len_t_touse
 
+    cdef double[::1] solution_t_view
+    cdef double_numeric[:, ::1] solution_y_view
     solution_t = np.empty(len_t_touse, dtype=np.float64, order='C')
     solution_y = np.empty((total_size, len_t_touse), dtype=DTYPE, order='C')
+    solution_t_view = solution_t
+    solution_y_view = solution_y
 
     for i in range(len_t_touse):
-        solution_t[i] = solution_t_ptr[i]
+        solution_t_view[i] = solution_t_ptr[i]
         for j in range(y_size):
-            solution_y[j, i] = solution_y_ptr[i * y_size + j]
+            solution_y_view[j, i] = solution_y_ptr[i * y_size + j]
     if capture_extra:
         for i in range(len_t_touse):
             for j in range(num_extra):
-                solution_y[extra_start + j, i] = solution_extra_ptr[i * num_extra + j]
+                solution_y_view[extra_start + j, i] = solution_extra_ptr[i * num_extra + j]
 
     # Update integration message
     if status == 1:

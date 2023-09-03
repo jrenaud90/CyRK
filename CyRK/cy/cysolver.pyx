@@ -452,9 +452,9 @@ cdef class CySolver:
         # To avoid memory access violations we need to set the extra output arrays no matter if they are used.
         # If not used, just set them to size zero.
         if self.capture_extra:
-            if num_extra == 0:
+            if num_extra <= 0:
                 self.status = -8
-                raise AttributeError('Capture extra set to True, but number of extra set to 0.')
+                raise AttributeError('Capture extra set to True, but number of extra set to 0 (or negative).')
             self.num_extra = num_extra
         else:
             # Even though we are not capturing extra, we still want num_extra to be equal to 1 so that nan arrays
