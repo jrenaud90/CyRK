@@ -351,7 +351,8 @@ cdef class CySolver:
             self.t_delta_abs    = -self.t_delta
 
         # Determine integration tolerances
-        cdef double rtol_tmp
+        cdef double rtol_tmp, rtol_min
+        rtol_min = INF
         self.rtols_ptr = <double *> PyMem_Malloc(self.y_size * sizeof(double))
         if not self.rtols_ptr:
             raise MemoryError()
@@ -369,12 +370,14 @@ cdef class CySolver:
                 # Check that the tolerances are not too small.
                 if rtol_tmp < EPS_100:
                     rtol_tmp = EPS_100
+                rtol_min = min(rtol_min, rtol_tmp)
                 self.rtols_ptr[i] = rtol_tmp
         else:
             # No array provided. Use the same rtol for all ys.
             # Check that the tolerances are not too small.
             if rtol < EPS_100:
                 rtol = EPS_100
+            rtol_min = rtol
             for i in range(self.y_size):
                 self.rtols_ptr[i] = rtol
 
@@ -403,7 +406,7 @@ cdef class CySolver:
         cdef double temp_expected_size
         if expected_size == 0:
             # CySolver will attempt to guess on a best size for the arrays.
-            temp_expected_size = 100. * self.t_delta_abs * fmax(1., (1.e-6 / rtol))
+            temp_expected_size = 100. * self.t_delta_abs * fmax(1., (1.e-6 / rtol_min))
             temp_expected_size = fmax(temp_expected_size, 100.)
             temp_expected_size = fmin(temp_expected_size, 10_000_000.)
             self.expected_size = <Py_ssize_t>temp_expected_size
