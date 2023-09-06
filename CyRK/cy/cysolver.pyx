@@ -29,7 +29,7 @@ cdef Py_ssize_t MAX_INT_SIZE = int(0.95 * sys.maxsize)
 
 cdef (double, double) EMPTY_T_SPAN = (NAN, NAN)
 
-# noinspection PyUnresolvedReferences
+
 cdef class CySolver:
     """
     CySolver: A Object-Oriented Runge-Kutta Solver Implemented in Cython.
@@ -595,6 +595,7 @@ cdef class CySolver:
     cpdef void reset_state(self):
         """ Resets the class' state variables so that integration can be rerun. """
         cdef Py_ssize_t i, j
+        cdef double temp_double
 
         # Set current and old time variables equal to t0
         self.t_old = self.t_start
@@ -610,7 +611,9 @@ cdef class CySolver:
 
                 # While we have this loop; set y back to initial conditions
                 if i == 0:
-                    self.y_old_ptr[j] = self.y_ptr[j] = self.y0_ptr[j]
+                    temp_double       = self.y0_ptr[j]
+                    self.y_ptr[j]     = temp_double
+                    self.y_old_ptr[j] = temp_double
 
         # Update any constant parameters that the user has set
         self.update_constants()
@@ -654,7 +657,7 @@ cdef class CySolver:
         if not self.solution_y_ptr:
             raise MemoryError()
         for i in range(self.y_size):
-            self.solution_t_ptr[i] = NAN
+            self.solution_y_ptr[i] = NAN
 
         self.solution_extra_ptr = <double *> PyMem_Realloc(self.solution_extra_ptr, self.num_extra * 1 * sizeof(double))
         if not self.solution_extra_ptr:
@@ -746,7 +749,7 @@ cdef class CySolver:
         # Initialize step variables
         cdef Py_ssize_t s, i, j
         cdef double min_step, step, step_factor, time_tmp, t_delta_check
-        cdef double scale, dy_tmp
+        cdef double scale, temp_double
         cdef double error_norm3, error_norm5, error_norm, error_dot_1, error_dot_2, error_denom, error_pow
         cdef bool_cpp_t step_accepted, step_rejected, step_error
 
@@ -766,7 +769,7 @@ cdef class CySolver:
         step_error    = False
 
         # Optimization variables
-        cdef double A_at_sj, A_at_10, B_at_j, K_
+        cdef double A_at_10
         # Define a very specific A (Row 1; Col 0) now since it is called consistently and does not change.
         A_at_10 = self.A_ptr[1 * self.len_Acols + 0]
 
@@ -779,12 +782,12 @@ cdef class CySolver:
 
             # Move time forward for this particular step size
             if self.direction_flag:
-                step = self.step_size
-                self.t_now = self.t_old + step
+                step          = self.step_size
+                self.t_now    = self.t_old + step
                 t_delta_check = self.t_now - self.t_end
             else:
-                step = -self.step_size
-                self.t_now = self.t_old + step
+                step          = -self.step_size
+                self.t_now    = self.t_old + step
                 t_delta_check = self.t_end - self.t_now
 
             # Check that we are not at the end of integration with that move
@@ -812,21 +815,21 @@ cdef class CySolver:
                 if s == 1:
                     for i in range(self.y_size):
                         # Set the first column of K
-                        dy_tmp = self.dy_old_ptr[i]
+                        temp_double = self.dy_old_ptr[i]
                         # K[0, :] == first part of the array
-                        self.K_ptr[i] = dy_tmp
+                        self.K_ptr[i] = temp_double
 
                         # Calculate y_new for s==1
-                        self.y_ptr[i] = self.y_old_ptr[i] + (dy_tmp * A_at_10 * step)
+                        self.y_ptr[i] = self.y_old_ptr[i] + (temp_double * A_at_10 * step)
                 else:
                     for j in range(s):
-                        A_at_sj = self.A_ptr[s * self.len_Acols + j] * step
+                        temp_double = self.A_ptr[s * self.len_Acols + j] * step
                         for i in range(self.y_size):
                             if j == 0:
                                 # Initialize
                                 self.y_ptr[i] = self.y_old_ptr[i]
 
-                            self.y_ptr[i] += self.K_ptr[j * self.y_size + i] * A_at_sj
+                            self.y_ptr[i] += self.K_ptr[j * self.y_size + i] * temp_double
 
                 # Call diffeq to update K with the new dydt
                 self.diffeq()
@@ -839,7 +842,7 @@ cdef class CySolver:
 
             # Dot Product (K, B) * step
             for j in range(self.rk_n_stages):
-                B_at_j = self.B_ptr[j] * step
+                temp_double = self.B_ptr[j] * step
                 # We do not use rk_n_stages_plus1 here because we are chopping off the last row of K to match
                 #  the shape of B.
                 for i in range(self.y_size):
@@ -847,7 +850,7 @@ cdef class CySolver:
                         # Initialize
                         self.y_ptr[i] = self.y_old_ptr[i]
 
-                    self.y_ptr[i] += self.K_ptr[j * self.y_size + i] * B_at_j
+                    self.y_ptr[i] += self.K_ptr[j * self.y_size + i] * temp_double
 
             self.diffeq()
 
@@ -870,9 +873,9 @@ cdef class CySolver:
                             error_dot_1 = 0.
                             error_dot_2 = 0.
 
-                        K_ = self.K_ptr[j * self.y_size + i]
-                        error_dot_1 += K_ * self.E3_ptr[j]
-                        error_dot_2 += K_ * self.E5_ptr[j]
+                        temp_double = self.K_ptr[j * self.y_size + i]
+                        error_dot_1 += temp_double * self.E3_ptr[j]
+                        error_dot_2 += temp_double * self.E5_ptr[j]
 
                     # We need the absolute value but since we are taking the square, it is guaranteed to be positive.
                     # TODO: This will need to change if CySolver ever accepts complex numbers
