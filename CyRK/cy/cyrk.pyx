@@ -707,6 +707,7 @@ def cyrk_ode(
 
                     y_view[i] += K_ptr[j * y_size + i] * B_at_j
 
+            # Find final dydt for this timestep
             if use_args:
                 diffeq(t_now, y_array, diffeq_out_array, *args)
             else:

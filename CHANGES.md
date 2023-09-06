@@ -20,6 +20,7 @@ Changes:
 
 Performance
 - Transitioned many arrays from numpy to c arrays allocated with PyMem_Malloc, etc. These changes led to a significant performance boost for cython-based solvers.
+- Copied some performance lessons that were learned from the cython-based solvers to the numba-based nbrk_ode.
 
 #### v0.7.1
 

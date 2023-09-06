@@ -852,6 +852,7 @@ cdef class CySolver:
 
                     self.y_ptr[i] += self.K_ptr[j * self.y_size + i] * temp_double
 
+            # Find final dydt for this timestep
             self.diffeq()
 
             # Check how well this step performed by calculating its error

@@ -299,6 +299,9 @@ def nbrk_ode(
     A = np.asarray(A, dtype=dtype)
     B = np.asarray(B, dtype=dtype)
 
+    # Determine some RK-related constants
+    len_C = len(C)
+    A_at_10 = A[1, 0]
     error_expo = 1. / (error_order + 1.)
 
     # Setup tolerances
@@ -343,13 +346,7 @@ def nbrk_ode(
     y_new    = np.empty_like(y0)
     y_old    = np.empty_like(y0)
     dydt_old = np.empty_like(y0)
-    dydt1    = np.empty_like(y0)
-    dy_      = np.empty_like(y0)
     dydt_new = np.empty_like(y0)
-    y_tmp    = np.empty_like(y0)
-    E5_tmp   = np.empty_like(y0)
-    E3_tmp   = np.empty_like(y0)
-    E_tmp    = np.empty_like(y0)
     for i in range(y_size):
         y0_i     = y0[i]
         y_new[i] = y0_i
@@ -408,12 +405,12 @@ def nbrk_ode(
             # Use the differential equation to estimate the first step size
             diffeq_output = np.asarray(diffeq(t1, y1, *args), dtype=dtype)
             for i in range(y_size):
-                dydt1[i] = diffeq_output[i]
+                dydt_new[i] = diffeq_output[i]
 
             d2 = 0.
             for i in range(y_size):
                 scale = atol_array[i] + np.abs(y_old[i]) * rtol_array[i]
-                d2_abs = np.abs((dydt1[i] - dydt_old[i]) / scale)
+                d2_abs = np.abs((dydt_new[i] - dydt_old[i]) / scale)
                 d2 += (d2_abs * d2_abs)
             d2 = np.sqrt(d2) / (h0 * y_size_sqrt)
 
@@ -482,45 +479,48 @@ def nbrk_ode(
                 step_size = np.abs(step)
 
             # Calculate derivative using RK method
-            K[0, :] = dydt_old[:]
-            for s in range(1, len(C)):
-                c = C[s]
-                A_ = A[s, :]
-                time_ = t_old + c * step
+            # Dot Product (K, a) * step
+            for s in range(1, len_C):
+                time_ = t_old + C[s] * step
 
                 # Dot Product (K, a) * step
-                for j in range(s):
-                    K_ = K[j, :]
-                    a_ = A_[j]
+                if s == 1:
                     for i in range(y_size):
-                        if j == 0:
-                            # Initialize
-                            y_tmp[i] = y_old[i]
+                        # Set the first column of K
+                        temp_double_numeric = dydt_old[i]
+                        K[0, i] = temp_double_numeric
 
-                        y_tmp[i] = y_tmp[i] + (K_[i] * a_ * step)
+                        # Calculate y_new for s==1
+                        y_new[i] = y_old[i] + (temp_double_numeric * A_at_10 * step)
+                else:
+                    for j in range(s):
+                        A_at_sj = A[s, j] * step
+                        for i in range(y_size):
+                            if j == 0:
+                                # Initialize
+                                y_new[i] = y_old[i]
+
+                            y_new[i] += K[j, i] * A_at_sj
 
                 # Update K with a new result from the differential equationC
-                diffeq_output = np.asarray(diffeq(time_, y_tmp, *args), dtype=dtype)
+                diffeq_output = np.asarray(diffeq(time_, y_new, *args), dtype=dtype)
                 for i in range(y_size):
-                    dy_[i] = diffeq_output[i]
-
-                for i in range(y_size):
-                    K[s, i] = dy_[i]
+                    K[s, i] = diffeq_output[i]
 
             # Dot Product (K, B) * step
             for j in range(rk_n_stages):
+                temp = B[j] * step
                 # We do not use rk_n_stages_plus1 here because we are chopping off the last row of K to match
                 #  the shape of B.
-                K_ = K[j, :]
-                b_ = B[j]
                 for i in range(y_size):
                     if j == 0:
                         # Initialize
                         y_new[i] = y_old[i]
-                    y_new[i] = y_new[i] + (K_[i] * b_ * step)
+                    y_new[i] += K[j, i] * temp
 
             # Find final dydt for this timestep
             diffeq_output = np.asarray(diffeq(t_new, y_new, *args), dtype=dtype)
+
             for i in range(store_loop_size):
                 if i < extra_start:
                     # Set diffeq results
@@ -533,31 +533,29 @@ def nbrk_ode(
             if rk_method == 2:
                 # DOP853 error estimation
                 # Dot Product (K, E5) / Scale and (K, E3) / scale
+                error_norm3 = 0.
+                error_norm5 = 0.
                 for i in range(y_size):
                     # Check how well this step performed
                     scale = atol_array[i] + np.maximum(np.abs(y_old[i]), np.abs(y_new[i])) * rtol_array[i]
+
+                    # Set last array of K equal to dydt
+                    K[rk_n_stages, i] = dydt_new[i]
                     for j in range(rk_n_stages_plus1):
                         if j == 0:
                             # Initialize
-                            E5_tmp[i] = 0.
-                            E3_tmp[i] = 0.
-                        elif j == rk_n_stages:
-                            # Set last array of the K array
-                            K[j, i] = dydt_new[i]
-                        K_scale = K[j, i] / scale
-                        E5_tmp[i] = E5_tmp[i] + (K_scale * E5[j])
-                        E3_tmp[i] = E3_tmp[i] + (K_scale * E3[j])
+                            error_dot_1 = 0.
+                            error_dot_2 = 0.
 
-                # Find norms for each error
-                error_norm5 = 0.
-                error_norm3 = 0.
+                        temp = K[j, i]
+                        error_dot_1 += temp * E3[j]
+                        error_dot_2 += temp * E5[j]
 
-                # Perform summation
-                for i in range(y_size):
-                    error_norm5_abs = np.abs(E5_tmp[i])
-                    error_norm3_abs = np.abs(E3_tmp[i])
-                    error_norm5 += (error_norm5_abs * error_norm5_abs)
+                    error_norm3_abs = np.abs(error_dot_1) / scale
+                    error_norm5_abs = np.abs(error_dot_2) / scale
+
                     error_norm3 += (error_norm3_abs * error_norm3_abs)
+                    error_norm5 += (error_norm5_abs * error_norm5_abs)
 
                 # Check if errors are zero
                 if (error_norm5 == 0.) and (error_norm3 == 0.):
@@ -573,17 +571,19 @@ def nbrk_ode(
                 for i in range(y_size):
                     # Check how well this step performed.
                     scale = atol_array[i] + max(np.abs(y_old[i]), np.abs(y_new[i])) * rtol_array[i]
+
+                    # Set last array of K equal to dydt
+                    K[rk_n_stages, i] = dydt_new[i]
                     for j in range(rk_n_stages_plus1):
                         if j == 0:
                             # Initialize
-                            E_tmp[i] = 0.
-                        elif j == rk_n_stages:
-                            # Set last array of the K array.
-                            K[j, i] = dydt_new[i]
-                        K_scale = K[j, i] / scale
-                        E_tmp[i] = E_tmp[i] + (K_scale * E[j] * step)
+                            error_dot_1 = 0.
 
-                    error_norm_abs = np.abs(E_tmp[i])
+                        error_dot_1 += K[j, i] * E[j]
+
+                    error_norm_abs = np.abs(error_dot_1)
+                    error_norm_abs *= (step / scale)
+
                     error_norm += (error_norm_abs * error_norm_abs)
                 error_norm = np.sqrt(error_norm) / y_size_sqrt
 
