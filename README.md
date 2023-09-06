@@ -21,14 +21,14 @@ CyRK provides fast integration tools to solve systems of ODEs using an adaptive 
 The purpose of this package is to provide some 
 functionality of [scipy's solve_ivp](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html) with greatly improved performance.
 
-Currently, CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is **10-100+x faster** than scipy's solve_ivp function.
-The [cython](https://cython.org/) `cyrk_ode` function that works with python (or numba) functions is **5-40+x faster** than scipy.
-The [cython](https://cython.org/) `CySolver` class that works with cython-based cdef classes is **5-500+x faster** than scipy.
+Currently, CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is **10-120+x faster** than scipy's solve_ivp function.
+The [cython](https://cython.org/) `cyrk_ode` function that works with python (or numba) functions is **20-40+x faster** than scipy.
+The [cython](https://cython.org/) `CySolver` class that works with cython-based cdef classes is **30-500+x faster** than scipy.
 
 An additional benefit of the two cython implementations is that they are pre-compiled. This avoids most of the start-up performance hit experienced by just-in-time compilers like numba.
 
 
-<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_predprey_v0-7-1.png" alt="CyRK Performance Graphic" />
+<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_predprey_v0-8-0.png" alt="CyRK Performance Graphic" />
 
 ## Installation
 
