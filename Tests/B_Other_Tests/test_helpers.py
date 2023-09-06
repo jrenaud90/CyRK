@@ -27,8 +27,8 @@ def diffeq_scipy(t, y):
 @njit
 def diffeq_scipy_args(t, y, a, b):
     dy = np.zeros_like(y)
-    dy[0] = (1. - 0.01 * y[1]) * y[0]
-    dy[1] = (0.02 * y[0] - 1.) * y[1]
+    dy[0] = (1. - a * y[1]) * y[0]
+    dy[1] = (b * y[0] - 1.) * y[1]
     return dy
 
 
@@ -47,12 +47,12 @@ def test_nb2cy_noargs():
 
     # First calculate the result of an integration using nbrk.
     time_domain_nb, y_results_nb, success_nb, message_nb = \
-        nbrk_ode(diffeq_scipy, time_span, initial_conds, t_eval=t_eval)
+        nbrk_ode(diffeq_scipy, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
     assert success_nb
 
     # Perform a cyrk integration using the diffeq that was written for cyrk
     time_domain_cy, y_results_cy, success_cy, message_cy = \
-        cyrk_ode(diffeq_cy, time_span, initial_conds, t_eval=t_eval)
+        cyrk_ode(diffeq_cy, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
     assert success_cy
 
     # Perform the function conversion
@@ -60,7 +60,7 @@ def test_nb2cy_noargs():
 
     # Use this function to recalculate using cyrk
     time_domain_cy_conv, y_results_cy_conv, success_cy_conv, message_cy_conv = \
-        cyrk_ode(diffeq_cy_converted, time_span, initial_conds, t_eval=t_eval)
+        cyrk_ode(diffeq_cy_converted, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
     assert success_cy_conv
 
     # Check that the results match
@@ -85,12 +85,12 @@ def test_nb2cy_args():
 
     # First calculate the result of an integration using nbrk.
     time_domain_nb, y_results_nb, success_nb, message_nb = \
-        nbrk_ode(diffeq_scipy_args, time_span, initial_conds, t_eval=t_eval, args=(0.01, 0.02))
+        nbrk_ode(diffeq_scipy_args, time_span, initial_conds, t_eval=t_eval, args=(0.01, 0.02), rtol=rtol, atol=atol)
     assert success_nb
 
     # Perform a cyrk integration using the diffeq that was written for cyrk
     time_domain_cy, y_results_cy, success_cy, message_cy = \
-        cyrk_ode(diffeq_cy_args, time_span, initial_conds, t_eval=t_eval, args=(0.01, 0.02))
+        cyrk_ode(diffeq_cy_args, time_span, initial_conds, t_eval=t_eval, args=(0.01, 0.02), rtol=rtol, atol=atol)
     assert success_cy
 
     # Perform the function conversion
@@ -98,7 +98,7 @@ def test_nb2cy_args():
 
     # Use this function to recalculate using cyrk
     time_domain_cy_conv, y_results_cy_conv, success_cy_conv, message_cy_conv = \
-        cyrk_ode(diffeq_cy_converted_args, time_span, initial_conds, t_eval=t_eval, args=(0.01, 0.02))
+        cyrk_ode(diffeq_cy_converted_args, time_span, initial_conds, t_eval=t_eval, args=(0.01, 0.02), rtol=rtol, atol=atol)
     assert success_cy_conv
 
     # Check that the results match
@@ -123,13 +123,13 @@ def test_cy2nb_noargs():
 
     # First calculate the result of an integration using nbrk.
     time_domain_nb, y_results_nb, success_nb, message_nb = \
-        nbrk_ode(diffeq_scipy, time_span, initial_conds, t_eval=t_eval)
+        nbrk_ode(diffeq_scipy, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
     print(message_nb)
     assert success_nb
 
     # Perform a cyrk integration using the diffeq that was written for cyrk
     time_domain_cy, y_results_cy, success_cy, message_cy = \
-        cyrk_ode(diffeq_cy, time_span, initial_conds, t_eval=t_eval)
+        cyrk_ode(diffeq_cy, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
     assert success_cy
 
     # Perform the function conversion
@@ -137,7 +137,7 @@ def test_cy2nb_noargs():
 
     # Use this function to recalculate using cyrk
     time_domain_nb_conv, y_results_nb_conv, success_nb_conv, message_nb_conv = \
-        nbrk_ode(diffeq_nb_converted, time_span, initial_conds, t_eval=t_eval)
+        nbrk_ode(diffeq_nb_converted, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
     assert success_nb_conv
 
     # Check that the results match
@@ -162,12 +162,12 @@ def test_cy2nb_args():
 
     # First calculate the result of an integration using nbrk.
     time_domain_nb, y_results_nb, success_nb, message_nb = \
-        nbrk_ode(diffeq_scipy_args, time_span, initial_conds, t_eval=t_eval, args=(0.01, 0.02))
+        nbrk_ode(diffeq_scipy_args, time_span, initial_conds, t_eval=t_eval, args=(0.01, 0.02), rtol=rtol, atol=atol)
     assert success_nb
 
     # Perform a cyrk integration using the diffeq that was written for cyrk
     time_domain_cy, y_results_cy, success_cy, message_cy = \
-        cyrk_ode(diffeq_cy_args, time_span, initial_conds, t_eval=t_eval, args=(0.01, 0.02))
+        cyrk_ode(diffeq_cy_args, time_span, initial_conds, t_eval=t_eval, args=(0.01, 0.02), rtol=rtol, atol=atol)
     assert success_cy
 
     # Perform the function conversion
@@ -175,7 +175,7 @@ def test_cy2nb_args():
 
     # Use this function to recalculate using cyrk
     time_domain_nb_conv, y_results_nb_conv, success_nb_conv, message_nb_conv = \
-        nbrk_ode(diffeq_nb_converted_args, time_span, initial_conds, t_eval=t_eval, args=(0.01, 0.02))
+        nbrk_ode(diffeq_nb_converted_args, time_span, initial_conds, t_eval=t_eval, args=(0.01, 0.02), rtol=rtol, atol=atol)
     assert success_nb_conv
 
     # Check that the results match
@@ -200,12 +200,12 @@ def test_cy2nb_cache_njit():
 
     # First calculate the result of an integration using nbrk.
     time_domain_nb, y_results_nb, success_nb, message_nb = \
-        nbrk_ode(diffeq_scipy, time_span, initial_conds, t_eval=t_eval)
+        nbrk_ode(diffeq_scipy, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
     assert success_nb
 
     # Perform a cyrk integration using the diffeq that was written for cyrk
     time_domain_cy, y_results_cy, success_cy, message_cy = \
-        cyrk_ode(diffeq_cy, time_span, initial_conds, t_eval=t_eval)
+        cyrk_ode(diffeq_cy, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
     assert success_cy
 
     # Perform the function conversion
@@ -213,7 +213,7 @@ def test_cy2nb_cache_njit():
 
     # Use this function to recalculate using cyrk
     time_domain_nb_conv, y_results_nb_conv, success_nb_conv, message_nb_conv = \
-        nbrk_ode(diffeq_nb_converted, time_span, initial_conds, t_eval=t_eval)
+        nbrk_ode(diffeq_nb_converted, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
     assert success_nb_conv
 
     # Check that the results match
@@ -238,12 +238,12 @@ def test_nb2cy_cache_njit():
 
     # First calculate the result of an integration using nbrk.
     time_domain_nb, y_results_nb, success_nb, message_nb = \
-        nbrk_ode(diffeq_scipy, time_span, initial_conds, t_eval=t_eval)
+        nbrk_ode(diffeq_scipy, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
     assert success_nb
 
     # Perform a cyrk integration using the diffeq that was written for cyrk
     time_domain_cy, y_results_cy, success_cy, message_cy = \
-        cyrk_ode(diffeq_cy, time_span, initial_conds, t_eval=t_eval)
+        cyrk_ode(diffeq_cy, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
     assert success_cy
 
     # Perform the function conversion
@@ -251,7 +251,7 @@ def test_nb2cy_cache_njit():
 
     # Use this function to recalculate using cyrk
     time_domain_cy_conv, y_results_cy_conv, success_cy_conv, message_cy_conv = \
-        cyrk_ode(diffeq_cy_converted, time_span, initial_conds, t_eval=t_eval)
+        cyrk_ode(diffeq_cy_converted, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
     assert success_cy_conv
 
     # Check that the results match

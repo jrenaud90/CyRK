@@ -36,7 +36,8 @@ def nb2cy(diffeq: callable, use_njit: bool = True, cache_njit: bool = False) -> 
         dy_ = diffeq(t, y, *args)
 
         # Set the input dy items equal to the output
-        dy[:] = dy_
+        for i in range(y.shape[0]):
+            dy[i] = dy_[i]
 
     return diffeq_cyrk
 
