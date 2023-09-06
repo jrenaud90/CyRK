@@ -27,8 +27,8 @@ def diffeq_scipy(t, y):
 @njit
 def diffeq_scipy_args(t, y, a, b):
     dy = np.zeros_like(y)
-    dy[0] = (1. - 0.01 * y[1]) * y[0]
-    dy[1] = (0.02 * y[0] - 1.) * y[1]
+    dy[0] = (1. - a * y[1]) * y[0]
+    dy[1] = (b * y[0] - 1.) * y[1]
     return dy
 
 
