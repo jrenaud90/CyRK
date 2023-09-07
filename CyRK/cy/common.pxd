@@ -1,3 +1,4 @@
+# distutils: language = c++
 from libcpp cimport bool as bool_cpp_t
 
 from CyRK.rk.rk cimport double_numeric

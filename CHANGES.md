@@ -2,6 +2,17 @@
 
 ## 2023
 
+#### v0.8.1
+
+New Features:
+- Added more interp functions that take pointers as arguments
+
+Performance:
+- Moved some backend functionality for CyRK.interp to pure c file for performance gains.
+
+Bug Fixes:
+- Fixed issue with "cy/common.pyx" not having the correct cython flags during compliation.
+
 ### v0.8.0
 
 New Features

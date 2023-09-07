@@ -1,6 +1,5 @@
 
 # Ignore cython files
-*.c
 *.cpp
 
 # Ignore coverage files

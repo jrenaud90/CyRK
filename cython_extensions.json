@@ -1,7 +1,7 @@
 {
   "interp": {
     "name": "CyRK.array.interp",
-    "sources": [["CyRK", "array", "interp.pyx"]],
+    "sources": [["CyRK", "array", "interp.pyx"], ["CyRK", "array", "interp_common.c"]],
     "include_dirs": [["CyRK", "array"]],
     "compile_args": [],
     "link_args": []

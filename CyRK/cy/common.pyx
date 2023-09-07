@@ -1,3 +1,5 @@
+# distutils: language = c++
+# cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 import cython
 
 from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
