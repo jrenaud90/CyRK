@@ -20,7 +20,8 @@ cdef double interp_ptr(
         double* x_domain,
         double* dependent_values,
         Py_ssize_t len_x,
-        Py_ssize_t provided_j = -2) noexcept nogil:
+        Py_ssize_t provided_j = -2
+        ) noexcept nogil:
     """ Interpolation function for floats.
 
     Provided a domain, `x_domain` and a dependent array `dependent_values` search domain for value closest to 
@@ -106,7 +107,8 @@ cdef double complex interp_complex_ptr(
         double* x_domain,
         double complex* dependent_values,
         Py_ssize_t len_x,
-        Py_ssize_t provided_j = -2) noexcept nogil:
+        Py_ssize_t provided_j = -2
+        ) noexcept nogil:
     """ Interpolation function for complex numbers.
 
     Provided a domain, `desired_x` and a dependent array `dependent_values` search domain for value closest to 
@@ -219,7 +221,8 @@ cpdef double interp(
         double desired_x,
         double[:] x_domain,
         double[:] dependent_values,
-        Py_ssize_t provided_j = -2) noexcept nogil:
+        Py_ssize_t provided_j = -2
+        ) noexcept nogil:
     """ Interpolation function for floats.
 
     Provided a domain, `x_domain` and a dependent array `dependent_values` search domain for value closest to 
@@ -256,7 +259,8 @@ cpdef double complex interp_complex(
         double desired_x,
         double[:] x_domain,
         double complex[:] dependent_values,
-        Py_ssize_t provided_j = -2) noexcept nogil:
+        Py_ssize_t provided_j = -2
+        ) noexcept nogil:
     """ Interpolation function for complex numbers.
 
     Provided a domain, `desired_x` and a dependent array `dependent_values` search domain for value closest to 
@@ -294,7 +298,8 @@ cdef (double, Py_ssize_t) interpj_ptr(
         double* x_domain,
         double* dependent_values,
         Py_ssize_t len_x,
-        Py_ssize_t provided_j = -2) noexcept nogil:
+        Py_ssize_t provided_j = -2
+        ) noexcept nogil:
     """ Interpolation function for floats. This function will return the index that it found during interpolation.
 
     Provided a domain, `x_domain` and a dependent array `dependent_values` search domain for value closest to 
@@ -345,7 +350,8 @@ cpdef (double, Py_ssize_t) interpj(
         double desired_x,
         double[:] x_domain,
         double[:] dependent_values,
-        Py_ssize_t provided_j = -2) noexcept nogil:
+        Py_ssize_t provided_j = -2
+        ) noexcept nogil:
     """ Interpolation function for floats. This function will return the index that it found during interpolation.
 
     Provided a domain, `x_domain` and a dependent array `dependent_values` search domain for value closest to 
@@ -385,7 +391,8 @@ cdef (double complex, Py_ssize_t) interp_complexj_ptr(
         double* x_domain,
         double complex* dependent_values,
         Py_ssize_t len_x,
-        Py_ssize_t provided_j = -2) noexcept nogil:
+        Py_ssize_t provided_j = -2
+        ) noexcept nogil:
     """ Interpolation function for complex numbers.
 
     Provided a domain, `desired_x` and a dependent array `dependent_values` search domain for value closest to 
@@ -436,7 +443,8 @@ cpdef (double complex, Py_ssize_t) interp_complexj(
         double desired_x,
         double[:] x_domain,
         double complex[:] dependent_values,
-        Py_ssize_t provided_j = -2) noexcept nogil:
+        Py_ssize_t provided_j = -2
+        ) noexcept nogil:
     """ Interpolation function for complex numbers.
 
     Provided a domain, `desired_x` and a dependent array `dependent_values` search domain for value closest to 
@@ -477,7 +485,8 @@ cdef void interp_array_ptr(
         double* dependent_values,
         double* desired_dependent_array,
         Py_ssize_t len_x,
-        Py_ssize_t desired_len) noexcept nogil:
+        Py_ssize_t desired_len
+        ) noexcept nogil:
 
     # Array variables
     cdef Py_ssize_t index
@@ -515,7 +524,8 @@ cpdef void interp_array(
         double[:] desired_x_array,
         double[:] x_domain,
         double[:] dependent_values,
-        double[:] desired_dependent_array) noexcept nogil:
+        double[:] desired_dependent_array
+        ) noexcept nogil:
 
     # Array variables
     cdef Py_ssize_t len_x, desired_len
@@ -532,7 +542,8 @@ cdef void interp_complex_array_ptr(
         double complex* dependent_values,
         double complex* desired_dependent_array,
         Py_ssize_t len_x,
-        Py_ssize_t desired_len) noexcept nogil:
+        Py_ssize_t desired_len
+        ) noexcept nogil:
 
     # Array variables
     cdef Py_ssize_t index
@@ -568,7 +579,8 @@ cpdef void interp_complex_array(
         double[:] desired_x_array,
         double[:] x_domain,
         double complex[:] dependent_values,
-        double complex[:] desired_dependent_array) noexcept nogil:
+        double complex[:] desired_dependent_array
+        ) noexcept nogil:
 
     cdef Py_ssize_t len_x, desired_len
     len_x       = len(x_domain)
