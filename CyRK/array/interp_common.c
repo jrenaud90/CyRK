@@ -1,9 +1,10 @@
 #include "math.h"
 #include "Python.h"
 
-Py_ssize_t LIKELY_IN_CACHE_SIZE = 8;
 
 Py_ssize_t binary_search_with_guess(double key, double* array, Py_ssize_t length, Py_ssize_t guess){
+    Py_ssize_t LIKELY_IN_CACHE_SIZE = 8;
+
     Py_ssize_t imin = 0;
     Py_ssize_t imax = length;
     Py_ssize_t imid = 0;
