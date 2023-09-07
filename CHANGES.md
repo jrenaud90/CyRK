@@ -9,6 +9,7 @@ New Features:
 
 Changes:
 - Converted interp functions to use each other where possible, rather than having separate definitions.
+- Cleaned up .pxd file formatting.
 
 Performance:
 - Moved some backend functionality for CyRK.interp to pure c file for performance gains.
