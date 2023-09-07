@@ -7,6 +7,9 @@
 New Features:
 - Added more interp functions that take pointers as arguments
 
+Changes:
+- Converted interp functions to use each other where possible, rather than having separate definitions.
+
 Performance:
 - Moved some backend functionality for CyRK.interp to pure c file for performance gains.
 
