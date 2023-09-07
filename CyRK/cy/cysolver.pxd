@@ -12,7 +12,6 @@ cdef double EPS_100
 cdef class CySolver:
 
     # Class attributes
-
     # -- Solution variables
     cdef double* solution_y_ptr
     cdef double* solution_t_ptr
@@ -78,49 +77,96 @@ cdef class CySolver:
     cdef double* extra_output_ptr
 
     # Class functions
-    cpdef void reset_state(self)
+    cpdef void reset_state(
+            self
+            )
 
-    cdef double calc_first_step(self) noexcept nogil
+    cdef double calc_first_step(
+            self
+            ) noexcept nogil
 
-    cdef void rk_step(self) noexcept nogil
+    cdef void rk_step(
+            self
+            ) noexcept nogil
 
-    cpdef void solve(self, bool_cpp_t reset = *)
+    cpdef void solve(
+            self,
+            bool_cpp_t reset = *
+            )
 
-    cdef void _solve(self, bool_cpp_t reset = *)
+    cdef void _solve(
+            self,
+            bool_cpp_t reset = *
+            )
 
-    cdef void interpolate(self)
+    cdef void interpolate(
+            self)
 
-    cpdef void change_t_span(self, (double, double) t_span, bool_cpp_t auto_reset_state = *)
+    cpdef void change_t_span(
+            self,
+            (double, double) t_span,
+            bool_cpp_t auto_reset_state = *
+            )
 
-    cpdef void change_y0(self, const double[::1] y0, bool_cpp_t auto_reset_state = *)
+    cpdef void change_y0(
+            self,
+            const double[::1] y0,
+            bool_cpp_t auto_reset_state = *
+            )
 
-    cpdef void change_args(self, tuple args, bool_cpp_t auto_reset_state = *)
+    cpdef void change_args(
+            self,
+            tuple args,
+            bool_cpp_t auto_reset_state = *
+            )
 
-    cpdef void change_tols(self, double rtol = *,
-                           double atol = *,
-                           const double[::1] rtols = *,
-                           const double[::1] atols = *,
-                           bool_cpp_t auto_reset_state = *)
+    cpdef void change_tols(
+            self,
+            double rtol = *,
+            double atol = *,
+            const double[::1] rtols = *,
+            const double[::1] atols = *,
+            bool_cpp_t auto_reset_state = *
+            )
 
-    cpdef void change_max_step(self, double max_step, bool_cpp_t auto_reset_state = *)
+    cpdef void change_max_step(
+            self,
+            double max_step,
+            bool_cpp_t auto_reset_state = *
+            )
 
-    cpdef void change_first_step(self, double first_step, bool_cpp_t auto_reset_state = *)
+    cpdef void change_first_step(
+            self,
+            double first_step,
+            bool_cpp_t auto_reset_state = *
+            )
 
-    cpdef void change_t_eval(self, const double[::1] t_eval, bool_cpp_t auto_reset_state = *)
+    cpdef void change_t_eval(
+            self,
+            const double[::1] t_eval,
+            bool_cpp_t auto_reset_state = *
+            )
 
-    cpdef void change_parameters(self, (double, double) t_span = *,
-                                const double[::1] y0 = *,
-                                tuple args = *,
-                                double rtol = *,
-                                double atol = *,
-                                const double[::1] rtols = *,
-                                const double[::1] atols = *,
-                                double max_step = *,
-                                double first_step = *,
-                                const double[::1] t_eval = *,
-                                bool_cpp_t auto_reset_state = *,
-                                bool_cpp_t auto_solve = *)
+    cpdef void change_parameters(
+            self,
+            (double, double) t_span = *,
+            const double[::1] y0 = *,
+            tuple args = *,
+            double rtol = *,
+            double atol = *,
+            const double[::1] rtols = *,
+            const double[::1] atols = *,
+            double max_step = *,
+            double first_step = *,
+            const double[::1] t_eval = *,
+            bool_cpp_t auto_reset_state = *,
+            bool_cpp_t auto_solve = *
+            )
 
-    cdef void update_constants(self) noexcept nogil
+    cdef void update_constants(
+            self
+            ) noexcept nogil
 
-    cdef void diffeq(self) noexcept nogil
+    cdef void diffeq(
+            self
+            ) noexcept nogil

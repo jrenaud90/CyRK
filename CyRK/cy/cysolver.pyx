@@ -955,7 +955,10 @@ cdef class CySolver:
             self.dy_old_ptr[i] = self.dy_ptr[i]
 
 
-    cpdef void solve(self, bool_cpp_t reset = True):
+    cpdef void solve(
+            self,
+            bool_cpp_t reset = True
+            ):
         """
         Public wrapper to the private solve method which calculates the integral of the user-provided system of ODEs.
         
@@ -967,7 +970,10 @@ cdef class CySolver:
         self._solve(reset=reset)
 
 
-    cdef void _solve(self, bool_cpp_t reset = True):
+    cdef void _solve(
+            self,
+            bool_cpp_t reset = True
+            ):
         """
         Calculates the integral of the user-provided system of ODEs.
         
@@ -1259,7 +1265,11 @@ cdef class CySolver:
         self.status = old_status
 
 
-    cpdef void change_t_span(self, (double, double) t_span, bool_cpp_t auto_reset_state = False):
+    cpdef void change_t_span(
+            self,
+            (double, double) t_span,
+            bool_cpp_t auto_reset_state = False
+            ):
         """
         Public method to change the independent variable limits (start and stop points of integration).
         
@@ -1291,7 +1301,11 @@ cdef class CySolver:
             self.reset_state()
 
 
-    cpdef void change_y0(self, const double[::1] y0, bool_cpp_t auto_reset_state = False):
+    cpdef void change_y0(
+            self,
+            const double[::1] y0,
+            bool_cpp_t auto_reset_state = False
+            ):
         """
         Public method to change the initial conditions.
         
@@ -1328,7 +1342,11 @@ cdef class CySolver:
             self.reset_state()
 
 
-    cpdef void change_args(self, tuple args, bool_cpp_t auto_reset_state = False):
+    cpdef void change_args(
+            self,
+            tuple args,
+            bool_cpp_t auto_reset_state = False
+            ):
         """
         Public method to change additional arguments used during integration.
 
@@ -1364,9 +1382,14 @@ cdef class CySolver:
             self.reset_state()
 
 
-    cpdef void change_tols(self, double rtol = NAN, double atol = NAN,
-                           const double[::1] rtols = None, const double[::1] atols = None,
-                           bool_cpp_t auto_reset_state = False):
+    cpdef void change_tols(
+            self,
+            double rtol = NAN,
+            double atol = NAN,
+            const double[::1] rtols = None,
+            const double[::1] atols = None,
+            bool_cpp_t auto_reset_state = False
+            ):
         """
         Public method to change relative and absolute tolerances and/or their arrays.
         
@@ -1439,7 +1462,11 @@ cdef class CySolver:
                 self.reset_state()
 
 
-    cpdef void change_max_step(self, double max_step, bool_cpp_t auto_reset_state = False):
+    cpdef void change_max_step(
+            self,
+            double max_step,
+            bool_cpp_t auto_reset_state = False
+            ):
         """
         Public method to change maximum allowed step size.
         
@@ -1457,7 +1484,11 @@ cdef class CySolver:
             self.reset_state()
 
 
-    cpdef void change_first_step(self, double first_step, bool_cpp_t auto_reset_state = False):
+    cpdef void change_first_step(
+            self,
+            double first_step,
+            bool_cpp_t auto_reset_state = False
+            ):
         """
         Public method to change first step's size.
         
@@ -1490,7 +1521,11 @@ cdef class CySolver:
             self.reset_state()
 
 
-    cpdef void change_t_eval(self, const double[::1] t_eval, bool_cpp_t auto_reset_state = False):
+    cpdef void change_t_eval(
+            self,
+            const double[::1] t_eval,
+            bool_cpp_t auto_reset_state = False
+            ):
         """
         Public method to change user requested independent domain, `t_eval`.
 
@@ -1524,7 +1559,8 @@ cdef class CySolver:
             self.reset_state()
 
 
-    cpdef void change_parameters(self,
+    cpdef void change_parameters(
+            self,
             (double, double) t_span = EMPTY_T_SPAN,
             const double[::1] y0 = None,
             tuple args = None,
@@ -1536,7 +1572,8 @@ cdef class CySolver:
             double first_step = NAN,
             const double[::1] t_eval = None,
             bool_cpp_t auto_reset_state = True,
-            bool_cpp_t auto_solve = False):
+            bool_cpp_t auto_solve = False
+            ):
         """
         Public method to change one or more parameters which have their own `change_*` method.
         

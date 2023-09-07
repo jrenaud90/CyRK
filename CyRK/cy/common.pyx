@@ -1,13 +1,21 @@
+# distutils: language = c++
+# cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 import cython
 
 from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 
 from CyRK.array.interp cimport interp_array_ptr, interp_complex_array_ptr
 
-cdef void interpolate(double* time_domain_full, double* time_domain_reduced,
-                      double_numeric* target_array_full, double_numeric* target_array_reduced,
-                      Py_ssize_t t_len_full, Py_ssize_t t_len_reduced, Py_ssize_t target_len,
-                      bool_cpp_t is_complex):
+cdef void interpolate(
+        double* time_domain_full,
+        double* time_domain_reduced,
+        double_numeric* target_array_full,
+        double_numeric* target_array_reduced,
+        Py_ssize_t t_len_full,
+        Py_ssize_t t_len_reduced,
+        Py_ssize_t target_len,
+        bool_cpp_t is_complex
+        ) noexcept:
     """ Interpolate the results of a successful integration over the user provided time domain, `time_domain_full`. """
 
     # Setup loop variables

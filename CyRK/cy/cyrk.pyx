@@ -28,7 +28,9 @@ cdef double EPS_100 = EPS * 100.
 cdef Py_ssize_t MAX_INT_SIZE = int(0.95 * sys.maxsize)
 
 
-cdef double cabs(double complex value) noexcept nogil:
+cdef double cabs(
+        double complex value
+        ) noexcept nogil:
     """ Absolute value function for complex-valued inputs.
 
     Parameters
@@ -50,7 +52,9 @@ cdef double cabs(double complex value) noexcept nogil:
     return sqrt(v_real * v_real + v_imag * v_imag)
 
 
-cdef double dabs(double_numeric value) noexcept nogil:
+cdef double dabs(
+        double_numeric value
+        ) noexcept nogil:
     """ Absolute value function for either float or complex-valued inputs.
 
     Checks the type of value and either utilizes `cabs` (for double complex) or `fabs` (for floats).
