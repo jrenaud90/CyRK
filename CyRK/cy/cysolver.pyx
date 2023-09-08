@@ -246,6 +246,7 @@ cdef class CySolver:
             Py_ssize_t num_extra = 0,
             bool_cpp_t interpolate_extra = False,
             Py_ssize_t expected_size = 0,
+            bool_cpp_t call_first_reset = True,
             bool_cpp_t auto_solve = True):
         """
         Initialize new CySolver instance.
@@ -310,6 +311,9 @@ cdef class CySolver:
             Used to build temporary storage arrays for the solution results.
             If set to 0 (the default), then the solver will attempt to guess on a suitable expected size based on the
             relative tolerances and size of the integration domain.
+        call_first_reset : bool, default=True
+            If set to True, then the solver will call its `reset_state` method at the end of initialization. This flag
+            is overridden by the `auto_solve` flag.
         auto_solve : bool_cpp_t, default=True
             If set to True, then the solver's `solve` method will be called at the end of initialization.
             Otherwise, the user will have to call `solver_instance = CySolver(...); solver_instance.solve()`
@@ -583,7 +587,8 @@ cdef class CySolver:
 
         # Parameters are initialized but may not be set to correct values.
         # Call reset state to ensure everything is ready.
-        self.reset_state()
+        if call_first_reset or auto_solve:
+            self.reset_state()
 
         # Run solver if requested
         if auto_solve:

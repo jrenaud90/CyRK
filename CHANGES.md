@@ -2,6 +2,11 @@
 
 ## 2023
 
+#### v0.8.2
+
+New Features:
+- Added a helper flag to control if `CySolver.reset_state` is called at the end of initialization.
+
 #### v0.8.1
 
 New Features:
@@ -15,7 +20,7 @@ Performance:
 - Moved some backend functionality for CyRK.interp to pure c file for performance gains.
 
 Bug Fixes:
-- Fixed issue with "cy/common.pyx" not having the correct cython flags during compliation.
+- Fixed issue with "cy/common.pyx" not having the correct cython flags during compilation.
 
 ### v0.8.0
 
