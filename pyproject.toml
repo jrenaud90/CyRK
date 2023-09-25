@@ -7,9 +7,9 @@ authors= [
     ]
 requires-python = ">=3.8,<3.12"
 dependencies = [
-    'numba>=0.54.1',
-    'numpy>=1.22',
-    'scipy>=1.9.3'
+    'numba >= 0.54.1',
+    'numpy >= 1.22, <1.26',
+    'scipy >= 1.9.3'
 ]
 license = {file = "LICENSE.md"}
 readme = "README.md"
@@ -59,7 +59,7 @@ dev = [
 [build-system]
 requires = [
     'setuptools>=64.0.0',
-    'numpy>=1.22',
+    'numpy >= 1.22, <1.26',
     'cython>=3.0.0',
     'wheel>=0.38'
 ]
