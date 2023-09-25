@@ -10,7 +10,7 @@ New Features:
 #### v0.8.1
 
 New Features:
-- Added more interp functions that take pointers as arguments
+- Added more interp functions that take pointers as arguments.
 
 Changes:
 - Converted interp functions to use each other where possible, rather than having separate definitions.
