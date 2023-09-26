@@ -2,7 +2,12 @@
 
 ## 2023
 
-#### v0.8.2
+#### v0.8.3
+
+New Features:
+- Added tests to check if memory access violations can occur when `CySolver` is resolved many times.
+
+#### v0.8.2 (2023-09-25)
 
 New Features:
 - Added a helper flag to control if `CySolver.reset_state` is called at the end of initialization.
@@ -24,7 +29,7 @@ Bug Fixes:
 
 ### v0.8.0
 
-New Features
+New Features:
 - Added new interp functions that work with c pointers. These can only be cimported.
 - Added new "CyRK.cy.common.pyx" file for functions that are used by both `cyrk_ode` and `CySolver`.
   - Moved interpolation functionality into `CyRK.cy.common`. Restructured `cyrk_ode` and `CySolver` to use this new function for interpolations.
@@ -38,7 +43,7 @@ Changes:
 - Changed RK constants back to c arrays initialized with PyMem_Malloc. The memory for these arrays are setup in the cython-based solvers. Afterwards, there are helper functions in `CyRK.rk` to populate the arrays with correct values.
 - Moved to a more generalized scheme for compiling cython files. See "cython_extensions.json", "_build_cyrk.py", and "setup.py" for details.
 
-Performance
+Performance:
 - Transitioned many arrays from numpy to c arrays allocated with PyMem_Malloc, etc. These changes led to a significant performance boost for cython-based solvers.
 - Copied some performance lessons that were learned from the cython-based solvers to the numba-based nbrk_ode.
 

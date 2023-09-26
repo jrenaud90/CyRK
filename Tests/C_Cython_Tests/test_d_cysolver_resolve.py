@@ -53,3 +53,25 @@ def test_CySolverTester_resolve(rk_method, complex_valued):
     assert np.all(solution_2_t == solution_3_t)
     assert solution_2_y.shape == solution_3_y.shape
     assert np.all(solution_2_y == solution_3_y)
+
+
+@pytest.mark.parametrize('complex_valued', (False,))
+@pytest.mark.parametrize('rk_method', (0, 1, 2))
+def test_CySolverTester_multi_resolve(rk_method, complex_valued):
+    """Check that the cython class solver can be resolved many times without memory access issues."""
+
+    if complex_valued:
+        initial_conds_to_use = initial_conds_complex
+    else:
+        initial_conds_to_use = initial_conds
+
+    CySolverTesterInst = CySolverTester(time_span, initial_conds_to_use, rk_method=rk_method, auto_solve=False)
+
+    for i in range(10_000):
+        # Change y0 values for each loop
+        y0 = np.copy(initial_conds_to_use)
+        y0[0] += 0.1
+        y0[1] -= 0.1
+        CySolverTesterInst.change_y0(y0, auto_reset_state=False)
+        CySolverTesterInst.solve(reset=True)
+        assert CySolverTesterInst.success
