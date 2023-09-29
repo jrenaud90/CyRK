@@ -2,10 +2,13 @@
 
 ## 2023
 
-#### v0.8.3
+#### v0.8.3 (TBD)
 
 New Features:
 - Added tests to check if memory access violations can occur when `CySolver` is resolved many times.
+- Added new cdef methods to `CySolver` for more efficient changes of parameters:
+  - `CySolver.change_y0_pointer` - Changes the y0 pointer without having to pass memoryviews.
+  - `CySolver.change_t_eval_pointer` - Changes the t_eval pointer without having to pass memoryviews.
 
 #### v0.8.2 (2023-09-25)
 

@@ -1346,6 +1346,40 @@ cdef class CySolver:
         if auto_reset_state:
             self.reset_state()
 
+    cdef void change_y0_pointer(
+                self,
+                double* y0_ptr,
+                bool_cpp_t auto_reset_state = False
+                ):
+            """
+            Public method to change the initial conditions.
+
+            Note: the size of y0 can not be different from the original y0 used to instantiate the class instance.
+
+            Parameters
+            ----------
+            y0 : double*
+                New pointer to dependent variable initial conditions.
+                Must be the same size as the original y0.
+            auto_reset_state : bool_cpp_t, default=False
+                If True, then the `reset_state` method will be called once parameter is changed.
+            """
+
+            # This function is not as safe as `change_y0` as it assumes that the user provided the same length y0.
+
+            # Check y-size information
+            cdef Py_ssize_t i
+
+            # Store y0 values for later
+            for i in range(self.y_size):
+                self.y0_ptr[i] = y0_ptr[i]
+
+            # A change to y0 will affect the first step's size
+            self.recalc_first_step = True
+
+            if auto_reset_state:
+                self.reset_state()
+
 
     cpdef void change_args(
             self,
@@ -1542,23 +1576,52 @@ cdef class CySolver:
             If True, then the `reset_state` method will be called once parameter is changed.
         """
 
+        cdef Py_ssize_t i
+
         # Determine interpolation information
-        if t_eval is None:
-            self.run_interpolation = False
-            # Even though we are not using t_eval, set its size equal to one so that nan arrays can be built
-            self.len_t_eval = 1
-        else:
-            self.run_interpolation = True
-            self.len_t_eval = len(t_eval)
+        self.run_interpolation = True
+        self.len_t_eval = len(t_eval)
 
         self.t_eval_ptr = <double *> PyMem_Realloc(self.t_eval_ptr, self.len_t_eval * sizeof(double))
         if not self.t_eval_ptr:
             raise MemoryError()
+
         for i in range(self.len_t_eval):
             if self.run_interpolation:
                 self.t_eval_ptr[i] = t_eval[i]
-            else:
-                self.t_eval_ptr[i] = NAN
+
+        if auto_reset_state:
+            self.reset_state()
+
+
+    cdef void change_t_eval_pointer(
+            self,
+            double* t_eval_ptr,
+            Py_ssize_t len_t_eval,
+            bool_cpp_t auto_reset_state = False
+            ):
+        """
+        Public method to change user requested independent domain, `t_eval`.
+
+        Parameters
+        ----------
+        t_eval_ptr : double[:]
+            New pointer to independent domain at which solution will be interpolated.
+        auto_reset_state : bool_cpp_t, default=False
+            If True, then the `reset_state` method will be called once parameter is changed.
+        """
+
+        # Determine interpolation information
+        self.run_interpolation = True
+        self.len_t_eval = len_t_eval
+
+        self.t_eval_ptr = <double *> PyMem_Realloc(self.t_eval_ptr, self.len_t_eval * sizeof(double))
+        if not self.t_eval_ptr:
+            raise MemoryError()
+
+        for i in range(self.len_t_eval):
+            if self.run_interpolation:
+                self.t_eval_ptr[i] = t_eval_ptr[i]
 
         if auto_reset_state:
             self.reset_state()

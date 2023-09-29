@@ -114,6 +114,12 @@ cdef class CySolver:
             bool_cpp_t auto_reset_state = *
             )
 
+    cdef void change_y0_pointer(
+            self,
+            double * y0_ptr,
+            bool_cpp_t auto_reset_state = *
+            )
+
     cpdef void change_args(
             self,
             tuple args,
@@ -144,6 +150,13 @@ cdef class CySolver:
     cpdef void change_t_eval(
             self,
             const double[::1] t_eval,
+            bool_cpp_t auto_reset_state = *
+            )
+
+    cdef void change_t_eval_pointer(
+            self,
+            double * t_eval_ptr,
+            Py_ssize_t len_t_eval,
             bool_cpp_t auto_reset_state = *
             )
 
