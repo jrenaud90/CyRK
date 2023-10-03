@@ -44,7 +44,7 @@ cdef class CySolver:
     cdef double* atols_ptr
     cdef double first_step, max_step
     cdef Py_ssize_t max_num_steps
-    cdef Py_ssize_t expected_size, num_concats,
+    cdef Py_ssize_t expected_size, current_size, num_concats
     cdef bool_cpp_t recalc_first_step
 
     # -- Interpolation info

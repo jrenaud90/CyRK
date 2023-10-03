@@ -13,19 +13,9 @@ cimport numpy as np
 np.import_array()
 
 from CyRK.rk.rk cimport find_rk_properties, populate_rk_arrays
-from CyRK.cy.common cimport interpolate
-
-# # Integration Constants
-# Multiply steps computed from asymptotic behaviour of errors by this.
-cdef double SAFETY = 0.9
-cdef double MIN_FACTOR = 0.2  # Minimum allowed decrease in a step size.
-cdef double MAX_FACTOR = 10.  # Maximum allowed increase in a step size.
-cdef double MAX_STEP = np.inf
-cdef double INF = np.inf
-cdef double EPS = np.finfo(np.float64).eps
-cdef double EPS_10 = EPS * 10.
-cdef double EPS_100 = EPS * 100.
-cdef Py_ssize_t MAX_INT_SIZE = int(0.95 * sys.maxsize)
+from CyRK.cy.common cimport interpolate, SAFETY, MIN_FACTOR, MAX_FACTOR, MAX_STEP, INF, EPS, EPS_10, EPS_100, \
+    MAX_INT_SIZE, MIN_ARRAY_PREALLOCATE_SIZE, MAX_ARRAY_PREALLOCATE_SIZE, \
+    ARRAY_PREALLOC_TABS_SCALE, ARRAY_PREALLOC_RTOL_SCALE
 
 cdef (double, double) EMPTY_T_SPAN = (NAN, NAN)
 
@@ -405,17 +395,54 @@ cdef class CySolver:
             raise AttributeError('Negative number of max steps provided.')
         else:
             self.max_num_steps = min(max_num_steps, MAX_INT_SIZE)
+        
+        # Determine extra outputs
+        self.capture_extra = capture_extra
+        # To avoid memory access violations we need to set the extra output arrays no matter if they are used.
+        # If not used, just set them to size zero.
+        if self.capture_extra:
+            if num_extra <= 0:
+                self.status = -8
+                raise AttributeError('Capture extra set to True, but number of extra set to 0 (or negative).')
+            self.num_extra = num_extra
+        else:
+            # Even though we are not capturing extra, we still want num_extra to be equal to 1 so that nan arrays
+            # are properly initialized
+            self.num_extra = 1
 
         # Expected size of output arrays.
         cdef double temp_expected_size
         if expected_size == 0:
             # CySolver will attempt to guess on a best size for the arrays.
-            temp_expected_size = 100. * self.t_delta_abs * fmax(1., (1.e-6 / rtol_min))
-            temp_expected_size = fmax(temp_expected_size, 100.)
-            temp_expected_size = fmin(temp_expected_size, 10_000_000.)
+            # Assume a safe bet on CPU cache size is 300KB. 
+            temp_expected_size = 300_000.
+            # Doubles are (most likely) 8 bytes.
+            temp_expected_size = temp_expected_size / sizeof(double)
+            # Then there are going to be (y + num_extra) number of doubles
+            if self.capture_extra:
+                temp_expected_size = temp_expected_size / (self.y_size_dbl + <double>self.num_extra)
+            else:
+                temp_expected_size = temp_expected_size / self.y_size_dbl
+            # If t_delta_abs is very large or rtol is very small, then we may need more. 
+            temp_expected_size = \
+            fmax(
+                temp_expected_size,
+                fmax(
+                    fmax(1., self.t_delta_abs / ARRAY_PREALLOC_TABS_SCALE),
+                    fmax(1., (ARRAY_PREALLOC_RTOL_SCALE / rtol_min))
+                    )
+                )
+            # Fix values that are very small/large
+            temp_expected_size = fmax(temp_expected_size, MIN_ARRAY_PREALLOCATE_SIZE)
+            temp_expected_size = fmin(temp_expected_size, MAX_ARRAY_PREALLOCATE_SIZE)
+            # Store result as int
             self.expected_size = <Py_ssize_t>temp_expected_size
         else:
             self.expected_size = <Py_ssize_t>expected_size
+        # Set the current size to the expected size.
+        # `expected_size` should never change but current might grow if expected size is not large enough.
+        self.current_size = self.expected_size
+
         # This variable tracks how many times the storage arrays have been appended.
         # It starts at 1 since there is at least one storage array present.
         self.num_concats = 1
@@ -450,20 +477,6 @@ cdef class CySolver:
         self.dy_old_ptr = <double *> PyMem_Malloc(self.y_size * sizeof(double))
         if not self.dy_old_ptr:
             raise MemoryError()
-
-        # Determine extra outputs
-        self.capture_extra = capture_extra
-        # To avoid memory access violations we need to set the extra output arrays no matter if they are used.
-        # If not used, just set them to size zero.
-        if self.capture_extra:
-            if num_extra <= 0:
-                self.status = -8
-                raise AttributeError('Capture extra set to True, but number of extra set to 0 (or negative).')
-            self.num_extra = num_extra
-        else:
-            # Even though we are not capturing extra, we still want num_extra to be equal to 1 so that nan arrays
-            # are properly initialized
-            self.num_extra = 1
 
         self.extra_output_init_ptr = <double *> PyMem_Malloc(self.num_extra * sizeof(double))
         if not self.extra_output_init_ptr:
@@ -650,6 +663,7 @@ cdef class CySolver:
             self.step_size = self.first_step
 
         # Reset output storage
+        self.current_size = self.expected_size
         self.num_concats = 1
 
         # Reset storage variables to clear any old solutions and to avoid access violations if solve() is not called.
@@ -1050,26 +1064,28 @@ cdef class CySolver:
                 break
 
             # Store data
-            if self.len_t >= (self.num_concats * self.expected_size):
+            if self.len_t >= self.current_size:
                 # There is more data then we have room in our arrays.
                 # Build new arrays with more space.
                 # OPT: Note this is an expensive operation.
                 self.num_concats += 1
-                new_size = self.num_concats * self.expected_size
+
+                # Grow the array by 50% its current value
+                self.current_size = <Py_ssize_t>(<double>self.current_size * (1.5))
 
                 time_domain_array_ptr = <double *> PyMem_Realloc(time_domain_array_ptr,
-                                                                 new_size * sizeof(double))
+                                                                 self.current_size * sizeof(double))
                 if not time_domain_array_ptr:
                     raise MemoryError()
 
                 y_results_array_ptr = <double *> PyMem_Realloc(y_results_array_ptr,
-                                                               self.y_size * new_size * sizeof(double))
+                                                               self.y_size * self.current_size * sizeof(double))
                 if not y_results_array_ptr:
                     raise MemoryError()
 
                 if self.capture_extra:
                     extra_array_ptr = <double *> PyMem_Realloc(extra_array_ptr,
-                                                               self.num_extra * new_size * sizeof(double))
+                                                               self.num_extra * self.current_size * sizeof(double))
                     if not extra_array_ptr:
                         raise MemoryError()
 

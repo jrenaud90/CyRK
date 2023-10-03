@@ -3,6 +3,21 @@ from libcpp cimport bool as bool_cpp_t
 
 from CyRK.rk.rk cimport double_numeric
 
+cdef double SAFETY
+cdef double MIN_FACTOR
+cdef double MAX_FACTOR
+cdef double MAX_STEP
+cdef double INF
+cdef double EPS
+cdef double EPS_10
+cdef double EPS_100
+cdef Py_ssize_t MAX_INT_SIZE
+cdef Py_ssize_t MAX_SIZET_SIZE
+cdef double MIN_ARRAY_PREALLOCATE_SIZE
+cdef double MAX_ARRAY_PREALLOCATE_SIZE
+cdef double ARRAY_PREALLOC_TABS_SCALE
+cdef double ARRAY_PREALLOC_RTOL_SCALE
+
 cdef void interpolate(
         double* time_domain_full,
         double* time_domain_reduced,

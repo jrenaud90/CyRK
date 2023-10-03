@@ -13,19 +13,9 @@ from libcpp cimport bool as bool_cpp_t
 from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, NAN
 
 from CyRK.rk.rk cimport double_numeric, find_rk_properties, populate_rk_arrays
-from CyRK.cy.common cimport interpolate
-
-# # Integration Constants
-# Multiply steps computed from asymptotic behaviour of errors by this.
-cdef double SAFETY = 0.9
-cdef double MIN_FACTOR = 0.2  # Minimum allowed decrease in a step size.
-cdef double MAX_FACTOR = 10.  # Maximum allowed increase in a step size.
-cdef double MAX_STEP = np.inf
-cdef double INF = np.inf
-cdef double EPS = np.finfo(np.float64).eps
-cdef double EPS_10 = EPS * 10.
-cdef double EPS_100 = EPS * 100.
-cdef Py_ssize_t MAX_INT_SIZE = int(0.95 * sys.maxsize)
+from CyRK.cy.common cimport interpolate, SAFETY, MIN_FACTOR, MAX_FACTOR, MAX_STEP, INF, EPS, EPS_10, EPS_100, \
+    MAX_INT_SIZE, MIN_ARRAY_PREALLOCATE_SIZE, MAX_ARRAY_PREALLOCATE_SIZE, \
+    ARRAY_PREALLOC_TABS_SCALE, ARRAY_PREALLOC_RTOL_SCALE
 
 
 cdef double cabs(
@@ -288,20 +278,42 @@ def cyrk_ode(
     else:
         max_num_steps = min(max_num_steps, MAX_INT_SIZE)
 
+
     # Expected size of output arrays.
+    
+    cdef Py_ssize_t expected_size_to_use, num_concats, current_size
     cdef double temp_expected_size
-    cdef Py_ssize_t expected_size_to_use, num_concats, new_size
     if expected_size == 0:
-        # CySolver will attempt to guess the best size for the output arrays.
-        temp_expected_size = t_delta_abs * fmax(1., (1.e-6 / rtol_min))
-        temp_expected_size = fmax(temp_expected_size, 500.)
-        temp_expected_size = fmin(temp_expected_size, 1_000_000.)
+        # CySolver will attempt to guess on a best size for the arrays.
+        # Assume a safe bet on CPU cache size is 300KB. 
+        temp_expected_size = 300_000.
+        # Doubles are (most likely) 8 bytes.
+        temp_expected_size = temp_expected_size / sizeof(double)
+        # Then there are going to be (y + num_extra) number of doubles
+        if capture_extra:
+            temp_expected_size = temp_expected_size / (y_size_dbl + <double>num_extra)
+        else:
+            temp_expected_size = temp_expected_size / y_size_dbl
+        # If t_delta_abs is very large or rtol is very small, then we may need more. 
+        temp_expected_size = \
+            fmax(
+                temp_expected_size,
+                fmax(
+                    fmax(1., t_delta_abs / ARRAY_PREALLOC_TABS_SCALE),
+                    fmax(1., (ARRAY_PREALLOC_RTOL_SCALE / rtol_min))
+                    )
+                )
+        # Fix values that are very small/large
+        temp_expected_size = fmax(temp_expected_size, MIN_ARRAY_PREALLOCATE_SIZE)
+        temp_expected_size = fmin(temp_expected_size, MAX_ARRAY_PREALLOCATE_SIZE)
+        # Store result as int
         expected_size_to_use = <Py_ssize_t>temp_expected_size
     else:
         expected_size_to_use = <Py_ssize_t>expected_size
-    # This variable tracks how many times the storage arrays have been appended.
-    # It starts at 1 since there is at least one storage array present.
-    num_concats = 1
+    # Set the current size to the expected size.
+    # `expected_size` should never change but current might grow if expected size is not large enough.
+    current_size = expected_size_to_use
+    num_concats  = 1
 
     # Initialize live variable arrays
     cdef double_numeric* y_old_ptr
@@ -824,26 +836,28 @@ def cyrk_ode(
             dy_old_ptr[i] = dy_ptr[i]
 
         # Store data
-        if len_t >= (num_concats * expected_size_to_use):
+        if len_t >= current_size:
             # There is more data then we have room in our arrays.
             # Build new arrays with more space.
             # OPT: Note this is an expensive operation.
             num_concats += 1
-            new_size = num_concats * expected_size_to_use
+
+            # Grow the array by 50% its current value
+            current_size = <Py_ssize_t>(<double>current_size * (1.5))
 
             time_domain_array_ptr = <double *> PyMem_Realloc(time_domain_array_ptr,
-                                                             new_size * sizeof(double))
+                                                             current_size * sizeof(double))
             if not time_domain_array_ptr:
                 raise MemoryError()
 
             y_results_array_ptr = <double_numeric *> PyMem_Realloc(y_results_array_ptr,
-                                                                   y_size * new_size * sizeof(double_numeric))
+                                                                   y_size * current_size * sizeof(double_numeric))
             if not y_results_array_ptr:
                 raise MemoryError()
 
             if capture_extra:
                 extra_array_ptr = <double_numeric *> PyMem_Realloc(extra_array_ptr,
-                                                                   num_extra * new_size * sizeof(double_numeric))
+                                                                   num_extra * current_size * sizeof(double_numeric))
                 if not extra_array_ptr:
                     raise MemoryError()
 

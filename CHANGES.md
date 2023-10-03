@@ -10,6 +10,12 @@ New Features:
   - `CySolver.change_y0_pointer` - Changes the y0 pointer without having to pass memoryviews.
   - `CySolver.change_t_eval_pointer` - Changes the t_eval pointer without having to pass memoryviews.
 
+Performance:
+- Improved how `CySolver` and `cyrk_ode` expected size is calculated and how much it grows with each concat.
+
+Other Changes:
+- Moved some common constants for both `CySolver` and `cyrk_ode` out of their files and into `cy.common`.
+
 #### v0.8.2 (2023-09-25)
 
 New Features:

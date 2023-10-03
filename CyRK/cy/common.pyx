@@ -2,9 +2,29 @@
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 import cython
 
+from libc.math cimport INFINITY as INF
+from libc.float cimport DBL_EPSILON as EPS
+from libc.stdint cimport SIZE_MAX, INT32_MAX
 from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
-
 from CyRK.array.interp cimport interp_array_ptr, interp_complex_array_ptr
+
+# # Integration Constants
+# Multiply steps computed from asymptotic behaviour of errors by this.
+cdef double SAFETY           = 0.9
+cdef double MIN_FACTOR       = 0.2  # Minimum allowed decrease in a step size.
+cdef double MAX_FACTOR       = 10.  # Maximum allowed increase in a step size.
+cdef double MAX_STEP         = INF
+cdef double EPS_10           = EPS * 10.
+cdef double EPS_100          = EPS * 100.
+cdef Py_ssize_t MAX_SIZET_SIZE = <Py_ssize_t>(0.95 * SIZE_MAX)
+cdef Py_ssize_t MAX_INT_SIZE   = <Py_ssize_t>(0.95 * INT32_MAX)
+
+# # Memory management constants
+cdef double MIN_ARRAY_PREALLOCATE_SIZE = 100.
+cdef double MAX_ARRAY_PREALLOCATE_SIZE = 1_000_000.
+cdef double ARRAY_PREALLOC_TABS_SCALE  = 1000.  # A delta_t_abs higher than this value will start to grow array size.
+cdef double ARRAY_PREALLOC_RTOL_SCALE  = 1.0e-6  # A rtol lower than this value will start to grow array size.
+
 
 cdef void interpolate(
         double* time_domain_full,
