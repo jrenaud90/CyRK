@@ -21,7 +21,7 @@ cdef Py_ssize_t MAX_INT_SIZE   = <Py_ssize_t>(0.95 * INT32_MAX)
 
 # # Memory management constants
 cdef double MIN_ARRAY_PREALLOCATE_SIZE = 100.
-cdef double MAX_ARRAY_PREALLOCATE_SIZE = 1_000_000.
+cdef double MAX_ARRAY_PREALLOCATE_SIZE = 100_000.
 cdef double ARRAY_PREALLOC_TABS_SCALE  = 1000.  # A delta_t_abs higher than this value will start to grow array size.
 cdef double ARRAY_PREALLOC_RTOL_SCALE  = 1.0e-6  # A rtol lower than this value will start to grow array size.
 

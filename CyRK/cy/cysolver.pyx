@@ -6,7 +6,6 @@ from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, isnan, NAN, pow
 
 from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 
-import sys
 import numpy as np
 cimport numpy as np
 
