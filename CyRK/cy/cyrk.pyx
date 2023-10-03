@@ -590,7 +590,7 @@ def cyrk_ode(
 
     # # Main integration loop
     # Set integration flags
-    cdef bool_cpp_t success, step_accepted, step_rejected, step_error,
+    cdef bool_cpp_t success, step_accepted, step_rejected, step_error
     success       = False
     step_accepted = False
     step_rejected = False
