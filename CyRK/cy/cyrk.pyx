@@ -12,9 +12,10 @@ from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 from libcpp cimport bool as bool_cpp_t
 from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, NAN
 
-from CyRK.rk.rk cimport double_numeric, find_rk_properties, populate_rk_arrays
-from CyRK.cy.common cimport interpolate, SAFETY, MIN_FACTOR, MAX_FACTOR, MAX_STEP, INF, EPS, EPS_10, EPS_100, \
-    MAX_INT_SIZE, MIN_ARRAY_PREALLOCATE_SIZE, MAX_ARRAY_PREALLOCATE_SIZE, \
+from CyRK.rk.rk cimport find_rk_properties
+from CyRK.cy.common cimport double_numeric, interpolate, SAFETY, MIN_FACTOR, MAX_FACTOR, MAX_STEP, INF, EPS, \
+    EPS_10, EPS_100, \
+    MAX_INT_SIZE, EXPECTED_SIZE_DBL, EXPECTED_SIZE_DBLCMPLX, MIN_ARRAY_PREALLOCATE_SIZE, MAX_ARRAY_PREALLOCATE_SIZE, \
     ARRAY_PREALLOC_TABS_SCALE, ARRAY_PREALLOC_RTOL_SCALE
 
 
@@ -169,6 +170,7 @@ def cyrk_ode(
     message : str
         Any integration messages, useful if success=False.
     """
+
     # Setup loop variables
     cdef Py_ssize_t s, i, j
 
@@ -280,18 +282,18 @@ def cyrk_ode(
 
 
     # Expected size of output arrays.
-    
     cdef Py_ssize_t expected_size_to_use, num_concats, current_size
     cdef double temp_expected_size
     if expected_size == 0:
         # CySolver will attempt to guess on a best size for the arrays.
-        # Assume a safe bet on CPU cache size is 300KB. 
-        temp_expected_size = 300_000.
-        # Doubles are (most likely) 8 bytes.
-        temp_expected_size = temp_expected_size / sizeof(double)
+        # Pick starting value that makes sense with the anticipated CPU cache and the data type's size.
+        if y_is_complex:
+            temp_expected_size = EXPECTED_SIZE_DBLCMPLX
+        else:
+            temp_expected_size = EXPECTED_SIZE_DBL
         # Then there are going to be (y + num_extra) number of doubles
         if capture_extra:
-            temp_expected_size = temp_expected_size / (y_size_dbl + <double>num_extra)
+            temp_expected_size = temp_expected_size / (y_size_dbl + num_extra)
         else:
             temp_expected_size = temp_expected_size / y_size_dbl
         # If t_delta_abs is very large or rtol is very small, then we may need more. 
@@ -427,75 +429,37 @@ def cyrk_ode(
             extra_output_init_ptr[i] = diffeq_out_view[extra_start + i]
 
     # Determine RK scheme and initialize RK memory views
-    cdef double_numeric* A_ptr
-    cdef double_numeric* B_ptr
-    cdef double* C_ptr
-    cdef double_numeric* E_ptr
-    cdef double_numeric* E3_ptr
-    cdef double_numeric* E5_ptr
+    cdef double* A_ptr = NULL
+    cdef double* B_ptr = NULL
+    cdef double* C_ptr = NULL
+    cdef double* E_ptr = NULL
+    cdef double* E3_ptr = NULL
+    cdef double* E5_ptr = NULL
     cdef Py_ssize_t rk_order, error_order, rk_n_stages, len_Arows, len_Acols, len_C, rk_n_stages_plus1
     cdef double error_expo, error_pow
 
-    cdef Py_ssize_t[5] rk_properties
-    cdef Py_ssize_t* rk_properties_ptr = &rk_properties[0]
-    find_rk_properties(rk_method, rk_properties_ptr)
-    rk_order          = rk_properties_ptr[0]
-    error_order       = rk_properties_ptr[1]
-    rk_n_stages       = rk_properties_ptr[2]
-    len_Arows         = rk_properties_ptr[3]
-    len_Acols         = rk_properties_ptr[4]
+    find_rk_properties(
+        rk_method,
+        &rk_order,
+        &error_order,
+        &rk_n_stages,
+        &len_Arows,
+        &len_Acols,
+        &A_ptr,
+        &B_ptr,
+        &C_ptr,
+        &E_ptr,
+        &E3_ptr,
+        &E5_ptr
+        )
+
+    if rk_order == -1:
+        raise AttributeError('Unknown or not-yet-implemented RK method requested.')
+    
     len_C             = rk_n_stages
     rk_n_stages_plus1 = rk_n_stages + 1
     error_expo        = 1. / (<double>error_order + 1.)
-
-    cdef double error_norm5, error_norm3, error_norm, error_norm_abs, error_norm3_abs, error_norm5_abs, error_denom
-
-    if rk_order == -1:
-        raise AttributeError('Unknown RK Method Provided.')
-
-    # Initialize RK arrays
-    A_ptr = <double_numeric *> PyMem_Malloc(len_Arows * len_Acols * sizeof(double_numeric))
-    if not A_ptr:
-        raise MemoryError()
-    B_ptr = <double_numeric *> PyMem_Malloc(rk_n_stages * sizeof(double_numeric))
-    if not B_ptr:
-        raise MemoryError()
-    # Note: C is always a double no matter if y is complex or not.
-    C_ptr = <double *> PyMem_Malloc(rk_n_stages * sizeof(double))
-    if not C_ptr:
-        raise MemoryError()
-
-    if rk_method == 2:
-        # DOP853 requires 2 error array pointers. Set the other error array to nan
-        E_ptr = <double_numeric *> PyMem_Malloc(1 * sizeof(double_numeric))
-        if not E_ptr:
-            raise MemoryError()
-        E_ptr[0] = NAN
-
-        E3_ptr = <double_numeric *> PyMem_Malloc(rk_n_stages_plus1 * sizeof(double_numeric))
-        if not E3_ptr:
-            raise MemoryError()
-        E5_ptr = <double_numeric *> PyMem_Malloc(rk_n_stages_plus1 * sizeof(double_numeric))
-        if not E5_ptr:
-            raise MemoryError()
-    else:
-        # RK23/RK45 only require 1 error array pointers. Set the other error arrays to nan
-        E3_ptr = <double_numeric *> PyMem_Malloc(1 * sizeof(double_numeric))
-        if not E3_ptr:
-            raise MemoryError()
-        E5_ptr = <double_numeric *> PyMem_Malloc(1 * sizeof(double_numeric))
-        if not E5_ptr:
-            raise MemoryError()
-        E3_ptr[0] = NAN
-        E5_ptr[0] = NAN
-
-        E_ptr = <double_numeric *> PyMem_Malloc(rk_n_stages_plus1 * sizeof(double_numeric))
-        if not E_ptr:
-            raise MemoryError()
-
-    # Populate arrays with RK constants
-    populate_rk_arrays(rk_method, A_ptr, B_ptr, C_ptr, E_ptr, E3_ptr, E5_ptr)
-
+    
     # Initialize other RK-related Arrays
     cdef double_numeric* K_ptr
     K_ptr = <double_numeric *> PyMem_Malloc(rk_n_stages_plus1 * y_size * sizeof(double_numeric))
@@ -505,9 +469,12 @@ def cyrk_ode(
     for i in range(rk_n_stages_plus1):
         for j in range(y_size):
             K_ptr[i * y_size + j] = 0.
+    
+    cdef double error_norm5, error_norm3, error_norm, error_norm_abs, error_norm3_abs, error_norm5_abs, error_denom
 
     # Other RK Optimizations
-    cdef double_numeric A_at_sj, A_at_10, B_at_j, K_
+    cdef double A_at_sj, A_at_10, B_at_j
+    cdef double_numeric K_
     A_at_10 = A_ptr[1 * len_Acols + 0]
 
     # Setup storage arrays
@@ -539,7 +506,6 @@ def cyrk_ode(
     # # Determine size of first step.
     cdef double d0, d1, d2, d0_abs, d1_abs, d2_abs, h0, h1, scale
     cdef double step, step_size, min_step, step_factor
-    cdef double_numeric step_numeric
     if first_step == 0.:
         # Select an initial step size based on the differential equation.
         # .. [1] E. Hairer, S. P. Norsett G. Wanner, "Solving Ordinary Differential
@@ -685,7 +651,6 @@ def cyrk_ode(
                     step_size = step
                 else:
                     step_size = -step
-            step_numeric = <double_numeric>step
 
             # Calculate derivative using RK method
             # Dot Product (K, a) * step
@@ -700,10 +665,10 @@ def cyrk_ode(
                         K_ptr[i] = temp_double_numeric
 
                         # Calculate y_new for s==1
-                        y_view[i] = y_old_ptr[i] + (temp_double_numeric * A_at_10 * step_numeric)
+                        y_view[i] = y_old_ptr[i] + (temp_double_numeric * A_at_10 * step)
                 else:
                     for j in range(s):
-                        A_at_sj = A_ptr[s * len_Acols + j] * step_numeric
+                        A_at_sj = A_ptr[s * len_Acols + j] * step
                         for i in range(y_size):
                             if j == 0:
                                 # Initialize
@@ -721,7 +686,7 @@ def cyrk_ode(
 
             # Dot Product (K, B) * step
             for j in range(rk_n_stages):
-                B_at_j = B_ptr[j] * step_numeric
+                B_at_j = B_ptr[j] * step
                 # We do not use rk_n_stages_plus1 here because we are chopping off the last row of K to match
                 #  the shape of B.
                 for i in range(y_size):
@@ -1084,14 +1049,6 @@ def cyrk_ode(
     PyMem_Free(solution_y_ptr)
     PyMem_Free(solution_t_ptr)
     PyMem_Free(solution_extra_ptr)
-
-    # Free RK Constants
-    PyMem_Free(A_ptr)
-    PyMem_Free(B_ptr)
-    PyMem_Free(C_ptr)
-    PyMem_Free(E_ptr)
-    PyMem_Free(E3_ptr)
-    PyMem_Free(E5_ptr)
 
     # Free RK Temp Storage Array
     PyMem_Free(K_ptr)

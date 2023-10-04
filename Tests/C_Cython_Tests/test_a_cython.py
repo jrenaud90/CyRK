@@ -681,3 +681,8 @@ def test_bad_tols_CySolver():
     with pytest.raises(AttributeError):
         CySolverTesterInst = CySolverTester(time_span_large, initial_conds,
                                             rk_method=1, atols=bad_atols, auto_solve=True)
+
+
+if __name__ == '__main__':
+
+    test_basic_integration_cyrk_ode(False, False, 2, False)

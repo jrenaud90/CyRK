@@ -6,6 +6,13 @@
     "compile_args": [],
     "link_args": []
   },
+  "rk_constants": {
+    "name": "CyRK.rk.rk_constants",
+    "sources": [["CyRK", "rk", "rk_constants.pyx"]],
+    "include_dirs": [["CyRK", "rk"]],
+    "compile_args": [],
+    "link_args": []
+  },
   "rk": {
     "name": "CyRK.rk.rk",
     "sources": [["CyRK", "rk", "rk.pyx"]],

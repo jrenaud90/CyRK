@@ -11,9 +11,9 @@ cimport numpy as np
 
 np.import_array()
 
-from CyRK.rk.rk cimport find_rk_properties, populate_rk_arrays
+from CyRK.rk.rk cimport find_rk_properties
 from CyRK.cy.common cimport interpolate, SAFETY, MIN_FACTOR, MAX_FACTOR, MAX_STEP, INF, EPS, EPS_10, EPS_100, \
-    MAX_INT_SIZE, MIN_ARRAY_PREALLOCATE_SIZE, MAX_ARRAY_PREALLOCATE_SIZE, \
+    MAX_INT_SIZE, EXPECTED_SIZE_DBL, MIN_ARRAY_PREALLOCATE_SIZE, MAX_ARRAY_PREALLOCATE_SIZE, \
     ARRAY_PREALLOC_TABS_SCALE, ARRAY_PREALLOC_RTOL_SCALE
 
 cdef (double, double) EMPTY_T_SPAN = (NAN, NAN)
@@ -413,13 +413,11 @@ cdef class CySolver:
         cdef double temp_expected_size
         if expected_size == 0:
             # CySolver will attempt to guess on a best size for the arrays.
-            # Assume a safe bet on CPU cache size is 300KB. 
-            temp_expected_size = 300_000.
-            # Doubles are (most likely) 8 bytes.
-            temp_expected_size = temp_expected_size / sizeof(double)
+            # Pick starting value that makes sense with the anticipated CPU cache and the data type's size.
+            temp_expected_size = EXPECTED_SIZE_DBL
             # Then there are going to be (y + num_extra) number of doubles
             if self.capture_extra:
-                temp_expected_size = temp_expected_size / (self.y_size_dbl + <double>self.num_extra)
+                temp_expected_size = temp_expected_size / (self.y_size_dbl + self.num_extra)
             else:
                 temp_expected_size = temp_expected_size / self.y_size_dbl
             # If t_delta_abs is very large or rtol is very small, then we may need more. 
@@ -527,64 +525,29 @@ cdef class CySolver:
             else:
                 self.t_eval_ptr[i] = NAN
 
-        # Determine RK scheme and initialize RK memory views
+        # Initialize RK arrays
         self.rk_method = rk_method
-        cdef Py_ssize_t[5] rk_properties
-        cdef Py_ssize_t* rk_properties_ptr = &rk_properties[0]
-        find_rk_properties(self.rk_method, rk_properties_ptr)
-        self.rk_order          = rk_properties_ptr[0]
-        self.error_order       = rk_properties_ptr[1]
-        self.rk_n_stages       = rk_properties_ptr[2]
-        self.len_Arows         = rk_properties_ptr[3]
-        self.len_Acols         = rk_properties_ptr[4]
-        self.len_C             = self.rk_n_stages
-        self.rk_n_stages_plus1 = self.rk_n_stages + 1
-        self.error_expo        = 1. / (<double>self.error_order + 1.)
+        find_rk_properties(
+            self.rk_method,
+            &self.rk_order,
+            &self.error_order,
+            &self.rk_n_stages,
+            &self.len_Arows,
+            &self.len_Acols,
+            &self.A_ptr,
+            &self.B_ptr,
+            &self.C_ptr,
+            &self.E_ptr,
+            &self.E3_ptr,
+            &self.E5_ptr
+            )
 
         if self.rk_order == -1:
             raise AttributeError('Unknown or not-yet-implemented RK method requested.')
-
-        # Initialize RK arrays
-        self.A_ptr = <double *> PyMem_Malloc(self.len_Arows * self.len_Acols * sizeof(double))
-        if not self.A_ptr:
-            raise MemoryError()
-        self.B_ptr = <double *> PyMem_Malloc(self.rk_n_stages * sizeof(double))
-        if not self.B_ptr:
-            raise MemoryError()
-        self.C_ptr = <double *> PyMem_Malloc(self.rk_n_stages * sizeof(double))
-        if not self.C_ptr:
-            raise MemoryError()
-
-        if self.rk_method == 2:
-            # DOP853 requires 2 error array pointers. Set the other error array to nan
-            self.E_ptr = <double *> PyMem_Malloc(1 * sizeof(double))
-            if not self.E_ptr:
-                raise MemoryError()
-            self.E_ptr[0] = NAN
-
-            self.E3_ptr = <double *> PyMem_Malloc(self.rk_n_stages_plus1 * sizeof(double))
-            if not self.E3_ptr:
-                raise MemoryError()
-            self.E5_ptr = <double *> PyMem_Malloc(self.rk_n_stages_plus1 * sizeof(double))
-            if not self.E5_ptr:
-                raise MemoryError()
-        else:
-            # RK23/RK45 only require 1 error array pointers. Set the other error arrays to nan
-            self.E3_ptr = <double *> PyMem_Malloc(1 * sizeof(double))
-            if not self.E3_ptr:
-                raise MemoryError()
-            self.E5_ptr = <double *> PyMem_Malloc(1 * sizeof(double))
-            if not self.E5_ptr:
-                raise MemoryError()
-            self.E3_ptr[0] = NAN
-            self.E5_ptr[0] = NAN
-
-            self.E_ptr = <double *> PyMem_Malloc(self.rk_n_stages_plus1 * sizeof(double))
-            if not self.E_ptr:
-                raise MemoryError()
-
-        # Populate arrays with RK constants
-        populate_rk_arrays(self.rk_method, self.A_ptr, self.B_ptr, self.C_ptr, self.E_ptr, self.E3_ptr, self.E5_ptr)
+        
+        self.len_C             = self.rk_n_stages
+        self.rk_n_stages_plus1 = self.rk_n_stages + 1
+        self.error_expo        = 1. / (<double>self.error_order + 1.)
 
         # Initialize other RK-related Arrays
         self.K_ptr = <double *> PyMem_Malloc(self.rk_n_stages_plus1 * self.y_size * sizeof(double))
@@ -859,6 +822,7 @@ cdef class CySolver:
 
             # Find final dydt for this timestep
             self.diffeq()
+
 
             # Check how well this step performed by calculating its error
             if self.rk_method == 2:
@@ -1841,14 +1805,6 @@ cdef class CySolver:
         PyMem_Free(self.solution_y_ptr)
         PyMem_Free(self.solution_t_ptr)
         PyMem_Free(self.solution_extra_ptr)
-
-        # Free RK Constants
-        PyMem_Free(self.A_ptr)
-        PyMem_Free(self.B_ptr)
-        PyMem_Free(self.C_ptr)
-        PyMem_Free(self.E_ptr)
-        PyMem_Free(self.E3_ptr)
-        PyMem_Free(self.E5_ptr)
 
         # Free RK Temp Storage Array
         PyMem_Free(self.K_ptr)

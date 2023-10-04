@@ -1,7 +1,9 @@
 # distutils: language = c++
-from libcpp cimport bool as bool_cpp_t
+ctypedef fused double_numeric:
+    double
+    double complex
 
-from CyRK.rk.rk cimport double_numeric
+from libcpp cimport bool as bool_cpp_t
 
 cdef double SAFETY
 cdef double MIN_FACTOR
@@ -13,6 +15,9 @@ cdef double EPS_10
 cdef double EPS_100
 cdef Py_ssize_t MAX_INT_SIZE
 cdef Py_ssize_t MAX_SIZET_SIZE
+cdef double CPU_CACHE_SIZE
+cdef double EXPECTED_SIZE_DBL
+cdef double EXPECTED_SIZE_DBLCMPLX
 cdef double MIN_ARRAY_PREALLOCATE_SIZE
 cdef double MAX_ARRAY_PREALLOCATE_SIZE
 cdef double ARRAY_PREALLOC_TABS_SCALE
