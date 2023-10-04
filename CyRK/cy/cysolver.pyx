@@ -840,11 +840,10 @@ cdef class CySolver:
 
                     # Set last array of K equal to dydt
                     self.K_ptr[self.rk_n_stages * self.y_size + i] = self.dy_ptr[i]
+                    # Initialize
+                    error_dot_1 = 0.
+                    error_dot_2 = 0.
                     for j in range(self.rk_n_stages_plus1):
-                        if j == 0:
-                            # Initialize
-                            error_dot_1 = 0.
-                            error_dot_2 = 0.
 
                         temp_double = self.K_ptr[j * self.y_size + i]
                         error_dot_1 += temp_double * self.E3_ptr[j]
@@ -878,10 +877,9 @@ cdef class CySolver:
 
                     # Set last array of K equal to dydt
                     self.K_ptr[self.rk_n_stages * self.y_size + i] = self.dy_ptr[i]
+                    # Initialize
+                    error_dot_1 = 0.
                     for j in range(self.rk_n_stages_plus1):
-                        if j == 0:
-                            # Initialize
-                            error_dot_1 = 0.
 
                         error_dot_1 += self.K_ptr[j * self.y_size + i] * self.E_ptr[j]
 

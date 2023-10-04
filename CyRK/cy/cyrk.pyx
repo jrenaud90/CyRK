@@ -723,11 +723,10 @@ def cyrk_ode(
 
                     # Set last array of K equal to dydt
                     K_ptr[rk_n_stages * y_size + i] = temp_double_numeric
+                    # Initialize
+                    error_dot_1 = 0.
+                    error_dot_2 = 0.
                     for j in range(rk_n_stages_plus1):
-                        if j == 0:
-                            # Initialize
-                            error_dot_1 = 0.
-                            error_dot_2 = 0.
 
                         K_ = K_ptr[j * y_size + i]
                         error_dot_1 += K_ * E3_ptr[j]
@@ -760,10 +759,9 @@ def cyrk_ode(
 
                     # Set last array of K equal to dydt
                     K_ptr[rk_n_stages * y_size + i] = temp_double_numeric
+                    # Initialize
+                    error_dot_1 = 0.
                     for j in range(rk_n_stages_plus1):
-                        if j == 0:
-                            # Initialize
-                            error_dot_1 = 0.
 
                         error_dot_1 += K_ptr[j * y_size + i] * E_ptr[j]
 
