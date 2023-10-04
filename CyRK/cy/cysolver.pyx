@@ -363,7 +363,7 @@ cdef class CySolver:
                 # Check that the tolerances are not too small.
                 if rtol_tmp < EPS_100:
                     rtol_tmp = EPS_100
-                rtol_min = min(rtol_min, rtol_tmp)
+                rtol_min = fmin(rtol_min, rtol_tmp)
                 self.rtols_ptr[i] = rtol_tmp
         else:
             # No array provided. Use the same rtol for all ys.
@@ -393,7 +393,10 @@ cdef class CySolver:
             self.message = "Attribute error."
             raise AttributeError('Negative number of max steps provided.')
         else:
-            self.max_num_steps = min(max_num_steps, MAX_INT_SIZE)
+            if max_num_steps >= MAX_INT_SIZE:
+                self.max_num_steps = MAX_INT_SIZE
+            else:
+                self.max_num_steps = max_num_steps
         
         # Determine extra outputs
         self.capture_extra = capture_extra
@@ -701,12 +704,12 @@ cdef class CySolver:
             d2 = sqrt(d2) / (h0 * self.y_size_sqrt)
 
             if d1 <= 1.e-15 and d2 <= 1.e-15:
-                h1 = max(1.e-6, h0 * 1.e-3)
+                h1 = fmax(1.e-6, h0 * 1.e-3)
             else:
-                h1 = (0.01 / max(d1, d2))**self.error_expo
+                h1 = (0.01 / fmax(d1, d2))**self.error_expo
 
-            step_size = max(10. * fabs(nextafter(self.t_old, self.direction_inf) - self.t_old),
-                            min(100. * h0, h1))
+            step_size = fmax(10. * fabs(nextafter(self.t_old, self.direction_inf) - self.t_old),
+                            fmin(100. * h0, h1))
 
         return step_size
 
@@ -896,18 +899,18 @@ cdef class CySolver:
                     step_factor = MAX_FACTOR
                 else:
                     error_pow = pow(error_norm, -self.error_expo)
-                    step_factor = min(MAX_FACTOR, SAFETY * error_pow)
+                    step_factor = fmin(MAX_FACTOR, SAFETY * error_pow)
 
                 if step_rejected:
                     # There were problems with this step size on the previous step loop. Make sure factor does
                     #    not exasperate them.
-                    step_factor = min(step_factor, 1.)
+                    step_factor = fmin(step_factor, 1.)
 
                 self.step_size = self.step_size * step_factor
                 step_accepted = True
             else:
                 error_pow = pow(error_norm, -self.error_expo)
-                self.step_size = self.step_size * max(MIN_FACTOR, SAFETY * error_pow)
+                self.step_size = self.step_size * fmax(MIN_FACTOR, SAFETY * error_pow)
                 step_rejected = True
 
         if step_error:
