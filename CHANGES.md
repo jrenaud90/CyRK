@@ -15,6 +15,7 @@ Performance:
 
 Other Changes:
 - Moved some common constants for both `CySolver` and `cyrk_ode` out of their files and into `cy.common`.
+- Added more meaningful memory error messages to `CySolver`.
 
 #### v0.8.2 (2023-09-25)
 

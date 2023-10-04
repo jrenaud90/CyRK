@@ -69,10 +69,12 @@ cdef class CySolver:
     # -- Live variables
     cdef double t_now, t_old, step_size
     cdef Py_ssize_t len_t, len_t_touse
+    cdef double* temporary_y_ptrs
     cdef double* y_ptr
     cdef double* y_old_ptr
     cdef double* dy_ptr
     cdef double* dy_old_ptr
+    cdef double* extra_output_ptrs
     cdef double* extra_output_init_ptr
     cdef double* extra_output_ptr
 
