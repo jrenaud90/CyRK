@@ -435,10 +435,18 @@ def cyrk_ode(
     cdef double_numeric* E5_ptr
     cdef Py_ssize_t rk_order, error_order, rk_n_stages, len_Arows, len_Acols, len_C, rk_n_stages_plus1
     cdef double error_expo, error_pow
-    rk_order, error_order, rk_n_stages, len_Arows, len_Acols = find_rk_properties(rk_method)
+
+    cdef Py_ssize_t[5] rk_properties
+    cdef Py_ssize_t* rk_properties_ptr = &rk_properties[0]
+    find_rk_properties(rk_method, rk_properties_ptr)
+    rk_order          = rk_properties_ptr[0]
+    error_order       = rk_properties_ptr[1]
+    rk_n_stages       = rk_properties_ptr[2]
+    len_Arows         = rk_properties_ptr[3]
+    len_Acols         = rk_properties_ptr[4]
     len_C             = rk_n_stages
     rk_n_stages_plus1 = rk_n_stages + 1
-    error_expo        = 1. / (<double> error_order + 1.)
+    error_expo        = 1. / (<double>error_order + 1.)
 
     cdef double error_norm5, error_norm3, error_norm, error_norm_abs, error_norm3_abs, error_norm5_abs, error_denom
 

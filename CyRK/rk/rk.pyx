@@ -4,10 +4,10 @@
 Based off Scipy's implementation and references.
 """
 
-cdef (Py_ssize_t, Py_ssize_t, Py_ssize_t, Py_ssize_t, Py_ssize_t) find_rk_properties(Py_ssize_t rk_method) noexcept nogil:
+cdef void find_rk_properties(Py_ssize_t rk_method, Py_ssize_t* output) noexcept nogil:
     
     cdef Py_ssize_t order, error_order, n_stages, A_rows, A_cols
-    
+
     if rk_method == 0:
         # RK23
         order       = 3
@@ -37,7 +37,11 @@ cdef (Py_ssize_t, Py_ssize_t, Py_ssize_t, Py_ssize_t, Py_ssize_t) find_rk_proper
         A_rows      = -1
         A_cols      = -1
     
-    return (order, error_order, n_stages, A_rows, A_cols)
+    output[0] = order
+    output[1] = error_order
+    output[2] = n_stages
+    output[3] = A_rows
+    output[4] = A_cols
 
 cdef void populate_rk_arrays(Py_ssize_t rk_method, double_numeric* A_ptr, double_numeric* B_ptr, double* C_ptr, double_numeric* E_ptr, double_numeric* E3_ptr, double_numeric* E5_ptr) noexcept nogil:
 

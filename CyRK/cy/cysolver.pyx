@@ -529,19 +529,20 @@ cdef class CySolver:
 
         # Determine RK scheme and initialize RK memory views
         self.rk_method = rk_method
-        cdef Py_ssize_t order, error_order, n_stages, A_rows, A_cols
-        order, error_order, n_stages, A_rows, A_cols = find_rk_properties(self.rk_method)
-        self.rk_order          = order
-        self.error_order       = error_order
-        self.rk_n_stages       = n_stages
-        self.len_Arows         = A_rows
-        self.len_Acols         = A_cols
+        cdef Py_ssize_t[5] rk_properties
+        cdef Py_ssize_t* rk_properties_ptr = &rk_properties[0]
+        find_rk_properties(self.rk_method, rk_properties_ptr)
+        self.rk_order          = rk_properties_ptr[0]
+        self.error_order       = rk_properties_ptr[1]
+        self.rk_n_stages       = rk_properties_ptr[2]
+        self.len_Arows         = rk_properties_ptr[3]
+        self.len_Acols         = rk_properties_ptr[4]
         self.len_C             = self.rk_n_stages
         self.rk_n_stages_plus1 = self.rk_n_stages + 1
         self.error_expo        = 1. / (<double>self.error_order + 1.)
 
-        if order == -1:
-            raise AttributeError('Unknown RK Method Provided.')
+        if self.rk_order == -1:
+            raise AttributeError('Unknown or not-yet-implemented RK method requested.')
 
         # Initialize RK arrays
         self.A_ptr = <double *> PyMem_Malloc(self.len_Arows * self.len_Acols * sizeof(double))

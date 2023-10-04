@@ -11,6 +11,7 @@ New Features:
   - `CySolver.change_t_eval_pointer` - Changes the t_eval pointer without having to pass memoryviews.
 
 Performance:
+- Changing RK variables back to stack-allocated c-arrays rather than malloc arrays.
 - Improved how `CySolver` and `cyrk_ode` expected size is calculated and how much it grows with each concat.
 
 Other Changes:
