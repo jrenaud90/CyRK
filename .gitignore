@@ -1,12 +1,10 @@
 
 # Ignore cython-generated files
-CyRK/rk/rk_constants.c
-CyRK/rk/rk.c
-CyRK/cy/cyrk.cpp
-CyRK/cy/common.cpp
-CyRK/cy/cysolver.cpp
-CyRK/cy/cysolvertest.cpp
-CyRK/array/interp.cpp
+*.c
+*.cpp
+
+# Include non-generated c files
+!CyRK/array/interp_common.c
 
 # Ignore coverage files
 .coverage
