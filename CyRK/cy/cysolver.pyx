@@ -13,7 +13,7 @@ np.import_array()
 
 from CyRK.rk.rk cimport find_rk_properties
 from CyRK.cy.common cimport interpolate, SAFETY, MIN_FACTOR, MAX_FACTOR, MAX_STEP, INF, EPS, EPS_10, EPS_100, \
-    MAX_INT_SIZE, EXPECTED_SIZE_DBL, MIN_ARRAY_PREALLOCATE_SIZE, MAX_ARRAY_PREALLOCATE_SIZE, \
+    MAX_INT_SIZE, MIN_ARRAY_PREALLOCATE_SIZE, MAX_ARRAY_PREALLOCATE_SIZE_DBL, \
     ARRAY_PREALLOC_TABS_SCALE, ARRAY_PREALLOC_RTOL_SCALE
 
 cdef (double, double) EMPTY_T_SPAN = (NAN, NAN)
@@ -414,27 +414,27 @@ cdef class CySolver:
 
         # Expected size of output arrays.
         cdef double temp_expected_size
+        cdef double max_expected
         if expected_size == 0:
             # CySolver will attempt to guess on a best size for the arrays.
-            # Pick starting value that makes sense with the anticipated CPU cache and the data type's size.
-            temp_expected_size = EXPECTED_SIZE_DBL
-            # Then there are going to be (y + num_extra) number of doubles
-            if self.capture_extra:
-                temp_expected_size = temp_expected_size / (self.y_size_dbl + self.num_extra)
-            else:
-                temp_expected_size = temp_expected_size / self.y_size_dbl
+            # Pick starting value that works with most problems
+            temp_expected_size = 500.0
             # If t_delta_abs is very large or rtol is very small, then we may need more. 
             temp_expected_size = \
             fmax(
                 temp_expected_size,
                 fmax(
-                    fmax(1., self.t_delta_abs / ARRAY_PREALLOC_TABS_SCALE),
-                    fmax(1., (ARRAY_PREALLOC_RTOL_SCALE / rtol_min))
+                    self.t_delta_abs / ARRAY_PREALLOC_TABS_SCALE,
+                    ARRAY_PREALLOC_RTOL_SCALE / rtol_min
                     )
                 )
             # Fix values that are very small/large
             temp_expected_size = fmax(temp_expected_size, MIN_ARRAY_PREALLOCATE_SIZE)
-            temp_expected_size = fmin(temp_expected_size, MAX_ARRAY_PREALLOCATE_SIZE)
+            if capture_extra:
+                max_expected = MAX_ARRAY_PREALLOCATE_SIZE_DBL / (self.y_size + self.num_extra)
+            else:
+                max_expected = MAX_ARRAY_PREALLOCATE_SIZE_DBL / self.y_size
+            temp_expected_size = fmin(temp_expected_size, max_expected)
             # Store result as int
             self.expected_size = <Py_ssize_t>temp_expected_size
         else:

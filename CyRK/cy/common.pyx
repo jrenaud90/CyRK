@@ -20,15 +20,14 @@ cdef Py_ssize_t MAX_SIZET_SIZE = <Py_ssize_t>(0.95 * SIZE_MAX)
 cdef Py_ssize_t MAX_INT_SIZE   = <Py_ssize_t>(0.95 * INT32_MAX)
 
 # # Memory management constants
-# Assume that a cpu has a L1 of 300KB. Say that this progam will have access to 50% of that total.
-cdef double CPU_CACHE_SIZE = 0.5 * 300_000.
+# Assume that a cpu has a L1 of 300KB. Say that this progam will have access to 75% of that total.
+cdef double CPU_CACHE_SIZE = 0.75 * 300_000.
 # Number of entities we can fit into that size is based on the size of double (or double complex)
-cdef double EXPECTED_SIZE_DBL          = CPU_CACHE_SIZE / sizeof(double)
-cdef double EXPECTED_SIZE_DBLCMPLX     = CPU_CACHE_SIZE / sizeof(double complex)
-cdef double MIN_ARRAY_PREALLOCATE_SIZE = 100.
-cdef double MAX_ARRAY_PREALLOCATE_SIZE = 100_000.
+cdef double MAX_ARRAY_PREALLOCATE_SIZE_DBL      = 600_000.
+cdef double MAX_ARRAY_PREALLOCATE_SIZE_DBLCMPLX = 300_000.
+cdef double MIN_ARRAY_PREALLOCATE_SIZE = 10.
 cdef double ARRAY_PREALLOC_TABS_SCALE  = 1000.  # A delta_t_abs higher than this value will start to grow array size.
-cdef double ARRAY_PREALLOC_RTOL_SCALE  = 1.0e-6  # A rtol lower than this value will start to grow array size.
+cdef double ARRAY_PREALLOC_RTOL_SCALE  = 1.0e-5  # A rtol lower than this value will start to grow array size.
 
 
 cdef void interpolate(

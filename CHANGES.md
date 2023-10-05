@@ -2,7 +2,7 @@
 
 ## 2023
 
-#### v0.8.3 (TBD)
+#### v0.8.3 (2023-10-05)
 
 New Features:
 - Added tests to check if memory access violations can occur when `CySolver` is resolved many times.
@@ -17,6 +17,7 @@ Performance:
 Other Changes:
 - Moved some common constants for both `CySolver` and `cyrk_ode` out of their files and into `cy.common`.
 - Added more meaningful memory error messages to `CySolver`.
+- Better future-proofed package structure (mainifests, gitignores, etc.).
 
 #### v0.8.2 (2023-09-25)
 
