@@ -14,7 +14,7 @@ np.import_array()
 from CyRK.utils.utils cimport allocate_mem, reallocate_mem
 from CyRK.rk.rk cimport find_rk_properties
 from CyRK.cy.common cimport interpolate, SAFETY, MIN_FACTOR, MAX_FACTOR, MAX_STEP, INF, EPS, EPS_10, EPS_100, \
-    MAX_INT_SIZE, find_expected_size
+    MAX_SIZET_SIZE, find_expected_size
 
 cdef (double, double) EMPTY_T_SPAN = (NAN, NAN)
 
@@ -235,6 +235,7 @@ cdef class CySolver:
             size_t num_extra = 0,
             bool_cpp_t interpolate_extra = False,
             size_t expected_size = 0,
+            size_t max_ram_MB = 2000,
             bool_cpp_t call_first_reset = True,
             bool_cpp_t auto_solve = True):
         """
@@ -379,18 +380,29 @@ cdef class CySolver:
             for i in range(self.y_size):
                 self.atols_ptr[i] = atol
 
-        # Determine maximum number of steps
-        if max_num_steps == 0:
-            self.max_num_steps = MAX_INT_SIZE
-        elif max_num_steps < 0:
-            self.status = -8
-            self.message = "Attribute error."
-            raise AttributeError('Negative number of max steps provided.')
+        # Determine max number of steps
+        cdef double max_num_steps_ram_dbl
+        max_num_steps_ram_dbl = max_ram_MB * (1000 * 1000) / sizeof(double_numeric)
+        if capture_extra:
+            max_num_steps_ram_dbl /= (1 + y_size + num_extra)
         else:
-            if max_num_steps >= MAX_INT_SIZE:
-                self.max_num_steps = MAX_INT_SIZE
+            max_num_steps_ram_dbl /= (1 + y_size)
+        cdef size_t max_num_steps_ram = <size_t> max_num_steps_ram_dbl
+
+        # Parse user-provided max number of steps
+        self.user_provided_max_num_steps = False
+        if max_num_steps == 0:
+            # No user input; use ram-based value
+            max_num_steps = max_num_steps_ram
+        else: 
+            if max_num_steps > max_num_steps_ram:
+                self.max_num_steps = max_num_steps_ram
             else:
+                self.user_provided_max_num_steps = True
                 self.max_num_steps = max_num_steps
+        # Make sure that max number of steps does not exceed size_t limit
+        if self.max_num_steps > (MAX_SIZET_SIZE / 10):
+            self.max_num_steps = (MAX_SIZET_SIZE / 10)
         
         # Determine extra outputs
         self.capture_extra = capture_extra
@@ -965,10 +977,11 @@ cdef class CySolver:
 
             # Check that maximum number of steps has not been exceeded.
             if self.len_t > self.max_num_steps:
-                if self.max_num_steps == MAX_INT_SIZE:
-                    self.status = -3
-                else:
+                if self.user_provided_max_num_steps:
                     self.status = -2
+                else:
+                    self.status = -3
+ 
                 break
 
             # # Perform RK Step
