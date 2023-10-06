@@ -9,6 +9,7 @@ New Features:
 - Added new cdef methods to `CySolver` for more efficient changes of parameters:
   - `CySolver.change_y0_pointer` - Changes the y0 pointer without having to pass memoryviews.
   - `CySolver.change_t_eval_pointer` - Changes the t_eval pointer without having to pass memoryviews.
+  - Added way for user to limit RAM usage for cython-bases solvers. This also changed how max number of steps was calculated.
 
 Performance:
 - Changing RK variables back to stack-allocated c-arrays rather than malloc arrays.
