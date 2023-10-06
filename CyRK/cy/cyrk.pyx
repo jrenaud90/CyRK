@@ -270,12 +270,13 @@ def cyrk_ode(
             atols_ptr[i] = atol
     
     # Determine max number of steps
-    cdef double max_num_steps_ram
-    max_num_steps_ram = max_ram_MB * (1000 * 1000) / sizeof(double_numeric)
+    cdef double max_num_steps_ram_dbl
+    max_num_steps_ram_dbl = max_ram_MB * (1000 * 1000) / sizeof(double_numeric)
     if capture_extra:
-        max_num_steps_ram /= (1 + y_size + num_extra)
+        max_num_steps_ram_dbl /= (1 + y_size + num_extra)
     else:
-        max_num_steps_ram /= (1 + y_size)
+        max_num_steps_ram_dbl /= (1 + y_size)
+    cdef size_t max_num_steps_ram = <size_t> max_num_steps_ram_dbl
 
     # Parse user-provided max number of steps
     cdef bool_cpp_t user_provided_max_num_steps = False
