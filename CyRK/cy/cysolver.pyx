@@ -4,13 +4,14 @@
 from libcpp cimport bool as bool_cpp_t
 from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, isnan, NAN, pow
 
-from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
+from cpython.mem cimport PyMem_Free
 
 import numpy as np
 cimport numpy as np
 
 np.import_array()
 
+from CyRK.utils.utils cimport allocate_mem, reallocate_mem
 from CyRK.rk.rk cimport find_rk_properties
 from CyRK.cy.common cimport interpolate, SAFETY, MIN_FACTOR, MAX_FACTOR, MAX_STEP, INF, EPS, EPS_10, EPS_100, \
     MAX_INT_SIZE, MIN_ARRAY_PREALLOCATE_SIZE, MAX_ARRAY_PREALLOCATE_SIZE_DBL, \
@@ -321,10 +322,9 @@ cdef class CySolver:
         # Store y0 values and determine y-size information
         self.y_size = y0.size
         self.y_size_dbl = <double> self.y_size
+
         self.y_size_sqrt = sqrt(self.y_size_dbl)
-        self.y0_ptr = <double *> PyMem_Malloc(self.y_size * sizeof(double))
-        if not self.y0_ptr:
-            raise MemoryError('Can not allocate y0 array memory (init).')
+        self.y0_ptr = <double *> allocate_mem(self.y_size * sizeof(double), 'y0_ptr (init)')
         for i in range(self.y_size):
             self.y0_ptr[i] = y0[i]
 
@@ -344,15 +344,10 @@ cdef class CySolver:
             self.t_delta_abs    = -self.t_delta
 
         # Determine integration tolerances
+        self.rtols_ptr = <double *> allocate_mem(self.y_size * sizeof(double), 'rtols_ptr (init)')
+        self.atols_ptr = <double *> allocate_mem(self.y_size * sizeof(double), 'atols_ptr (init)')
         cdef double rtol_tmp, rtol_min
         rtol_min = INF
-        self.rtols_ptr = <double *> PyMem_Malloc(self.y_size * sizeof(double))
-        if not self.rtols_ptr:
-            raise MemoryError('Can not allocate rtol array memory (init).')
-
-        self.atols_ptr = <double *> PyMem_Malloc(self.y_size * sizeof(double))
-        if not self.atols_ptr:
-            raise MemoryError('Can not allocate atol array memory (init).')
 
         if rtols is not None:
             # User provided an arrayed version of rtol.
@@ -455,9 +450,7 @@ cdef class CySolver:
         else:
             self.use_args = True
             self.num_args = len(args)
-        self.args_ptr = <double *> PyMem_Malloc(self.num_args * sizeof(double))
-        if not self.args_ptr:
-            raise MemoryError('Can not allocate arg array memory (init).')
+        self.args_ptr = <double *> allocate_mem(self.num_args * sizeof(double), 'args_ptr (init)')
         for i in range(self.num_args):
             if self.use_args:
                 self.args_ptr[i] = args[i]
@@ -465,18 +458,13 @@ cdef class CySolver:
                 self.args_ptr[i] = NAN
 
         # Initialize live variable arrays
-        self.temporary_y_ptrs = <double *> PyMem_Malloc(4 * self.y_size * sizeof(double))
-        if not self.temporary_y_ptrs:
-            raise MemoryError('Can not allocate y-temporary arrays memory (init).')
-
+        self.temporary_y_ptrs = <double *> allocate_mem(4 * self.y_size * sizeof(double), 'temporary_y_ptrs (init)')
         self.y_ptr      = &self.temporary_y_ptrs[0 * self.y_size]
         self.y_old_ptr  = &self.temporary_y_ptrs[1 * self.y_size]
         self.dy_ptr     = &self.temporary_y_ptrs[2 * self.y_size]
         self.dy_old_ptr = &self.temporary_y_ptrs[3 * self.y_size]
 
-        self.extra_output_ptrs = <double *> PyMem_Malloc(2 * self.num_extra * sizeof(double))
-        if not self.extra_output_ptrs:
-            raise MemoryError('Can not allocate arg array memory (init).')
+        self.extra_output_ptrs = <double *> allocate_mem(2 * self.num_extra * sizeof(double), 'extra_output_ptrs (init)')
 
         self.extra_output_init_ptr = &self.extra_output_ptrs[0 * self.num_extra]
         self.extra_output_ptr      = &self.extra_output_ptrs[1 * self.num_extra]
@@ -486,20 +474,14 @@ cdef class CySolver:
             self.extra_output_ptr[i]      = NAN
 
         # Initialize storage variables
-        self.solution_t_ptr = <double *> PyMem_Malloc(1 * sizeof(double))
-        if not self.solution_t_ptr:
-            raise MemoryError('Can not allocate time domain array memory (init).')
+        self.solution_t_ptr = <double *> allocate_mem(sizeof(double), 'solution_t_ptr (init)')
         self.solution_t_ptr[0] = NAN
 
-        self.solution_y_ptr = <double *> PyMem_Malloc(self.y_size * 1 * sizeof(double))
-        if not self.solution_y_ptr:
-            raise MemoryError('Can not allocate y array memory (init).')
+        self.solution_y_ptr = <double *> allocate_mem(self.y_size * sizeof(double), 'solution_y_ptr (init)')
         for i in range(self.y_size):
             self.solution_y_ptr[i] = NAN
 
-        self.solution_extra_ptr = <double *> PyMem_Malloc(self.num_extra * 1 * sizeof(double))
-        if not self.solution_extra_ptr:
-            raise MemoryError('Can not allocate arg array memory (init).')
+        self.solution_extra_ptr = <double *> allocate_mem(self.num_extra * sizeof(double), 'solution_extra_ptr (init)')
         for i in range(self.num_extra):
             self.solution_extra_ptr[i] = NAN
 
@@ -519,9 +501,7 @@ cdef class CySolver:
             self.interpolate_extra = interpolate_extra
             self.len_t_eval = len(t_eval)
 
-        self.t_eval_ptr = <double *> PyMem_Malloc(self.len_t_eval * sizeof(double))
-        if not self.t_eval_ptr:
-            raise MemoryError('Can not allocate t_eval array memory (init).')
+        self.t_eval_ptr = <double *> allocate_mem(self.len_t_eval * sizeof(double), 't_eval_ptr (init)')
         for i in range(self.len_t_eval):
             if self.run_interpolation:
                 self.t_eval_ptr[i] = t_eval[i]
@@ -553,9 +533,7 @@ cdef class CySolver:
         self.error_expo        = 1. / (<double>self.error_order + 1.)
 
         # Initialize other RK-related Arrays
-        self.K_ptr = <double *> PyMem_Malloc(self.rk_n_stages_plus1 * self.y_size * sizeof(double))
-        if not self.K_ptr:
-            raise MemoryError()
+        self.K_ptr = <double *> allocate_mem(self.rk_n_stages_plus1 * self.y_size * sizeof(double), 'K_ptr (init)')
 
         # Store user provided step information
         self.first_step = first_step
@@ -966,16 +944,16 @@ cdef class CySolver:
         cdef double* y_results_array_ptr
         cdef double* extra_array_ptr
         cdef double* time_domain_array_ptr
-        y_results_array_ptr = <double *> PyMem_Malloc(self.y_size * self.expected_size * sizeof(double))
-        if not y_results_array_ptr:
-            raise MemoryError('Can not reallocate time domain array memory (main loop; initial).')
-        time_domain_array_ptr = <double *> PyMem_Malloc(self.expected_size * sizeof(double))
-        if not time_domain_array_ptr:
-            raise MemoryError('Can not reallocate y array memory (main loop; initial).')
+        y_results_array_ptr = <double *> allocate_mem(
+                self.y_size * self.expected_size * sizeof(double),
+                'y_results_array_ptr (_solve)')
+        time_domain_array_ptr = <double *> allocate_mem(
+            self.expected_size * sizeof(double),
+            'time_domain_array_ptr (_solve)')
         if self.capture_extra:
-            extra_array_ptr = <double *> PyMem_Malloc(self.num_extra * self.expected_size * sizeof(double))
-            if not extra_array_ptr:
-                raise MemoryError('Can not reallocate extra array memory (main loop; initial).')
+            extra_array_ptr = <double *> allocate_mem(
+                self.num_extra * self.expected_size * sizeof(double),
+                'extra_array_ptr (_solve)')
 
         # Load initial conditions into storage arrays
         time_domain_array_ptr[0] = self.t_start
@@ -1024,21 +1002,21 @@ cdef class CySolver:
                 # Grow the array by 50% its current value
                 self.current_size = <Py_ssize_t>(<double>self.current_size * (1.5))
 
-                time_domain_array_ptr = <double *> PyMem_Realloc(time_domain_array_ptr,
-                                                                 self.current_size * sizeof(double))
-                if not time_domain_array_ptr:
-                    raise MemoryError('Can not reallocate (main loop) Time Domain Array.')
+                time_domain_array_ptr = <double *> reallocate_mem(
+                    time_domain_array_ptr,
+                    self.current_size * sizeof(double),
+                    'time_domain_array_ptr (_solve; growth stage)')
 
-                y_results_array_ptr = <double *> PyMem_Realloc(y_results_array_ptr,
-                                                               self.y_size * self.current_size * sizeof(double))
-                if not y_results_array_ptr:
-                    raise MemoryError('Can not reallocate (main loop) y Array.')
+                y_results_array_ptr = <double *> reallocate_mem(
+                    y_results_array_ptr,
+                    self.y_size * self.current_size * sizeof(double),
+                    'y_results_array_ptr (_solve; growth stage)')
 
                 if self.capture_extra:
-                    extra_array_ptr = <double *> PyMem_Realloc(extra_array_ptr,
-                                                               self.num_extra * self.current_size * sizeof(double))
-                    if not extra_array_ptr:
-                        raise MemoryError('Can not reallocate (main loop) Extra Array.')
+                    extra_array_ptr = <double *> reallocate_mem(
+                        extra_array_ptr,
+                        self.num_extra * self.current_size * sizeof(double),
+                        'extra_array_ptr (_solve; growth stage)')
 
             # Add this step's results to our storage arrays.
             time_domain_array_ptr[self.len_t] = self.t_now
@@ -1071,21 +1049,21 @@ cdef class CySolver:
             # This process will remove that junk and leave only the valid data.
             # These arrays will always be the same length or less (self.len_t <= new_size) than the ones they are
             # built off of, so it is safe to use Realloc.
-            self.solution_t_ptr = <double *> PyMem_Realloc(time_domain_array_ptr,
-                                                           self.len_t * sizeof(double))
-            if not self.solution_t_ptr:
-                raise MemoryError('Can not reallocate time domain array memory (main loop; final).')
+            self.solution_t_ptr = <double *> reallocate_mem(
+                time_domain_array_ptr,
+                self.len_t * sizeof(double),
+                'solution_t_ptr (_solve; success stage)')
 
-            self.solution_y_ptr = <double *> PyMem_Realloc(y_results_array_ptr,
-                                                           self.y_size * self.len_t * sizeof(double))
-            if not self.solution_y_ptr:
-                raise MemoryError('Can not reallocate y array memory (main loop; final).')
+            self.solution_y_ptr = <double *> reallocate_mem(
+                y_results_array_ptr,
+                self.y_size * self.len_t * sizeof(double),
+                'solution_y_ptr (_solve; success stage)')
 
             if self.capture_extra:
-                self.solution_extra_ptr = <double *> PyMem_Realloc(extra_array_ptr,
-                                                                   self.num_extra * self.len_t * sizeof(double))
-                if not self.solution_extra_ptr:
-                    raise MemoryError('Can not reallocate extra output array memory (main loop; final).')
+                self.solution_extra_ptr = <double *> reallocate_mem(
+                    extra_array_ptr,
+                    self.num_extra * self.len_t * sizeof(double),
+                    'solution_extra_ptr (_solve; success stage)')
         else:
             # Integration was not successful. Make solution pointers length 1 nan arrays.
 
@@ -1097,23 +1075,23 @@ cdef class CySolver:
 
             # We still need to build solution arrays so that accessing the solution will not cause access violations.
             # Build size-1 arrays. Since the solution was not successful, set all arrays to NANs
-            self.solution_t_ptr = <double *> PyMem_Realloc(self.solution_t_ptr,
-                                                           1 * sizeof(double))
-            if not self.solution_t_ptr:
-                raise MemoryError('Can not reallocate time domain array memory (main loop; solution failed).')
+            self.solution_t_ptr = <double *> reallocate_mem(
+                self.solution_t_ptr,
+                sizeof(double),
+                'solution_t_ptr (_solve; fail stage)')
             self.solution_t_ptr[0] = NAN
 
-            self.solution_y_ptr = <double *> PyMem_Realloc(self.solution_y_ptr,
-                                                           self.y_size * 1 * sizeof(double))
-            if not self.solution_y_ptr:
-                raise MemoryError('Can not reallocate y array memory (main loop; solution failed).')
+            self.solution_y_ptr = <double *> reallocate_mem(
+                self.solution_y_ptr,
+                self.y_size * sizeof(double),
+                'solution_y_ptr (_solve; fail stage)')
             for i in range(self.y_size):
                 self.solution_t_ptr[i] = NAN
 
-            self.solution_extra_ptr = <double *> PyMem_Realloc(self.solution_extra_ptr,
-                                                               self.num_extra * 1 * sizeof(double))
-            if not self.solution_extra_ptr:
-                raise MemoryError('Can not reallocate extra output array memory (main loop; solution failed).')
+            self.solution_extra_ptr = <double *> reallocate_mem(
+                self.solution_extra_ptr,
+                self.num_extra * 1 * sizeof(double),
+                'solution_extra_ptr (_solve; fail stage)')
             for i in range(self.num_extra):
                 self.solution_extra_ptr[i] = NAN
 
@@ -1168,15 +1146,15 @@ cdef class CySolver:
         # TODO: The current version of CySolver has not implemented sicpy's dense output. Instead we use an interpolation.
         # Build final interpolated time array
         cdef double* interpolated_solution_t_ptr
-        interpolated_solution_t_ptr = <double *> PyMem_Malloc(self.len_t_eval * sizeof(double))
-        if not interpolated_solution_t_ptr:
-            raise MemoryError('Can not allocate time domain interpolated array memory (interpolate; initial).')
+        interpolated_solution_t_ptr = <double *> allocate_mem(
+            self.len_t_eval * sizeof(double),
+            'interpolated_solution_t_ptr (interpolate)')
 
         # Build final interpolated solution arrays
         cdef double* interpolated_solution_y_ptr
-        interpolated_solution_y_ptr = <double *> PyMem_Malloc(self.y_size * self.len_t_eval * sizeof(double))
-        if not interpolated_solution_y_ptr:
-            raise MemoryError('Can not allocate y interpolated array memory (interpolate; initial).')
+        interpolated_solution_y_ptr = <double *> allocate_mem(
+            self.y_size * self.len_t_eval * sizeof(double),
+            'interpolated_solution_y_ptr (interpolate)')
 
         # Perform interpolation on y values
         interpolate(self.solution_t_ptr, self.t_eval_ptr, self.solution_y_ptr, interpolated_solution_y_ptr,
@@ -1199,9 +1177,9 @@ cdef class CySolver:
 
             # Build final interpolated solution array (Used if self.interpolate_extra is True or False)
             interpolated_solution_extra_ptr = \
-                <double *> PyMem_Malloc(self.num_extra * self.len_t_eval * sizeof(double))
-            if not interpolated_solution_extra_ptr:
-                raise MemoryError('Can not allocate extra ouput interpolated array memory (interpolate; initial).')
+                <double *> allocate_mem(
+                    self.num_extra * self.len_t_eval * sizeof(double),
+                    'interpolated_solution_extra_ptr (interpolate)')
 
             if self.interpolate_extra:
                 # Perform interpolation on extra outputs
@@ -1372,9 +1350,10 @@ cdef class CySolver:
         else:
             self.use_args = True
             self.num_args = len(args)
-        self.args_ptr = <double *> PyMem_Realloc(self.args_ptr, self.num_args * sizeof(double))
-        if not self.args_ptr:
-            raise MemoryError('Can not reallocate args array memory (change args).')
+        self.args_ptr = <double *> reallocate_mem(
+            self.args_ptr,
+            self.num_args * sizeof(double),
+            'args_ptr (change_args)')
         for i in range(self.num_args):
             if self.use_args:
                 self.args_ptr[i] = args[i]
@@ -1549,9 +1528,10 @@ cdef class CySolver:
         self.run_interpolation = True
         self.len_t_eval = len(t_eval)
 
-        self.t_eval_ptr = <double *> PyMem_Realloc(self.t_eval_ptr, self.len_t_eval * sizeof(double))
-        if not self.t_eval_ptr:
-            raise MemoryError('Can not reallocate t_eval array memory (change t_eval).')
+        self.t_eval_ptr = <double *> reallocate_mem(
+            self.t_eval_ptr,
+            self.len_t_eval * sizeof(double),
+            't_eval_ptr (change_t_eval)')
 
         for i in range(self.len_t_eval):
             if self.run_interpolation:
@@ -1582,9 +1562,10 @@ cdef class CySolver:
         self.run_interpolation = True
         self.len_t_eval = len_t_eval
 
-        self.t_eval_ptr = <double *> PyMem_Realloc(self.t_eval_ptr, self.len_t_eval * sizeof(double))
-        if not self.t_eval_ptr:
-            raise MemoryError('Can not reallocate t_eval array memory (change t_eval pointer).')
+        self.t_eval_ptr = <double *> reallocate_mem(
+            self.t_eval_ptr,
+            self.len_t_eval * sizeof(double),
+            't_eval_ptr (change_t_eval_pointer)')
 
         for i in range(self.len_t_eval):
             if self.run_interpolation:

@@ -1,11 +1,16 @@
 """ Commands to build the cython extensions of CyRK (a hack to work with pyproject.toml) """
 import os
 import platform
+import math
 import json
 from setuptools.extension import Extension
 from setuptools.command.build_py import build_py as _build_py
+from setuptools.command.build_ext import build_ext as _build_ext
 
 import numpy as np
+
+num_procs = os.cpu_count()
+num_threads = int(math.floor(num_procs * 0.75))
 
 install_platform = platform.system()
 
@@ -13,8 +18,8 @@ if install_platform.lower() == 'windows':
     extra_compile_args = ['/openmp']
     extra_link_args = []
 elif install_platform.lower() == 'darwin':
-    extra_compile_args = []
-    extra_link_args = []
+    extra_compile_args = ['-fopenmp']
+    extra_link_args = ['-fopenmp']
 else:
     extra_compile_args = ['-fopenmp']
     extra_link_args = ['-fopenmp']
@@ -40,9 +45,19 @@ for cython_ext, ext_data in cython_ext_dict.items():
             )
         )
 
+
+class build_ext(_build_ext):
+
+    def run(self):
+        # Compile in parallel
+        self.parallel = num_threads
+        return super().run()
+
+
 class build_cyrk(_build_py):
 
     def run(self):
+        # Run build_ext to compile cythonized c/cpp files.
         self.run_command("build_ext")
         return super().run()
 
@@ -63,6 +78,7 @@ class build_cyrk(_build_py):
         self.distribution.ext_modules = cythonize(
                 self.distribution.ext_modules,
                 compiler_directives={'language_level': "3"},
-                include_path=['.', np.get_include()]
+                include_path=['.', np.get_include()],
+                nthreads=num_threads 
                 )
         print('!-- Finished Cythonizing CyRK')

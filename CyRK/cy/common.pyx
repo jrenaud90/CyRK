@@ -5,7 +5,9 @@ import cython
 from libc.math cimport INFINITY as INF
 from libc.float cimport DBL_EPSILON as EPS
 from libc.stdint cimport SIZE_MAX, INT32_MAX
-from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
+from cpython.mem cimport PyMem_Free
+
+from CyRK.utils.utils cimport allocate_mem, reallocate_mem
 from CyRK.array.interp cimport interp_array_ptr, interp_complex_array_ptr
 
 # # Integration Constants
@@ -47,13 +49,17 @@ cdef void interpolate(
 
     # Build a pointer array that will contain only 1 y for all ts in time_domain_full
     cdef double_numeric* array_slice_ptr
-    array_slice_ptr = <double_numeric *> PyMem_Malloc(t_len_full * sizeof(double_numeric))
+    array_slice_ptr = <double_numeric *> allocate_mem(
+        t_len_full * sizeof(double_numeric),
+        'array_slice_ptr (common.interpolate)')
     if not array_slice_ptr:
         raise MemoryError()
 
     # Build a pointer that will store the interpolated values for 1 y at a time; size of self.len_t_eval
     cdef double_numeric* interpolated_array_slice_ptr
-    interpolated_array_slice_ptr = <double_numeric *> PyMem_Malloc(t_len_reduced * sizeof(double_numeric))
+    interpolated_array_slice_ptr = <double_numeric *> allocate_mem(
+        t_len_reduced * sizeof(double_numeric),
+        'interpolated_array_slice_ptr (common.interpolate)')
     if not interpolated_array_slice_ptr:
         raise MemoryError()
 

@@ -1,5 +1,3 @@
-# Define fused type to handle both float and complex-valued versions of y and dydt.
-
 cdef Py_ssize_t order_RK23
 cdef Py_ssize_t error_order_RK23
 cdef Py_ssize_t n_stages_RK23

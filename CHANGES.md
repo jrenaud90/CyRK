@@ -13,10 +13,12 @@ New Features:
 Performance:
 - Changing RK variables back to stack-allocated c-arrays rather than malloc arrays.
 - Improved how `CySolver` and `cyrk_ode` expected size is calculated and how much it grows with each concat.
+- Files now compile across multiple threads during installation.
 
 Other Changes:
 - Moved some common constants for both `CySolver` and `cyrk_ode` out of their files and into `cy.common`.
-- Added more meaningful memory error messages to `CySolver`.
+- Added more meaningful memory error messages to cython files.
+  - Memory allocations (or reallocations) are now performed by helper functions in CyRK.utils.
 - Better future-proofed package structure (mainifests, gitignores, etc.).
 
 #### v0.8.2 (2023-09-25)

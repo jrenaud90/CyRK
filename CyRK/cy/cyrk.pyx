@@ -2,16 +2,17 @@
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 
 import cython
-import sys
+
+from cpython.mem cimport PyMem_Free
+
 import numpy as np
 cimport numpy as np
 np.import_array()
 
-from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
-
 from libcpp cimport bool as bool_cpp_t
 from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, NAN
 
+from CyRK.utils.utils cimport allocate_mem, reallocate_mem
 from CyRK.rk.rk cimport find_rk_properties
 from CyRK.cy.common cimport double_numeric, interpolate, SAFETY, MIN_FACTOR, MAX_FACTOR, MAX_STEP, INF, EPS, \
     EPS_10, EPS_100, \
@@ -229,18 +230,15 @@ def cyrk_ode(
     cdef double_numeric temp_double_numeric
 
     # Determine integration tolerances
-    cdef double rtol_min
+    cdef double* tol_ptrs
     cdef double* rtols_ptr
     cdef double* atols_ptr
+    tol_ptrs  = <double *> allocate_mem(2 * y_size * sizeof(double), 'tol_ptrs (start-up)')
+    rtols_ptr = &tol_ptrs[0]
+    atols_ptr = &tol_ptrs[y_size]
+    
+    cdef double rtol_min
     rtol_min = INF
-    rtols_ptr = <double *> PyMem_Malloc(y_size * sizeof(double))
-    if not rtols_ptr:
-        raise MemoryError()
-
-    atols_ptr = <double *> PyMem_Malloc(y_size * sizeof(double))
-    if not atols_ptr:
-        raise MemoryError()
-
     if rtols is not None:
         # User provided an arrayed version of rtol.
         if len(rtols) != y_size:
@@ -321,19 +319,16 @@ def cyrk_ode(
     num_concats  = 1
 
     # Initialize live variable arrays
+    cdef double_numeric* y_storage_ptrs
     cdef double_numeric* y_old_ptr
     cdef double_numeric* dy_ptr
     cdef double_numeric* dy_old_ptr
 
-    y_old_ptr = <double_numeric *> PyMem_Malloc(y_size * sizeof(double_numeric))
-    if not y_old_ptr:
-        raise MemoryError()
-    dy_ptr = <double_numeric *> PyMem_Malloc(y_size * sizeof(double_numeric))
-    if not dy_ptr:
-        raise MemoryError()
-    dy_old_ptr = <double_numeric *> PyMem_Malloc(y_size * sizeof(double_numeric))
-    if not dy_old_ptr:
-        raise MemoryError()
+    y_storage_ptrs = <double_numeric *> allocate_mem(4 * y_size * sizeof(double_numeric), 'y_storage_ptrs (start-up)')
+
+    y_old_ptr  = &y_storage_ptrs[0]
+    dy_ptr     = &y_storage_ptrs[1 * y_size]
+    dy_old_ptr = &y_storage_ptrs[2 * y_size]
 
     # Build memoryviews based on y_view and dy_ptr that can be passed to the diffeq.
     # This is process is different than CySolver which strictly uses c pointers.
@@ -345,7 +340,7 @@ def cyrk_ode(
     # Store y0 into the y arrays
     for i in range(y_size):
         temp_double_numeric = y0[i]
-        y_view[i]     = temp_double_numeric
+        y_view[i]    = temp_double_numeric
         y_old_ptr[i] = temp_double_numeric
 
     # Determine extra outputs
@@ -361,14 +356,13 @@ def cyrk_ode(
         num_extra = 1
 
     cdef double_numeric* extra_output_init_ptr
-    extra_output_init_ptr = <double_numeric *> PyMem_Malloc(num_extra * sizeof(double_numeric))
-    if not extra_output_init_ptr:
-        raise MemoryError()
-
     cdef double_numeric* extra_output_ptr
-    extra_output_ptr = <double_numeric *> PyMem_Malloc(num_extra * sizeof(double_numeric))
-    if not extra_output_ptr:
-        raise MemoryError()
+    extra_output_init_ptr = <double_numeric *> allocate_mem(
+        num_extra * sizeof(double_numeric),
+        'extra_output_init_ptr (start-up)')
+    extra_output_ptr = <double_numeric *> allocate_mem(
+        num_extra * sizeof(double_numeric),
+        'extra_output_ptr (start-up)')
 
     for i in range(num_extra):
         extra_output_init_ptr[i] = NAN
@@ -402,9 +396,7 @@ def cyrk_ode(
         len_t_eval = len(t_eval)
 
     cdef double* t_eval_ptr
-    t_eval_ptr = <double *> PyMem_Malloc(len_t_eval * sizeof(double))
-    if not t_eval_ptr:
-        raise MemoryError()
+    t_eval_ptr = <double *> allocate_mem(len_t_eval * sizeof(double), 't_eval_ptr (start-up)')
     for i in range(len_t_eval):
         if run_interpolation:
             t_eval_ptr[i] = t_eval[i]
@@ -465,9 +457,7 @@ def cyrk_ode(
     
     # Initialize other RK-related Arrays
     cdef double_numeric* K_ptr
-    K_ptr = <double_numeric *> PyMem_Malloc(rk_n_stages_plus1 * y_size * sizeof(double_numeric))
-    if not K_ptr:
-        raise MemoryError()
+    K_ptr = <double_numeric *> allocate_mem(rk_n_stages_plus1 * y_size * sizeof(double_numeric), 'K_ptr (start-up)')
     # It is important K be initialized with 0s
     for i in range(rk_n_stages_plus1):
         for j in range(y_size):
@@ -487,16 +477,16 @@ def cyrk_ode(
     cdef double_numeric* y_results_array_ptr
     cdef double_numeric* extra_array_ptr
 
-    time_domain_array_ptr = <double *> PyMem_Malloc(expected_size_to_use * sizeof(double))
-    if not time_domain_array_ptr:
-        raise MemoryError()
-    y_results_array_ptr = <double_numeric *> PyMem_Malloc(y_size * expected_size_to_use * sizeof(double_numeric))
-    if not y_results_array_ptr:
-        raise MemoryError()
+    time_domain_array_ptr = <double *> allocate_mem(
+        expected_size_to_use * sizeof(double),
+        'time_domain_array_ptr (start-up)')
+    y_results_array_ptr = <double_numeric *> allocate_mem(
+        y_size * expected_size_to_use * sizeof(double_numeric),
+        'y_results_array_ptr (start-up)')
     if capture_extra:
-        extra_array_ptr = <double_numeric *> PyMem_Malloc(num_extra * expected_size_to_use * sizeof(double_numeric))
-        if not extra_array_ptr:
-            raise MemoryError()
+        extra_array_ptr = <double_numeric *> allocate_mem(
+            num_extra * expected_size_to_use * sizeof(double_numeric),
+            'extra_array_ptr (start-up)')
 
     # Load initial conditions into storage arrays
     time_domain_array_ptr[0] = t_start
@@ -819,21 +809,21 @@ def cyrk_ode(
             # Grow the array by 50% its current value
             current_size = <Py_ssize_t>(<double>current_size * (1.5))
 
-            time_domain_array_ptr = <double *> PyMem_Realloc(time_domain_array_ptr,
-                                                             current_size * sizeof(double))
-            if not time_domain_array_ptr:
-                raise MemoryError()
+            time_domain_array_ptr = <double *> reallocate_mem(
+                time_domain_array_ptr,
+                current_size * sizeof(double),
+                'time_domain_array_ptr (growth stage)')
 
-            y_results_array_ptr = <double_numeric *> PyMem_Realloc(y_results_array_ptr,
-                                                                   y_size * current_size * sizeof(double_numeric))
-            if not y_results_array_ptr:
-                raise MemoryError()
+            y_results_array_ptr = <double_numeric *> reallocate_mem(
+                y_results_array_ptr,
+                y_size * current_size * sizeof(double_numeric),
+                'y_results_array_ptr (growth stage)')
 
             if capture_extra:
-                extra_array_ptr = <double_numeric *> PyMem_Realloc(extra_array_ptr,
-                                                                   num_extra * current_size * sizeof(double_numeric))
-                if not extra_array_ptr:
-                    raise MemoryError()
+                extra_array_ptr = <double_numeric *> reallocate_mem(
+                    extra_array_ptr,
+                    num_extra * current_size * sizeof(double_numeric),
+                    'extra_array_ptr (growth stage)')
 
         # Add this step's results to our storage arrays.
         time_domain_array_ptr[len_t] = t_now
@@ -858,57 +848,51 @@ def cyrk_ode(
     cdef double_numeric* solution_y_ptr
     cdef double_numeric* solution_extra_ptr
 
-    solution_t_ptr = <double *> PyMem_Malloc(1 * sizeof(double))
-    if not solution_t_ptr:
-        raise MemoryError()
-    solution_t_ptr[0] = NAN
-
-    solution_y_ptr = <double_numeric *> PyMem_Malloc(y_size * 1 * sizeof(double_numeric))
-    if not solution_y_ptr:
-        raise MemoryError()
-    for i in range(y_size):
-        solution_y_ptr[i] = NAN
-
-    solution_extra_ptr = <double_numeric *> PyMem_Malloc(num_extra * 1 * sizeof(double_numeric))
-    if not solution_extra_ptr:
-        raise MemoryError()
-    for i in range(num_extra):
-        solution_extra_ptr[i] = NAN
-
     if success:
         # Solution was successful.
-        # Release storage arrays so they can be reset
-        PyMem_Free(solution_t_ptr)
-        PyMem_Free(solution_y_ptr)
 
         # Load values into output arrays.
         # The arrays built during integration likely have a bunch of unused junk at the end due to overbuilding their size.
         # This process will remove that junk and leave only the valid data.
         # These arrays will always be the same length or less (self.len_t <= new_size) than the ones they are
         # built off of, so it is safe to use Realloc.
-        solution_t_ptr = <double *> PyMem_Realloc(time_domain_array_ptr,
-                                                  len_t * sizeof(double))
-        if not solution_t_ptr:
-            raise MemoryError()
-
-        solution_y_ptr = <double_numeric *> PyMem_Realloc(y_results_array_ptr,
-                                                          y_size * len_t * sizeof(double_numeric))
-        if not solution_y_ptr:
-            raise MemoryError()
+        solution_t_ptr = <double *> reallocate_mem(
+            time_domain_array_ptr,
+            len_t * sizeof(double),
+            'solution_t_ptr (success stage)')
+        solution_y_ptr = <double_numeric *> reallocate_mem(
+            y_results_array_ptr,
+            y_size * len_t * sizeof(double_numeric),
+            'solution_y_ptr (success stage)')
 
         if capture_extra:
-            PyMem_Free(solution_extra_ptr)
-            solution_extra_ptr = <double_numeric *> PyMem_Realloc(extra_array_ptr,
-                                                                  num_extra * len_t * sizeof(double_numeric))
-            if not solution_extra_ptr:
-                raise MemoryError()
-    else:
-        # Integration was not successful. Leave the solution pointers as length 1 nan arrays.
+            solution_extra_ptr = <double_numeric *> reallocate_mem(
+                extra_array_ptr,
+                num_extra * len_t * sizeof(double_numeric),
+                'solution_extra_ptr (success stage)')
+    else:        
         # Clear the storage arrays used during the step loop
         PyMem_Free(time_domain_array_ptr)
         PyMem_Free(y_results_array_ptr)
         if capture_extra:
             PyMem_Free(extra_array_ptr)
+
+        # Integration was not successful. Leave the solution pointers as length 1 nan arrays.
+        solution_t_ptr = <double *> allocate_mem(
+            sizeof(double),
+            'solution_t_ptr (fail stage)')
+        solution_y_ptr = <double_numeric *> allocate_mem(
+            y_size * sizeof(double_numeric),
+            'solution_y_ptr (fail stage)')
+        solution_extra_ptr = <double_numeric *> allocate_mem(
+            num_extra * sizeof(double_numeric),
+            'solution_extra_ptr (fail stage)')
+        
+        solution_t_ptr[0] = NAN
+        for i in range(y_size):
+            solution_y_ptr[i] = NAN
+        for i in range(num_extra):
+            solution_extra_ptr[i] = NAN
 
     # Integration is complete. Check if interpolation was requested.
     cdef Py_ssize_t len_t_touse
@@ -931,14 +915,14 @@ def cyrk_ode(
 
         # TODO: The current version of cyrk_ode has not implemented sicpy's dense output. Instead we use an interpolation.
         # Build final interpolated time array
-        interpolated_solution_t_ptr = <double *> PyMem_Malloc(len_t_eval * sizeof(double))
-        if not interpolated_solution_t_ptr:
-            raise MemoryError()
+        interpolated_solution_t_ptr = <double *> allocate_mem(
+            len_t_eval * sizeof(double),
+            'interpolated_solution_t_ptr (interpolate stage)')
 
         # Build final interpolated solution arrays
-        interpolated_solution_y_ptr = <double_numeric *> PyMem_Malloc(y_size * len_t_eval * sizeof(double_numeric))
-        if not interpolated_solution_y_ptr:
-            raise MemoryError()
+        interpolated_solution_y_ptr = <double_numeric *> allocate_mem(
+            y_size * len_t_eval * sizeof(double_numeric),
+            'interpolated_solution_y_ptr (interpolate stage)')
 
         # Perform interpolation on y values
         interpolate(solution_t_ptr, t_eval_ptr, solution_y_ptr, interpolated_solution_y_ptr,
@@ -957,10 +941,9 @@ def cyrk_ode(
             # This decision is set by the user with the `interpolate_extra` flag.
 
             # Build final interpolated solution array (Used if self.interpolate_extra is True or False)
-            interpolated_solution_extra_ptr = \
-                <double_numeric *> PyMem_Malloc(num_extra * len_t_eval * sizeof(double_numeric))
-            if not interpolated_solution_extra_ptr:
-                raise MemoryError()
+            interpolated_solution_extra_ptr = <double_numeric *> allocate_mem(
+                num_extra * len_t_eval * sizeof(double_numeric),
+                'interpolated_solution_extra_ptr (interpolate)')
 
             if interpolate_extra:
                 # Perform interpolation on extra outputs
@@ -976,9 +959,9 @@ def cyrk_ode(
 
                     # Call diffeq to recalculate extra outputs
                     if use_args:
-                        diffeq(t_now, y_array, diffeq_out_array, *args)
+                        diffeq(t_now, y_view, diffeq_out_view, *args)
                     else:
-                        diffeq(t_now, y_array, diffeq_out_array)
+                        diffeq(t_now, y_view, diffeq_out_view)
 
                     # Capture extras
                     for j in range(num_extra):
@@ -1017,6 +1000,11 @@ def cyrk_ode(
         for i in range(len_t_touse):
             for j in range(num_extra):
                 solution_y_view[extra_start + j, i] = solution_extra_ptr[i * num_extra + j]
+    # Free solution arrays
+    PyMem_Free(solution_t_ptr)
+    PyMem_Free(solution_y_ptr)
+    if capture_extra:
+        PyMem_Free(solution_extra_ptr)
 
     # Update integration message
     if status == 1:
@@ -1035,21 +1023,13 @@ def cyrk_ode(
         message = "Error in step size calculation:\n\tError in step size acceptance."
 
     # Free pointers made from user inputs
-    PyMem_Free(rtols_ptr)
-    PyMem_Free(atols_ptr)
+    PyMem_Free(tol_ptrs)
     PyMem_Free(t_eval_ptr)
 
     # Free pointers used to track y, dydt, and any extra outputs
-    PyMem_Free(y_old_ptr)
-    PyMem_Free(dy_ptr)
-    PyMem_Free(dy_old_ptr)
+    PyMem_Free(y_storage_ptrs)
     PyMem_Free(extra_output_init_ptr)
     PyMem_Free(extra_output_ptr)
-
-    # Free final solution pointers
-    PyMem_Free(solution_y_ptr)
-    PyMem_Free(solution_t_ptr)
-    PyMem_Free(solution_extra_ptr)
 
     # Free RK Temp Storage Array
     PyMem_Free(K_ptr)
