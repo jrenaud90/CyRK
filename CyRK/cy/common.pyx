@@ -19,8 +19,8 @@ cdef double MAX_FACTOR       = 10.  # Maximum allowed increase in a step size.
 cdef double MAX_STEP         = INF
 cdef double EPS_10           = EPS * 10.
 cdef double EPS_100          = EPS * 100.
-cdef size_t MAX_SIZET_SIZE = <size_t>(0.95 * SIZE_MAX)
-cdef size_t MAX_INT_SIZE   = <size_t>(0.95 * INT32_MAX)
+cdef size_t MAX_SIZET_SIZE = <size_t>(SIZE_MAX)
+cdef size_t MAX_INT_SIZE   = <size_t>(INT32_MAX)
 
 # # Memory management constants
 # Assume that a cpu has a L1 of 300KB. Say that this progam will have access to 75% of that total.
