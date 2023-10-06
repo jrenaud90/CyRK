@@ -13,8 +13,8 @@ cdef double INF
 cdef double EPS
 cdef double EPS_10
 cdef double EPS_100
-cdef Py_ssize_t MAX_INT_SIZE
-cdef Py_ssize_t MAX_SIZET_SIZE
+cdef size_t MAX_INT_SIZE
+cdef size_t MAX_SIZET_SIZE
 cdef double CPU_CACHE_SIZE
 cdef double EXPECTED_SIZE_DBL
 cdef double EXPECTED_SIZE_DBLCMPLX
@@ -29,8 +29,17 @@ cdef void interpolate(
         double* time_domain_reduced,
         double_numeric* target_array_full,
         double_numeric* target_array_reduced,
-        Py_ssize_t t_len_full,
-        Py_ssize_t t_len_reduced,
-        Py_ssize_t target_len,
+        size_t t_len_full,
+        size_t t_len_reduced,
+        size_t target_len,
         bool_cpp_t is_complex
         ) noexcept
+
+cdef size_t find_expected_size(
+        size_t y_size,
+        size_t num_extra,
+        double t_delta_abs,
+        double rtol_min,
+        bool_cpp_t capture_extra,
+        bool_cpp_t is_complex
+        ) noexcept nogil

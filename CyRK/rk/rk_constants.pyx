@@ -3,16 +3,16 @@
 
 Based off Scipy's implementation and references.
 """
-cdef Py_ssize_t i
+cdef size_t i
 
 ########################################################################################################################
 # Runge-Kutta 2(3)
 ########################################################################################################################
-cdef Py_ssize_t order_RK23       = 3
-cdef Py_ssize_t error_order_RK23 = 2
-cdef Py_ssize_t n_stages_RK23    = 3
-cdef Py_ssize_t A_rows_RK23      = 3
-cdef Py_ssize_t A_cols_RK23      = 3
+cdef size_t order_RK23       = 3
+cdef size_t error_order_RK23 = 2
+cdef size_t n_stages_RK23    = 3
+cdef size_t A_rows_RK23      = 3
+cdef size_t A_cols_RK23      = 3
 
 cdef double[9] A_RK23
 cdef double* A_RK23_ptr = &A_RK23[0]
@@ -58,11 +58,11 @@ E_RK23_ptr[3] = 1. / 8.
 ########################################################################################################################
 # Runge-Kutta 4(5)
 ########################################################################################################################
-cdef Py_ssize_t order_RK45       = 5
-cdef Py_ssize_t error_order_RK45 = 4
-cdef Py_ssize_t n_stages_RK45    = 6
-cdef Py_ssize_t A_rows_RK45      = 6
-cdef Py_ssize_t A_cols_RK45      = 5
+cdef size_t order_RK45       = 5
+cdef size_t error_order_RK45 = 4
+cdef size_t n_stages_RK45    = 6
+cdef size_t A_rows_RK45      = 6
+cdef size_t A_cols_RK45      = 5
 
 cdef double[30] A_RK45
 cdef double* A_RK45_ptr = &A_RK45[0]
@@ -141,11 +141,11 @@ E_RK45_ptr[6] = 1. / 40.
 ########################################################################################################################
 # Runge-Kutta DOP 8(5; 3)
 ########################################################################################################################
-cdef Py_ssize_t order_DOP853       = 8
-cdef Py_ssize_t error_order_DOP853 = 7
-cdef Py_ssize_t n_stages_DOP853    = 12
-cdef Py_ssize_t A_rows_DOP853      = 12
-cdef Py_ssize_t A_cols_DOP853      = 12
+cdef size_t order_DOP853       = 8
+cdef size_t error_order_DOP853 = 7
+cdef size_t n_stages_DOP853    = 12
+cdef size_t A_rows_DOP853      = 12
+cdef size_t A_cols_DOP853      = 12
 
 # Note both A and C are the _reduced_ versions. The full A and C are not shown.
 cdef double[144] A_DOP853

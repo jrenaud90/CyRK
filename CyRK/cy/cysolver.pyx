@@ -14,8 +14,7 @@ np.import_array()
 from CyRK.utils.utils cimport allocate_mem, reallocate_mem
 from CyRK.rk.rk cimport find_rk_properties
 from CyRK.cy.common cimport interpolate, SAFETY, MIN_FACTOR, MAX_FACTOR, MAX_STEP, INF, EPS, EPS_10, EPS_100, \
-    MAX_INT_SIZE, MIN_ARRAY_PREALLOCATE_SIZE, MAX_ARRAY_PREALLOCATE_SIZE_DBL, \
-    ARRAY_PREALLOC_TABS_SCALE, ARRAY_PREALLOC_RTOL_SCALE
+    MAX_INT_SIZE, find_expected_size
 
 cdef (double, double) EMPTY_T_SPAN = (NAN, NAN)
 
@@ -51,7 +50,7 @@ cdef class CySolver:
         Pointer of the final solution for any extra parameters captured during integration.
     solution_t_ptr : double*
         Pointer of the final independent domain found during integration.
-    y_size : Py_ssize_t
+    y_size : size_t
         Number of dependent variables in system of ODEs.
     y_size_dbl : double
         Floating point version of y_size.
@@ -72,13 +71,13 @@ cdef class CySolver:
         Direction of integration. If forward then this = +Inf; -Inf otherwise.
     direction_flag : bool_cpp_t
         If True, then integration is in the forward direction.
-    num_args : Py_ssize_t
+    num_args : size_t
         Number of additional arguments that the `diffeq` method requires.
     args_ptr : double*
         Pointer of additional arguments used in the `diffeq` method.
     capture_extra bool_cpp_t
         Flag used if extra parameters should be captured during integration.
-    num_extra Py_ssize_t
+    num_extra size_t
         Number of extra parameters that should be captured during integration.
     status : char; public
         Numerical flag to indicate status of integrator.
@@ -95,12 +94,12 @@ cdef class CySolver:
         Absolute size of the first step to be taken after t_start.
     max_step : double
         Maximum absolute step sized allowed.
-    max_num_steps : Py_ssize_t
+    max_num_steps : size_t
         Maximum number of steps allowed before integration auto fails.
-    expected_size : Py_ssize_t
+    expected_size : size_t
         Anticipated size of integration range, i.e., how many steps will be required.
         Used to build temporary storage arrays for the solution results.
-    num_concats : Py_ssize_t
+    num_concats : size_t
         Number of concatenations that were required during integration.
         If `expected_size` is too small then it will be expanded as needed. This variable tracks how many expansions
         were required.
@@ -115,7 +114,7 @@ cdef class CySolver:
         If set to False when `run_interpolation=True`, then interpolation will be run on solution's y, t. These will
         then be used to recalculate extra parameters rather than an interpolation on the extra parameters captured
         during integration.
-    len_t_eval : Py_ssize_t
+    len_t_eval : size_t
         Length of user requested independent domain, `t_eval`.
     t_eval_ptr : double*
         Pointer of user requested independent domain, `t_eval`.
@@ -124,23 +123,23 @@ cdef class CySolver:
             0: ‘RK23’: Explicit Runge-Kutta method of order 3(2).
             1: ‘RK45’ (default): Explicit Runge-Kutta method of order 5(4).
             2: ‘DOP853’: Explicit Runge-Kutta method of order 8.
-    rk_order : Py_ssize_t
+    rk_order : size_t
         Runge-Kutta step power.
-    error_order : Py_ssize_t
+    error_order : size_t
         Runge-Kutta error power.
-    rk_n_stages : Py_ssize_t
+    rk_n_stages : size_t
         Number of Runge-Kutta stages performed for each RK step.
-    rk_n_stages_plus1 : Py_ssize_t
+    rk_n_stages_plus1 : size_t
         One more than `rk_n_stages`.
-    rk_n_stages_extended : Py_ssize_t
+    rk_n_stages_extended : size_t
         An extended version of `rk_n_stages` used for DOP853 method.
     error_expo : double
         Exponential used during error calculation. Utilizes `error_order`.
-    len_C : Py_ssize_t
+    len_C : size_t
         Size of RK C array.
-    len_Arows : Py_ssize_t
+    len_Arows : size_t
         Number of rows in (unflattened) RK A 2D array.
-    len_Acols : Py_ssize_t
+    len_Acols : size_t
         Number of columns in (unflattened) RK A 2D array.
     A_ptr : double*
         Pointer of (flattened) RK A parameter (data initialized in self.rk instance)
@@ -162,7 +161,7 @@ cdef class CySolver:
         Value of the independent variable at the previous step.
     step_size : double
         Current step's absolute size.
-    len_t : Py_ssize_t
+    len_t : size_t
         Number of steps taken.
     y_ptr : double*
         Current Pointer of the dependent y variables.
@@ -230,12 +229,12 @@ cdef class CySolver:
             unsigned char rk_method = 1,
             double max_step = MAX_STEP,
             double first_step = 0.,
-            Py_ssize_t max_num_steps = 0,
+            size_t max_num_steps = 0,
             const double[::1] t_eval = None,
             bool_cpp_t capture_extra = False,
-            Py_ssize_t num_extra = 0,
+            size_t num_extra = 0,
             bool_cpp_t interpolate_extra = False,
-            Py_ssize_t expected_size = 0,
+            size_t expected_size = 0,
             bool_cpp_t call_first_reset = True,
             bool_cpp_t auto_solve = True):
         """
@@ -270,7 +269,7 @@ cdef class CySolver:
         first_step : double, default=0
             First step's size (after `t_span[0]`).
             If set to 0 (the default) then the solver will attempt to guess a suitable initial step size.
-        max_num_steps : Py_ssize_t, default=0
+        max_num_steps : size_t, default=0
             Maximum number of step sizes allowed before solver will auto fail.
             If set to 0 (the default) then the maximum number of steps will be equal to max integer size
             allowed on system architecture.
@@ -296,7 +295,7 @@ cdef class CySolver:
             If set to False when `run_interpolation=True`, then interpolation will be run on solution's y, t. These will
             then be used to recalculate extra parameters rather than an interpolation on the extra parameters captured
             during integration.
-        expected_size : Py_ssize_t, default=0
+        expected_size : size_t, default=0
             Anticipated size of integration range, i.e., how many steps will be required.
             Used to build temporary storage arrays for the solution results.
             If set to 0 (the default), then the solver will attempt to guess on a suitable expected size based on the
@@ -311,7 +310,7 @@ cdef class CySolver:
         """
 
         # Loop variables
-        cdef Py_ssize_t i, j
+        cdef size_t i, j
 
         # Set integration information
         self.status  = -4  # Status code to indicate that integration has not started.
@@ -412,28 +411,15 @@ cdef class CySolver:
         cdef double max_expected
         if expected_size == 0:
             # CySolver will attempt to guess on a best size for the arrays.
-            # Pick starting value that works with most problems
-            temp_expected_size = 500.0
-            # If t_delta_abs is very large or rtol is very small, then we may need more. 
-            temp_expected_size = \
-            fmax(
-                temp_expected_size,
-                fmax(
-                    self.t_delta_abs / ARRAY_PREALLOC_TABS_SCALE,
-                    ARRAY_PREALLOC_RTOL_SCALE / rtol_min
-                    )
-                )
-            # Fix values that are very small/large
-            temp_expected_size = fmax(temp_expected_size, MIN_ARRAY_PREALLOCATE_SIZE)
-            if capture_extra:
-                max_expected = MAX_ARRAY_PREALLOCATE_SIZE_DBL / (self.y_size + self.num_extra)
-            else:
-                max_expected = MAX_ARRAY_PREALLOCATE_SIZE_DBL / self.y_size
-            temp_expected_size = fmin(temp_expected_size, max_expected)
-            # Store result as int
-            self.expected_size = <Py_ssize_t>temp_expected_size
+            self.expected_size = find_expected_size(
+                self.y_size,
+                num_extra,
+                self.t_delta_abs,
+                rtol_min,
+                capture_extra,
+                False)
         else:
-            self.expected_size = <Py_ssize_t>expected_size
+            self.expected_size = expected_size
         # Set the current size to the expected size.
         # `expected_size` should never change but current might grow if expected size is not large enough.
         self.current_size = self.expected_size
@@ -525,7 +511,7 @@ cdef class CySolver:
             &self.E5_ptr
             )
 
-        if self.rk_order == -1:
+        if self.rk_order == 0:
             raise AttributeError('Unknown or not-yet-implemented RK method requested.')
         
         self.len_C             = self.rk_n_stages
@@ -553,7 +539,7 @@ cdef class CySolver:
 
     cpdef void reset_state(self):
         """ Resets the class' state variables so that integration can be rerun. """
-        cdef Py_ssize_t i, j
+        cdef size_t i, j
         cdef double temp_double
 
         # Set current and old time variables equal to t0
@@ -696,7 +682,7 @@ cdef class CySolver:
         """ Performs a Runge-Kutta step calculation including local error determination. """
 
         # Initialize step variables
-        cdef Py_ssize_t s, i, j
+        cdef size_t s, i, j
         cdef double min_step, step, step_factor, time_tmp, t_delta_check
         cdef double scale, temp_double
         cdef double error_norm3, error_norm5, error_norm, error_dot_1, error_dot_2, error_denom, error_pow
@@ -936,7 +922,7 @@ cdef class CySolver:
             self.reset_state()
 
         # Setup loop variables
-        cdef Py_ssize_t i, j, new_size
+        cdef size_t i, j, new_size
 
         # Setup storage arrays
         # These arrays are built to fit a number of points equal to `self.expected_size`
@@ -1000,7 +986,7 @@ cdef class CySolver:
                 self.num_concats += 1
 
                 # Grow the array by 50% its current value
-                self.current_size = <Py_ssize_t>(<double>self.current_size * (1.5))
+                self.current_size = <size_t>(<double>self.current_size * (1.5))
 
                 time_domain_array_ptr = <double *> reallocate_mem(
                     time_domain_array_ptr,
@@ -1108,7 +1094,7 @@ cdef class CySolver:
             self.len_t_touse = 1
 
         # Convert solution pointers to a more user-friendly memoryview format.
-        cdef Py_ssize_t y_size_touse, extra_size_touse
+        cdef size_t y_size_touse, extra_size_touse
         y_size_touse     = self.y_size * self.len_t_touse
         extra_size_touse = self.num_extra * self.len_t_touse
 
@@ -1141,7 +1127,7 @@ cdef class CySolver:
         self.status = 2  # Interpolation is being performed.
 
         # Setup loop variables
-        cdef Py_ssize_t i, j
+        cdef size_t i, j
 
         # TODO: The current version of CySolver has not implemented sicpy's dense output. Instead we use an interpolation.
         # Build final interpolated time array
@@ -1271,7 +1257,7 @@ cdef class CySolver:
         """
 
         # Check y-size information
-        cdef Py_ssize_t i, y_size_new
+        cdef size_t i, y_size_new
         y_size_new = len(y0)
 
         if self.y_size != y_size_new:
@@ -1313,7 +1299,7 @@ cdef class CySolver:
             # This function is not as safe as `change_y0` as it assumes that the user provided the same length y0.
 
             # Check y-size information
-            cdef Py_ssize_t i
+            cdef size_t i
 
             # Store y0 values for later
             for i in range(self.y_size):
@@ -1522,7 +1508,7 @@ cdef class CySolver:
             If True, then the `reset_state` method will be called once parameter is changed.
         """
 
-        cdef Py_ssize_t i
+        cdef size_t i
 
         # Determine interpolation information
         self.run_interpolation = True
@@ -1544,7 +1530,7 @@ cdef class CySolver:
     cdef void change_t_eval_pointer(
             self,
             double* t_eval_ptr,
-            Py_ssize_t len_t_eval,
+            size_t len_t_eval,
             bool_cpp_t auto_reset_state = False
             ):
         """
@@ -1742,7 +1728,7 @@ cdef class CySolver:
         #  `__init__` method.
 
         # The default template simply sets all dy to 0.
-        cdef Py_ssize_t i
+        cdef size_t i
         for i in range(self.y_size):
             self.dy_ptr[i] = 0.
 

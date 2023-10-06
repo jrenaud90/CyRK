@@ -20,6 +20,7 @@ Other Changes:
 - Added more meaningful memory error messages to cython files.
   - Memory allocations (or reallocations) are now performed by helper functions in CyRK.utils.
 - Better future-proofed package structure (mainifests, gitignores, etc.).
+- Converted most Py_ssize_t to size_t.
 
 #### v0.8.2 (2023-09-25)
 

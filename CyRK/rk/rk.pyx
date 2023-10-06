@@ -10,11 +10,11 @@ from CyRK.rk.rk_constants cimport \
 
 cdef void find_rk_properties(
         unsigned char rk_method,
-        Py_ssize_t* order,
-        Py_ssize_t* error_order,
-        Py_ssize_t* n_stages,
-        Py_ssize_t* A_rows,
-        Py_ssize_t* A_cols,
+        size_t* order,
+        size_t* error_order,
+        size_t* n_stages,
+        size_t* A_rows,
+        size_t* A_cols,
         double** A_ptr,
         double** B_ptr,
         double** C_ptr,
@@ -59,8 +59,8 @@ cdef void find_rk_properties(
         E5_ptr[0]      = &E5_DOP853[0]
     else:
         # Error: Unknown RK Method
-        order[0]       = -1
-        error_order[0] = -1
-        n_stages[0]    = -1
-        A_rows[0]      = -1
-        A_cols[0]      = -1
+        order[0]       = 0
+        error_order[0] = 0
+        n_stages[0]    = 0
+        A_rows[0]      = 0
+        A_cols[0]      = 0

@@ -15,9 +15,7 @@ from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, NAN
 from CyRK.utils.utils cimport allocate_mem, reallocate_mem
 from CyRK.rk.rk cimport find_rk_properties
 from CyRK.cy.common cimport double_numeric, interpolate, SAFETY, MIN_FACTOR, MAX_FACTOR, MAX_STEP, INF, EPS, \
-    EPS_10, EPS_100, \
-    MAX_INT_SIZE, MIN_ARRAY_PREALLOCATE_SIZE, MAX_ARRAY_PREALLOCATE_SIZE_DBL, MAX_ARRAY_PREALLOCATE_SIZE_DBLCMPLX, \
-    ARRAY_PREALLOC_TABS_SCALE, ARRAY_PREALLOC_RTOL_SCALE
+    EPS_10, EPS_100, MAX_INT_SIZE, find_expected_size
 
 
 cdef double cabs(
@@ -83,10 +81,10 @@ def cyrk_ode(
         unsigned char rk_method = 1,
         double[:] t_eval = None,
         bool_cpp_t capture_extra = False,
-        Py_ssize_t num_extra = 0,
+        size_t num_extra = 0,
         bool_cpp_t interpolate_extra = False,
-        Py_ssize_t expected_size = 0,
-        Py_ssize_t max_num_steps = 0
+        size_t expected_size = 0,
+        size_t max_num_steps = 0
         ):
     """
     cyrk_ode: A Runge-Kutta Solver Implemented in Cython.
@@ -128,7 +126,7 @@ def cyrk_ode(
     first_step : double, default=0
         First step's size (after `t_span[0]`).
         If set to 0 (the default) then the solver will attempt to guess a suitable initial step size.
-    max_num_steps : Py_ssize_t, default=0
+    max_num_steps : size_t, default=0
         Maximum number of step sizes allowed before solver will auto fail.
         If set to 0 (the default) then the maximum number of steps will be equal to max integer size
         allowed on system architecture.
@@ -154,7 +152,7 @@ def cyrk_ode(
         If set to False when `run_interpolation=True`, then interpolation will be run on solution's y, t. These will
         then be used to recalculate extra parameters rather than an interpolation on the extra parameters captured
         during integration.
-    expected_size : Py_ssize_t, default=0
+    expected_size : size_t, default=0
         Anticipated size of integration range, i.e., how many steps will be required.
         Used to build temporary storage arrays for the solution results.
         If set to 0 (the default), then the solver will attempt to guess on a suitable expected size based on the
@@ -173,14 +171,14 @@ def cyrk_ode(
     """
 
     # Setup loop variables
-    cdef Py_ssize_t s, i, j
+    cdef size_t s, i, j
 
     # Setup integration variables
     cdef char status, old_status
     cdef str message
 
     # Determine information about the differential equation based on its initial conditions
-    cdef Py_ssize_t y_size
+    cdef size_t y_size
     cdef double y_size_dbl, y_size_sqrt
     cdef bool_cpp_t y_is_complex
     y_size       = y0.size
@@ -280,39 +278,20 @@ def cyrk_ode(
 
 
     # Expected size of output arrays.
-    cdef Py_ssize_t expected_size_to_use, num_concats, current_size
+    cdef size_t expected_size_to_use, num_concats, current_size
     cdef double temp_expected_size
     cdef double max_expected
     if expected_size == 0:
-        # CySolver will attempt to guess on a best size for the arrays.
-        # Pick starting value that works with most problems
-        temp_expected_size = 500.0
-        # If t_delta_abs is very large or rtol is very small, then we may need more. 
-        temp_expected_size = \
-            fmax(
-                temp_expected_size,
-                fmax(
-                    t_delta_abs / ARRAY_PREALLOC_TABS_SCALE,
-                    ARRAY_PREALLOC_RTOL_SCALE / rtol_min
-                    )
-                )
-        # Fix values that are very small/large
-        temp_expected_size = fmax(temp_expected_size, MIN_ARRAY_PREALLOCATE_SIZE)
-
-        if double_numeric is cython.double:
-            max_expected = MAX_ARRAY_PREALLOCATE_SIZE_DBL
-        else:
-            max_expected = MAX_ARRAY_PREALLOCATE_SIZE_DBLCMPLX
-        if capture_extra:
-            max_expected /= (y_size + num_extra)
-        else:
-            max_expected /= y_size
-        
-        temp_expected_size = fmin(temp_expected_size, max_expected)
-        # Store result as int
-        expected_size_to_use = <Py_ssize_t>temp_expected_size
+        # cyrk_ode will attempt to guess on a best size for the arrays.
+        expected_size_to_use = find_expected_size(
+                y_size,
+                num_extra,
+                t_delta_abs,
+                rtol_min,
+                capture_extra,
+                y_is_complex)
     else:
-        expected_size_to_use = <Py_ssize_t>expected_size
+        expected_size_to_use = expected_size
     # Set the current size to the expected size.
     # `expected_size` should never change but current might grow if expected size is not large enough.
     current_size = expected_size_to_use
@@ -370,7 +349,7 @@ def cyrk_ode(
 
     # If extra output is true then the output of the diffeq will be larger than the size of y0.
     # Determine that extra size by calling the diffeq and checking its size.
-    cdef Py_ssize_t extra_start, total_size
+    cdef size_t extra_start, total_size
     extra_start = y_size
     if capture_extra:
         total_size = y_size + num_extra
@@ -384,7 +363,7 @@ def cyrk_ode(
 
     # Determine interpolation information
     cdef bool_cpp_t run_interpolation
-    cdef Py_ssize_t len_t_eval
+    cdef size_t len_t_eval
     if t_eval is None:
         run_interpolation = False
         interpolate_extra = False
@@ -430,7 +409,7 @@ def cyrk_ode(
     cdef double* E_ptr = NULL
     cdef double* E3_ptr = NULL
     cdef double* E5_ptr = NULL
-    cdef Py_ssize_t rk_order, error_order, rk_n_stages, len_Arows, len_Acols, len_C, rk_n_stages_plus1
+    cdef size_t rk_order, error_order, rk_n_stages, len_Arows, len_Acols, len_C, rk_n_stages_plus1
     cdef double error_expo, error_pow
 
     find_rk_properties(
@@ -448,7 +427,7 @@ def cyrk_ode(
         &E5_ptr
         )
 
-    if rk_order == -1:
+    if rk_order == 0:
         raise AttributeError('Unknown or not-yet-implemented RK method requested.')
     
     len_C             = rk_n_stages
@@ -579,7 +558,7 @@ def cyrk_ode(
 
     # Track number of steps.
     # Initial conditions were provided so the number of steps is already 1
-    cdef Py_ssize_t len_t
+    cdef size_t len_t
     len_t = 1
 
     if y_size == 0:
@@ -807,7 +786,7 @@ def cyrk_ode(
             num_concats += 1
 
             # Grow the array by 50% its current value
-            current_size = <Py_ssize_t>(<double>current_size * (1.5))
+            current_size = <size_t>(<double>current_size * (1.5))
 
             time_domain_array_ptr = <double *> reallocate_mem(
                 time_domain_array_ptr,
@@ -895,7 +874,7 @@ def cyrk_ode(
             solution_extra_ptr[i] = NAN
 
     # Integration is complete. Check if interpolation was requested.
-    cdef Py_ssize_t len_t_touse
+    cdef size_t len_t_touse
     if success:
         if run_interpolation:
             # Use different len_t
@@ -981,7 +960,7 @@ def cyrk_ode(
         status = 1
 
     # Convert solution pointers to a more user-friendly numpy ndarray
-    cdef Py_ssize_t y_size_touse, extra_size_touse
+    cdef size_t y_size_touse, extra_size_touse
     y_size_touse = y_size * len_t_touse
     extra_size_touse = num_extra * len_t_touse
 
