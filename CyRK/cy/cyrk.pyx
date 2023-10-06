@@ -15,7 +15,7 @@ from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, NAN
 from CyRK.utils.utils cimport allocate_mem, reallocate_mem
 from CyRK.rk.rk cimport find_rk_properties
 from CyRK.cy.common cimport double_numeric, interpolate, SAFETY, MIN_FACTOR, MAX_FACTOR, MAX_STEP, INF, EPS, \
-    EPS_10, EPS_100, MAX_INT_SIZE, find_expected_size
+    EPS_10, EPS_100, MAX_INT_SIZE, MAX_SIZET_SIZE, find_expected_size
 
 
 cdef double cabs(
@@ -84,7 +84,8 @@ def cyrk_ode(
         size_t num_extra = 0,
         bool_cpp_t interpolate_extra = False,
         size_t expected_size = 0,
-        size_t max_num_steps = 0
+        size_t max_num_steps = 0,
+        size_t max_ram_MB = 2000
         ):
     """
     cyrk_ode: A Runge-Kutta Solver Implemented in Cython.
@@ -267,15 +268,28 @@ def cyrk_ode(
         # No array provided. Use the same atol for all ys.
         for i in range(y_size):
             atols_ptr[i] = atol
-
-    # Determine maximum number of steps
-    if max_num_steps == 0:
-        max_num_steps = MAX_INT_SIZE
-    elif max_num_steps < 0:
-        raise AttributeError('Negative number of max steps provided.')
+    
+    # Determine max number of steps
+    cdef double max_num_steps_ram
+    max_num_steps_ram = max_ram_MB * (1000 * 1000) / sizeof(double_numeric)
+    if capture_extra:
+        max_num_steps_ram /= (1 + y_size + num_extra)
     else:
-        max_num_steps = min(max_num_steps, MAX_INT_SIZE)
+        max_num_steps_ram /= (1 + y_size)
 
+    # Parse user-provided max number of steps
+    cdef bool_cpp_t user_provided_max_num_steps = False
+    if max_num_steps == 0:
+        # No user input; use ram-based value
+        max_num_steps = max_num_steps_ram
+    else: 
+        if max_num_steps > max_num_steps_ram:
+            max_num_steps = max_num_steps_ram
+        else:
+            user_provided_max_num_steps = True
+    # Make sure that max number of steps does not exceed size_t limit
+    if max_num_steps > (MAX_SIZET_SIZE / 10):
+        max_num_steps = (MAX_SIZET_SIZE / 10)
 
     # Expected size of output arrays.
     cdef size_t expected_size_to_use, num_concats, current_size
@@ -572,12 +586,12 @@ def cyrk_ode(
             break
 
         if len_t > max_num_steps:
-            if max_num_steps == MAX_INT_SIZE:
-                status = -3
-                message = "Maximum number of steps (set by system architecture) exceeded during integration."
-            else:
+            if user_provided_max_num_steps:
                 status = -2
                 message = "Maximum number of steps (set by user) exceeded during integration."
+            else:
+                status = -3
+                message = "Maximum number of steps (set by ram usage limit) exceeded during integration."
             break
 
         # Run RK integration step
