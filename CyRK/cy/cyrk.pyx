@@ -318,7 +318,7 @@ def cyrk_ode(
     cdef double_numeric* dy_ptr
     cdef double_numeric* dy_old_ptr
 
-    y_storage_ptrs = <double_numeric *> allocate_mem(4 * y_size * sizeof(double_numeric), 'y_storage_ptrs (start-up)')
+    y_storage_ptrs = <double_numeric *> allocate_mem(3 * y_size * sizeof(double_numeric), 'y_storage_ptrs (start-up)')
 
     y_old_ptr  = &y_storage_ptrs[0]
     dy_ptr     = &y_storage_ptrs[1 * y_size]
