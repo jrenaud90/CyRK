@@ -14,7 +14,7 @@ np.import_array()
 from CyRK.utils.utils cimport allocate_mem, reallocate_mem
 from CyRK.rk.rk cimport find_rk_properties
 from CyRK.cy.common cimport interpolate, SAFETY, MIN_FACTOR, MAX_FACTOR, MAX_STEP, INF, EPS, EPS_10, EPS_100, \
-    MAX_SIZET_SIZE, find_expected_size
+    MAX_SIZET_SIZE, RAM_BUFFER_SIZE, find_expected_size
 
 cdef (double, double) EMPTY_T_SPAN = (NAN, NAN)
 
@@ -383,7 +383,13 @@ cdef class CySolver:
 
         # Determine max number of steps
         cdef double max_num_steps_ram_dbl
-        max_num_steps_ram_dbl = max_ram_MB * (1000 * 1000) / sizeof(double)
+        max_num_steps_ram_dbl = max_ram_MB * (1000 * 1000)
+        # As of CyRK v0.8.3, the CySolver class takes up about 1200 Bytes of memory.
+        # Buffer the expeceted size up a bit (set by RAM_BUFFER_SIZE) and subtract this from the total we are allowed.
+        max_num_steps_ram_dbl -= <double> RAM_BUFFER_SIZE
+        # Divide by size of data that will be stored in main loop
+        max_num_steps_ram_dbl /= sizeof(double)
+        # Divide by number of dependnet and extra variables that will be stored. The extra "1" is for the time domain.
         if self.capture_extra:
             max_num_steps_ram_dbl /= (1 + self.y_size + self.num_extra)
         else:

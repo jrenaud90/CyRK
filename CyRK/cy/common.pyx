@@ -31,7 +31,11 @@ cdef double MAX_ARRAY_PREALLOCATE_SIZE_DBLCMPLX = 300_000.
 cdef double MIN_ARRAY_PREALLOCATE_SIZE = 10.
 cdef double ARRAY_PREALLOC_TABS_SCALE  = 1000.  # A delta_t_abs higher than this value will start to grow array size.
 cdef double ARRAY_PREALLOC_RTOL_SCALE  = 1.0e-5  # A rtol lower than this value will start to grow array size.
-
+# RAM_BUFFER_SIZE should be set to the max size we expect cyrk_ode or CySolver to be before integration starts.
+#  i.e., before the solution arrays start to grow.
+# As of CyRK v0.8.3 CySolver is around 1200 bytes. Buffer this up to 2000.
+# Note this does not need to be precise. It just should be close.
+cdef size_t RAM_BUFFER_SIZE = 2000
 
 cdef void interpolate(
         double* time_domain_full,

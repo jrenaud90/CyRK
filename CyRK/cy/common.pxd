@@ -23,6 +23,7 @@ cdef double MAX_ARRAY_PREALLOCATE_SIZE_DBLCMPLX
 cdef double MIN_ARRAY_PREALLOCATE_SIZE
 cdef double ARRAY_PREALLOC_TABS_SCALE
 cdef double ARRAY_PREALLOC_RTOL_SCALE
+cdef size_t RAM_BUFFER_SIZE
 
 cdef void interpolate(
         double* time_domain_full,
