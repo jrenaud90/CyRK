@@ -209,7 +209,7 @@ def test_cy2nb_cache_njit():
     assert success_cy
 
     # Perform the function conversion
-    diffeq_nb_converted = cy2nb(diffeq_cy, cache_njit=True)
+    diffeq_nb_converted = cy2nb(diffeq_cy)
 
     # Use this function to recalculate using cyrk
     time_domain_nb_conv, y_results_nb_conv, success_nb_conv, message_nb_conv = \
@@ -247,7 +247,7 @@ def test_nb2cy_cache_njit():
     assert success_cy
 
     # Perform the function conversion
-    diffeq_cy_converted = nb2cy(diffeq_scipy, cache_njit=True)
+    diffeq_cy_converted = nb2cy(diffeq_scipy)
 
     # Use this function to recalculate using cyrk
     time_domain_cy_conv, y_results_cy_conv, success_cy_conv, message_cy_conv = \
