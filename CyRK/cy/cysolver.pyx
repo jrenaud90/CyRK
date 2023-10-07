@@ -382,18 +382,18 @@ cdef class CySolver:
 
         # Determine max number of steps
         cdef double max_num_steps_ram_dbl
-        max_num_steps_ram_dbl = max_ram_MB * (1000 * 1000) / sizeof(double_numeric)
-        if capture_extra:
-            max_num_steps_ram_dbl /= (1 + y_size + num_extra)
+        max_num_steps_ram_dbl = max_ram_MB * (1000 * 1000) / sizeof(double)
+        if self.capture_extra:
+            max_num_steps_ram_dbl /= (1 + self.y_size + self.num_extra)
         else:
-            max_num_steps_ram_dbl /= (1 + y_size)
+            max_num_steps_ram_dbl /= (1 + self.y_size)
         cdef size_t max_num_steps_ram = <size_t> max_num_steps_ram_dbl
 
         # Parse user-provided max number of steps
         self.user_provided_max_num_steps = False
         if max_num_steps == 0:
             # No user input; use ram-based value
-            max_num_steps = max_num_steps_ram
+            self.max_num_steps = max_num_steps_ram
         else: 
             if max_num_steps > max_num_steps_ram:
                 self.max_num_steps = max_num_steps_ram
