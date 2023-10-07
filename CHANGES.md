@@ -26,6 +26,7 @@ Other Changes:
 
 Bug Fixes:
 - Fixed potential memory leaks in cython-based solvers when exceptions are raised.
+  - The new safe guards (likely the try/finally blocks) did cause a somewhat sizable hit to performance.
 
 #### v0.8.2 (2023-09-25)
 

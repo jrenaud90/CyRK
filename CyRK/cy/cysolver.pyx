@@ -990,7 +990,6 @@ cdef class CySolver:
                         self.status = -2
                     else:
                         self.status = -3
-    
                     break
 
                 # # Perform RK Step
