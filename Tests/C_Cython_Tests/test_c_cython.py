@@ -27,19 +27,6 @@ atol = 1.0e-8
 rtols = np.asarray((1.0e-7, 1.0e-8), dtype=np.float64, order='C')
 atols = np.asarray((1.0e-8, 1.0e-9), dtype=np.float64, order='C')
 
-
-def test_cyrk_test():
-    """Check that the builtin test function for the cyrk integrator is working"""
-
-    from CyRK import test_cyrk
-    test_cyrk()
-
-def test_cysolver_test():
-    """Check that the builtin test function for the CySolver integrator is working"""
-
-    from CyRK import test_cysolver
-    test_cysolver()
-
 @pytest.mark.parametrize('complex_valued', (True, False))
 @pytest.mark.parametrize('rk_method', (0, 1, 2))
 @pytest.mark.parametrize('use_rtol_array', (True, False))

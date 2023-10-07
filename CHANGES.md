@@ -22,6 +22,10 @@ Other Changes:
   - Memory allocations (or reallocations) are now performed by helper functions in CyRK.utils.
 - Better future-proofed package structure (mainifests, gitignores, etc.).
 - Converted most Py_ssize_t to size_t.
+- Cleaned up a lot of unused variables and imports.
+
+Bug Fixes:
+- Fixed potential memory leaks in cython-based solvers when exceptions are raised.
 
 #### v0.8.2 (2023-09-25)
 

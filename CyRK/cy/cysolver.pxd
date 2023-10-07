@@ -32,6 +32,7 @@ cdef class CySolver:
     cdef readonly char status
     cdef readonly str message
     cdef public bool_cpp_t success
+    cdef double* tol_ptrs
     cdef double* rtols_ptr
     cdef double* atols_ptr
     cdef double first_step, max_step
