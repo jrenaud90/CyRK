@@ -420,8 +420,6 @@ cdef class CySolver:
             self.num_extra = 1
 
         # Expected size of output arrays.
-        cdef double temp_expected_size
-        cdef double max_expected
         if expected_size == 0:
             # CySolver will attempt to guess on a best size for the arrays.
             self.expected_size = find_expected_size(

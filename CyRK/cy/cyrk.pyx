@@ -294,8 +294,6 @@ def cyrk_ode(
 
     # Expected size of output arrays.
     cdef size_t expected_size_to_use, num_concats, current_size
-    cdef double temp_expected_size
-    cdef double max_expected
     if expected_size == 0:
         # cyrk_ode will attempt to guess on a best size for the arrays.
         expected_size_to_use = find_expected_size(
