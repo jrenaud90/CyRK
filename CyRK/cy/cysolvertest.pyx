@@ -1,10 +1,6 @@
 # distutils: language = c++
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 
-import cython
-import numpy as np
-cimport numpy as np
-np.import_array()
 from libc.math cimport sin, cos
 
 from CyRK.cy.cysolver cimport CySolver

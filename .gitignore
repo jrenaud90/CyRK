@@ -1,6 +1,10 @@
 
-# Ignore cython files
+# Ignore cython-generated files
+*.c
 *.cpp
+
+# Include non-generated c files
+!CyRK/array/interp_common.c
 
 # Ignore coverage files
 .coverage
@@ -10,8 +14,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# C extensions
+# Objext files
 *.so
+*.o
 
 # Distribution / packaging
 .Python
@@ -137,3 +142,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+

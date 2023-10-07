@@ -2,30 +2,20 @@
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 
 import cython
-import sys
+
+from cpython.mem cimport PyMem_Free
+
 import numpy as np
 cimport numpy as np
 np.import_array()
 
-from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
-
 from libcpp cimport bool as bool_cpp_t
-from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, NAN
+from libc.math cimport sqrt, fabs, nextafter, NAN
 
-from CyRK.rk.rk cimport double_numeric, find_rk_properties, populate_rk_arrays
-from CyRK.cy.common cimport interpolate
-
-# # Integration Constants
-# Multiply steps computed from asymptotic behaviour of errors by this.
-cdef double SAFETY = 0.9
-cdef double MIN_FACTOR = 0.2  # Minimum allowed decrease in a step size.
-cdef double MAX_FACTOR = 10.  # Maximum allowed increase in a step size.
-cdef double MAX_STEP = np.inf
-cdef double INF = np.inf
-cdef double EPS = np.finfo(np.float64).eps
-cdef double EPS_10 = EPS * 10.
-cdef double EPS_100 = EPS * 100.
-cdef Py_ssize_t MAX_INT_SIZE = int(0.95 * sys.maxsize)
+from CyRK.utils.utils cimport allocate_mem, reallocate_mem
+from CyRK.rk.rk cimport find_rk_properties
+from CyRK.cy.common cimport double_numeric, interpolate, SAFETY, MIN_FACTOR, MAX_FACTOR, MAX_STEP, INF, \
+    EPS_100, MAX_SIZET_SIZE, RAM_BUFFER_SIZE, find_expected_size
 
 
 cdef double cabs(
@@ -91,10 +81,11 @@ def cyrk_ode(
         unsigned char rk_method = 1,
         double[:] t_eval = None,
         bool_cpp_t capture_extra = False,
-        Py_ssize_t num_extra = 0,
+        size_t num_extra = 0,
         bool_cpp_t interpolate_extra = False,
-        Py_ssize_t expected_size = 0,
-        Py_ssize_t max_num_steps = 0
+        size_t expected_size = 0,
+        size_t max_num_steps = 0,
+        size_t max_ram_MB = 2000
         ):
     """
     cyrk_ode: A Runge-Kutta Solver Implemented in Cython.
@@ -136,7 +127,7 @@ def cyrk_ode(
     first_step : double, default=0
         First step's size (after `t_span[0]`).
         If set to 0 (the default) then the solver will attempt to guess a suitable initial step size.
-    max_num_steps : Py_ssize_t, default=0
+    max_num_steps : size_t, default=0
         Maximum number of step sizes allowed before solver will auto fail.
         If set to 0 (the default) then the maximum number of steps will be equal to max integer size
         allowed on system architecture.
@@ -162,7 +153,7 @@ def cyrk_ode(
         If set to False when `run_interpolation=True`, then interpolation will be run on solution's y, t. These will
         then be used to recalculate extra parameters rather than an interpolation on the extra parameters captured
         during integration.
-    expected_size : Py_ssize_t, default=0
+    expected_size : size_t, default=0
         Anticipated size of integration range, i.e., how many steps will be required.
         Used to build temporary storage arrays for the solution results.
         If set to 0 (the default), then the solver will attempt to guess on a suitable expected size based on the
@@ -179,15 +170,16 @@ def cyrk_ode(
     message : str
         Any integration messages, useful if success=False.
     """
+
     # Setup loop variables
-    cdef Py_ssize_t s, i, j
+    cdef size_t s, i, j
 
     # Setup integration variables
-    cdef char status, old_status
+    cdef char status
     cdef str message
 
     # Determine information about the differential equation based on its initial conditions
-    cdef Py_ssize_t y_size
+    cdef size_t y_size
     cdef double y_size_dbl, y_size_sqrt
     cdef bool_cpp_t y_is_complex
     y_size       = y0.size
@@ -237,18 +229,15 @@ def cyrk_ode(
     cdef double_numeric temp_double_numeric
 
     # Determine integration tolerances
+    cdef double* tol_ptrs = NULL
+    cdef double* rtols_ptr = NULL
+    cdef double* atols_ptr = NULL
+    tol_ptrs  = <double *> allocate_mem(2 * y_size * sizeof(double), 'tol_ptrs (start-up)')
+    rtols_ptr = &tol_ptrs[0]
+    atols_ptr = &tol_ptrs[y_size]
+    
     cdef double rtol_min
-    cdef double* rtols_ptr
-    cdef double* atols_ptr
     rtol_min = INF
-    rtols_ptr = <double *> PyMem_Malloc(y_size * sizeof(double))
-    if not rtols_ptr:
-        raise MemoryError()
-
-    atols_ptr = <double *> PyMem_Malloc(y_size * sizeof(double))
-    if not atols_ptr:
-        raise MemoryError()
-
     if rtols is not None:
         # User provided an arrayed version of rtol.
         if len(rtols) != y_size:
@@ -279,56 +268,77 @@ def cyrk_ode(
         # No array provided. Use the same atol for all ys.
         for i in range(y_size):
             atols_ptr[i] = atol
-
-    # Determine maximum number of steps
-    if max_num_steps == 0:
-        max_num_steps = MAX_INT_SIZE
-    elif max_num_steps < 0:
-        raise AttributeError('Negative number of max steps provided.')
+    
+    # Determine max number of steps
+    cdef double max_num_steps_ram_dbl
+    max_num_steps_ram_dbl = max_ram_MB * (1000 * 1000)
+    # As of CyRK v0.8.3, the CySolver class takes up about 1200 Bytes of memory. Let's assume cyrk_ode takes up a 
+    #  similar amount.
+    # Buffer the expeceted size up a bit (set by RAM_BUFFER_SIZE) and subtract this from the total we are allowed.
+    max_num_steps_ram_dbl -= <double> RAM_BUFFER_SIZE
+    # Divide by size of data that will be stored in main loop
+    max_num_steps_ram_dbl /= sizeof(double_numeric)
+    # Divide by number of dependnet and extra variables that will be stored. The extra "1" is for the time domain.
+    if capture_extra:
+        max_num_steps_ram_dbl /= (1 + y_size + num_extra)
     else:
-        max_num_steps = min(max_num_steps, MAX_INT_SIZE)
+        max_num_steps_ram_dbl /= (1 + y_size)
+    cdef size_t max_num_steps_ram = <size_t> max_num_steps_ram_dbl
+
+    # Parse user-provided max number of steps
+    cdef bool_cpp_t user_provided_max_num_steps = False
+    if max_num_steps == 0:
+        # No user input; use ram-based value
+        max_num_steps = max_num_steps_ram
+    else: 
+        if max_num_steps > max_num_steps_ram:
+            max_num_steps = max_num_steps_ram
+        else:
+            user_provided_max_num_steps = True
+    # Make sure that max number of steps does not exceed size_t limit
+    if max_num_steps > (MAX_SIZET_SIZE / 10):
+        max_num_steps = (MAX_SIZET_SIZE / 10)
 
     # Expected size of output arrays.
-    cdef double temp_expected_size
-    cdef Py_ssize_t expected_size_to_use, num_concats, new_size
+    cdef size_t expected_size_to_use, num_concats, current_size
     if expected_size == 0:
-        # CySolver will attempt to guess the best size for the output arrays.
-        temp_expected_size = t_delta_abs * fmax(1., (1.e-6 / rtol_min))
-        temp_expected_size = fmax(temp_expected_size, 500.)
-        temp_expected_size = fmin(temp_expected_size, 1_000_000.)
-        expected_size_to_use = <Py_ssize_t>temp_expected_size
+        # cyrk_ode will attempt to guess on a best size for the arrays.
+        expected_size_to_use = find_expected_size(
+                y_size,
+                num_extra,
+                t_delta_abs,
+                rtol_min,
+                capture_extra,
+                y_is_complex)
     else:
-        expected_size_to_use = <Py_ssize_t>expected_size
-    # This variable tracks how many times the storage arrays have been appended.
-    # It starts at 1 since there is at least one storage array present.
-    num_concats = 1
+        expected_size_to_use = expected_size
+    # Set the current size to the expected size.
+    # `expected_size` should never change but current might grow if expected size is not large enough.
+    current_size = expected_size_to_use
+    num_concats  = 1
 
     # Initialize live variable arrays
-    cdef double_numeric* y_old_ptr
-    cdef double_numeric* dy_ptr
-    cdef double_numeric* dy_old_ptr
+    cdef double_numeric* y_storage_ptrs = NULL
+    cdef double_numeric* y_old_ptr = NULL
+    cdef double_numeric* dy_ptr = NULL
+    cdef double_numeric* dy_old_ptr = NULL
 
-    y_old_ptr = <double_numeric *> PyMem_Malloc(y_size * sizeof(double_numeric))
-    if not y_old_ptr:
-        raise MemoryError()
-    dy_ptr = <double_numeric *> PyMem_Malloc(y_size * sizeof(double_numeric))
-    if not dy_ptr:
-        raise MemoryError()
-    dy_old_ptr = <double_numeric *> PyMem_Malloc(y_size * sizeof(double_numeric))
-    if not dy_old_ptr:
-        raise MemoryError()
+    y_storage_ptrs = <double_numeric *> allocate_mem(3 * y_size * sizeof(double_numeric), 'y_storage_ptrs (start-up)')
+
+    y_old_ptr  = &y_storage_ptrs[0]
+    dy_ptr     = &y_storage_ptrs[1 * y_size]
+    dy_old_ptr = &y_storage_ptrs[2 * y_size]
 
     # Build memoryviews based on y_view and dy_ptr that can be passed to the diffeq.
     # This is process is different than CySolver which strictly uses c pointers.
     # These memoryviews allow for user-provided diffeqs that are not cython/compiled.
     y_array = np.empty(y_size, dtype=DTYPE, order='C')
-    cdef double_numeric[::1] y_view
-    y_view = y_array
+    cdef double_numeric[::1] y_view = y_array
 
     # Store y0 into the y arrays
     for i in range(y_size):
         temp_double_numeric = y0[i]
-        y_view[i]     = temp_double_numeric
+        y_view[i]    = temp_double_numeric
         y_old_ptr[i] = temp_double_numeric
 
     # Determine extra outputs
@@ -343,15 +353,14 @@ def cyrk_ode(
         # are properly initialized
         num_extra = 1
 
-    cdef double_numeric* extra_output_init_ptr
-    extra_output_init_ptr = <double_numeric *> PyMem_Malloc(num_extra * sizeof(double_numeric))
-    if not extra_output_init_ptr:
-        raise MemoryError()
-
-    cdef double_numeric* extra_output_ptr
-    extra_output_ptr = <double_numeric *> PyMem_Malloc(num_extra * sizeof(double_numeric))
-    if not extra_output_ptr:
-        raise MemoryError()
+    cdef double_numeric* extra_output_init_ptr = NULL
+    cdef double_numeric* extra_output_ptr = NULL
+    extra_output_init_ptr = <double_numeric *> allocate_mem(
+        num_extra * sizeof(double_numeric),
+        'extra_output_init_ptr (start-up)')
+    extra_output_ptr = <double_numeric *> allocate_mem(
+        num_extra * sizeof(double_numeric),
+        'extra_output_ptr (start-up)')
 
     for i in range(num_extra):
         extra_output_init_ptr[i] = NAN
@@ -359,7 +368,7 @@ def cyrk_ode(
 
     # If extra output is true then the output of the diffeq will be larger than the size of y0.
     # Determine that extra size by calling the diffeq and checking its size.
-    cdef Py_ssize_t extra_start, total_size
+    cdef size_t extra_start, total_size
     extra_start = y_size
     if capture_extra:
         total_size = y_size + num_extra
@@ -368,12 +377,11 @@ def cyrk_ode(
 
     # Build pointer to store results of diffeq
     diffeq_out_array = np.empty(total_size, dtype=DTYPE, order='C')
-    cdef double_numeric[::1] diffeq_out_view
-    diffeq_out_view = diffeq_out_array
+    cdef double_numeric[::1] diffeq_out_view = diffeq_out_array
 
     # Determine interpolation information
     cdef bool_cpp_t run_interpolation
-    cdef Py_ssize_t len_t_eval
+    cdef size_t len_t_eval
     if t_eval is None:
         run_interpolation = False
         interpolate_extra = False
@@ -384,10 +392,8 @@ def cyrk_ode(
         interpolate_extra = interpolate_extra
         len_t_eval = len(t_eval)
 
-    cdef double* t_eval_ptr
-    t_eval_ptr = <double *> PyMem_Malloc(len_t_eval * sizeof(double))
-    if not t_eval_ptr:
-        raise MemoryError()
+    cdef double* t_eval_ptr = NULL
+    t_eval_ptr = <double *> allocate_mem(len_t_eval * sizeof(double), 't_eval_ptr (start-up)')
     for i in range(len_t_eval):
         if run_interpolation:
             t_eval_ptr[i] = t_eval[i]
@@ -415,98 +421,69 @@ def cyrk_ode(
             extra_output_init_ptr[i] = diffeq_out_view[extra_start + i]
 
     # Determine RK scheme and initialize RK memory views
-    cdef double_numeric* A_ptr
-    cdef double_numeric* B_ptr
-    cdef double* C_ptr
-    cdef double_numeric* E_ptr
-    cdef double_numeric* E3_ptr
-    cdef double_numeric* E5_ptr
-    cdef Py_ssize_t rk_order, error_order, rk_n_stages, len_Arows, len_Acols, len_C, rk_n_stages_plus1
+    cdef double* A_ptr = NULL
+    cdef double* B_ptr = NULL
+    cdef double* C_ptr = NULL
+    cdef double* E_ptr = NULL
+    cdef double* E3_ptr = NULL
+    cdef double* E5_ptr = NULL
+    cdef size_t rk_order, error_order, rk_n_stages, len_Arows, len_Acols, len_C, rk_n_stages_plus1
     cdef double error_expo, error_pow
-    rk_order, error_order, rk_n_stages, len_Arows, len_Acols = find_rk_properties(rk_method)
+
+    find_rk_properties(
+        rk_method,
+        &rk_order,
+        &error_order,
+        &rk_n_stages,
+        &len_Arows,
+        &len_Acols,
+        &A_ptr,
+        &B_ptr,
+        &C_ptr,
+        &E_ptr,
+        &E3_ptr,
+        &E5_ptr
+        )
+
+    if rk_order == 0:
+        raise AttributeError('Unknown or not-yet-implemented RK method requested.')
+    
     len_C             = rk_n_stages
     rk_n_stages_plus1 = rk_n_stages + 1
-    error_expo        = 1. / (<double> error_order + 1.)
-
-    cdef double error_norm5, error_norm3, error_norm, error_norm_abs, error_norm3_abs, error_norm5_abs, error_denom
-
-    if rk_order == -1:
-        raise AttributeError('Unknown RK Method Provided.')
-
-    # Initialize RK arrays
-    A_ptr = <double_numeric *> PyMem_Malloc(len_Arows * len_Acols * sizeof(double_numeric))
-    if not A_ptr:
-        raise MemoryError()
-    B_ptr = <double_numeric *> PyMem_Malloc(rk_n_stages * sizeof(double_numeric))
-    if not B_ptr:
-        raise MemoryError()
-    # Note: C is always a double no matter if y is complex or not.
-    C_ptr = <double *> PyMem_Malloc(rk_n_stages * sizeof(double))
-    if not C_ptr:
-        raise MemoryError()
-
-    if rk_method == 2:
-        # DOP853 requires 2 error array pointers. Set the other error array to nan
-        E_ptr = <double_numeric *> PyMem_Malloc(1 * sizeof(double_numeric))
-        if not E_ptr:
-            raise MemoryError()
-        E_ptr[0] = NAN
-
-        E3_ptr = <double_numeric *> PyMem_Malloc(rk_n_stages_plus1 * sizeof(double_numeric))
-        if not E3_ptr:
-            raise MemoryError()
-        E5_ptr = <double_numeric *> PyMem_Malloc(rk_n_stages_plus1 * sizeof(double_numeric))
-        if not E5_ptr:
-            raise MemoryError()
-    else:
-        # RK23/RK45 only require 1 error array pointers. Set the other error arrays to nan
-        E3_ptr = <double_numeric *> PyMem_Malloc(1 * sizeof(double_numeric))
-        if not E3_ptr:
-            raise MemoryError()
-        E5_ptr = <double_numeric *> PyMem_Malloc(1 * sizeof(double_numeric))
-        if not E5_ptr:
-            raise MemoryError()
-        E3_ptr[0] = NAN
-        E5_ptr[0] = NAN
-
-        E_ptr = <double_numeric *> PyMem_Malloc(rk_n_stages_plus1 * sizeof(double_numeric))
-        if not E_ptr:
-            raise MemoryError()
-
-    # Populate arrays with RK constants
-    populate_rk_arrays(rk_method, A_ptr, B_ptr, C_ptr, E_ptr, E3_ptr, E5_ptr)
-
+    error_expo        = 1. / (<double>error_order + 1.)
+    
     # Initialize other RK-related Arrays
-    cdef double_numeric* K_ptr
-    K_ptr = <double_numeric *> PyMem_Malloc(rk_n_stages_plus1 * y_size * sizeof(double_numeric))
-    if not K_ptr:
-        raise MemoryError()
+    cdef double_numeric* K_ptr = NULL
+    K_ptr = <double_numeric *> allocate_mem(rk_n_stages_plus1 * y_size * sizeof(double_numeric), 'K_ptr (start-up)')
     # It is important K be initialized with 0s
     for i in range(rk_n_stages_plus1):
         for j in range(y_size):
             K_ptr[i * y_size + j] = 0.
+    
+    cdef double error_norm5, error_norm3, error_norm, error_norm_abs, error_norm3_abs, error_norm5_abs, error_denom
 
     # Other RK Optimizations
-    cdef double_numeric A_at_sj, A_at_10, B_at_j, K_
+    cdef double A_at_sj, A_at_10, B_at_j
+    cdef double_numeric K_
     A_at_10 = A_ptr[1 * len_Acols + 0]
 
     # Setup storage arrays
     # These arrays are built to fit a number of points equal to expected_size_to_use
     # If the integration needs more than that then a new array will be concatenated (with performance costs) to these.
-    cdef double* time_domain_array_ptr
-    cdef double_numeric* y_results_array_ptr
-    cdef double_numeric* extra_array_ptr
+    cdef double* time_domain_array_ptr = NULL
+    cdef double_numeric* y_results_array_ptr = NULL
+    cdef double_numeric* extra_array_ptr = NULL
 
-    time_domain_array_ptr = <double *> PyMem_Malloc(expected_size_to_use * sizeof(double))
-    if not time_domain_array_ptr:
-        raise MemoryError()
-    y_results_array_ptr = <double_numeric *> PyMem_Malloc(y_size * expected_size_to_use * sizeof(double_numeric))
-    if not y_results_array_ptr:
-        raise MemoryError()
+    time_domain_array_ptr = <double *> allocate_mem(
+        expected_size_to_use * sizeof(double),
+        'time_domain_array_ptr (start-up)')
+    y_results_array_ptr = <double_numeric *> allocate_mem(
+        y_size * expected_size_to_use * sizeof(double_numeric),
+        'y_results_array_ptr (start-up)')
     if capture_extra:
-        extra_array_ptr = <double_numeric *> PyMem_Malloc(num_extra * expected_size_to_use * sizeof(double_numeric))
-        if not extra_array_ptr:
-            raise MemoryError()
+        extra_array_ptr = <double_numeric *> allocate_mem(
+            num_extra * expected_size_to_use * sizeof(double_numeric),
+            'extra_array_ptr (start-up)')
 
     # Load initial conditions into storage arrays
     time_domain_array_ptr[0] = t_start
@@ -516,562 +493,600 @@ def cyrk_ode(
         for i in range(num_extra):
             extra_array_ptr[i] = extra_output_init_ptr[i]
 
-    # # Determine size of first step.
+    # Solution pointers
+    cdef double* solution_t_ptr = NULL
+    cdef double_numeric* solution_y_ptr = NULL
+    cdef double_numeric* solution_extra_ptr = NULL
+
+    # Determine size of first step.
     cdef double d0, d1, d2, d0_abs, d1_abs, d2_abs, h0, h1, scale
     cdef double step, step_size, min_step, step_factor
-    cdef double_numeric step_numeric
-    if first_step == 0.:
-        # Select an initial step size based on the differential equation.
-        # .. [1] E. Hairer, S. P. Norsett G. Wanner, "Solving Ordinary Differential
-        #        Equations I: Nonstiff Problems", Sec. II.4.
-        if y_size == 0:
-            step_size = INF
+
+    # Integration flags and variables
+    cdef bool_cpp_t success, step_accepted, step_rejected, step_error
+    cdef size_t len_t
+
+    # Integration completion variables
+    cdef size_t len_t_touse
+    cdef double* interpolated_solution_t_ptr = NULL
+    cdef double_numeric* interpolated_solution_y_ptr = NULL
+    cdef double_numeric* interpolated_solution_extra_ptr = NULL
+    cdef np.ndarray[np.float64_t, ndim=1, mode='c'] solution_t
+    cdef np.ndarray[double_numeric, ndim=2, mode='c'] solution_y
+    cdef double[::1] solution_t_view
+    cdef double_numeric[:, ::1] solution_y_view
+
+    try:
+        if first_step == 0.:
+            # Select an initial step size based on the differential equation.
+            # .. [1] E. Hairer, S. P. Norsett G. Wanner, "Solving Ordinary Differential
+            #        Equations I: Nonstiff Problems", Sec. II.4.
+            if y_size == 0:
+                step_size = INF
+            else:
+                # Find the norm for d0 and d1
+                d0 = 0.
+                d1 = 0.
+                for i in range(y_size):
+
+                    temp_double = dabs(y_old_ptr[i])
+                    scale = atols_ptr[i] + dabs(temp_double) * rtols_ptr[i]
+                    d0_abs = dabs(temp_double) / scale
+                    d1_abs = dabs(dy_old_ptr[i]) / scale
+                    d0 += (d0_abs * d0_abs)
+                    d1 += (d1_abs * d1_abs)
+
+                d0 = sqrt(d0) / y_size_sqrt
+                d1 = sqrt(d1) / y_size_sqrt
+
+                if d0 < 1.e-5 or d1 < 1.e-5:
+                    h0 = 1.e-6
+                else:
+                    h0 = 0.01 * d0 / d1
+
+                if direction_flag:
+                    h0_direction = h0
+                else:
+                    h0_direction = -h0
+                t_now = t_old + h0_direction
+                for i in range(y_size):
+                    y_view[i] = y_old_ptr[i] + h0_direction * dy_old_ptr[i]
+
+                if use_args:
+                    diffeq(t_now, y_array, diffeq_out_array, *args)
+                else:
+                    diffeq(t_now, y_array, diffeq_out_array)
+
+                # Find the norm for d2
+                d2 = 0.
+                for i in range(y_size):
+                    temp_double_numeric = diffeq_out_view[i]
+                    dy_ptr[i] = temp_double_numeric
+                    scale = atols_ptr[i] + dabs(y_old_ptr[i]) * rtols_ptr[i]
+                    d2_abs = dabs( (temp_double_numeric - dy_old_ptr[i]) ) / scale
+                    d2 += (d2_abs * d2_abs)
+
+                d2 = sqrt(d2) / (h0 * y_size_sqrt)
+
+                if d1 <= 1.e-15 and d2 <= 1.e-15:
+                    h1 = max(1.e-6, h0 * 1.e-3)
+                else:
+                    h1 = (0.01 / max(d1, d2))**error_expo
+
+                step_size = max(10. * fabs(nextafter(t_old, direction_inf) - t_old), min(100. * h0, h1))
         else:
-            # Find the norm for d0 and d1
-            d0 = 0.
-            d1 = 0.
-            for i in range(y_size):
+            if first_step <= 0.:
+                status = -8
+                message = "Attribute error."
+                raise AttributeError('Error in user-provided step size: Step size must be a positive number.')
+            elif first_step > t_delta_abs:
+                status = -8
+                message = "Attribute error."
+                raise AttributeError('Error in user-provided step size: Step size can not exceed bounds.')
+            step_size = first_step
 
-                temp_double = dabs(y_old_ptr[i])
-                scale = atols_ptr[i] + dabs(temp_double) * rtols_ptr[i]
-                d0_abs = dabs(temp_double) / scale
-                d1_abs = dabs(dy_old_ptr[i]) / scale
-                d0 += (d0_abs * d0_abs)
-                d1 += (d1_abs * d1_abs)
-
-            d0 = sqrt(d0) / y_size_sqrt
-            d1 = sqrt(d1) / y_size_sqrt
-
-            if d0 < 1.e-5 or d1 < 1.e-5:
-                h0 = 1.e-6
-            else:
-                h0 = 0.01 * d0 / d1
-
-            if direction_flag:
-                h0_direction = h0
-            else:
-                h0_direction = -h0
-            t_now = t_old + h0_direction
-            for i in range(y_size):
-                y_view[i] = y_old_ptr[i] + h0_direction * dy_old_ptr[i]
-
-            if use_args:
-                diffeq(t_now, y_array, diffeq_out_array, *args)
-            else:
-                diffeq(t_now, y_array, diffeq_out_array)
-
-            # Find the norm for d2
-            d2 = 0.
-            for i in range(y_size):
-                temp_double_numeric = diffeq_out_view[i]
-                dy_ptr[i] = temp_double_numeric
-                scale = atols_ptr[i] + dabs(y_old_ptr[i]) * rtols_ptr[i]
-                d2_abs = dabs( (temp_double_numeric - dy_old_ptr[i]) ) / scale
-                d2 += (d2_abs * d2_abs)
-
-            d2 = sqrt(d2) / (h0 * y_size_sqrt)
-
-            if d1 <= 1.e-15 and d2 <= 1.e-15:
-                h1 = max(1.e-6, h0 * 1.e-3)
-            else:
-                h1 = (0.01 / max(d1, d2))**error_expo
-
-            step_size = max(10. * fabs(nextafter(t_old, direction_inf) - t_old), min(100. * h0, h1))
-    else:
-        if first_step <= 0.:
-            status = -8
-            message = "Attribute error."
-            raise AttributeError('Error in user-provided step size: Step size must be a positive number.')
-        elif first_step > t_delta_abs:
-            status = -8
-            message = "Attribute error."
-            raise AttributeError('Error in user-provided step size: Step size can not exceed bounds.')
-        step_size = first_step
-
-    # # Main integration loop
-    # Set integration flags
-    cdef bool_cpp_t success, step_accepted, step_rejected, step_error,
-    success       = False
-    step_accepted = False
-    step_rejected = False
-    step_error    = False
-    status        = 0
-    message       = "Integration is/was ongoing (perhaps it was interrupted?)."
-
-    # Track number of steps.
-    # Initial conditions were provided so the number of steps is already 1
-    cdef Py_ssize_t len_t
-    len_t = 1
-
-    if y_size == 0:
-        status = -6
-        message = "Integration never started: y-size is zero."
-
-    while status == 0:
-        if t_now == t_end:
-            t_old = t_end
-            status = 1
-            break
-
-        if len_t > max_num_steps:
-            if max_num_steps == MAX_INT_SIZE:
-                status = -3
-                message = "Maximum number of steps (set by system architecture) exceeded during integration."
-            else:
-                status = -2
-                message = "Maximum number of steps (set by user) exceeded during integration."
-            break
-
-        # Run RK integration step
-        # Determine step size based on previous loop
-        # Find minimum step size based on the value of t (less floating point numbers between numbers when t is large)
-        min_step = 10. * fabs(nextafter(t_old, direction_inf) - t_old)
-        # Look for over/undershoots in previous step size
-        if step_size > max_step:
-            step_size = max_step
-        elif step_size < min_step:
-            step_size = min_step
-
-        # Determine new step size
+        # # Main integration loop
+        # Set integration flags
+        success       = False
         step_accepted = False
         step_rejected = False
         step_error    = False
+        status        = 0
+        message       = "Integration is/was ongoing (perhaps it was interrupted?)."
 
-        # # Step Loop
-        while not step_accepted:
+        # Track number of steps.
+        # Initial conditions were provided so the number of steps is already 1
+        len_t = 1
 
-            if step_size < min_step:
-                step_error = True
-                status     = -1
+        if y_size == 0:
+            status = -6
+            message = "Integration never started: y-size is zero."
+
+        while status == 0:
+            if t_now == t_end:
+                t_old = t_end
+                status = 1
                 break
 
-            # Move time forward for this particular step size
-            if direction_flag:
-                step = step_size
-                t_now = t_old + step
-                t_delta_check = t_now - t_end
-            else:
-                step = -step_size
-                t_now = t_old + step
-                t_delta_check = t_end - t_now
+            if len_t > max_num_steps:
+                if user_provided_max_num_steps:
+                    status = -2
+                    message = "Maximum number of steps (set by user) exceeded during integration."
+                else:
+                    status = -3
+                    message = "Maximum number of steps (set by ram usage limit) exceeded during integration."
+                break
 
-            # Check that we are not at the end of integration with that move
-            if t_delta_check > 0.:
-                t_now = t_end
+            # Run RK integration step
+            # Determine step size based on previous loop
+            # Find minimum step size based on the value of t (less floating point numbers between numbers when t is large)
+            min_step = 10. * fabs(nextafter(t_old, direction_inf) - t_old)
+            # Look for over/undershoots in previous step size
+            if step_size > max_step:
+                step_size = max_step
+            elif step_size < min_step:
+                step_size = min_step
 
-                # Correct the step if we were at the end of integration
-                step = t_now - t_old
+            # Determine new step size
+            step_accepted = False
+            step_rejected = False
+            step_error    = False
+
+            # # Step Loop
+            while not step_accepted:
+
+                if step_size < min_step:
+                    step_error = True
+                    status     = -1
+                    break
+
+                # Move time forward for this particular step size
                 if direction_flag:
-                    step_size = step
+                    step = step_size
+                    t_now = t_old + step
+                    t_delta_check = t_now - t_end
                 else:
-                    step_size = -step
-            step_numeric = <double_numeric>step
+                    step = -step_size
+                    t_now = t_old + step
+                    t_delta_check = t_end - t_now
 
-            # Calculate derivative using RK method
-            # Dot Product (K, a) * step
-            for s in range(1, len_C):
-                time_ = t_old + C_ptr[s] * step
+                # Check that we are not at the end of integration with that move
+                if t_delta_check > 0.:
+                    t_now = t_end
 
+                    # Correct the step if we were at the end of integration
+                    step = t_now - t_old
+                    if direction_flag:
+                        step_size = step
+                    else:
+                        step_size = -step
+
+                # Calculate derivative using RK method
                 # Dot Product (K, a) * step
-                if s == 1:
-                    for i in range(y_size):
-                        # Set the first column of K
-                        temp_double_numeric = dy_old_ptr[i]
-                        K_ptr[i] = temp_double_numeric
+                for s in range(1, len_C):
+                    time_ = t_old + C_ptr[s] * step
 
-                        # Calculate y_new for s==1
-                        y_view[i] = y_old_ptr[i] + (temp_double_numeric * A_at_10 * step_numeric)
-                else:
-                    for j in range(s):
-                        A_at_sj = A_ptr[s * len_Acols + j] * step_numeric
+                    # Dot Product (K, a) * step
+                    if s == 1:
                         for i in range(y_size):
-                            if j == 0:
-                                # Initialize
-                                y_view[i] = y_old_ptr[i]
+                            # Set the first column of K
+                            temp_double_numeric = dy_old_ptr[i]
+                            K_ptr[i] = temp_double_numeric
 
-                            y_view[i] += K_ptr[j * y_size + i] * A_at_sj
+                            # Calculate y_new for s==1
+                            y_view[i] = y_old_ptr[i] + (temp_double_numeric * A_at_10 * step)
+                    else:
+                        for j in range(s):
+                            A_at_sj = A_ptr[s * len_Acols + j] * step
+                            for i in range(y_size):
+                                if j == 0:
+                                    # Initialize
+                                    y_view[i] = y_old_ptr[i]
 
+                                y_view[i] += K_ptr[j * y_size + i] * A_at_sj
+
+                    if use_args:
+                        diffeq(time_, y_array, diffeq_out_array, *args)
+                    else:
+                        diffeq(time_, y_array, diffeq_out_array)
+
+                    for i in range(y_size):
+                        K_ptr[s * y_size + i] = diffeq_out_view[i]
+
+                # Dot Product (K, B) * step
+                for j in range(rk_n_stages):
+                    B_at_j = B_ptr[j] * step
+                    # We do not use rk_n_stages_plus1 here because we are chopping off the last row of K to match
+                    #  the shape of B.
+                    for i in range(y_size):
+                        if j == 0:
+                            # Initialize
+                            y_view[i] = y_old_ptr[i]
+
+                        y_view[i] += K_ptr[j * y_size + i] * B_at_j
+
+                # Find final dydt for this timestep
                 if use_args:
-                    diffeq(time_, y_array, diffeq_out_array, *args)
+                    diffeq(t_now, y_array, diffeq_out_array, *args)
                 else:
-                    diffeq(time_, y_array, diffeq_out_array)
+                    diffeq(t_now, y_array, diffeq_out_array)
 
-                for i in range(y_size):
-                    K_ptr[s * y_size + i] = diffeq_out_view[i]
+                # Store extra
+                if capture_extra:
+                    for i in range(num_extra):
+                        extra_output_ptr[i] = diffeq_out_view[extra_start + i]
 
-            # Dot Product (K, B) * step
-            for j in range(rk_n_stages):
-                B_at_j = B_ptr[j] * step_numeric
-                # We do not use rk_n_stages_plus1 here because we are chopping off the last row of K to match
-                #  the shape of B.
-                for i in range(y_size):
-                    if j == 0:
+                if rk_method == 2:
+                    # Calculate Error for DOP853
+                    # Find norms for each error
+                    error_norm5 = 0.
+                    error_norm3 = 0.
+                    # Dot Product (K, E5) / scale and Dot Product (K, E3) * step / scale
+                    for i in range(y_size):
+                        # Find scale of y for error calculations
+                        scale = atols_ptr[i] + max(dabs(y_old_ptr[i]), dabs(y_view[i])) * rtols_ptr[i]
+
+                        # Set diffeq results
+                        temp_double_numeric = diffeq_out_view[i]
+                        dy_ptr[i] = temp_double_numeric
+
+                        # Set last array of K equal to dydt
+                        K_ptr[rk_n_stages * y_size + i] = temp_double_numeric
                         # Initialize
-                        y_view[i] = y_old_ptr[i]
+                        error_dot_1 = 0.
+                        error_dot_2 = 0.
+                        for j in range(rk_n_stages_plus1):
 
-                    y_view[i] += K_ptr[j * y_size + i] * B_at_j
+                            K_ = K_ptr[j * y_size + i]
+                            error_dot_1 += K_ * E3_ptr[j]
+                            error_dot_2 += K_ * E5_ptr[j]
 
-            # Find final dydt for this timestep
-            if use_args:
-                diffeq(t_now, y_array, diffeq_out_array, *args)
-            else:
-                diffeq(t_now, y_array, diffeq_out_array)
+                        error_norm3_abs = dabs(error_dot_1) / scale
+                        error_norm5_abs = dabs(error_dot_2) / scale
 
-            # Store extra
-            if capture_extra:
-                for i in range(num_extra):
-                    extra_output_ptr[i] = diffeq_out_view[extra_start + i]
+                        error_norm3 += (error_norm3_abs * error_norm3_abs)
+                        error_norm5 += (error_norm5_abs * error_norm5_abs)
 
-            if rk_method == 2:
-                # Calculate Error for DOP853
-                # Find norms for each error
-                error_norm5 = 0.
-                error_norm3 = 0.
-                # Dot Product (K, E5) / scale and Dot Product (K, E3) * step / scale
-                for i in range(y_size):
-                    # Find scale of y for error calculations
-                    scale = atols_ptr[i] + max(dabs(y_old_ptr[i]), dabs(y_view[i])) * rtols_ptr[i]
+                    # Check if errors are zero
+                    if (error_norm5 == 0.) and (error_norm3 == 0.):
+                        error_norm = 0.
+                    else:
+                        error_denom = error_norm5 + 0.01 * error_norm3
+                        error_norm  = step_size * error_norm5 / sqrt(error_denom * y_size_dbl)
 
-                    # Set diffeq results
-                    temp_double_numeric = diffeq_out_view[i]
-                    dy_ptr[i] = temp_double_numeric
-
-                    # Set last array of K equal to dydt
-                    K_ptr[rk_n_stages * y_size + i] = temp_double_numeric
-                    for j in range(rk_n_stages_plus1):
-                        if j == 0:
-                            # Initialize
-                            error_dot_1 = 0.
-                            error_dot_2 = 0.
-
-                        K_ = K_ptr[j * y_size + i]
-                        error_dot_1 += K_ * E3_ptr[j]
-                        error_dot_2 += K_ * E5_ptr[j]
-
-                    error_norm3_abs = dabs(error_dot_1) / scale
-                    error_norm5_abs = dabs(error_dot_2) / scale
-
-                    error_norm3 += (error_norm3_abs * error_norm3_abs)
-                    error_norm5 += (error_norm5_abs * error_norm5_abs)
-
-                # Check if errors are zero
-                if (error_norm5 == 0.) and (error_norm3 == 0.):
-                    error_norm = 0.
                 else:
-                    error_denom = error_norm5 + 0.01 * error_norm3
-                    error_norm  = step_size * error_norm5 / sqrt(error_denom * y_size_dbl)
+                    # Calculate Error for RK23 and RK45
+                    # Dot Product (K, E) * step / scale
+                    error_norm = 0.
+                    for i in range(y_size):
+                        # Find scale of y for error calculations
+                        scale = atols_ptr[i] + max(dabs(y_old_ptr[i]), dabs(y_view[i])) * rtols_ptr[i]
 
-            else:
-                # Calculate Error for RK23 and RK45
-                # Dot Product (K, E) * step / scale
-                error_norm = 0.
-                for i in range(y_size):
-                    # Find scale of y for error calculations
-                    scale = atols_ptr[i] + max(dabs(y_old_ptr[i]), dabs(y_view[i])) * rtols_ptr[i]
+                        # Set diffeq results
+                        temp_double_numeric = diffeq_out_view[i]
+                        dy_ptr[i] = temp_double_numeric
 
-                    # Set diffeq results
-                    temp_double_numeric = diffeq_out_view[i]
-                    dy_ptr[i] = temp_double_numeric
+                        # Set last array of K equal to dydt
+                        K_ptr[rk_n_stages * y_size + i] = temp_double_numeric
+                        # Initialize
+                        error_dot_1 = 0.
+                        for j in range(rk_n_stages_plus1):
 
-                    # Set last array of K equal to dydt
-                    K_ptr[rk_n_stages * y_size + i] = temp_double_numeric
-                    for j in range(rk_n_stages_plus1):
-                        if j == 0:
-                            # Initialize
-                            error_dot_1 = 0.
+                            error_dot_1 += K_ptr[j * y_size + i] * E_ptr[j]
 
-                        error_dot_1 += K_ptr[j * y_size + i] * E_ptr[j]
+                        error_norm_abs = dabs(error_dot_1) * (step / scale)
+                        error_norm    += (error_norm_abs * error_norm_abs)
+                    error_norm = sqrt(error_norm) / y_size_sqrt
 
-                    error_norm_abs = dabs(error_dot_1) * (step / scale)
-                    error_norm    += (error_norm_abs * error_norm_abs)
-                error_norm = sqrt(error_norm) / y_size_sqrt
+                if error_norm < 1.:
+                    # The error is low! Let's update this step for the next time loop
+                    if error_norm == 0.:
+                        step_factor = MAX_FACTOR
+                    else:
+                        error_pow = error_norm**-error_expo
+                        step_factor = min(MAX_FACTOR, SAFETY * error_pow)
 
-            if error_norm < 1.:
-                # The error is low! Let's update this step for the next time loop
-                if error_norm == 0.:
-                    step_factor = MAX_FACTOR
+                    if step_rejected:
+                        # There were problems with this step size on the previous step loop. Make sure factor does
+                        #    not exasperate them.
+                        step_factor = min(step_factor, 1.)
+
+                    step_size = step_size * step_factor
+                    step_accepted = True
                 else:
                     error_pow = error_norm**-error_expo
-                    step_factor = min(MAX_FACTOR, SAFETY * error_pow)
+                    step_size = step_size * max(MIN_FACTOR, SAFETY * error_pow)
+                    step_rejected = True
 
-                if step_rejected:
-                    # There were problems with this step size on the previous step loop. Make sure factor does
-                    #    not exasperate them.
-                    step_factor = min(step_factor, 1.)
+            if step_error:
+                # Issue with step convergence
+                status = -1
+                message = "Error in step size calculation:\n\tRequired step size is less than spacing between numbers."
+                break
+            elif not step_accepted:
+                # Issue with step convergence
+                status = -7
+                message = "Error in step size calculation:\n\tError in step size acceptance."
+                break
 
-                step_size = step_size * step_factor
-                step_accepted = True
-            else:
-                error_pow = error_norm**-error_expo
-                step_size = step_size * max(MIN_FACTOR, SAFETY * error_pow)
-                step_rejected = True
+            # End of step loop. Update the _now variables
+            t_old = t_now
+            for i in range(y_size):
+                y_old_ptr[i] = y_view[i]
+                dy_old_ptr[i] = dy_ptr[i]
 
-        if step_error:
-            # Issue with step convergence
-            status = -1
-            message = "Error in step size calculation:\n\tRequired step size is less than spacing between numbers."
-            break
-        elif not step_accepted:
-            # Issue with step convergence
-            status = -7
-            message = "Error in step size calculation:\n\tError in step size acceptance."
-            break
+            # Store data
+            if len_t >= current_size:
+                # There is more data then we have room in our arrays.
+                # Build new arrays with more space.
+                # OPT: Note this is an expensive operation.
+                num_concats += 1
 
-        # End of step loop. Update the _now variables
-        t_old = t_now
-        for i in range(y_size):
-            y_old_ptr[i] = y_view[i]
-            dy_old_ptr[i] = dy_ptr[i]
+                # Grow the array by 50% its current value
+                current_size = <size_t>(<double>current_size * (1.5))
 
-        # Store data
-        if len_t >= (num_concats * expected_size_to_use):
-            # There is more data then we have room in our arrays.
-            # Build new arrays with more space.
-            # OPT: Note this is an expensive operation.
-            num_concats += 1
-            new_size = num_concats * expected_size_to_use
+                time_domain_array_ptr = <double *> reallocate_mem(
+                    time_domain_array_ptr,
+                    current_size * sizeof(double),
+                    'time_domain_array_ptr (growth stage)')
 
-            time_domain_array_ptr = <double *> PyMem_Realloc(time_domain_array_ptr,
-                                                             new_size * sizeof(double))
-            if not time_domain_array_ptr:
-                raise MemoryError()
+                y_results_array_ptr = <double_numeric *> reallocate_mem(
+                    y_results_array_ptr,
+                    y_size * current_size * sizeof(double_numeric),
+                    'y_results_array_ptr (growth stage)')
 
-            y_results_array_ptr = <double_numeric *> PyMem_Realloc(y_results_array_ptr,
-                                                                   y_size * new_size * sizeof(double_numeric))
-            if not y_results_array_ptr:
-                raise MemoryError()
+                if capture_extra:
+                    extra_array_ptr = <double_numeric *> reallocate_mem(
+                        extra_array_ptr,
+                        num_extra * current_size * sizeof(double_numeric),
+                        'extra_array_ptr (growth stage)')
+
+            # Add this step's results to our storage arrays.
+            time_domain_array_ptr[len_t] = t_now
+            for i in range(y_size):
+                y_results_array_ptr[len_t * y_size + i] = y_view[i]
 
             if capture_extra:
-                extra_array_ptr = <double_numeric *> PyMem_Realloc(extra_array_ptr,
-                                                                   num_extra * new_size * sizeof(double_numeric))
-                if not extra_array_ptr:
-                    raise MemoryError()
+                for i in range(num_extra):
+                    extra_array_ptr[len_t * num_extra + i] = extra_output_ptr[i]
 
-        # Add this step's results to our storage arrays.
-        time_domain_array_ptr[len_t] = t_now
-        for i in range(y_size):
-            y_results_array_ptr[len_t * y_size + i] = y_view[i]
+            # Increase number of independent variable points.
+            len_t += 1
 
-        if capture_extra:
-            for i in range(num_extra):
-                extra_array_ptr[len_t * num_extra + i] = extra_output_ptr[i]
-
-        # Increase number of independent variable points.
-        len_t += 1
-
-    # Integration has stopped. Check if it was successful.
-    if status == 1:
-        success = True
-    else:
-        success = False
-
-    # Initialize solution pointers as length 1 nan arrays so that accessing the solution will not cause access violations.
-    cdef double* solution_t_ptr
-    cdef double_numeric* solution_y_ptr
-    cdef double_numeric* solution_extra_ptr
-
-    solution_t_ptr = <double *> PyMem_Malloc(1 * sizeof(double))
-    if not solution_t_ptr:
-        raise MemoryError()
-    solution_t_ptr[0] = NAN
-
-    solution_y_ptr = <double_numeric *> PyMem_Malloc(y_size * 1 * sizeof(double_numeric))
-    if not solution_y_ptr:
-        raise MemoryError()
-    for i in range(y_size):
-        solution_y_ptr[i] = NAN
-
-    solution_extra_ptr = <double_numeric *> PyMem_Malloc(num_extra * 1 * sizeof(double_numeric))
-    if not solution_extra_ptr:
-        raise MemoryError()
-    for i in range(num_extra):
-        solution_extra_ptr[i] = NAN
-
-    if success:
-        # Solution was successful.
-        # Release storage arrays so they can be reset
-        PyMem_Free(solution_t_ptr)
-        PyMem_Free(solution_y_ptr)
-
-        # Load values into output arrays.
-        # The arrays built during integration likely have a bunch of unused junk at the end due to overbuilding their size.
-        # This process will remove that junk and leave only the valid data.
-        # These arrays will always be the same length or less (self.len_t <= new_size) than the ones they are
-        # built off of, so it is safe to use Realloc.
-        solution_t_ptr = <double *> PyMem_Realloc(time_domain_array_ptr,
-                                                  len_t * sizeof(double))
-        if not solution_t_ptr:
-            raise MemoryError()
-
-        solution_y_ptr = <double_numeric *> PyMem_Realloc(y_results_array_ptr,
-                                                          y_size * len_t * sizeof(double_numeric))
-        if not solution_y_ptr:
-            raise MemoryError()
-
-        if capture_extra:
-            PyMem_Free(solution_extra_ptr)
-            solution_extra_ptr = <double_numeric *> PyMem_Realloc(extra_array_ptr,
-                                                                  num_extra * len_t * sizeof(double_numeric))
-            if not solution_extra_ptr:
-                raise MemoryError()
-    else:
-        # Integration was not successful. Leave the solution pointers as length 1 nan arrays.
-        # Clear the storage arrays used during the step loop
-        PyMem_Free(time_domain_array_ptr)
-        PyMem_Free(y_results_array_ptr)
-        if capture_extra:
-            PyMem_Free(extra_array_ptr)
-
-    # Integration is complete. Check if interpolation was requested.
-    cdef Py_ssize_t len_t_touse
-    if success:
-        if run_interpolation:
-            # Use different len_t
-            len_t_touse = len_t_eval
+        # Integration has stopped. Check if it was successful.
+        if status == 1:
+            success = True
         else:
-            len_t_touse = len_t
-    else:
-        # If integration was not successful use t_len = 1 to allow for nan arrays
-        len_t_touse = 1
+            success = False
 
-    cdef double* interpolated_solution_t_ptr
-    cdef double_numeric* interpolated_solution_y_ptr
-    cdef double_numeric* interpolated_solution_extra_ptr
-    if success and run_interpolation:
-        # User only wants data at specific points.
-        status = 2  # Interpolation is being performed.
+        if success:
+            # Solution was successful.
 
-        # TODO: The current version of cyrk_ode has not implemented sicpy's dense output. Instead we use an interpolation.
-        # Build final interpolated time array
-        interpolated_solution_t_ptr = <double *> PyMem_Malloc(len_t_eval * sizeof(double))
-        if not interpolated_solution_t_ptr:
-            raise MemoryError()
+            # Load values into output arrays.
+            # The arrays built during integration likely have a bunch of unused junk at the end due to overbuilding their size.
+            # This process will remove that junk and leave only the valid data.
+            # These arrays will always be the same length or less (self.len_t <= new_size) than the ones they are
+            # built off of, so it is safe to use Realloc.
+            solution_t_ptr = <double *> reallocate_mem(
+                time_domain_array_ptr,
+                len_t * sizeof(double),
+                'solution_t_ptr (success stage)')
+            time_domain_array_ptr = NULL
 
-        # Build final interpolated solution arrays
-        interpolated_solution_y_ptr = <double_numeric *> PyMem_Malloc(y_size * len_t_eval * sizeof(double_numeric))
-        if not interpolated_solution_y_ptr:
-            raise MemoryError()
+            solution_y_ptr = <double_numeric *> reallocate_mem(
+                y_results_array_ptr,
+                y_size * len_t * sizeof(double_numeric),
+                'solution_y_ptr (success stage)')
+            y_results_array_ptr = NULL
 
-        # Perform interpolation on y values
-        interpolate(solution_t_ptr, t_eval_ptr, solution_y_ptr, interpolated_solution_y_ptr,
-                    len_t, len_t_eval, y_size, y_is_complex)
+            if capture_extra:
+                solution_extra_ptr = <double_numeric *> reallocate_mem(
+                    extra_array_ptr,
+                    num_extra * len_t * sizeof(double_numeric),
+                    'solution_extra_ptr (success stage)')
+                extra_array_ptr = NULL
+        else:
+            # Clear the storage arrays used during the step loop
+            PyMem_Free(time_domain_array_ptr)
+            time_domain_array_ptr = NULL
+            PyMem_Free(y_results_array_ptr)
+            y_results_array_ptr = NULL
+            if capture_extra:
+                PyMem_Free(extra_array_ptr)
+                extra_array_ptr = NULL
 
-        # Make a copy of t_eval (issues can arise if we store the t_eval pointer in solution array).
-        for i in range(len_t_eval):
-            interpolated_solution_t_ptr[i] = t_eval_ptr[i]
+            # Integration was not successful. Leave the solution pointers as length 1 nan arrays.
+            solution_t_ptr = <double *> allocate_mem(
+                sizeof(double),
+                'solution_t_ptr (fail stage)')
+            solution_y_ptr = <double_numeric *> allocate_mem(
+                y_size * sizeof(double_numeric),
+                'solution_y_ptr (fail stage)')
+            solution_extra_ptr = <double_numeric *> allocate_mem(
+                num_extra * sizeof(double_numeric),
+                'solution_extra_ptr (fail stage)')
+            
+            solution_t_ptr[0] = NAN
+            for i in range(y_size):
+                solution_y_ptr[i] = NAN
+            for i in range(num_extra):
+                solution_extra_ptr[i] = NAN
 
-        if capture_extra:
-            # Right now if there is any extra output then it is stored at each time step used in the RK loop.
-            # We have to make a choice:
-            #   - Do we interpolate the extra values that were stored?
-            #   - Or do we use the interpolated t, y values to find new extra parameters at those specific points.
-            # The latter method is more computationally expensive (recalls the diffeq for each y) but is more accurate.
-            # This decision is set by the user with the `interpolate_extra` flag.
-
-            # Build final interpolated solution array (Used if self.interpolate_extra is True or False)
-            interpolated_solution_extra_ptr = \
-                <double_numeric *> PyMem_Malloc(num_extra * len_t_eval * sizeof(double_numeric))
-            if not interpolated_solution_extra_ptr:
-                raise MemoryError()
-
-            if interpolate_extra:
-                # Perform interpolation on extra outputs
-                interpolate(solution_t_ptr, t_eval_ptr, solution_extra_ptr, interpolated_solution_extra_ptr,
-                            len_t, len_t_eval, num_extra, y_is_complex)
+        # Integration is complete. Check if interpolation was requested.
+        if success:
+            if run_interpolation:
+                # Use different len_t
+                len_t_touse = len_t_eval
             else:
-                # Use the new interpolated y and t values to recalculate the extra outputs with self.diffeq
-                for i in range(len_t_eval):
-                    # Set state variables
-                    t_now = t_eval_ptr[i]
-                    for j in range(y_size):
-                        y_view[j] = interpolated_solution_y_ptr[i * y_size + j]
+                len_t_touse = len_t
+        else:
+            # If integration was not successful use t_len = 1 to allow for nan arrays
+            len_t_touse = 1
 
-                    # Call diffeq to recalculate extra outputs
-                    if use_args:
-                        diffeq(t_now, y_array, diffeq_out_array, *args)
-                    else:
-                        diffeq(t_now, y_array, diffeq_out_array)
+        if success and run_interpolation:
+            # User only wants data at specific points.
+            status = 2  # Interpolation is being performed.
 
-                    # Capture extras
-                    for j in range(num_extra):
-                        interpolated_solution_extra_ptr[i * num_extra + j] = diffeq_out_view[extra_start + j]
+            # TODO: The current version of cyrk_ode has not implemented sicpy's dense output. Instead we use an interpolation.
+            # Build final interpolated time array
+            interpolated_solution_t_ptr = <double *> allocate_mem(
+                len_t_eval * sizeof(double),
+                'interpolated_solution_t_ptr (interpolate stage)')
+
+            # Build final interpolated solution arrays
+            interpolated_solution_y_ptr = <double_numeric *> allocate_mem(
+                y_size * len_t_eval * sizeof(double_numeric),
+                'interpolated_solution_y_ptr (interpolate stage)')
+
+            # Perform interpolation on y values
+            interpolate(solution_t_ptr, t_eval_ptr, solution_y_ptr, interpolated_solution_y_ptr,
+                        len_t, len_t_eval, y_size, y_is_complex)
+
+            # Make a copy of t_eval (issues can arise if we store the t_eval pointer in solution array).
+            for i in range(len_t_eval):
+                interpolated_solution_t_ptr[i] = t_eval_ptr[i]
+
+            if capture_extra:
+                # Right now if there is any extra output then it is stored at each time step used in the RK loop.
+                # We have to make a choice:
+                #   - Do we interpolate the extra values that were stored?
+                #   - Or do we use the interpolated t, y values to find new extra parameters at those specific points.
+                # The latter method is more computationally expensive (recalls the diffeq for each y) but is more accurate.
+                # This decision is set by the user with the `interpolate_extra` flag.
+
+                # Build final interpolated solution array (Used if self.interpolate_extra is True or False)
+                interpolated_solution_extra_ptr = <double_numeric *> allocate_mem(
+                    num_extra * len_t_eval * sizeof(double_numeric),
+                    'interpolated_solution_extra_ptr (interpolate)')
+
+                if interpolate_extra:
+                    # Perform interpolation on extra outputs
+                    interpolate(solution_t_ptr, t_eval_ptr, solution_extra_ptr, interpolated_solution_extra_ptr,
+                                len_t, len_t_eval, num_extra, y_is_complex)
+                else:
+                    # Use the new interpolated y and t values to recalculate the extra outputs with self.diffeq
+                    for i in range(len_t_eval):
+                        # Set state variables
+                        t_now = t_eval_ptr[i]
+                        for j in range(y_size):
+                            y_view[j] = interpolated_solution_y_ptr[i * y_size + j]
+
+                        # Call diffeq to recalculate extra outputs
+                        if use_args:
+                            diffeq(t_now, y_view, diffeq_out_view, *args)
+                        else:
+                            diffeq(t_now, y_view, diffeq_out_view)
+
+                        # Capture extras
+                        for j in range(num_extra):
+                            interpolated_solution_extra_ptr[i * num_extra + j] = diffeq_out_view[extra_start + j]
+
+                # Replace old pointers with new interpolated pointers and release the memory for the old stuff
+                PyMem_Free(solution_extra_ptr)
+                solution_extra_ptr = interpolated_solution_extra_ptr
+                interpolated_solution_extra_ptr = NULL
 
             # Replace old pointers with new interpolated pointers and release the memory for the old stuff
-            PyMem_Free(solution_extra_ptr)
-            solution_extra_ptr = interpolated_solution_extra_ptr
+            PyMem_Free(solution_t_ptr)
+            solution_t_ptr = interpolated_solution_t_ptr
+            interpolated_solution_t_ptr = NULL
+            PyMem_Free(solution_y_ptr)
+            solution_y_ptr = interpolated_solution_y_ptr
+            interpolated_solution_y_ptr = NULL
 
-        # Replace old pointers with new interpolated pointers and release the memory for the old stuff
-        PyMem_Free(solution_t_ptr)
-        PyMem_Free(solution_y_ptr)
-        solution_t_ptr = interpolated_solution_t_ptr
-        solution_y_ptr = interpolated_solution_y_ptr
+            # Interpolation is done.
+            status = 1
 
-        # Interpolation is done.
-        status = 1
+        # Convert solution pointers to a more user-friendly numpy ndarray
+        solution_t = np.empty(len_t_touse, dtype=np.float64, order='C')
+        solution_y = np.empty((total_size, len_t_touse), dtype=DTYPE, order='C')
+        solution_t_view = solution_t
+        solution_y_view = solution_y
 
-    # Convert solution pointers to a more user-friendly numpy ndarray
-    cdef Py_ssize_t y_size_touse, extra_size_touse
-    y_size_touse = y_size * len_t_touse
-    extra_size_touse = num_extra * len_t_touse
-
-    cdef double[::1] solution_t_view
-    cdef double_numeric[:, ::1] solution_y_view
-    solution_t = np.empty(len_t_touse, dtype=np.float64, order='C')
-    solution_y = np.empty((total_size, len_t_touse), dtype=DTYPE, order='C')
-    solution_t_view = solution_t
-    solution_y_view = solution_y
-
-    for i in range(len_t_touse):
-        solution_t_view[i] = solution_t_ptr[i]
-        for j in range(y_size):
-            solution_y_view[j, i] = solution_y_ptr[i * y_size + j]
-    if capture_extra:
         for i in range(len_t_touse):
-            for j in range(num_extra):
-                solution_y_view[extra_start + j, i] = solution_extra_ptr[i * num_extra + j]
+            solution_t_view[i] = solution_t_ptr[i]
+            for j in range(y_size):
+                solution_y_view[j, i] = solution_y_ptr[i * y_size + j]
+        if capture_extra:
+            for i in range(len_t_touse):
+                for j in range(num_extra):
+                    solution_y_view[extra_start + j, i] = solution_extra_ptr[i * num_extra + j]
+        # Free solution arrays
+        PyMem_Free(solution_t_ptr)
+        solution_t_ptr = NULL
+        PyMem_Free(solution_y_ptr)
+        solution_y_ptr = NULL
+        if capture_extra:
+            PyMem_Free(solution_extra_ptr)
+            solution_extra_ptr = NULL
 
-    # Update integration message
-    if status == 1:
-        message = "Integration completed without issue."
-    elif status == 0:
-        message = "Integration is/was ongoing (perhaps it was interrupted?)."
-    elif status == -1:
-        message = "Error in step size calculation:\n\tRequired step size is less than spacing between numbers."
-    elif status == -2:
-        message = "Maximum number of steps (set by user) exceeded during integration."
-    elif status == -3:
-        message = "Maximum number of steps (set by system architecture) exceeded during integration."
-    elif status == -6:
-        message = "Integration never started: y-size is zero."
-    elif status == -7:
-        message = "Error in step size calculation:\n\tError in step size acceptance."
+        # Update integration message
+        if status == 1:
+            message = "Integration completed without issue."
+        elif status == 0:
+            message = "Integration is/was ongoing (perhaps it was interrupted?)."
+        elif status == -1:
+            message = "Error in step size calculation:\n\tRequired step size is less than spacing between numbers."
+        elif status == -2:
+            message = "Maximum number of steps (set by user) exceeded during integration."
+        elif status == -3:
+            message = "Maximum number of steps (set by system architecture) exceeded during integration."
+        elif status == -6:
+            message = "Integration never started: y-size is zero."
+        elif status == -7:
+            message = "Error in step size calculation:\n\tError in step size acceptance."
+    finally:
+        # Free pointers made from user inputs
+        if not (tol_ptrs is NULL):
+            PyMem_Free(tol_ptrs)
+            tol_ptrs = NULL
+        if not (t_eval_ptr is NULL):
+            PyMem_Free(t_eval_ptr)
+            t_eval_ptr = NULL
 
-    # Free pointers made from user inputs
-    PyMem_Free(rtols_ptr)
-    PyMem_Free(atols_ptr)
-    PyMem_Free(t_eval_ptr)
+        # Free pointers used to track y, dydt, and any extra outputs
+        if not (y_storage_ptrs is NULL):
+            PyMem_Free(y_storage_ptrs)
+            y_storage_ptrs = NULL
+        if not (extra_output_init_ptr is NULL):
+            PyMem_Free(extra_output_init_ptr)
+            extra_output_init_ptr = NULL
+        if not (extra_output_ptr is NULL):
+            PyMem_Free(extra_output_ptr)
+            extra_output_ptr = NULL
 
-    # Free pointers used to track y, dydt, and any extra outputs
-    PyMem_Free(y_old_ptr)
-    PyMem_Free(dy_ptr)
-    PyMem_Free(dy_old_ptr)
-    PyMem_Free(extra_output_init_ptr)
-    PyMem_Free(extra_output_ptr)
+        # Free RK Temp Storage Array
+        if not (K_ptr is NULL):
+            PyMem_Free(K_ptr)
+            K_ptr = NULL
 
-    # Free final solution pointers
-    PyMem_Free(solution_y_ptr)
-    PyMem_Free(solution_t_ptr)
-    PyMem_Free(solution_extra_ptr)
-
-    # Free RK Constants
-    PyMem_Free(A_ptr)
-    PyMem_Free(B_ptr)
-    PyMem_Free(C_ptr)
-    PyMem_Free(E_ptr)
-    PyMem_Free(E3_ptr)
-    PyMem_Free(E5_ptr)
-
-    # Free RK Temp Storage Array
-    PyMem_Free(K_ptr)
+        # Free other pointers that should have been freed in main loop, but in case of an exception they were missed.
+        if not (solution_t_ptr is NULL):
+            PyMem_Free(solution_t_ptr)
+            solution_t_ptr = NULL
+        if not (solution_y_ptr is NULL):
+            PyMem_Free(solution_y_ptr)
+            solution_y_ptr = NULL
+        if not (solution_extra_ptr is NULL):
+            PyMem_Free(solution_extra_ptr)
+            solution_extra_ptr = NULL
+        if not (interpolated_solution_t_ptr is NULL):
+            PyMem_Free(interpolated_solution_t_ptr)
+            interpolated_solution_t_ptr= NULL
+        if not (interpolated_solution_y_ptr is NULL):
+            PyMem_Free(interpolated_solution_y_ptr)
+            interpolated_solution_y_ptr = NULL
+        if not (interpolated_solution_extra_ptr is NULL):
+            PyMem_Free(interpolated_solution_extra_ptr)
+            interpolated_solution_extra_ptr = NULL
+        if not (time_domain_array_ptr is NULL):
+            PyMem_Free(time_domain_array_ptr)
+            time_domain_array_ptr = NULL
+        if not (y_results_array_ptr is NULL):
+            PyMem_Free(y_results_array_ptr)
+            y_results_array_ptr = NULL
+        if not (extra_array_ptr is NULL):
+            PyMem_Free(extra_array_ptr)
+            extra_array_ptr = NULL
 
     return solution_t, solution_y, success, message

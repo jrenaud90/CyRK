@@ -1,8 +1,22 @@
 {
+  "utils": {
+    "name": "CyRK.utils.utils",
+    "sources": [["CyRK", "utils", "utils.pyx"]],
+    "include_dirs": [["CyRK", "utils"]],
+    "compile_args": [],
+    "link_args": []
+  },
   "interp": {
     "name": "CyRK.array.interp",
     "sources": [["CyRK", "array", "interp.pyx"], ["CyRK", "array", "interp_common.c"]],
     "include_dirs": [["CyRK", "array"]],
+    "compile_args": [],
+    "link_args": []
+  },
+  "rk_constants": {
+    "name": "CyRK.rk.rk_constants",
+    "sources": [["CyRK", "rk", "rk_constants.pyx"]],
+    "include_dirs": [["CyRK", "rk"]],
     "compile_args": [],
     "link_args": []
   },

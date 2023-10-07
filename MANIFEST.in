@@ -1,6 +1,2 @@
-include CyRK/array/*.pyx
-include CyRK/array/*.pxd
-include CyRK/rk/*.pyx
-include CyRK/rk/*.pxd
-include CyRK/cy/*.pyx
-include CyRK/cy/*.pxd
+global-include *.pxd
+global-include *.pyx

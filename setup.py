@@ -12,6 +12,7 @@ if install_platform.lower() == 'windows':
     extra_compile_args = ['/openmp']
     extra_link_args = []
 elif install_platform.lower() == 'darwin':
+    # OpenMP is installed via llvm. See https://stackoverflow.com/questions/60005176/how-to-deal-with-clang-error-unsupported-option-fopenmp-on-travis
     extra_compile_args = []
     extra_link_args = []
 else:
@@ -41,5 +42,6 @@ for cython_ext, ext_data in cython_ext_dict.items():
 
 # Cython extensions require a setup.py in addition to pyproject.toml in order to create platform-specific wheels.
 setup(
-    ext_modules=cython_extensions
+    ext_modules=cython_extensions,
+    # cmdclass={'build_ext': build_ext, 'build_py':build_cyrk}
 )
