@@ -36,7 +36,7 @@ cdef class CySolver:
     cdef double* rtols_ptr
     cdef double* atols_ptr
     cdef double first_step, max_step
-    cdef size_t user_provided_max_num_steps
+    cdef bool_cpp_t user_provided_max_num_steps
     cdef size_t max_num_steps
     cdef size_t expected_size, current_size, num_concats
     cdef bool_cpp_t recalc_first_step

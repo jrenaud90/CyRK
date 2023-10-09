@@ -13,8 +13,8 @@ np.import_array()
 
 from CyRK.utils.utils cimport allocate_mem, reallocate_mem
 from CyRK.rk.rk cimport find_rk_properties
-from CyRK.cy.common cimport interpolate, SAFETY, MIN_FACTOR, MAX_FACTOR, MAX_STEP, INF, EPS, EPS_10, EPS_100, \
-    MAX_SIZET_SIZE, RAM_BUFFER_SIZE, find_expected_size
+from CyRK.cy.common cimport interpolate, SAFETY, MIN_FACTOR, MAX_FACTOR, MAX_STEP, INF, EPS_100, \
+    find_expected_size, find_max_num_steps
 
 cdef (double, double) EMPTY_T_SPAN = (NAN, NAN)
 
@@ -380,36 +380,6 @@ cdef class CySolver:
             # No array provided. Use the same atol for all ys.
             for i in range(self.y_size):
                 self.atols_ptr[i] = atol
-
-        # Determine max number of steps
-        cdef double max_num_steps_ram_dbl
-        max_num_steps_ram_dbl = max_ram_MB * (1000 * 1000)
-        # As of CyRK v0.8.3, the CySolver class takes up about 1200 Bytes of memory.
-        # Buffer the expeceted size up a bit (set by RAM_BUFFER_SIZE) and subtract this from the total we are allowed.
-        max_num_steps_ram_dbl -= <double> RAM_BUFFER_SIZE
-        # Divide by size of data that will be stored in main loop
-        max_num_steps_ram_dbl /= sizeof(double)
-        # Divide by number of dependnet and extra variables that will be stored. The extra "1" is for the time domain.
-        if self.capture_extra:
-            max_num_steps_ram_dbl /= (1 + self.y_size + self.num_extra)
-        else:
-            max_num_steps_ram_dbl /= (1 + self.y_size)
-        cdef size_t max_num_steps_ram = <size_t> max_num_steps_ram_dbl
-
-        # Parse user-provided max number of steps
-        self.user_provided_max_num_steps = False
-        if max_num_steps == 0:
-            # No user input; use ram-based value
-            self.max_num_steps = max_num_steps_ram
-        else: 
-            if max_num_steps > max_num_steps_ram:
-                self.max_num_steps = max_num_steps_ram
-            else:
-                self.user_provided_max_num_steps = True
-                self.max_num_steps = max_num_steps
-        # Make sure that max number of steps does not exceed size_t limit
-        if self.max_num_steps > (MAX_SIZET_SIZE / 10):
-            self.max_num_steps = (MAX_SIZET_SIZE / 10)
         
         # Determine extra outputs
         self.capture_extra = capture_extra
@@ -440,6 +410,17 @@ cdef class CySolver:
         # Set the current size to the expected size.
         # `expected_size` should never change but current might grow if expected size is not large enough.
         self.current_size = self.expected_size
+
+        # Determine max number of steps
+        find_max_num_steps(
+            self.y_size,
+            self.num_extra,
+            max_num_steps,
+            max_ram_MB,
+            capture_extra,
+            False,
+            &self.user_provided_max_num_steps,
+            &self.max_num_steps)
 
         # This variable tracks how many times the storage arrays have been appended.
         # It starts at 1 since there is at least one storage array present.

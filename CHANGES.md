@@ -6,6 +6,11 @@
 
 Performance:
 - Removed the try/finally blocks, they were largely not needed as excepts are not implemented so there was no real benefit and they regressed performance.
+- Cleaned up used variables in cython-based solvers.
+
+Bug Fixes:
+- Max number of steps was being performed before extra_output was parsed in `CySolver` which could lead to incorrect max num steps.
+- Fixed incorrect type for `CySolver.user_provided_max_num_steps`.
 
 #### v0.8.3 (2023-10-05)
 

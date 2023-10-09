@@ -2,7 +2,7 @@
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 import cython
 
-from libc.math cimport fmax, fmin
+from libc.math cimport fmax, fmin, floor
 from libc.math cimport INFINITY as INF
 from libc.float cimport DBL_EPSILON as EPS
 from libc.stdint cimport SIZE_MAX, INT32_MAX
@@ -137,5 +137,50 @@ cdef size_t find_expected_size(
     
     temp_expected_size = fmin(temp_expected_size, max_expected)
     # Store result as int
-    cdef size_t expected_size_to_use = <size_t>temp_expected_size
+    cdef size_t expected_size_to_use = <size_t>floor(temp_expected_size)
     return expected_size_to_use
+
+
+cdef void find_max_num_steps(
+        size_t y_size,
+        size_t num_extra,
+        size_t max_num_steps,
+        size_t max_ram_MB,
+        bool_cpp_t capture_extra,
+        bool_cpp_t is_complex,
+        bool_cpp_t* user_provided_max_num_steps,
+        size_t* max_num_steps_touse) noexcept nogil:
+
+    # Determine max number of steps
+    cdef double max_num_steps_ram_dbl
+    max_num_steps_ram_dbl = max_ram_MB * (1000 * 1000)
+    # As of CyRK v0.8.3, the CySolver class takes up about 1200 Bytes of memory. Let's assume cyrk_ode takes up a 
+    #  similar amount.
+    # Buffer the expeceted size up a bit (set by RAM_BUFFER_SIZE) and subtract this from the total we are allowed.
+    max_num_steps_ram_dbl -= <double> RAM_BUFFER_SIZE
+    # Divide by size of data that will be stored in main loop
+    if is_complex:
+        max_num_steps_ram_dbl /= sizeof(double complex)
+    else:
+        max_num_steps_ram_dbl /= sizeof(double)
+    # Divide by number of dependnet and extra variables that will be stored. The extra "1" is for the time domain.
+    if capture_extra:
+        max_num_steps_ram_dbl /= (1 + y_size + num_extra)
+    else:
+        max_num_steps_ram_dbl /= (1 + y_size)
+    cdef size_t max_num_steps_ram = <size_t> floor(max_num_steps_ram_dbl)
+
+    # Parse user-provided max number of steps
+    user_provided_max_num_steps[0] = False
+    if max_num_steps == 0:
+        # No user input; use ram-based value
+        max_num_steps_touse[0] = max_num_steps_ram
+    else: 
+        if max_num_steps > max_num_steps_ram:
+            max_num_steps_touse[0] = max_num_steps_ram
+        else:
+            user_provided_max_num_steps[0] = True
+            max_num_steps_touse[0] = max_num_steps
+    # Make sure that max number of steps does not exceed size_t limit
+    if max_num_steps_touse[0] > (MAX_SIZET_SIZE / 10):
+        max_num_steps_touse[0] = (MAX_SIZET_SIZE / 10)
