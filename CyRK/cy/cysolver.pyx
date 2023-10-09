@@ -939,7 +939,7 @@ cdef class CySolver:
             self.reset_state()
 
         # Setup loop variables
-        cdef size_t i, j, new_size
+        cdef size_t i
 
         # Setup storage arrays
         # These arrays are built to fit a number of points equal to `self.expected_size`
@@ -957,207 +957,204 @@ cdef class CySolver:
             extra_array_ptr = <double *> allocate_mem(
                 self.num_extra * self.expected_size * sizeof(double),
                 'extra_array_ptr (_solve)')
-        
-        # Define post-run variables
-        cdef size_t y_size_touse, extra_size_touse
 
-        try:
-            # Load initial conditions into storage arrays
-            time_domain_array_ptr[0] = self.t_start
+        # Load initial conditions into storage arrays
+        time_domain_array_ptr[0] = self.t_start
+        for i in range(self.y_size):
+            y_results_array_ptr[i] = self.y0_ptr[i]
+        if self.capture_extra:
+            for i in range(self.num_extra):
+                extra_array_ptr[i] = self.extra_output_init_ptr[i]
+
+        # # Main integration loop
+        self.status = 0
+
+        if self.y_size == 0:
+            self.status = -6
+
+        while self.status == 0:
+
+            # Check that integration is not complete.
+            if self.t_now == self.t_end:
+                self.t_old = self.t_end
+                self.status = 1
+                break
+
+            # Check that maximum number of steps has not been exceeded.
+            if self.len_t > self.max_num_steps:
+                if self.user_provided_max_num_steps:
+                    self.status = -2
+                else:
+                    self.status = -3
+                break
+
+            # # Perform RK Step
+            self.rk_step()
+
+            # Check if an error occurred during step calculations before storing data.
+            if self.status != 0:
+                break
+
+            # Store data
+            if self.len_t >= self.current_size:
+                # There is more data then we have room in our arrays.
+                # Build new arrays with more space.
+                # OPT: Note this is an expensive operation.
+                self.num_concats += 1
+
+                # Grow the array by 50% its current value
+                self.current_size = <size_t>(<double>self.current_size * (1.5))
+
+                time_domain_array_ptr = <double *> reallocate_mem(
+                    time_domain_array_ptr,
+                    self.current_size * sizeof(double),
+                    'time_domain_array_ptr (_solve; growth stage)')
+
+                y_results_array_ptr = <double *> reallocate_mem(
+                    y_results_array_ptr,
+                    self.y_size * self.current_size * sizeof(double),
+                    'y_results_array_ptr (_solve; growth stage)')
+
+                if self.capture_extra:
+                    extra_array_ptr = <double *> reallocate_mem(
+                        extra_array_ptr,
+                        self.num_extra * self.current_size * sizeof(double),
+                        'extra_array_ptr (_solve; growth stage)')
+
+            # Add this step's results to our storage arrays.
+            time_domain_array_ptr[self.len_t] = self.t_now
             for i in range(self.y_size):
-                y_results_array_ptr[i] = self.y0_ptr[i]
+                y_results_array_ptr[self.len_t * self.y_size + i] = self.y_ptr[i]
+
             if self.capture_extra:
                 for i in range(self.num_extra):
-                    extra_array_ptr[i] = self.extra_output_init_ptr[i]
+                    extra_array_ptr[self.len_t * self.num_extra + i] = self.extra_output_ptr[i]
 
-            # # Main integration loop
-            self.status = 0
+            # Increase number of independent variable points.
+            self.len_t += 1
 
-            if self.y_size == 0:
-                self.status = -6
+        # Integration has stopped. Check if it was successful.
+        if self.status == 1:
+            self.success = True
+        else:
+            self.success = False
 
-            while self.status == 0:
+        if self.success:
+            # Solution was successful.
+            # Free any data stored in solution arrays so that we can repopulate them with the new solution
+            PyMem_Free(self.solution_t_ptr)
+            self.solution_t_ptr = NULL
+            PyMem_Free(self.solution_y_ptr)
+            self.solution_y_ptr = NULL
+            if self.capture_extra:
+                PyMem_Free(self.solution_extra_ptr)
+                self.solution_extra_ptr = NULL
 
-                # Check that integration is not complete.
-                if self.t_now == self.t_end:
-                    self.t_old = self.t_end
-                    self.status = 1
-                    break
+            # Load values into solution arrays.
+            # The arrays built during integration likely have a bunch of unused junk at the end due to overbuilding their size.
+            # This process will remove that junk and leave only the valid data.
+            # These arrays will always be the same length or less (self.len_t <= self.current_size) than the ones they are
+            # built off of, so it is safe to use Realloc.
+            self.solution_t_ptr = <double *> reallocate_mem(
+                time_domain_array_ptr,
+                self.len_t * sizeof(double),
+                'solution_t_ptr (_solve; success stage)')
+            time_domain_array_ptr = NULL
 
-                # Check that maximum number of steps has not been exceeded.
-                if self.len_t > self.max_num_steps:
-                    if self.user_provided_max_num_steps:
-                        self.status = -2
-                    else:
-                        self.status = -3
-                    break
+            self.solution_y_ptr = <double *> reallocate_mem(
+                y_results_array_ptr,
+                self.y_size * self.len_t * sizeof(double),
+                'solution_y_ptr (_solve; success stage)')
+            y_results_array_ptr = NULL
 
-                # # Perform RK Step
-                self.rk_step()
-
-                # Check if an error occurred during step calculations before storing data.
-                if self.status != 0:
-                    break
-
-                # Store data
-                if self.len_t >= self.current_size:
-                    # There is more data then we have room in our arrays.
-                    # Build new arrays with more space.
-                    # OPT: Note this is an expensive operation.
-                    self.num_concats += 1
-
-                    # Grow the array by 50% its current value
-                    self.current_size = <size_t>(<double>self.current_size * (1.5))
-
-                    time_domain_array_ptr = <double *> reallocate_mem(
-                        time_domain_array_ptr,
-                        self.current_size * sizeof(double),
-                        'time_domain_array_ptr (_solve; growth stage)')
-
-                    y_results_array_ptr = <double *> reallocate_mem(
-                        y_results_array_ptr,
-                        self.y_size * self.current_size * sizeof(double),
-                        'y_results_array_ptr (_solve; growth stage)')
-
-                    if self.capture_extra:
-                        extra_array_ptr = <double *> reallocate_mem(
-                            extra_array_ptr,
-                            self.num_extra * self.current_size * sizeof(double),
-                            'extra_array_ptr (_solve; growth stage)')
-
-                # Add this step's results to our storage arrays.
-                time_domain_array_ptr[self.len_t] = self.t_now
-                for i in range(self.y_size):
-                    y_results_array_ptr[self.len_t * self.y_size + i] = self.y_ptr[i]
-
-                if self.capture_extra:
-                    for i in range(self.num_extra):
-                        extra_array_ptr[self.len_t * self.num_extra + i] = self.extra_output_ptr[i]
-
-                # Increase number of independent variable points.
-                self.len_t += 1
-
-            # Integration has stopped. Check if it was successful.
-            if self.status == 1:
-                self.success = True
-            else:
-                self.success = False
-
-            if self.success:
-                # Solution was successful.
-                # Free any data stored in solution arrays so that we can repopulate them with the new solution
-                PyMem_Free(self.solution_t_ptr)
-                self.solution_t_ptr = NULL
-                PyMem_Free(self.solution_y_ptr)
-                self.solution_y_ptr = NULL
-                if self.capture_extra:
-                    PyMem_Free(self.solution_extra_ptr)
-                    self.solution_extra_ptr = NULL
-
-                # Load values into output arrays.
-                # The arrays built during integration likely have a bunch of unused junk at the end due to overbuilding their size.
-                # This process will remove that junk and leave only the valid data.
-                # These arrays will always be the same length or less (self.len_t <= new_size) than the ones they are
-                # built off of, so it is safe to use Realloc.
-                self.solution_t_ptr = <double *> reallocate_mem(
-                    time_domain_array_ptr,
-                    self.len_t * sizeof(double),
-                    'solution_t_ptr (_solve; success stage)')
-                time_domain_array_ptr = NULL
-
-                self.solution_y_ptr = <double *> reallocate_mem(
-                    y_results_array_ptr,
-                    self.y_size * self.len_t * sizeof(double),
-                    'solution_y_ptr (_solve; success stage)')
-                y_results_array_ptr = NULL
-
-                if self.capture_extra:
-                    self.solution_extra_ptr = <double *> reallocate_mem(
-                        extra_array_ptr,
-                        self.num_extra * self.len_t * sizeof(double),
-                        'solution_extra_ptr (_solve; success stage)')
-                    extra_array_ptr = NULL
-            else:
-                # Integration was not successful. Make solution pointers length 1 nan arrays.
-
-                # Clear the storage arrays used during the step loop
-                PyMem_Free(time_domain_array_ptr)
-                time_domain_array_ptr = NULL
-                PyMem_Free(y_results_array_ptr)
-                y_results_array_ptr = NULL
-                if self.capture_extra:
-                    PyMem_Free(extra_array_ptr)
-                    extra_array_ptr = NULL
-
-                # We still need to build solution arrays so that accessing the solution will not cause access violations.
-                # Build size-1 arrays. Since the solution was not successful, set all arrays to NANs
-                self.solution_t_ptr = <double *> reallocate_mem(
-                    self.solution_t_ptr,
-                    sizeof(double),
-                    'solution_t_ptr (_solve; fail stage)')
-                self.solution_t_ptr[0] = NAN
-
-                self.solution_y_ptr = <double *> reallocate_mem(
-                    self.solution_y_ptr,
-                    self.y_size * sizeof(double),
-                    'solution_y_ptr (_solve; fail stage)')
-                for i in range(self.y_size):
-                    self.solution_t_ptr[i] = NAN
-
+            if self.capture_extra:
                 self.solution_extra_ptr = <double *> reallocate_mem(
-                    self.solution_extra_ptr,
-                    self.num_extra * 1 * sizeof(double),
-                    'solution_extra_ptr (_solve; fail stage)')
-                for i in range(self.num_extra):
-                    self.solution_extra_ptr[i] = NAN
+                    extra_array_ptr,
+                    self.num_extra * self.len_t * sizeof(double),
+                    'solution_extra_ptr (_solve; success stage)')
+                extra_array_ptr = NULL
+        else:
+            # Integration was not successful. Make solution pointers length 1 nan arrays.
 
-            # Integration is complete. Check if interpolation was requested.
-            if self.success:
-                if self.run_interpolation:
-                    self.interpolate()
-                    # Use different len_t
-                    self.len_t_touse = self.len_t_eval
-                else:
-                    self.len_t_touse = self.len_t
-            else:
-                # If integration was not successful use t_len = 1 to allow for nan arrays
-                self.len_t_touse = 1
-
-            # Convert solution pointers to a more user-friendly memoryview format.
-            y_size_touse     = self.y_size * self.len_t_touse
-            extra_size_touse = self.num_extra * self.len_t_touse
-
-            self.solution_t_view     = <double[:self.len_t_touse]> self.solution_t_ptr
-            self.solution_y_view     = <double[:y_size_touse]> self.solution_y_ptr
-            self.solution_extra_view = <double[:extra_size_touse]> self.solution_extra_ptr
-
-            # Update integration message
-            if self.status == 1:
-                self.message = "Integration completed without issue."
-            elif self.status == 0:
-                self.message = "Integration is/was ongoing (perhaps it was interrupted?)."
-            elif self.status == -1:
-                self.message = "Error in step size calculation:\n\tRequired step size is less than spacing between numbers."
-            elif self.status == -2:
-                self.message = "Maximum number of steps (set by user) exceeded during integration."
-            elif self.status == -3:
-                self.message = "Maximum number of steps (set by system architecture) exceeded during integration."
-            elif self.status == -6:
-                self.message = "Integration never started: y-size is zero."
-            elif self.status == -7:
-                self.message = "Error in step size calculation:\n\tError in step size acceptance."
-
-        finally:
-            # Release any memory that may still be alive due to exceptions being raised.
-            if not (time_domain_array_ptr is NULL):
-                PyMem_Free(time_domain_array_ptr)
-                time_domain_array_ptr = NULL
-            if not (y_results_array_ptr is NULL):
-                PyMem_Free(y_results_array_ptr)
-                y_results_array_ptr = NULL
-            if not (extra_array_ptr is NULL):
+            # Clear the storage arrays used during the step loop
+            PyMem_Free(time_domain_array_ptr)
+            time_domain_array_ptr = NULL
+            PyMem_Free(y_results_array_ptr)
+            y_results_array_ptr = NULL
+            if self.capture_extra:
                 PyMem_Free(extra_array_ptr)
                 extra_array_ptr = NULL
+
+            # We still need to build solution arrays so that accessing the solution will not cause access violations.
+            # Build size-1 arrays. Since the solution was not successful, set all arrays to NANs
+            self.solution_t_ptr = <double *> reallocate_mem(
+                self.solution_t_ptr,
+                sizeof(double),
+                'solution_t_ptr (_solve; fail stage)')
+            self.solution_t_ptr[0] = NAN
+
+            self.solution_y_ptr = <double *> reallocate_mem(
+                self.solution_y_ptr,
+                self.y_size * sizeof(double),
+                'solution_y_ptr (_solve; fail stage)')
+            for i in range(self.y_size):
+                self.solution_t_ptr[i] = NAN
+
+            self.solution_extra_ptr = <double *> reallocate_mem(
+                self.solution_extra_ptr,
+                self.num_extra * 1 * sizeof(double),
+                'solution_extra_ptr (_solve; fail stage)')
+            for i in range(self.num_extra):
+                self.solution_extra_ptr[i] = NAN
+
+        # Integration is complete. Check if interpolation was requested.
+        if self.success:
+            if self.run_interpolation:
+                self.interpolate()
+                # Use different len_t
+                self.len_t_touse = self.len_t_eval
+            else:
+                self.len_t_touse = self.len_t
+        else:
+            # If integration was not successful use t_len = 1 to allow for nan arrays
+            self.len_t_touse = 1
+
+        # Convert solution pointers to a more user-friendly memoryview format.
+        # Define post-run variables
+        cdef size_t y_size_touse, extra_size_touse
+        y_size_touse     = self.y_size * self.len_t_touse
+        extra_size_touse = self.num_extra * self.len_t_touse
+
+        self.solution_t_view     = <double[:self.len_t_touse]> self.solution_t_ptr
+        self.solution_y_view     = <double[:y_size_touse]> self.solution_y_ptr
+        self.solution_extra_view = <double[:extra_size_touse]> self.solution_extra_ptr
+
+        # Update integration message
+        if self.status == 1:
+            self.message = "Integration completed without issue."
+        elif self.status == 0:
+            self.message = "Integration is/was ongoing (perhaps it was interrupted?)."
+        elif self.status == -1:
+            self.message = "Error in step size calculation:\n\tRequired step size is less than spacing between numbers."
+        elif self.status == -2:
+            self.message = "Maximum number of steps (set by user) exceeded during integration."
+        elif self.status == -3:
+            self.message = "Maximum number of steps (set by system architecture) exceeded during integration."
+        elif self.status == -6:
+            self.message = "Integration never started: y-size is zero."
+        elif self.status == -7:
+            self.message = "Error in step size calculation:\n\tError in step size acceptance."
+
+        # Release any memory that may still be alive due to exceptions being raised.
+        if not (time_domain_array_ptr is NULL):
+            PyMem_Free(time_domain_array_ptr)
+            time_domain_array_ptr = NULL
+        if not (y_results_array_ptr is NULL):
+            PyMem_Free(y_results_array_ptr)
+            y_results_array_ptr = NULL
+        if not (extra_array_ptr is NULL):
+            PyMem_Free(extra_array_ptr)
+            extra_array_ptr = NULL
 
 
     cdef void interpolate(self):
@@ -1186,76 +1183,75 @@ cdef class CySolver:
         # Initialize extra pointers which _may_ be needed.
         cdef double* interpolated_solution_extra_ptr = NULL
 
-        try:
-            # Perform interpolation on y values
-            interpolate(self.solution_t_ptr, self.t_eval_ptr, self.solution_y_ptr, interpolated_solution_y_ptr,
-                        self.len_t, self.len_t_eval, self.y_size, False)
+        # Perform interpolation on y values
+        interpolate(self.solution_t_ptr, self.t_eval_ptr, self.solution_y_ptr, interpolated_solution_y_ptr,
+                    self.len_t, self.len_t_eval, self.y_size, False)
 
-            # Make a copy of t_eval (issues can arise if we store the t_eval pointer in solution array).
-            for i in range(self.len_t_eval):
-                interpolated_solution_t_ptr[i] = self.t_eval_ptr[i]
+        # Make a copy of t_eval (issues can arise if we store the t_eval pointer in solution array).
+        for i in range(self.len_t_eval):
+            interpolated_solution_t_ptr[i] = self.t_eval_ptr[i]
 
 
-            if self.capture_extra:
-                # Right now if there is any extra output then it is stored at each time step used in the RK loop.
-                # We have to make a choice:
-                #   - Do we interpolate the extra values that were stored?
-                #   - Or do we use the interpolated t, y values to find new extra parameters at those specific points.
-                # The latter method is more computationally expensive (recalls the diffeq for each y) but is more accurate.
-                # This decision is set by the user with the `interpolate_extra` flag.
+        if self.capture_extra:
+            # Right now if there is any extra output then it is stored at each time step used in the RK loop.
+            # We have to make a choice:
+            #   - Do we interpolate the extra values that were stored?
+            #   - Or do we use the interpolated t, y values to find new extra parameters at those specific points.
+            # The latter method is more computationally expensive (recalls the diffeq for each y) but is more accurate.
+            # This decision is set by the user with the `interpolate_extra` flag.
 
-                # Build final interpolated solution array (Used if self.interpolate_extra is True or False)
-                interpolated_solution_extra_ptr = \
-                    <double *> allocate_mem(
-                        self.num_extra * self.len_t_eval * sizeof(double),
-                        'interpolated_solution_extra_ptr (interpolate)')
+            # Build final interpolated solution array (Used if self.interpolate_extra is True or False)
+            interpolated_solution_extra_ptr = \
+                <double *> allocate_mem(
+                    self.num_extra * self.len_t_eval * sizeof(double),
+                    'interpolated_solution_extra_ptr (interpolate)')
 
-                if self.interpolate_extra:
-                    # Perform interpolation on extra outputs
-                    interpolate(
-                        self.solution_t_ptr, self.t_eval_ptr, self.solution_extra_ptr, interpolated_solution_extra_ptr,
-                        self.len_t, self.len_t_eval, self.num_extra, False)
-                else:
-                    # Use the new interpolated y and t values to recalculate the extra outputs with self.diffeq
-                    for i in range(self.len_t_eval):
-                        # Set state variables
-                        self.t_now = self.t_eval_ptr[i]
-                        for j in range(self.y_size):
-                            self.y_ptr[j] = interpolated_solution_y_ptr[i * self.y_size + j]
+            if self.interpolate_extra:
+                # Perform interpolation on extra outputs
+                interpolate(
+                    self.solution_t_ptr, self.t_eval_ptr, self.solution_extra_ptr, interpolated_solution_extra_ptr,
+                    self.len_t, self.len_t_eval, self.num_extra, False)
+            else:
+                # Use the new interpolated y and t values to recalculate the extra outputs with self.diffeq
+                for i in range(self.len_t_eval):
+                    # Set state variables
+                    self.t_now = self.t_eval_ptr[i]
+                    for j in range(self.y_size):
+                        self.y_ptr[j] = interpolated_solution_y_ptr[i * self.y_size + j]
 
-                        # Call diffeq to recalculate extra outputs
-                        self.diffeq()
+                    # Call diffeq to recalculate extra outputs
+                    self.diffeq()
 
-                        # Capture extras
-                        for j in range(self.num_extra):
-                            interpolated_solution_extra_ptr[i * self.num_extra + j] = self.extra_output_ptr[j]
-
-                # Replace old pointers with new interpolated pointers and release the memory for the old stuff
-                PyMem_Free(self.solution_extra_ptr)
-                self.solution_extra_ptr = interpolated_solution_extra_ptr
-                interpolated_solution_extra_ptr = NULL
+                    # Capture extras
+                    for j in range(self.num_extra):
+                        interpolated_solution_extra_ptr[i * self.num_extra + j] = self.extra_output_ptr[j]
 
             # Replace old pointers with new interpolated pointers and release the memory for the old stuff
-            PyMem_Free(self.solution_t_ptr)
-            self.solution_t_ptr = interpolated_solution_t_ptr
-            interpolated_solution_t_ptr = NULL
-            PyMem_Free(self.solution_y_ptr)
-            self.solution_y_ptr = interpolated_solution_y_ptr
-            interpolated_solution_y_ptr = NULL
+            PyMem_Free(self.solution_extra_ptr)
+            self.solution_extra_ptr = interpolated_solution_extra_ptr
+            interpolated_solution_extra_ptr = NULL
 
-            # Interpolation is done.
-            self.status = old_status
-        finally:
-            # Free any memory that may still be alive if exceptions were raised.
-            if not (interpolated_solution_t_ptr is NULL):
-                PyMem_Free(interpolated_solution_t_ptr)
-                interpolated_solution_t_ptr = NULL
-            if not (interpolated_solution_y_ptr is NULL):
-                PyMem_Free(interpolated_solution_y_ptr)
-                interpolated_solution_y_ptr = NULL
-            if not (interpolated_solution_extra_ptr is NULL):
-                PyMem_Free(interpolated_solution_extra_ptr)
-                interpolated_solution_extra_ptr = NULL
+        # Replace old pointers with new interpolated pointers and release the memory for the old stuff
+        PyMem_Free(self.solution_t_ptr)
+        self.solution_t_ptr = interpolated_solution_t_ptr
+        interpolated_solution_t_ptr = NULL
+        PyMem_Free(self.solution_y_ptr)
+        self.solution_y_ptr = interpolated_solution_y_ptr
+        interpolated_solution_y_ptr = NULL
+
+        # Interpolation is done.
+        self.status = old_status
+
+        # Free any memory that may still be alive if exceptions were raised.
+        if not (interpolated_solution_t_ptr is NULL):
+            PyMem_Free(interpolated_solution_t_ptr)
+            interpolated_solution_t_ptr = NULL
+        if not (interpolated_solution_y_ptr is NULL):
+            PyMem_Free(interpolated_solution_y_ptr)
+            interpolated_solution_y_ptr = NULL
+        if not (interpolated_solution_extra_ptr is NULL):
+            PyMem_Free(interpolated_solution_extra_ptr)
+            interpolated_solution_extra_ptr = NULL
 
     cpdef void change_t_span(
             self,

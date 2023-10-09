@@ -2,6 +2,11 @@
 
 ## 2023
 
+#### v0.8.4 (TBD)
+
+Performance:
+- Removed the try/finally blocks, they were largely not needed as excepts are not implemented so there was no real benefit and they regressed performance.
+
 #### v0.8.3 (2023-10-05)
 
 New Features:
