@@ -40,6 +40,7 @@ cdef class CySolver:
     cdef size_t max_num_steps
     cdef size_t expected_size, current_size, num_concats
     cdef bool_cpp_t recalc_first_step
+    cdef bool_cpp_t force_fail
 
     # -- Interpolation info
     cdef bool_cpp_t run_interpolation

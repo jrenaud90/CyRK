@@ -237,7 +237,8 @@ cdef class CySolver:
             size_t expected_size = 0,
             size_t max_ram_MB = 2000,
             bool_cpp_t call_first_reset = True,
-            bool_cpp_t auto_solve = True):
+            bool_cpp_t auto_solve = True,
+            bool_cpp_t force_fail = False):
         """
         Initialize new CySolver instance.
 
@@ -318,6 +319,7 @@ cdef class CySolver:
         self.message = 'Integration has not started.'
         self.success = False
         self.recalc_first_step = False
+        self.force_fail = force_fail
 
         # Store y0 values and determine y-size information
         self.y_size = y0.size
@@ -788,7 +790,6 @@ cdef class CySolver:
             # Find final dydt for this timestep
             self.diffeq()
 
-
             # Check how well this step performed by calculating its error
             if self.rk_method == 2:
                 # Calculate Error for DOP853
@@ -1015,10 +1016,10 @@ cdef class CySolver:
             self.len_t += 1
 
         # Integration has stopped. Check if it was successful.
-        if self.status == 1:
-            self.success = True
-        else:
+        if self.status != 1 or self.force_fail:
             self.success = False
+        else:
+            self.success = True
 
         if self.success:
             # Solution was successful.
@@ -1789,6 +1790,7 @@ cdef class CySolver:
     def growths(self):
         # How many times the output arrays had to grow during integration
         return self.num_concats - 1
+
 
     def __dealloc__(self):
         # Free pointers made from user inputs

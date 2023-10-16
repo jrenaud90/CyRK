@@ -8,6 +8,9 @@ Performance:
 - Removed the try/finally blocks, they were largely not needed as excepts are not implemented so there was no real benefit and they regressed performance.
 - Cleaned up used variables in cython-based solvers.
 
+Other Changes:
+- Added "force_fail" parameter to CySolver to force the integrator to fail to test if memory is released properly.
+
 Bug Fixes:
 - Max number of steps was being performed before extra_output was parsed in `CySolver` which could lead to incorrect max num steps.
 - Fixed incorrect type for `CySolver.user_provided_max_num_steps`.
