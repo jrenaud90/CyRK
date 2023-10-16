@@ -9,7 +9,8 @@ Performance:
 - Cleaned up used variables in cython-based solvers.
 
 Other Changes:
-- Added "force_fail" parameter to CySolver to force the integrator to fail to test if memory is released properly.
+- Added "force_fail" parameter to `CySolver` to force the integrator to fail to test if memory is released properly.
+- `CySolver` class pointers now initialize to NULL at the start of init.
 
 Bug Fixes:
 - Max number of steps was being performed before extra_output was parsed in `CySolver` which could lead to incorrect max num steps.

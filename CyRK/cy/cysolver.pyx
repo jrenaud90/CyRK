@@ -311,6 +311,32 @@ cdef class CySolver:
             to perform integration.
         """
 
+        # Initialize all class pointers to null
+        self.tol_ptrs = NULL
+        self.rtols_ptr = NULL
+        self.atols_ptr = NULL
+        self.solution_y_ptr = NULL
+        self.solution_t_ptr = NULL
+        self.solution_extra_ptr = NULL
+        self.y0_ptr = NULL
+        self.args_ptr = NULL
+        self.t_eval_ptr = NULL
+        self.A_ptr = NULL
+        self.B_ptr = NULL
+        self.C_ptr = NULL
+        self.E_ptr = NULL
+        self.E3_ptr = NULL
+        self.E5_ptr = NULL
+        self.K_ptr = NULL
+        self.temporary_y_ptrs = NULL
+        self.y_ptr = NULL
+        self.y_old_ptr = NULL
+        self.dy_ptr = NULL
+        self.dy_old_ptr = NULL
+        self.extra_output_ptrs = NULL
+        self.extra_output_init_ptr = NULL
+        self.extra_output_ptr = NULL
+
         # Loop variables
         cdef size_t i, j
 
@@ -1024,13 +1050,16 @@ cdef class CySolver:
         if self.success:
             # Solution was successful.
             # Free any data stored in solution arrays so that we can repopulate them with the new solution
-            PyMem_Free(self.solution_t_ptr)
-            self.solution_t_ptr = NULL
-            PyMem_Free(self.solution_y_ptr)
-            self.solution_y_ptr = NULL
+            if not (self.solution_t_ptr is NULL):
+                PyMem_Free(self.solution_t_ptr)
+                self.solution_t_ptr = NULL
+            if not (self.solution_y_ptr is NULL):
+                PyMem_Free(self.solution_y_ptr)
+                self.solution_y_ptr = NULL
             if self.capture_extra:
-                PyMem_Free(self.solution_extra_ptr)
-                self.solution_extra_ptr = NULL
+                if not (self.solution_extra_ptr is NULL):
+                    PyMem_Free(self.solution_extra_ptr)
+                    self.solution_extra_ptr = NULL
 
             # Load values into solution arrays.
             # The arrays built during integration likely have a bunch of unused junk at the end due to overbuilding their size.
@@ -1057,15 +1086,17 @@ cdef class CySolver:
                 extra_array_ptr = NULL
         else:
             # Integration was not successful. Make solution pointers length 1 nan arrays.
-
             # Clear the storage arrays used during the step loop
-            PyMem_Free(time_domain_array_ptr)
-            time_domain_array_ptr = NULL
-            PyMem_Free(y_results_array_ptr)
-            y_results_array_ptr = NULL
+            if not (time_domain_array_ptr is NULL):
+                PyMem_Free(time_domain_array_ptr)
+                time_domain_array_ptr = NULL
+            if not (y_results_array_ptr is NULL):
+                PyMem_Free(y_results_array_ptr)
+                y_results_array_ptr = NULL
             if self.capture_extra:
-                PyMem_Free(extra_array_ptr)
-                extra_array_ptr = NULL
+                if not (extra_array_ptr is NULL):
+                    PyMem_Free(extra_array_ptr)
+                    extra_array_ptr = NULL
 
             # We still need to build solution arrays so that accessing the solution will not cause access violations.
             # Build size-1 arrays. Since the solution was not successful, set all arrays to NANs
@@ -1370,10 +1401,17 @@ cdef class CySolver:
         else:
             self.use_args = True
             self.num_args = len(args)
-        self.args_ptr = <double *> reallocate_mem(
-            self.args_ptr,
-            self.num_args * sizeof(double),
-            'args_ptr (change_args)')
+
+        if self.args_ptr is NULL:
+            self.args_ptr = <double *> allocate_mem(
+                self.num_args * sizeof(double),
+                'args_ptr (change_args)')
+        else:
+            self.args_ptr = <double *> reallocate_mem(
+                self.args_ptr,
+                self.num_args * sizeof(double),
+                'args_ptr (change_args)')
+
         for i in range(self.num_args):
             if self.use_args:
                 self.args_ptr[i] = args[i]
@@ -1548,10 +1586,15 @@ cdef class CySolver:
         self.run_interpolation = True
         self.len_t_eval = len(t_eval)
 
-        self.t_eval_ptr = <double *> reallocate_mem(
-            self.t_eval_ptr,
-            self.len_t_eval * sizeof(double),
-            't_eval_ptr (change_t_eval)')
+        if self.t_eval_ptr is NULL:
+            self.t_eval_ptr = <double *> allocate_mem(
+                self.len_t_eval * sizeof(double),
+                't_eval_ptr (change_t_eval)')
+        else:
+            self.t_eval_ptr = <double *> reallocate_mem(
+                self.t_eval_ptr,
+                self.len_t_eval * sizeof(double),
+                't_eval_ptr (change_t_eval)')
 
         for i in range(self.len_t_eval):
             if self.run_interpolation:
