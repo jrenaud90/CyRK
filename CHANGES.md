@@ -11,6 +11,7 @@ Performance:
 Other Changes:
 - Added "force_fail" parameter to `CySolver` to force the integrator to fail to test if memory is released properly.
 - `CySolver` class pointers now initialize to NULL at the start of init.
+- `CySolver` now owns all data that is heap-allocated (via class attributes). This allows better management of data in the event of crashes or integration failures.
 
 Bug Fixes:
 - Max number of steps was being performed before extra_output was parsed in `CySolver` which could lead to incorrect max num steps.

@@ -73,6 +73,16 @@ cdef class CySolver:
     cdef double* extra_output_init_ptr
     cdef double* extra_output_ptr
 
+    # -- Pointers used during solve method
+    cdef double* _solve_time_domain_array_ptr
+    cdef double* _solve_y_results_array_ptr
+    cdef double* _solve_extra_array_ptr
+
+    # -- Pointers used during interpolation
+    cdef double* _interpolate_solution_t_ptr
+    cdef double* _interpolate_solution_y_ptr
+    cdef double* _interpolate_solution_extra_ptr
+
     # Class functions
     cpdef void reset_state(
             self

@@ -336,9 +336,15 @@ cdef class CySolver:
         self.extra_output_ptrs = NULL
         self.extra_output_init_ptr = NULL
         self.extra_output_ptr = NULL
+        self._solve_time_domain_array_ptr = NULL
+        self._solve_y_results_array_ptr = NULL
+        self._solve_extra_array_ptr = NULL
+        self._interpolate_solution_t_ptr = NULL
+        self._interpolate_solution_y_ptr = NULL 
+        self._interpolate_solution_extra_ptr = NULL
 
         # Loop variables
-        cdef size_t i, j
+        cdef size_t i
 
         # Set integration information
         self.status  = -4  # Status code to indicate that integration has not started.
@@ -951,28 +957,45 @@ cdef class CySolver:
 
         # Setup storage arrays
         # These arrays are built to fit a number of points equal to `self.expected_size`
-        # If the integration needs more than that then a new array will be concatenated (with performance costs) to these.
-        cdef double* y_results_array_ptr = NULL
-        cdef double* extra_array_ptr = NULL
-        cdef double* time_domain_array_ptr = NULL
-        y_results_array_ptr = <double *> allocate_mem(
+        # If the integration needs more than that then a new array will be concatenated (with performance costs) to these.        
+        if self._solve_time_domain_array_ptr is NULL:
+            self._solve_time_domain_array_ptr = <double *> allocate_mem(
+                self.expected_size * sizeof(double),
+                '_solve_time_domain_array_ptr (_solve)')
+        else:
+            self._solve_time_domain_array_ptr = <double *> reallocate_mem(
+                self._solve_time_domain_array_ptr,
+                self.expected_size * sizeof(double),
+                '_solve_time_domain_array_ptr (_solve)')
+
+        if self._solve_y_results_array_ptr is NULL:
+            self._solve_y_results_array_ptr = <double *> allocate_mem(
                 self.y_size * self.expected_size * sizeof(double),
-                'y_results_array_ptr (_solve)')
-        time_domain_array_ptr = <double *> allocate_mem(
-            self.expected_size * sizeof(double),
-            'time_domain_array_ptr (_solve)')
+                '_solve_y_results_array_ptr (_solve)')
+        else:
+            self._solve_y_results_array_ptr = <double *> reallocate_mem(
+                self._solve_y_results_array_ptr,
+                self.y_size * self.expected_size * sizeof(double),
+                '_solve_y_results_array_ptr (_solve)')
+        
         if self.capture_extra:
-            extra_array_ptr = <double *> allocate_mem(
-                self.num_extra * self.expected_size * sizeof(double),
-                'extra_array_ptr (_solve)')
+            if self._solve_extra_array_ptr is NULL:
+                self._solve_extra_array_ptr = <double *> allocate_mem(
+                    self.expected_size * sizeof(double),
+                    '_solve_extra_array_ptr (_solve)')
+            else:
+                self._solve_extra_array_ptr = <double *> reallocate_mem(
+                    self._solve_extra_array_ptr,
+                    self.expected_size * sizeof(double),
+                    '_solve_extra_array_ptr (_solve)')
 
         # Load initial conditions into storage arrays
-        time_domain_array_ptr[0] = self.t_start
+        self._solve_time_domain_array_ptr[0] = self.t_start
         for i in range(self.y_size):
-            y_results_array_ptr[i] = self.y0_ptr[i]
+            self._solve_y_results_array_ptr[i] = self.y0_ptr[i]
         if self.capture_extra:
             for i in range(self.num_extra):
-                extra_array_ptr[i] = self.extra_output_init_ptr[i]
+                self._solve_extra_array_ptr[i] = self.extra_output_init_ptr[i]
 
         # # Main integration loop
         self.status = 0
@@ -1013,30 +1036,30 @@ cdef class CySolver:
                 # Grow the array by 50% its current value
                 self.current_size = <size_t>(<double>self.current_size * (1.5))
 
-                time_domain_array_ptr = <double *> reallocate_mem(
-                    time_domain_array_ptr,
+                self._solve_time_domain_array_ptr = <double *> reallocate_mem(
+                    self._solve_time_domain_array_ptr,
                     self.current_size * sizeof(double),
-                    'time_domain_array_ptr (_solve; growth stage)')
+                    'self._solve_time_domain_array_ptr (_solve; growth stage)')
 
-                y_results_array_ptr = <double *> reallocate_mem(
-                    y_results_array_ptr,
+                self._solve_y_results_array_ptr = <double *> reallocate_mem(
+                    self._solve_y_results_array_ptr,
                     self.y_size * self.current_size * sizeof(double),
-                    'y_results_array_ptr (_solve; growth stage)')
+                    'self._solve_y_results_array_ptr (_solve; growth stage)')
 
                 if self.capture_extra:
-                    extra_array_ptr = <double *> reallocate_mem(
-                        extra_array_ptr,
+                    self._solve_extra_array_ptr = <double *> reallocate_mem(
+                        self._solve_extra_array_ptr,
                         self.num_extra * self.current_size * sizeof(double),
-                        'extra_array_ptr (_solve; growth stage)')
+                        'self._solve_extra_array_ptr (_solve; growth stage)')
 
             # Add this step's results to our storage arrays.
-            time_domain_array_ptr[self.len_t] = self.t_now
+            self._solve_time_domain_array_ptr[self.len_t] = self.t_now
             for i in range(self.y_size):
-                y_results_array_ptr[self.len_t * self.y_size + i] = self.y_ptr[i]
+                self._solve_y_results_array_ptr[self.len_t * self.y_size + i] = self.y_ptr[i]
 
             if self.capture_extra:
                 for i in range(self.num_extra):
-                    extra_array_ptr[self.len_t * self.num_extra + i] = self.extra_output_ptr[i]
+                    self._solve_extra_array_ptr[self.len_t * self.num_extra + i] = self.extra_output_ptr[i]
 
             # Increase number of independent variable points.
             self.len_t += 1
@@ -1067,36 +1090,36 @@ cdef class CySolver:
             # These arrays will always be the same length or less (self.len_t <= self.current_size) than the ones they are
             # built off of, so it is safe to use Realloc.
             self.solution_t_ptr = <double *> reallocate_mem(
-                time_domain_array_ptr,
+                self._solve_time_domain_array_ptr,
                 self.len_t * sizeof(double),
                 'solution_t_ptr (_solve; success stage)')
-            time_domain_array_ptr = NULL
+            self._solve_time_domain_array_ptr = NULL
 
             self.solution_y_ptr = <double *> reallocate_mem(
-                y_results_array_ptr,
+                self._solve_y_results_array_ptr,
                 self.y_size * self.len_t * sizeof(double),
                 'solution_y_ptr (_solve; success stage)')
-            y_results_array_ptr = NULL
+            self._solve_y_results_array_ptr = NULL
 
             if self.capture_extra:
                 self.solution_extra_ptr = <double *> reallocate_mem(
-                    extra_array_ptr,
+                    self._solve_extra_array_ptr,
                     self.num_extra * self.len_t * sizeof(double),
                     'solution_extra_ptr (_solve; success stage)')
-                extra_array_ptr = NULL
+                self._solve_extra_array_ptr = NULL
         else:
             # Integration was not successful. Make solution pointers length 1 nan arrays.
             # Clear the storage arrays used during the step loop
-            if not (time_domain_array_ptr is NULL):
-                PyMem_Free(time_domain_array_ptr)
-                time_domain_array_ptr = NULL
-            if not (y_results_array_ptr is NULL):
-                PyMem_Free(y_results_array_ptr)
-                y_results_array_ptr = NULL
+            if not (self._solve_time_domain_array_ptr is NULL):
+                PyMem_Free(self._solve_time_domain_array_ptr)
+                self._solve_time_domain_array_ptr = NULL
+            if not (self._solve_y_results_array_ptr is NULL):
+                PyMem_Free(self._solve_y_results_array_ptr)
+                self._solve_y_results_array_ptr = NULL
             if self.capture_extra:
-                if not (extra_array_ptr is NULL):
-                    PyMem_Free(extra_array_ptr)
-                    extra_array_ptr = NULL
+                if not (self._solve_extra_array_ptr is NULL):
+                    PyMem_Free(self._solve_extra_array_ptr)
+                    self._solve_extra_array_ptr = NULL
 
             # We still need to build solution arrays so that accessing the solution will not cause access violations.
             # Build size-1 arrays. Since the solution was not successful, set all arrays to NANs
@@ -1159,15 +1182,15 @@ cdef class CySolver:
             self.message = "Error in step size calculation:\n\tError in step size acceptance."
 
         # Release any memory that may still be alive due to exceptions being raised.
-        if not (time_domain_array_ptr is NULL):
-            PyMem_Free(time_domain_array_ptr)
-            time_domain_array_ptr = NULL
-        if not (y_results_array_ptr is NULL):
-            PyMem_Free(y_results_array_ptr)
-            y_results_array_ptr = NULL
-        if not (extra_array_ptr is NULL):
-            PyMem_Free(extra_array_ptr)
-            extra_array_ptr = NULL
+        if not (self._solve_time_domain_array_ptr is NULL):
+            PyMem_Free(self._solve_time_domain_array_ptr)
+            self._solve_time_domain_array_ptr = NULL
+        if not (self._solve_y_results_array_ptr is NULL):
+            PyMem_Free(self._solve_y_results_array_ptr)
+            self._solve_y_results_array_ptr = NULL
+        if not (self._solve_extra_array_ptr is NULL):
+            PyMem_Free(self._solve_extra_array_ptr)
+            self._solve_extra_array_ptr = NULL
 
 
     cdef void interpolate(self):
@@ -1181,29 +1204,34 @@ cdef class CySolver:
         cdef size_t i, j
 
         # TODO: The current version of CySolver has not implemented sicpy's dense output. Instead we use an interpolation.
-        # Build final interpolated time array
-        cdef double* interpolated_solution_t_ptr = NULL
-        interpolated_solution_t_ptr = <double *> allocate_mem(
-            self.len_t_eval * sizeof(double),
-            'interpolated_solution_t_ptr (interpolate)')
+        # Build final interpolated time and solution arrays
+        if self._interpolate_solution_t_ptr is NULL:
+            self._interpolate_solution_t_ptr = <double *> allocate_mem(
+                self.len_t_eval * sizeof(double),
+                '_interpolate_solution_t_ptr (interpolate)')
+        else:
+            self._interpolate_solution_t_ptr = <double *> reallocate_mem(
+                self._interpolate_solution_t_ptr,
+                self.len_t_eval * sizeof(double),
+                '_interpolate_solution_t_ptr (interpolate)')
 
-        # Build final interpolated solution arrays
-        cdef double* interpolated_solution_y_ptr = NULL
-        interpolated_solution_y_ptr = <double *> allocate_mem(
-            self.y_size * self.len_t_eval * sizeof(double),
-            'interpolated_solution_y_ptr (interpolate)')
-
-        # Initialize extra pointers which _may_ be needed.
-        cdef double* interpolated_solution_extra_ptr = NULL
+        if self._interpolate_solution_y_ptr is NULL:
+            self._interpolate_solution_y_ptr = <double *> allocate_mem(
+                self.y_size * self.len_t_eval * sizeof(double),
+                'self._interpolate_solution_y_ptr (interpolate)')
+        else:
+            self._interpolate_solution_y_ptr = <double *> reallocate_mem(
+                self._interpolate_solution_y_ptr,
+                self.y_size * self.len_t_eval * sizeof(double),
+                'self._interpolate_solution_y_ptr (interpolate)')
 
         # Perform interpolation on y values
-        interpolate(self.solution_t_ptr, self.t_eval_ptr, self.solution_y_ptr, interpolated_solution_y_ptr,
+        interpolate(self.solution_t_ptr, self.t_eval_ptr, self.solution_y_ptr, self._interpolate_solution_y_ptr,
                     self.len_t, self.len_t_eval, self.y_size, False)
 
         # Make a copy of t_eval (issues can arise if we store the t_eval pointer in solution array).
         for i in range(self.len_t_eval):
-            interpolated_solution_t_ptr[i] = self.t_eval_ptr[i]
-
+            self._interpolate_solution_t_ptr[i] = self.t_eval_ptr[i]
 
         if self.capture_extra:
             # Right now if there is any extra output then it is stored at each time step used in the RK loop.
@@ -1214,15 +1242,20 @@ cdef class CySolver:
             # This decision is set by the user with the `interpolate_extra` flag.
 
             # Build final interpolated solution array (Used if self.interpolate_extra is True or False)
-            interpolated_solution_extra_ptr = \
-                <double *> allocate_mem(
+            if self._interpolate_solution_extra_ptr is NULL:
+                self._interpolate_solution_extra_ptr = <double *> allocate_mem(
                     self.num_extra * self.len_t_eval * sizeof(double),
-                    'interpolated_solution_extra_ptr (interpolate)')
+                    'self._interpolate_solution_extra_ptr (interpolate)')
+            else:
+                self._interpolate_solution_extra_ptr = <double *> reallocate_mem(
+                    self._interpolate_solution_extra_ptr,
+                    self.num_extra * self.len_t_eval * sizeof(double),
+                    'self._interpolate_solution_extra_ptr (interpolate)')
 
             if self.interpolate_extra:
                 # Perform interpolation on extra outputs
                 interpolate(
-                    self.solution_t_ptr, self.t_eval_ptr, self.solution_extra_ptr, interpolated_solution_extra_ptr,
+                    self.solution_t_ptr, self.t_eval_ptr, self.solution_extra_ptr, self._interpolate_solution_extra_ptr,
                     self.len_t, self.len_t_eval, self.num_extra, False)
             else:
                 # Use the new interpolated y and t values to recalculate the extra outputs with self.diffeq
@@ -1230,41 +1263,41 @@ cdef class CySolver:
                     # Set state variables
                     self.t_now = self.t_eval_ptr[i]
                     for j in range(self.y_size):
-                        self.y_ptr[j] = interpolated_solution_y_ptr[i * self.y_size + j]
+                        self.y_ptr[j] = self._interpolate_solution_y_ptr[i * self.y_size + j]
 
                     # Call diffeq to recalculate extra outputs
                     self.diffeq()
 
                     # Capture extras
                     for j in range(self.num_extra):
-                        interpolated_solution_extra_ptr[i * self.num_extra + j] = self.extra_output_ptr[j]
+                        self._interpolate_solution_extra_ptr[i * self.num_extra + j] = self.extra_output_ptr[j]
 
             # Replace old pointers with new interpolated pointers and release the memory for the old stuff
             PyMem_Free(self.solution_extra_ptr)
-            self.solution_extra_ptr = interpolated_solution_extra_ptr
-            interpolated_solution_extra_ptr = NULL
+            self.solution_extra_ptr = self._interpolate_solution_extra_ptr
+            self._interpolate_solution_extra_ptr = NULL
 
         # Replace old pointers with new interpolated pointers and release the memory for the old stuff
         PyMem_Free(self.solution_t_ptr)
-        self.solution_t_ptr = interpolated_solution_t_ptr
-        interpolated_solution_t_ptr = NULL
+        self.solution_t_ptr = self._interpolate_solution_t_ptr
+        self._interpolate_solution_t_ptr = NULL
         PyMem_Free(self.solution_y_ptr)
-        self.solution_y_ptr = interpolated_solution_y_ptr
-        interpolated_solution_y_ptr = NULL
+        self.solution_y_ptr = self._interpolate_solution_y_ptr
+        self._interpolate_solution_y_ptr = NULL
 
         # Interpolation is done.
         self.status = old_status
 
         # Free any memory that may still be alive if exceptions were raised.
-        if not (interpolated_solution_t_ptr is NULL):
-            PyMem_Free(interpolated_solution_t_ptr)
-            interpolated_solution_t_ptr = NULL
-        if not (interpolated_solution_y_ptr is NULL):
-            PyMem_Free(interpolated_solution_y_ptr)
-            interpolated_solution_y_ptr = NULL
-        if not (interpolated_solution_extra_ptr is NULL):
-            PyMem_Free(interpolated_solution_extra_ptr)
-            interpolated_solution_extra_ptr = NULL
+        if not (self._interpolate_solution_t_ptr is NULL):
+            PyMem_Free(self._interpolate_solution_t_ptr)
+            self._interpolate_solution_t_ptr = NULL
+        if not (self._interpolate_solution_y_ptr is NULL):
+            PyMem_Free(self._interpolate_solution_y_ptr)
+            self._interpolate_solution_y_ptr = NULL
+        if not (self._interpolate_solution_extra_ptr is NULL):
+            PyMem_Free(self._interpolate_solution_extra_ptr)
+            self._interpolate_solution_extra_ptr = NULL
 
     cpdef void change_t_span(
             self,
@@ -1868,6 +1901,28 @@ cdef class CySolver:
         if not (self.solution_extra_ptr):
             PyMem_Free(self.solution_extra_ptr)
             self.solution_extra_ptr = NULL
+        
+        # Free pointers used during the solve method
+        if not (self._solve_time_domain_array_ptr is NULL):
+            PyMem_Free(self._solve_time_domain_array_ptr)
+            self._solve_time_domain_array_ptr = NULL
+        if not (self._solve_y_results_array_ptr is NULL):
+            PyMem_Free(self._solve_y_results_array_ptr)
+            self._solve_y_results_array_ptr = NULL
+        if not (self._solve_extra_array_ptr is NULL):
+            PyMem_Free(self._solve_extra_array_ptr)
+            self._solve_extra_array_ptr = NULL
+        
+        # Free pointers used during interpolation
+        if not (self._interpolate_solution_t_ptr is NULL):
+            PyMem_Free(self._interpolate_solution_t_ptr)
+            self._interpolate_solution_t_ptr = NULL
+        if not (self._interpolate_solution_y_ptr is NULL):
+            PyMem_Free(self._interpolate_solution_y_ptr)
+            self._interpolate_solution_y_ptr = NULL
+        if not (self._interpolate_solution_extra_ptr is NULL):
+            PyMem_Free(self._interpolate_solution_extra_ptr)
+            self._interpolate_solution_extra_ptr = NULL
 
         # Free RK Temp Storage Array
         if not (self.K_ptr):
