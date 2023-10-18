@@ -8,7 +8,9 @@ cdef class CySolver:
     cdef double* solution_y_ptr
     cdef double* solution_t_ptr
     cdef double* solution_extra_ptr
-    cdef double[::1] solution_t_view, solution_y_view, solution_extra_view
+    cdef double[::1] solution_t_view
+    cdef double[::1] solution_y_view
+    cdef double[::1] solution_extra_view
 
     # -- Dependent (y0) variable information
     cdef size_t y_size
@@ -107,7 +109,8 @@ cdef class CySolver:
             )
 
     cdef void interpolate(
-            self)
+            self
+            )
 
     cpdef void change_t_span(
             self,

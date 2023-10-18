@@ -5,8 +5,8 @@
 #### v0.8.4 (TBD)
 
 Performance:
-- Removed the try/finally blocks, they were largely not needed as excepts are not implemented so there was no real benefit and they regressed performance.
-- Cleaned up used variables in cython-based solvers.
+- Removed some try/finally blocks, they were largely not needed in `CySolver` as allocated memory is released on the class destruction.
+- Cleaned up unused variables in cython-based solvers.
 
 Other Changes:
 - Added "force_fail" parameter to `CySolver` to force the integrator to fail to test if memory is released properly.

@@ -1273,15 +1273,18 @@ cdef class CySolver:
                         self._interpolate_solution_extra_ptr[i * self.num_extra + j] = self.extra_output_ptr[j]
 
             # Replace old pointers with new interpolated pointers and release the memory for the old stuff
-            PyMem_Free(self.solution_extra_ptr)
+            if not (self.solution_extra_ptr is NULL):
+                PyMem_Free(self.solution_extra_ptr)
             self.solution_extra_ptr = self._interpolate_solution_extra_ptr
             self._interpolate_solution_extra_ptr = NULL
 
         # Replace old pointers with new interpolated pointers and release the memory for the old stuff
-        PyMem_Free(self.solution_t_ptr)
+        if not (self.solution_t_ptr is NULL):
+            PyMem_Free(self.solution_t_ptr)
         self.solution_t_ptr = self._interpolate_solution_t_ptr
         self._interpolate_solution_t_ptr = NULL
-        PyMem_Free(self.solution_y_ptr)
+        if not (self.solution_y_ptr is NULL):
+            PyMem_Free(self.solution_y_ptr)
         self.solution_y_ptr = self._interpolate_solution_y_ptr
         self._interpolate_solution_y_ptr = NULL
 
@@ -1489,8 +1492,7 @@ cdef class CySolver:
 
         # This is one of the few change functions where nothing might change.
         # Track if updates need to be made
-        cdef bool_cpp_t something_changed
-        something_changed = False
+        cdef bool_cpp_t something_changed = False
 
         # Update tolerances
         cdef double rtol_tmp
@@ -1758,7 +1760,6 @@ cdef class CySolver:
             self._solve(reset=(not auto_reset_state))
 
 
-
     cdef void update_constants(self) noexcept nogil:
         # This is a template method that should be overriden by a user's subclass (if needed).
 
@@ -1873,32 +1874,32 @@ cdef class CySolver:
         if not (self.y0_ptr is NULL):
             PyMem_Free(self.y0_ptr)
             self.y0_ptr = NULL
-        if not (self.tol_ptrs):
+        if not (self.tol_ptrs is NULL):
             PyMem_Free(self.tol_ptrs)
             self.tol_ptrs = NULL
-        if not (self.args_ptr):
+        if not (self.args_ptr is NULL):
             PyMem_Free(self.args_ptr)
             self.args_ptr = NULL
-        if not (self.t_eval_ptr):
+        if not (self.t_eval_ptr is NULL):
             PyMem_Free(self.t_eval_ptr)
             self.t_eval_ptr = NULL
 
         # Free pointers used to track y, dydt, and any extra outputs
-        if not (self.temporary_y_ptrs):
+        if not (self.temporary_y_ptrs is NULL):
             PyMem_Free(self.temporary_y_ptrs)
             self.temporary_y_ptrs = NULL
-        if not (self.extra_output_ptrs):
+        if not (self.extra_output_ptrs is NULL):
             PyMem_Free(self.extra_output_ptrs)
             self.extra_output_ptrs = NULL
 
         # Free final solution pointers
-        if not (self.solution_t_ptr):
+        if not (self.solution_t_ptr is NULL):
             PyMem_Free(self.solution_t_ptr)
             self.solution_t_ptr = NULL
-        if not (self.solution_y_ptr):
+        if not (self.solution_y_ptr is NULL):
             PyMem_Free(self.solution_y_ptr)
             self.solution_y_ptr = NULL
-        if not (self.solution_extra_ptr):
+        if not (self.solution_extra_ptr is NULL):
             PyMem_Free(self.solution_extra_ptr)
             self.solution_extra_ptr = NULL
         
@@ -1925,6 +1926,6 @@ cdef class CySolver:
             self._interpolate_solution_extra_ptr = NULL
 
         # Free RK Temp Storage Array
-        if not (self.K_ptr):
+        if not (self.K_ptr is NULL):
             PyMem_Free(self.K_ptr)
             self.K_ptr = NULL
