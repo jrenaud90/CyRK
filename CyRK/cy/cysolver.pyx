@@ -568,7 +568,6 @@ cdef class CySolver:
             # So we can safely tell the solve method not to reset.
             self._solve(reset=False)
 
-
     cpdef void reset_state(self):
         """ Resets the class' state variables so that integration can be rerun. """
         cdef size_t i, j
@@ -642,7 +641,6 @@ cdef class CySolver:
         self.status = -5  # status == -5 means that reset has been called but solve has not yet been called.
         self.message = "CySolver has been reset."
 
-
     cdef double calc_first_step(self) noexcept nogil:
         """
         Select an initial step size based on the differential equation.
@@ -708,7 +706,6 @@ cdef class CySolver:
                             fmin(100. * h0, h1))
 
         return step_size
-
 
     cdef void rk_step(self) noexcept nogil:
         """ Performs a Runge-Kutta step calculation including local error determination. """
@@ -919,7 +916,6 @@ cdef class CySolver:
             self.y_old_ptr[i]  = self.y_ptr[i]
             self.dy_old_ptr[i] = self.dy_ptr[i]
 
-
     cpdef void solve(
             self,
             bool_cpp_t reset = True
@@ -933,7 +929,6 @@ cdef class CySolver:
             If True, `reset_state()` will be called before integration starts.
         """
         self._solve(reset=reset)
-
 
     cdef void _solve(
             self,
@@ -1192,7 +1187,6 @@ cdef class CySolver:
             PyMem_Free(self._solve_extra_array_ptr)
             self._solve_extra_array_ptr = NULL
 
-
     cdef void interpolate(self):
         """ Interpolate the results of a successful integration over the user provided time domain, `t_eval`. """
         # User only wants data at specific points.
@@ -1337,7 +1331,6 @@ cdef class CySolver:
         if auto_reset_state:
             self.reset_state()
 
-
     cpdef void change_y0(
             self,
             const double[::1] y0,
@@ -1412,7 +1405,6 @@ cdef class CySolver:
             if auto_reset_state:
                 self.reset_state()
 
-
     cpdef void change_args(
             self,
             tuple args,
@@ -1459,7 +1451,6 @@ cdef class CySolver:
 
         if auto_reset_state:
             self.reset_state()
-
 
     cpdef void change_tols(
             self,
@@ -1539,7 +1530,6 @@ cdef class CySolver:
             if auto_reset_state:
                 self.reset_state()
 
-
     cpdef void change_max_step(
             self,
             double max_step,
@@ -1560,7 +1550,6 @@ cdef class CySolver:
 
         if auto_reset_state:
             self.reset_state()
-
 
     cpdef void change_first_step(
             self,
@@ -1597,7 +1586,6 @@ cdef class CySolver:
 
         if auto_reset_state:
             self.reset_state()
-
 
     cpdef void change_t_eval(
             self,
@@ -1638,7 +1626,6 @@ cdef class CySolver:
         if auto_reset_state:
             self.reset_state()
 
-
     cdef void change_t_eval_pointer(
             self,
             double* t_eval_ptr,
@@ -1671,7 +1658,6 @@ cdef class CySolver:
 
         if auto_reset_state:
             self.reset_state()
-
 
     cpdef void change_parameters(
             self,
@@ -1760,6 +1746,7 @@ cdef class CySolver:
             self._solve(reset=(not auto_reset_state))
 
 
+    # Methods to be overridden by sub classes
     cdef void update_constants(self) noexcept nogil:
         # This is a template method that should be overriden by a user's subclass (if needed).
 
@@ -1850,18 +1837,15 @@ cdef class CySolver:
         # Need to convert the memory view back into a numpy array
         return np.ascontiguousarray(self.solution_t_view, dtype=np.float64)
 
-
     @property
     def y(self):
         # Need to convert the memory view back into a numpy array and reshape it
         return np.ascontiguousarray(self.solution_y_view, dtype=np.float64).reshape((self.len_t_touse, self.y_size)).T
 
-
     @property
     def extra(self):
         # Need to convert the memory view back into a numpy array
         return np.ascontiguousarray(self.solution_extra_view, dtype=np.float64).reshape((self.len_t_touse, self.num_extra)).T
-
 
     @property
     def growths(self):
@@ -1869,6 +1853,7 @@ cdef class CySolver:
         return self.num_concats - 1
 
 
+    # Special methods
     def __dealloc__(self):
         # Free pointers made from user inputs
         if not (self.y0_ptr is NULL):
