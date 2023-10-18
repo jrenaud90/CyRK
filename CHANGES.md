@@ -2,7 +2,7 @@
 
 ## 2023
 
-#### v0.8.4 (TBD)
+#### v0.8.4 (2023-10-18)
 
 Performance:
 - Removed some try/finally blocks, they were largely not needed in `CySolver` as allocated memory is released on the class destruction.
