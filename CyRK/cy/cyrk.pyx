@@ -451,21 +451,21 @@ def cyrk_ode(
     A_at_10 = A_ptr[1 * len_Acols + 0]
 
     # Setup storage arrays
-    # These arrays are built to fit a number of points equal to expected_size_to_use
+    # These arrays are built to fit a number of points equal to current_size
     # If the integration needs more than that then a new array will be concatenated (with performance costs) to these.
     cdef double* time_domain_array_ptr = NULL
     cdef double_numeric* y_results_array_ptr = NULL
     cdef double_numeric* extra_array_ptr = NULL
 
     time_domain_array_ptr = <double *> allocate_mem(
-        expected_size_to_use * sizeof(double),
+        current_size * sizeof(double),
         'time_domain_array_ptr (start-up)')
     y_results_array_ptr = <double_numeric *> allocate_mem(
-        y_size * expected_size_to_use * sizeof(double_numeric),
+        y_size * current_size * sizeof(double_numeric),
         'y_results_array_ptr (start-up)')
     if capture_extra:
         extra_array_ptr = <double_numeric *> allocate_mem(
-            num_extra * expected_size_to_use * sizeof(double_numeric),
+            num_extra * current_size * sizeof(double_numeric),
             'extra_array_ptr (start-up)')
 
     # Load initial conditions into storage arrays
