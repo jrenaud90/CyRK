@@ -2,6 +2,21 @@
 
 ## 2023
 
+#### v0.8.4 (TBD)
+
+Performance:
+- Removed some try/finally blocks, they were largely not needed in `CySolver` as allocated memory is released on the class destruction.
+- Cleaned up unused variables in cython-based solvers.
+
+Other Changes:
+- Added "force_fail" parameter to `CySolver` to force the integrator to fail to test if memory is released properly.
+- `CySolver` class pointers now initialize to NULL at the start of init.
+- `CySolver` now owns all data that is heap-allocated (via class attributes). This allows better management of data in the event of crashes or integration failures.
+
+Bug Fixes:
+- Max number of steps was being performed before extra_output was parsed in `CySolver` which could lead to incorrect max num steps.
+- Fixed incorrect type for `CySolver.user_provided_max_num_steps`.
+
 #### v0.8.3 (2023-10-05)
 
 New Features:

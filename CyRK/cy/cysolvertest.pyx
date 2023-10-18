@@ -154,3 +154,26 @@ cdef class CySolverPendulum(CySolver):
 
         self.dy_ptr[0] = y1
         self.dy_ptr[1] = self.coeff_1 * sin(y0) + self.coeff_2 * torque
+
+
+cdef class CySolverStiff(CySolver):
+
+    cdef double a
+
+    cdef void update_constants(self) noexcept nogil:
+
+        self.a = self.args_ptr[0]
+
+    cdef void diffeq(self) noexcept nogil:
+
+        # Unpack y
+        cdef double y0, y1, sin_, cos_
+        y0 = self.y_ptr[0]
+        y1 = self.y_ptr[1]
+
+        # External torque
+        sin_ = sin(self.t_now)
+        cos_ = cos(self.t_now)
+
+        self.dy_ptr[0] = -2.0 * y0 + y1 + 2 * sin_
+        self.dy_ptr[1] = (self.a - 1.0) * y0 - self.a * y1 + self.a * (cos_ - sin_)

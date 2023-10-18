@@ -10,12 +10,12 @@ cimport numpy as np
 np.import_array()
 
 from libcpp cimport bool as bool_cpp_t
-from libc.math cimport sqrt, fabs, nextafter, NAN
+from libc.math cimport sqrt, fabs, nextafter, NAN, floor
 
 from CyRK.utils.utils cimport allocate_mem, reallocate_mem
 from CyRK.rk.rk cimport find_rk_properties
 from CyRK.cy.common cimport double_numeric, interpolate, SAFETY, MIN_FACTOR, MAX_FACTOR, MAX_STEP, INF, \
-    EPS_100, MAX_SIZET_SIZE, RAM_BUFFER_SIZE, find_expected_size
+    EPS_100, find_expected_size, find_max_num_steps
 
 
 cdef double cabs(
@@ -270,34 +270,17 @@ def cyrk_ode(
             atols_ptr[i] = atol
     
     # Determine max number of steps
-    cdef double max_num_steps_ram_dbl
-    max_num_steps_ram_dbl = max_ram_MB * (1000 * 1000)
-    # As of CyRK v0.8.3, the CySolver class takes up about 1200 Bytes of memory. Let's assume cyrk_ode takes up a 
-    #  similar amount.
-    # Buffer the expeceted size up a bit (set by RAM_BUFFER_SIZE) and subtract this from the total we are allowed.
-    max_num_steps_ram_dbl -= <double> RAM_BUFFER_SIZE
-    # Divide by size of data that will be stored in main loop
-    max_num_steps_ram_dbl /= sizeof(double_numeric)
-    # Divide by number of dependnet and extra variables that will be stored. The extra "1" is for the time domain.
-    if capture_extra:
-        max_num_steps_ram_dbl /= (1 + y_size + num_extra)
-    else:
-        max_num_steps_ram_dbl /= (1 + y_size)
-    cdef size_t max_num_steps_ram = <size_t> max_num_steps_ram_dbl
-
-    # Parse user-provided max number of steps
-    cdef bool_cpp_t user_provided_max_num_steps = False
-    if max_num_steps == 0:
-        # No user input; use ram-based value
-        max_num_steps = max_num_steps_ram
-    else: 
-        if max_num_steps > max_num_steps_ram:
-            max_num_steps = max_num_steps_ram
-        else:
-            user_provided_max_num_steps = True
-    # Make sure that max number of steps does not exceed size_t limit
-    if max_num_steps > (MAX_SIZET_SIZE / 10):
-        max_num_steps = (MAX_SIZET_SIZE / 10)
+    cdef size_t max_num_steps_touse
+    cdef bool_cpp_t user_provided_max_num_steps
+    find_max_num_steps(
+        y_size,
+        num_extra,
+        max_num_steps,
+        max_ram_MB,
+        capture_extra,
+        y_is_complex,
+        &user_provided_max_num_steps,
+        &max_num_steps_touse)
 
     # Expected size of output arrays.
     cdef size_t expected_size_to_use, num_concats, current_size
@@ -468,21 +451,21 @@ def cyrk_ode(
     A_at_10 = A_ptr[1 * len_Acols + 0]
 
     # Setup storage arrays
-    # These arrays are built to fit a number of points equal to expected_size_to_use
+    # These arrays are built to fit a number of points equal to current_size
     # If the integration needs more than that then a new array will be concatenated (with performance costs) to these.
     cdef double* time_domain_array_ptr = NULL
     cdef double_numeric* y_results_array_ptr = NULL
     cdef double_numeric* extra_array_ptr = NULL
 
     time_domain_array_ptr = <double *> allocate_mem(
-        expected_size_to_use * sizeof(double),
+        current_size * sizeof(double),
         'time_domain_array_ptr (start-up)')
     y_results_array_ptr = <double_numeric *> allocate_mem(
-        y_size * expected_size_to_use * sizeof(double_numeric),
+        y_size * current_size * sizeof(double_numeric),
         'y_results_array_ptr (start-up)')
     if capture_extra:
         extra_array_ptr = <double_numeric *> allocate_mem(
-            num_extra * expected_size_to_use * sizeof(double_numeric),
+            num_extra * current_size * sizeof(double_numeric),
             'extra_array_ptr (start-up)')
 
     # Load initial conditions into storage arrays
@@ -608,7 +591,7 @@ def cyrk_ode(
                 status = 1
                 break
 
-            if len_t > max_num_steps:
+            if len_t > max_num_steps_touse:
                 if user_provided_max_num_steps:
                     status = -2
                     message = "Maximum number of steps (set by user) exceeded during integration."
@@ -823,7 +806,7 @@ def cyrk_ode(
                 num_concats += 1
 
                 # Grow the array by 50% its current value
-                current_size = <size_t>(<double>current_size * (1.5))
+                current_size = <size_t> floor(<double>current_size * (1.5))
 
                 time_domain_array_ptr = <double *> reallocate_mem(
                     time_domain_array_ptr,
@@ -887,13 +870,16 @@ def cyrk_ode(
                 extra_array_ptr = NULL
         else:
             # Clear the storage arrays used during the step loop
-            PyMem_Free(time_domain_array_ptr)
-            time_domain_array_ptr = NULL
-            PyMem_Free(y_results_array_ptr)
-            y_results_array_ptr = NULL
+            if not (time_domain_array_ptr is NULL):
+                PyMem_Free(time_domain_array_ptr)
+                time_domain_array_ptr = NULL
+            if not (y_results_array_ptr is NULL):
+                PyMem_Free(y_results_array_ptr)
+                y_results_array_ptr = NULL
             if capture_extra:
-                PyMem_Free(extra_array_ptr)
-                extra_array_ptr = NULL
+                if not (extra_array_ptr is NULL):
+                    PyMem_Free(extra_array_ptr)
+                    extra_array_ptr = NULL
 
             # Integration was not successful. Leave the solution pointers as length 1 nan arrays.
             solution_t_ptr = <double *> allocate_mem(
@@ -982,15 +968,18 @@ def cyrk_ode(
                             interpolated_solution_extra_ptr[i * num_extra + j] = diffeq_out_view[extra_start + j]
 
                 # Replace old pointers with new interpolated pointers and release the memory for the old stuff
-                PyMem_Free(solution_extra_ptr)
+                if not (solution_extra_ptr is NULL):
+                    PyMem_Free(solution_extra_ptr)
                 solution_extra_ptr = interpolated_solution_extra_ptr
                 interpolated_solution_extra_ptr = NULL
 
             # Replace old pointers with new interpolated pointers and release the memory for the old stuff
-            PyMem_Free(solution_t_ptr)
+            if not (solution_t_ptr is NULL):
+                PyMem_Free(solution_t_ptr)
             solution_t_ptr = interpolated_solution_t_ptr
             interpolated_solution_t_ptr = NULL
-            PyMem_Free(solution_y_ptr)
+            if not (solution_y_ptr is NULL):
+                PyMem_Free(solution_y_ptr)
             solution_y_ptr = interpolated_solution_y_ptr
             interpolated_solution_y_ptr = NULL
 
@@ -1012,13 +1001,16 @@ def cyrk_ode(
                 for j in range(num_extra):
                     solution_y_view[extra_start + j, i] = solution_extra_ptr[i * num_extra + j]
         # Free solution arrays
-        PyMem_Free(solution_t_ptr)
-        solution_t_ptr = NULL
-        PyMem_Free(solution_y_ptr)
-        solution_y_ptr = NULL
+        if not (solution_t_ptr is NULL):
+            PyMem_Free(solution_t_ptr)
+            solution_t_ptr = NULL
+        if not (solution_y_ptr is NULL):
+            PyMem_Free(solution_y_ptr)
+            solution_y_ptr = NULL
         if capture_extra:
-            PyMem_Free(solution_extra_ptr)
-            solution_extra_ptr = NULL
+            if not (solution_extra_ptr is NULL):
+                PyMem_Free(solution_extra_ptr)
+                solution_extra_ptr = NULL
 
         # Update integration message
         if status == 1:
@@ -1035,6 +1027,7 @@ def cyrk_ode(
             message = "Integration never started: y-size is zero."
         elif status == -7:
             message = "Error in step size calculation:\n\tError in step size acceptance."
+
     finally:
         # Free pointers made from user inputs
         if not (tol_ptrs is NULL):

@@ -44,3 +44,14 @@ cdef size_t find_expected_size(
         bool_cpp_t capture_extra,
         bool_cpp_t is_complex
         ) noexcept nogil
+
+
+cdef void find_max_num_steps(
+        size_t y_size,
+        size_t num_extra,
+        size_t max_num_steps,
+        size_t max_ram_MB,
+        bool_cpp_t capture_extra,
+        bool_cpp_t is_complex,
+        bool_cpp_t* user_provided_max_num_steps,
+        size_t* max_num_steps_touse) noexcept nogil

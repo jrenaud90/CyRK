@@ -8,7 +8,9 @@ cdef class CySolver:
     cdef double* solution_y_ptr
     cdef double* solution_t_ptr
     cdef double* solution_extra_ptr
-    cdef double[::1] solution_t_view, solution_y_view, solution_extra_view
+    cdef double[::1] solution_t_view
+    cdef double[::1] solution_y_view
+    cdef double[::1] solution_extra_view
 
     # -- Dependent (y0) variable information
     cdef size_t y_size
@@ -36,10 +38,11 @@ cdef class CySolver:
     cdef double* rtols_ptr
     cdef double* atols_ptr
     cdef double first_step, max_step
-    cdef size_t user_provided_max_num_steps
+    cdef bool_cpp_t user_provided_max_num_steps
     cdef size_t max_num_steps
     cdef size_t expected_size, current_size, num_concats
     cdef bool_cpp_t recalc_first_step
+    cdef bool_cpp_t force_fail
 
     # -- Interpolation info
     cdef bool_cpp_t run_interpolation
@@ -72,6 +75,16 @@ cdef class CySolver:
     cdef double* extra_output_init_ptr
     cdef double* extra_output_ptr
 
+    # -- Pointers used during solve method
+    cdef double* _solve_time_domain_array_ptr
+    cdef double* _solve_y_results_array_ptr
+    cdef double* _solve_extra_array_ptr
+
+    # -- Pointers used during interpolation
+    cdef double* _interpolate_solution_t_ptr
+    cdef double* _interpolate_solution_y_ptr
+    cdef double* _interpolate_solution_extra_ptr
+
     # Class functions
     cpdef void reset_state(
             self
@@ -96,7 +109,8 @@ cdef class CySolver:
             )
 
     cdef void interpolate(
-            self)
+            self
+            )
 
     cpdef void change_t_span(
             self,
