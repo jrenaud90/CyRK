@@ -2,7 +2,7 @@
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 
 from libcpp cimport bool as bool_cpp_t
-from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, isnan, NAN, pow
+from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, isnan, NAN, pow, floor
 
 from cpython.mem cimport PyMem_Free
 
@@ -960,33 +960,33 @@ cdef class CySolver:
         # If the integration needs more than that then a new array will be concatenated (with performance costs) to these.        
         if self._solve_time_domain_array_ptr is NULL:
             self._solve_time_domain_array_ptr = <double *> allocate_mem(
-                self.expected_size * sizeof(double),
+                self.current_size * sizeof(double),
                 '_solve_time_domain_array_ptr (_solve)')
         else:
             self._solve_time_domain_array_ptr = <double *> reallocate_mem(
                 self._solve_time_domain_array_ptr,
-                self.expected_size * sizeof(double),
+                self.current_size * sizeof(double),
                 '_solve_time_domain_array_ptr (_solve)')
 
         if self._solve_y_results_array_ptr is NULL:
             self._solve_y_results_array_ptr = <double *> allocate_mem(
-                self.y_size * self.expected_size * sizeof(double),
+                self.y_size * self.current_size * sizeof(double),
                 '_solve_y_results_array_ptr (_solve)')
         else:
             self._solve_y_results_array_ptr = <double *> reallocate_mem(
                 self._solve_y_results_array_ptr,
-                self.y_size * self.expected_size * sizeof(double),
+                self.y_size * self.current_size * sizeof(double),
                 '_solve_y_results_array_ptr (_solve)')
         
         if self.capture_extra:
             if self._solve_extra_array_ptr is NULL:
                 self._solve_extra_array_ptr = <double *> allocate_mem(
-                    self.expected_size * sizeof(double),
+                    self.num_extra * self.current_size * sizeof(double),
                     '_solve_extra_array_ptr (_solve)')
             else:
                 self._solve_extra_array_ptr = <double *> reallocate_mem(
                     self._solve_extra_array_ptr,
-                    self.expected_size * sizeof(double),
+                    self.num_extra * self.current_size * sizeof(double),
                     '_solve_extra_array_ptr (_solve)')
 
         # Load initial conditions into storage arrays
@@ -1034,7 +1034,7 @@ cdef class CySolver:
                 self.num_concats += 1
 
                 # Grow the array by 50% its current value
-                self.current_size = <size_t>(<double>self.current_size * (1.5))
+                self.current_size = <size_t> floor(<double>self.current_size * (1.5))
 
                 self._solve_time_domain_array_ptr = <double *> reallocate_mem(
                     self._solve_time_domain_array_ptr,

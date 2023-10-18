@@ -10,7 +10,7 @@ cimport numpy as np
 np.import_array()
 
 from libcpp cimport bool as bool_cpp_t
-from libc.math cimport sqrt, fabs, nextafter, NAN
+from libc.math cimport sqrt, fabs, nextafter, NAN, floor
 
 from CyRK.utils.utils cimport allocate_mem, reallocate_mem
 from CyRK.rk.rk cimport find_rk_properties
@@ -806,7 +806,7 @@ def cyrk_ode(
                 num_concats += 1
 
                 # Grow the array by 50% its current value
-                current_size = <size_t>(<double>current_size * (1.5))
+                current_size = <size_t> floor(<double>current_size * (1.5))
 
                 time_domain_array_ptr = <double *> reallocate_mem(
                     time_domain_array_ptr,
