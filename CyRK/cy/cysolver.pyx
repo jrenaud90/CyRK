@@ -356,8 +356,8 @@ cdef class CySolver:
         # Store y0 values and determine y-size information
         self.y_size = y0.size
         self.y_size_dbl = <double> self.y_size
-
         self.y_size_sqrt = sqrt(self.y_size_dbl)
+
         self.y0_ptr = <double *> allocate_mem(self.y_size * sizeof(double), 'y0_ptr (init)')
         for i in range(self.y_size):
             self.y0_ptr[i] = y0[i]
@@ -1203,6 +1203,10 @@ cdef class CySolver:
         # Setup loop variables
         cdef size_t i, j
 
+        # Check to make sure that t-eval is set
+        if not self.t_eval_ptr:
+            raise ValueError('Interpolation function called but t_eval_ptr is null.')
+
         # TODO: The current version of CySolver has not implemented sicpy's dense output. Instead we use an interpolation.
         # Build final interpolated time and solution arrays
         if self._interpolate_solution_t_ptr is NULL:
@@ -1631,8 +1635,8 @@ cdef class CySolver:
                 self.len_t_eval * sizeof(double),
                 't_eval_ptr (change_t_eval)')
 
-        for i in range(self.len_t_eval):
-            if self.run_interpolation:
+        if self.run_interpolation:
+            for i in range(self.len_t_eval):
                 self.t_eval_ptr[i] = t_eval[i]
 
         if auto_reset_state:
@@ -1641,8 +1645,8 @@ cdef class CySolver:
 
     cdef void change_t_eval_pointer(
             self,
-            double* t_eval_ptr,
-            size_t len_t_eval,
+            double* new_t_eval_ptr,
+            size_t new_len_t_eval,
             bool_cpp_t auto_reset_state = False
             ):
         """
@@ -1658,16 +1662,21 @@ cdef class CySolver:
 
         # Determine interpolation information
         self.run_interpolation = True
-        self.len_t_eval = len_t_eval
+        self.len_t_eval = new_len_t_eval
 
-        self.t_eval_ptr = <double *> reallocate_mem(
-            self.t_eval_ptr,
-            self.len_t_eval * sizeof(double),
-            't_eval_ptr (change_t_eval_pointer)')
+        if self.t_eval_ptr is NULL:
+            self.t_eval_ptr = <double *> allocate_mem(
+                self.len_t_eval * sizeof(double),
+                't_eval_ptr (change_t_eval_pointer)')
+        else:
+            self.t_eval_ptr = <double *> reallocate_mem(
+                self.t_eval_ptr,
+                self.len_t_eval * sizeof(double),
+                't_eval_ptr (change_t_eval_pointer)')
 
-        for i in range(self.len_t_eval):
-            if self.run_interpolation:
-                self.t_eval_ptr[i] = t_eval_ptr[i]
+        if self.run_interpolation:
+            for i in range(self.len_t_eval):
+                self.t_eval_ptr[i] = new_t_eval_ptr[i]
 
         if auto_reset_state:
             self.reset_state()
