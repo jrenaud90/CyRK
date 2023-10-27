@@ -4,6 +4,12 @@
 
 #### v0.8.5 (TBD)
 
+Other Changes:
+- Improved t-eval setter and resetter in `CySolver`
+
+Bug Fixes:
+- Fixed bug where incorrect memory was being accessed whenever `CySolver` integration failed (leading to seg fault).
+
 
 #### v0.8.4 (2023-10-18)
 

@@ -1129,11 +1129,11 @@ cdef class CySolver:
                 self.y_size * sizeof(double),
                 'solution_y_ptr (_solve; fail stage)')
             for i in range(self.y_size):
-                self.solution_t_ptr[i] = NAN
+                self.solution_y_ptr[i] = NAN
 
             self.solution_extra_ptr = <double *> reallocate_mem(
                 self.solution_extra_ptr,
-                self.num_extra * 1 * sizeof(double),
+                self.num_extra * sizeof(double),
                 'solution_extra_ptr (_solve; fail stage)')
             for i in range(self.num_extra):
                 self.solution_extra_ptr[i] = NAN
