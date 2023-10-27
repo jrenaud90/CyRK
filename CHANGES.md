@@ -2,7 +2,7 @@
 
 ## 2023
 
-#### v0.8.5 (TBD)
+#### v0.8.5 (2023-10-27)
 
 Other Changes:
 - Improved t-eval setter and resetter in `CySolver`
