@@ -356,8 +356,8 @@ cdef class CySolver:
         # Store y0 values and determine y-size information
         self.y_size = y0.size
         self.y_size_dbl = <double> self.y_size
-
         self.y_size_sqrt = sqrt(self.y_size_dbl)
+
         self.y0_ptr = <double *> allocate_mem(self.y_size * sizeof(double), 'y0_ptr (init)')
         for i in range(self.y_size):
             self.y0_ptr[i] = y0[i]
@@ -568,7 +568,6 @@ cdef class CySolver:
             # So we can safely tell the solve method not to reset.
             self._solve(reset=False)
 
-
     cpdef void reset_state(self):
         """ Resets the class' state variables so that integration can be rerun. """
         cdef size_t i, j
@@ -642,7 +641,6 @@ cdef class CySolver:
         self.status = -5  # status == -5 means that reset has been called but solve has not yet been called.
         self.message = "CySolver has been reset."
 
-
     cdef double calc_first_step(self) noexcept nogil:
         """
         Select an initial step size based on the differential equation.
@@ -708,7 +706,6 @@ cdef class CySolver:
                             fmin(100. * h0, h1))
 
         return step_size
-
 
     cdef void rk_step(self) noexcept nogil:
         """ Performs a Runge-Kutta step calculation including local error determination. """
@@ -919,7 +916,6 @@ cdef class CySolver:
             self.y_old_ptr[i]  = self.y_ptr[i]
             self.dy_old_ptr[i] = self.dy_ptr[i]
 
-
     cpdef void solve(
             self,
             bool_cpp_t reset = True
@@ -933,7 +929,6 @@ cdef class CySolver:
             If True, `reset_state()` will be called before integration starts.
         """
         self._solve(reset=reset)
-
 
     cdef void _solve(
             self,
@@ -1134,11 +1129,11 @@ cdef class CySolver:
                 self.y_size * sizeof(double),
                 'solution_y_ptr (_solve; fail stage)')
             for i in range(self.y_size):
-                self.solution_t_ptr[i] = NAN
+                self.solution_y_ptr[i] = NAN
 
             self.solution_extra_ptr = <double *> reallocate_mem(
                 self.solution_extra_ptr,
-                self.num_extra * 1 * sizeof(double),
+                self.num_extra * sizeof(double),
                 'solution_extra_ptr (_solve; fail stage)')
             for i in range(self.num_extra):
                 self.solution_extra_ptr[i] = NAN
@@ -1192,7 +1187,6 @@ cdef class CySolver:
             PyMem_Free(self._solve_extra_array_ptr)
             self._solve_extra_array_ptr = NULL
 
-
     cdef void interpolate(self):
         """ Interpolate the results of a successful integration over the user provided time domain, `t_eval`. """
         # User only wants data at specific points.
@@ -1202,6 +1196,10 @@ cdef class CySolver:
 
         # Setup loop variables
         cdef size_t i, j
+
+        # Check to make sure that t-eval is set
+        if not self.t_eval_ptr:
+            raise ValueError('Interpolation function called but t_eval_ptr is null.')
 
         # TODO: The current version of CySolver has not implemented sicpy's dense output. Instead we use an interpolation.
         # Build final interpolated time and solution arrays
@@ -1337,7 +1335,6 @@ cdef class CySolver:
         if auto_reset_state:
             self.reset_state()
 
-
     cpdef void change_y0(
             self,
             const double[::1] y0,
@@ -1412,7 +1409,6 @@ cdef class CySolver:
             if auto_reset_state:
                 self.reset_state()
 
-
     cpdef void change_args(
             self,
             tuple args,
@@ -1459,7 +1455,6 @@ cdef class CySolver:
 
         if auto_reset_state:
             self.reset_state()
-
 
     cpdef void change_tols(
             self,
@@ -1539,7 +1534,6 @@ cdef class CySolver:
             if auto_reset_state:
                 self.reset_state()
 
-
     cpdef void change_max_step(
             self,
             double max_step,
@@ -1560,7 +1554,6 @@ cdef class CySolver:
 
         if auto_reset_state:
             self.reset_state()
-
 
     cpdef void change_first_step(
             self,
@@ -1598,7 +1591,6 @@ cdef class CySolver:
         if auto_reset_state:
             self.reset_state()
 
-
     cpdef void change_t_eval(
             self,
             const double[::1] t_eval,
@@ -1631,18 +1623,17 @@ cdef class CySolver:
                 self.len_t_eval * sizeof(double),
                 't_eval_ptr (change_t_eval)')
 
-        for i in range(self.len_t_eval):
-            if self.run_interpolation:
+        if self.run_interpolation:
+            for i in range(self.len_t_eval):
                 self.t_eval_ptr[i] = t_eval[i]
 
         if auto_reset_state:
             self.reset_state()
 
-
     cdef void change_t_eval_pointer(
             self,
-            double* t_eval_ptr,
-            size_t len_t_eval,
+            double* new_t_eval_ptr,
+            size_t new_len_t_eval,
             bool_cpp_t auto_reset_state = False
             ):
         """
@@ -1658,20 +1649,24 @@ cdef class CySolver:
 
         # Determine interpolation information
         self.run_interpolation = True
-        self.len_t_eval = len_t_eval
+        self.len_t_eval = new_len_t_eval
 
-        self.t_eval_ptr = <double *> reallocate_mem(
-            self.t_eval_ptr,
-            self.len_t_eval * sizeof(double),
-            't_eval_ptr (change_t_eval_pointer)')
+        if self.t_eval_ptr is NULL:
+            self.t_eval_ptr = <double *> allocate_mem(
+                self.len_t_eval * sizeof(double),
+                't_eval_ptr (change_t_eval_pointer)')
+        else:
+            self.t_eval_ptr = <double *> reallocate_mem(
+                self.t_eval_ptr,
+                self.len_t_eval * sizeof(double),
+                't_eval_ptr (change_t_eval_pointer)')
 
-        for i in range(self.len_t_eval):
-            if self.run_interpolation:
-                self.t_eval_ptr[i] = t_eval_ptr[i]
+        if self.run_interpolation:
+            for i in range(self.len_t_eval):
+                self.t_eval_ptr[i] = new_t_eval_ptr[i]
 
         if auto_reset_state:
             self.reset_state()
-
 
     cpdef void change_parameters(
             self,
@@ -1760,6 +1755,7 @@ cdef class CySolver:
             self._solve(reset=(not auto_reset_state))
 
 
+    # Methods to be overridden by sub classes
     cdef void update_constants(self) noexcept nogil:
         # This is a template method that should be overriden by a user's subclass (if needed).
 
@@ -1850,18 +1846,15 @@ cdef class CySolver:
         # Need to convert the memory view back into a numpy array
         return np.ascontiguousarray(self.solution_t_view, dtype=np.float64)
 
-
     @property
     def y(self):
         # Need to convert the memory view back into a numpy array and reshape it
         return np.ascontiguousarray(self.solution_y_view, dtype=np.float64).reshape((self.len_t_touse, self.y_size)).T
 
-
     @property
     def extra(self):
         # Need to convert the memory view back into a numpy array
         return np.ascontiguousarray(self.solution_extra_view, dtype=np.float64).reshape((self.len_t_touse, self.num_extra)).T
-
 
     @property
     def growths(self):
@@ -1869,6 +1862,7 @@ cdef class CySolver:
         return self.num_concats - 1
 
 
+    # Special methods
     def __dealloc__(self):
         # Free pointers made from user inputs
         if not (self.y0_ptr is NULL):

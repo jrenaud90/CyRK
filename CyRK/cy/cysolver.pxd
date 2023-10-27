@@ -165,8 +165,8 @@ cdef class CySolver:
 
     cdef void change_t_eval_pointer(
             self,
-            double * t_eval_ptr,
-            size_t len_t_eval,
+            double* new_t_eval_ptr,
+            size_t new_len_t_eval,
             bool_cpp_t auto_reset_state = *
             )
 
