@@ -1,6 +1,5 @@
 from libcpp cimport bool as bool_cpp_t
 
-
 cdef class CySolver:
 
     # Class attributes
@@ -51,7 +50,8 @@ cdef class CySolver:
     cdef double* t_eval_ptr
 
     # -- RK method information
-    cdef size_t rk_method, rk_order, error_order, rk_n_stages, rk_n_stages_plus1
+    cdef unsigned char rk_method
+    cdef size_t rk_order, error_order, rk_n_stages, rk_n_stages_plus1
     cdef double error_expo
     cdef size_t len_C, len_Arows, len_Acols
     cdef double* A_ptr
@@ -91,10 +91,6 @@ cdef class CySolver:
             )
 
     cdef double calc_first_step(
-            self
-            ) noexcept nogil
-
-    cdef void rk_step(
             self
             ) noexcept nogil
 
@@ -193,3 +189,57 @@ cdef class CySolver:
     cdef void diffeq(
             self
             ) noexcept nogil
+
+
+ctypedef void (*DiffeqType)(CySolver)
+
+cdef extern from "rk_step.c":
+    char rk_step_cf(
+        # Pointer to the CySolver instance
+        CySolver cysolver_inst,
+        # Pointer to differential equation
+        DiffeqType diffeq,
+
+        # t-related variables
+        double t_end,
+        bool_cpp_t direction_flag,
+        double direction_inf,
+
+        # y-related variables
+        size_t y_size,
+        double y_size_dbl,
+        double y_size_sqrt,
+
+        # Pointers to class attributes that can change during rk_step call.
+        double* t_now_ptr,
+        double* y_ptr,
+        double* dy_ptr,
+        double* t_old_ptr,
+        double* y_old_ptr,
+        double* dy_old_ptr,
+        double* step_size_ptr,
+        char* status_ptr,
+
+        # Integration tolerance variables and pointers
+        double* atols_ptr,
+        double* rtols_ptr,
+        double max_step,
+
+        # RK specific variables and pointers
+        unsigned char rk_method,
+        size_t rk_n_stages,
+        size_t rk_n_stages_plus1,
+        size_t len_Acols,
+        size_t len_C,
+        double* A_ptr,
+        double* B_ptr,
+        double* C_ptr,
+        double* K_ptr,
+        double* E_ptr,
+        double* E3_ptr,
+        double* E5_ptr,
+        double error_expo,
+        double min_step_factor,
+        double max_step_factor,
+        double error_safety
+        ) noexcept nogil

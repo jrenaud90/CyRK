@@ -2,6 +2,11 @@
 
 ## 2023
 
+#### v0.8.7 (2024-01-??)
+
+Bug Fixes:
+- Fixed incorrect type for rk method in CySolver (should eliminate some compile warnings).
+
 #### v0.8.5 (2023-10-27)
 
 Other Changes:

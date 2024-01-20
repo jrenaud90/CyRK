@@ -707,214 +707,214 @@ cdef class CySolver:
 
         return step_size
 
-    cdef void rk_step(self) noexcept nogil:
-        """ Performs a Runge-Kutta step calculation including local error determination. """
+    # cdef void rk_step(self) noexcept nogil:
+    #     """ Performs a Runge-Kutta step calculation including local error determination. """
 
-        # Initialize step variables
-        cdef size_t s, i, j
-        cdef double min_step, step, step_factor, time_tmp, t_delta_check
-        cdef double scale, temp_double
-        cdef double error_norm3, error_norm5, error_norm, error_dot_1, error_dot_2, error_denom, error_pow
-        cdef bool_cpp_t step_accepted, step_rejected, step_error
+    #     # Initialize step variables
+    #     cdef size_t s, i, j
+    #     cdef double min_step, step, step_factor, time_tmp, t_delta_check
+    #     cdef double scale, temp_double
+    #     cdef double error_norm3, error_norm5, error_norm, error_dot_1, error_dot_2, error_denom, error_pow
+    #     cdef bool_cpp_t step_accepted, step_rejected, step_error
 
-        # Run RK integration step
-        # Determine step size based on previous loop
-        # Find minimum step size based on the value of t (less floating point numbers between numbers when t is large)
-        min_step = 10. * fabs(nextafter(self.t_old, self.direction_inf) - self.t_old)
-        # Look for over/undershoots in previous step size
-        if self.step_size > self.max_step:
-            self.step_size = self.max_step
-        elif self.step_size < min_step:
-            self.step_size = min_step
+    #     # Run RK integration step
+    #     # Determine step size based on previous loop
+    #     # Find minimum step size based on the value of t (less floating point numbers between numbers when t is large)
+    #     min_step = 10. * fabs(nextafter(self.t_old, self.direction_inf) - self.t_old)
+    #     # Look for over/undershoots in previous step size
+    #     if self.step_size > self.max_step:
+    #         self.step_size = self.max_step
+    #     elif self.step_size < min_step:
+    #         self.step_size = min_step
 
-        # Determine new step size
-        step_accepted = False
-        step_rejected = False
-        step_error    = False
+    #     # Determine new step size
+    #     step_accepted = False
+    #     step_rejected = False
+    #     step_error    = False
 
-        # Optimization variables
-        cdef double A_at_10
-        # Define a very specific A (Row 1; Col 0) now since it is called consistently and does not change.
-        A_at_10 = self.A_ptr[1 * self.len_Acols + 0]
+    #     # Optimization variables
+    #     cdef double A_at_10
+    #     # Define a very specific A (Row 1; Col 0) now since it is called consistently and does not change.
+    #     A_at_10 = self.A_ptr[1 * self.len_Acols + 0]
 
-        # # Step Loop
-        while not step_accepted:
-            if self.step_size < min_step:
-                step_error  = True
-                self.status = -1
-                break
+    #     # # Step Loop
+    #     while not step_accepted:
+    #         if self.step_size < min_step:
+    #             step_error  = True
+    #             self.status = -1
+    #             break
 
-            # Move time forward for this particular step size
-            if self.direction_flag:
-                step          = self.step_size
-                self.t_now    = self.t_old + step
-                t_delta_check = self.t_now - self.t_end
-            else:
-                step          = -self.step_size
-                self.t_now    = self.t_old + step
-                t_delta_check = self.t_end - self.t_now
+    #         # Move time forward for this particular step size
+    #         if self.direction_flag:
+    #             step          = self.step_size
+    #             self.t_now    = self.t_old + step
+    #             t_delta_check = self.t_now - self.t_end
+    #         else:
+    #             step          = -self.step_size
+    #             self.t_now    = self.t_old + step
+    #             t_delta_check = self.t_end - self.t_now
 
-            # Check that we are not at the end of integration with that move
-            if t_delta_check > 0.:
-                self.t_now = self.t_end
+    #         # Check that we are not at the end of integration with that move
+    #         if t_delta_check > 0.:
+    #             self.t_now = self.t_end
 
-                # If we are, correct the step so that it just hits the end of integration.
-                step = self.t_now - self.t_old
-                if self.direction_flag:
-                    self.step_size = step
-                else:
-                    self.step_size = -step
+    #             # If we are, correct the step so that it just hits the end of integration.
+    #             step = self.t_now - self.t_old
+    #             if self.direction_flag:
+    #                 self.step_size = step
+    #             else:
+    #                 self.step_size = -step
 
-            # # Calculate derivative using RK method
+    #         # # Calculate derivative using RK method
 
-            # t_now must be updated for each loop of s in order to make the diffeq calls.
-            # But we need to return to its original value later on. Store in temp variable.
-            time_tmp = self.t_now
+    #         # t_now must be updated for each loop of s in order to make the diffeq calls.
+    #         # But we need to return to its original value later on. Store in temp variable.
+    #         time_tmp = self.t_now
 
-            for s in range(1, self.len_C):
-                # Update t_now so it can be used in the diffeq call.
-                self.t_now = self.t_old + self.C_ptr[s] * step
+    #         for s in range(1, self.len_C):
+    #             # Update t_now so it can be used in the diffeq call.
+    #             self.t_now = self.t_old + self.C_ptr[s] * step
 
-                # Dot Product (K, a) * step
-                if s == 1:
-                    for i in range(self.y_size):
-                        # Set the first column of K
-                        temp_double = self.dy_old_ptr[i]
-                        # K[0, :] == first part of the array
-                        self.K_ptr[i] = temp_double
+    #             # Dot Product (K, a) * step
+    #             if s == 1:
+    #                 for i in range(self.y_size):
+    #                     # Set the first column of K
+    #                     temp_double = self.dy_old_ptr[i]
+    #                     # K[0, :] == first part of the array
+    #                     self.K_ptr[i] = temp_double
 
-                        # Calculate y_new for s==1
-                        self.y_ptr[i] = self.y_old_ptr[i] + (temp_double * A_at_10 * step)
-                else:
-                    for j in range(s):
-                        temp_double = self.A_ptr[s * self.len_Acols + j] * step
-                        for i in range(self.y_size):
-                            if j == 0:
-                                # Initialize
-                                self.y_ptr[i] = self.y_old_ptr[i]
+    #                     # Calculate y_new for s==1
+    #                     self.y_ptr[i] = self.y_old_ptr[i] + (temp_double * A_at_10 * step)
+    #             else:
+    #                 for j in range(s):
+    #                     temp_double = self.A_ptr[s * self.len_Acols + j] * step
+    #                     for i in range(self.y_size):
+    #                         if j == 0:
+    #                             # Initialize
+    #                             self.y_ptr[i] = self.y_old_ptr[i]
 
-                            self.y_ptr[i] += self.K_ptr[j * self.y_size + i] * temp_double
+    #                         self.y_ptr[i] += self.K_ptr[j * self.y_size + i] * temp_double
 
-                # Call diffeq to update K with the new dydt
-                self.diffeq()
+    #             # Call diffeq to update K with the new dydt
+    #             self.diffeq()
 
-                for i in range(self.y_size):
-                    self.K_ptr[s * self.y_size + i] = self.dy_ptr[i]
+    #             for i in range(self.y_size):
+    #                 self.K_ptr[s * self.y_size + i] = self.dy_ptr[i]
 
-            # Restore t_now to its previous value.
-            self.t_now = time_tmp
+    #         # Restore t_now to its previous value.
+    #         self.t_now = time_tmp
 
-            # Dot Product (K, B) * step
-            for j in range(self.rk_n_stages):
-                temp_double = self.B_ptr[j] * step
-                # We do not use rk_n_stages_plus1 here because we are chopping off the last row of K to match
-                #  the shape of B.
-                for i in range(self.y_size):
-                    if j == 0:
-                        # Initialize
-                        self.y_ptr[i] = self.y_old_ptr[i]
+    #         # Dot Product (K, B) * step
+    #         for j in range(self.rk_n_stages):
+    #             temp_double = self.B_ptr[j] * step
+    #             # We do not use rk_n_stages_plus1 here because we are chopping off the last row of K to match
+    #             #  the shape of B.
+    #             for i in range(self.y_size):
+    #                 if j == 0:
+    #                     # Initialize
+    #                     self.y_ptr[i] = self.y_old_ptr[i]
 
-                    self.y_ptr[i] += self.K_ptr[j * self.y_size + i] * temp_double
+    #                 self.y_ptr[i] += self.K_ptr[j * self.y_size + i] * temp_double
 
-            # Find final dydt for this timestep
-            self.diffeq()
+    #         # Find final dydt for this timestep
+    #         self.diffeq()
 
-            # Check how well this step performed by calculating its error
-            if self.rk_method == 2:
-                # Calculate Error for DOP853
-                # Dot Product (K, E5) / scale and Dot Product (K, E3) * step / scale
-                error_norm3 = 0.
-                error_norm5 = 0.
-                for i in range(self.y_size):
-                    # Find scale of y for error calculations
-                    scale = (self.atols_ptr[i] +
-                             max(fabs(self.y_old_ptr[i]), fabs(self.y_ptr[i])) * self.rtols_ptr[i])
+    #         # Check how well this step performed by calculating its error
+    #         if self.rk_method == 2:
+    #             # Calculate Error for DOP853
+    #             # Dot Product (K, E5) / scale and Dot Product (K, E3) * step / scale
+    #             error_norm3 = 0.
+    #             error_norm5 = 0.
+    #             for i in range(self.y_size):
+    #                 # Find scale of y for error calculations
+    #                 scale = (self.atols_ptr[i] +
+    #                          max(fabs(self.y_old_ptr[i]), fabs(self.y_ptr[i])) * self.rtols_ptr[i])
 
-                    # Set last array of K equal to dydt
-                    self.K_ptr[self.rk_n_stages * self.y_size + i] = self.dy_ptr[i]
-                    # Initialize
-                    error_dot_1 = 0.
-                    error_dot_2 = 0.
-                    for j in range(self.rk_n_stages_plus1):
+    #                 # Set last array of K equal to dydt
+    #                 self.K_ptr[self.rk_n_stages * self.y_size + i] = self.dy_ptr[i]
+    #                 # Initialize
+    #                 error_dot_1 = 0.
+    #                 error_dot_2 = 0.
+    #                 for j in range(self.rk_n_stages_plus1):
 
-                        temp_double = self.K_ptr[j * self.y_size + i]
-                        error_dot_1 += temp_double * self.E3_ptr[j]
-                        error_dot_2 += temp_double * self.E5_ptr[j]
+    #                     temp_double = self.K_ptr[j * self.y_size + i]
+    #                     error_dot_1 += temp_double * self.E3_ptr[j]
+    #                     error_dot_2 += temp_double * self.E5_ptr[j]
 
-                    # We need the absolute value but since we are taking the square, it is guaranteed to be positive.
-                    # TODO: This will need to change if CySolver ever accepts complex numbers
-                    # error_norm3_abs = fabs(error_dot_1)
-                    # error_norm5_abs = fabs(error_dot_2)
-                    error_dot_1 /= scale
-                    error_dot_2 /= scale
+    #                 # We need the absolute value but since we are taking the square, it is guaranteed to be positive.
+    #                 # TODO: This will need to change if CySolver ever accepts complex numbers
+    #                 # error_norm3_abs = fabs(error_dot_1)
+    #                 # error_norm5_abs = fabs(error_dot_2)
+    #                 error_dot_1 /= scale
+    #                 error_dot_2 /= scale
 
-                    error_norm3 += (error_dot_1 * error_dot_1)
-                    error_norm5 += (error_dot_2 * error_dot_2)
+    #                 error_norm3 += (error_dot_1 * error_dot_1)
+    #                 error_norm5 += (error_dot_2 * error_dot_2)
 
-                # Check if errors are zero
-                if (error_norm5 == 0.) and (error_norm3 == 0.):
-                    error_norm = 0.
-                else:
-                    error_denom = error_norm5 + 0.01 * error_norm3
-                    error_norm = self.step_size * error_norm5 / sqrt(error_denom * self.y_size_dbl)
+    #             # Check if errors are zero
+    #             if (error_norm5 == 0.) and (error_norm3 == 0.):
+    #                 error_norm = 0.
+    #             else:
+    #                 error_denom = error_norm5 + 0.01 * error_norm3
+    #                 error_norm = self.step_size * error_norm5 / sqrt(error_denom * self.y_size_dbl)
 
-            else:
-                # Calculate Error for RK23 and RK45
-                # Dot Product (K, E) * step / scale
-                error_norm = 0.
-                for i in range(self.y_size):
-                    # Find scale of y for error calculations
-                    scale = (self.atols_ptr[i] +
-                             max(fabs(self.y_old_ptr[i]), fabs(self.y_ptr[i])) * self.rtols_ptr[i])
+    #         else:
+    #             # Calculate Error for RK23 and RK45
+    #             # Dot Product (K, E) * step / scale
+    #             error_norm = 0.
+    #             for i in range(self.y_size):
+    #                 # Find scale of y for error calculations
+    #                 scale = (self.atols_ptr[i] +
+    #                          max(fabs(self.y_old_ptr[i]), fabs(self.y_ptr[i])) * self.rtols_ptr[i])
 
-                    # Set last array of K equal to dydt
-                    self.K_ptr[self.rk_n_stages * self.y_size + i] = self.dy_ptr[i]
-                    # Initialize
-                    error_dot_1 = 0.
-                    for j in range(self.rk_n_stages_plus1):
+    #                 # Set last array of K equal to dydt
+    #                 self.K_ptr[self.rk_n_stages * self.y_size + i] = self.dy_ptr[i]
+    #                 # Initialize
+    #                 error_dot_1 = 0.
+    #                 for j in range(self.rk_n_stages_plus1):
 
-                        error_dot_1 += self.K_ptr[j * self.y_size + i] * self.E_ptr[j]
+    #                     error_dot_1 += self.K_ptr[j * self.y_size + i] * self.E_ptr[j]
 
-                    # We need the absolute value but since we are taking the square, it is guaranteed to be positive.
-                    # TODO: This will need to change if CySolver ever accepts complex numbers
-                    # error_norm_abs = fabs(error_dot_1)
-                    error_dot_1 *= (step / scale)
+    #                 # We need the absolute value but since we are taking the square, it is guaranteed to be positive.
+    #                 # TODO: This will need to change if CySolver ever accepts complex numbers
+    #                 # error_norm_abs = fabs(error_dot_1)
+    #                 error_dot_1 *= (step / scale)
 
-                    error_norm += (error_dot_1 * error_dot_1)
-                error_norm = sqrt(error_norm) / self.y_size_sqrt
+    #                 error_norm += (error_dot_1 * error_dot_1)
+    #             error_norm = sqrt(error_norm) / self.y_size_sqrt
 
-            if error_norm < 1.:
-                # The error is low! Let's update this step for the next time loop
-                if error_norm == 0.:
-                    step_factor = MAX_FACTOR
-                else:
-                    error_pow = pow(error_norm, -self.error_expo)
-                    step_factor = fmin(MAX_FACTOR, SAFETY * error_pow)
+    #         if error_norm < 1.:
+    #             # The error is low! Let's update this step for the next time loop
+    #             if error_norm == 0.:
+    #                 step_factor = MAX_FACTOR
+    #             else:
+    #                 error_pow = pow(error_norm, -self.error_expo)
+    #                 step_factor = fmin(MAX_FACTOR, SAFETY * error_pow)
 
-                if step_rejected:
-                    # There were problems with this step size on the previous step loop. Make sure factor does
-                    #    not exasperate them.
-                    step_factor = fmin(step_factor, 1.)
+    #             if step_rejected:
+    #                 # There were problems with this step size on the previous step loop. Make sure factor does
+    #                 #    not exasperate them.
+    #                 step_factor = fmin(step_factor, 1.)
 
-                self.step_size = self.step_size * step_factor
-                step_accepted = True
-            else:
-                error_pow = pow(error_norm, -self.error_expo)
-                self.step_size = self.step_size * fmax(MIN_FACTOR, SAFETY * error_pow)
-                step_rejected = True
+    #             self.step_size = self.step_size * step_factor
+    #             step_accepted = True
+    #         else:
+    #             error_pow = pow(error_norm, -self.error_expo)
+    #             self.step_size = self.step_size * fmax(MIN_FACTOR, SAFETY * error_pow)
+    #             step_rejected = True
 
-        if step_error:
-            # Issue with step convergence
-            self.status = -1
-        elif not step_accepted:
-            # Issue with step convergence
-            self.status = -7
+    #     if step_error:
+    #         # Issue with step convergence
+    #         self.status = -1
+    #     elif not step_accepted:
+    #         # Issue with step convergence
+    #         self.status = -7
 
-        # End of step loop. Update the 'old' variables
-        self.t_old = self.t_now
-        for i in range(self.y_size):
-            self.y_old_ptr[i]  = self.y_ptr[i]
-            self.dy_old_ptr[i] = self.dy_ptr[i]
+    #     # End of step loop. Update the 'old' variables
+    #     self.t_old = self.t_now
+    #     for i in range(self.y_size):
+    #         self.y_old_ptr[i]  = self.y_ptr[i]
+    #         self.dy_old_ptr[i] = self.dy_ptr[i]
 
     cpdef void solve(
             self,
@@ -1015,7 +1015,43 @@ cdef class CySolver:
                 break
 
             # # Perform RK Step
-            self.rk_step()
+            rk_step_cf(
+                self,
+                self.diffeq,
+                self.t_end,
+                self.direction_flag,
+                self.direction_inf,
+                self.y_size,
+                self.y_size_dbl,
+                self.y_size_sqrt,
+                &self.t_now,
+                self.y_ptr,
+                self.dy_ptr,
+                &self.t_old,
+                self.y_old_ptr,
+                self.dy_old_ptr,
+                &self.step_size,
+                &self.status,
+                self.atols_ptr,
+                self.rtols_ptr,
+                self.max_step,
+                self.rk_method,
+                self.rk_n_stages,
+                self.rk_n_stages_plus1,
+                self.len_Acols,
+                self.len_C,
+                self.A_ptr,
+                self.B_ptr,
+                self.C_ptr,
+                self.K_ptr,
+                self.E_ptr,
+                self.E3_ptr,
+                self.E5_ptr,
+                self.error_expo,
+                MIN_FACTOR,
+                MAX_FACTOR,
+                SAFETY
+                )
 
             # Check if an error occurred during step calculations before storing data.
             if self.status != 0:

@@ -5,6 +5,7 @@
 
 # Include non-generated c files
 !CyRK/array/interp_common.c
+!CyRK/cy/rk_step.c
 
 # Ignore coverage files
 .coverage
@@ -17,6 +18,7 @@ __pycache__/
 # Objext files
 *.so
 *.o
+*.exe
 
 # Distribution / packaging
 .Python
