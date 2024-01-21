@@ -8,7 +8,7 @@ struct CySolverStruct {
 };
 
 
-char rk_step_cf(
+int rk_step_cf(
         // Pointer to differential equation
         void (*diffeq_ptr)(CySolverStruct),
         // Pointer to the CySolver instance
@@ -25,18 +25,18 @@ char rk_step_cf(
         double y_size_sqrt,
 
         // Pointers to class attributes that can change during rk_step call.
-        double* t_now_ptr,
-        double* y_ptr,
-        double* dy_ptr,
-        double* t_old_ptr,
-        double* y_old_ptr,
-        double* dy_old_ptr,
-        double* step_size_ptr,
-        char* status_ptr,
+        double* restrict t_now_ptr,
+        double* restrict y_ptr,
+        double* restrict dy_ptr,
+        double* restrict t_old_ptr,
+        double* restrict y_old_ptr,
+        double* restrict dy_old_ptr,
+        double* restrict step_size_ptr,
+        char* restrict status_ptr,
 
         // Integration tolerance variables and pointers
-        double* atols_ptr,
-        double* rtols_ptr,
+        double* restrict atols_ptr,
+        double* restrict rtols_ptr,
         double max_step,
 
         // RK specific variables and pointers
@@ -45,13 +45,13 @@ char rk_step_cf(
         size_t rk_n_stages_plus1,
         size_t len_Acols,
         size_t len_C,
-        double* A_ptr,
-        double* B_ptr,
-        double* C_ptr,
-        double* K_ptr,
-        double* E_ptr,
-        double* E3_ptr,
-        double* E5_ptr,
+        double* restrict A_ptr,
+        double* restrict B_ptr,
+        double* restrict C_ptr,
+        double* restrict K_ptr,
+        double* restrict E_ptr,
+        double* restrict E3_ptr,
+        double* restrict E5_ptr,
         double error_expo,
         double min_step_factor,
         double max_step_factor,
@@ -64,7 +64,7 @@ char rk_step_cf(
     // Initialize step variables
     double min_step, step, step_factor, time_tmp, t_delta_check;
     double scale, temp_double;
-    double error_norm3, error_norm5, error_norm, error_dot_1, error_dot_2, error_denom, error_pow;
+    double error_norm, error_dot_1, error_pow;
     bool step_accepted, step_rejected, step_error;
 
     // Store values from pointers so that they do not have to be dereferenced multiple times
@@ -89,15 +89,14 @@ char rk_step_cf(
     step_error    = false;
 
     // Optimization variables
-    double A_at_10;
     // Define a very specific A (Row 1; Col 0) now since it is called consistently and does not change.
-    A_at_10 = A_ptr[1 * len_Acols + 0];
+    double A_at_10 = A_ptr[1 * len_Acols + 0];
 
     // !! Step Loop
     while (!step_accepted) {
 
         // Check if step size is too small
-        // This will cause integration to fail: step size smaller than spacing betweeen numbers
+        // This will cause integration to fail: step size smaller than spacing between numbers
         if (step_size < min_step) {
             step_error  = true;
             *status_ptr = -1;
@@ -165,7 +164,7 @@ char rk_step_cf(
             }
             // Call diffeq method to update K with the new dydt
             // This will use the now updated values at y_ptr and t_now_ptr. It will update values at dy_ptr.
-            diffeq_ptr(*cysolver_inst);
+            diffeq_ptr(cysolver_inst);
 
             // Update K based on the new dy values.
             for (size_t i = 0; i < y_size; i++) {
@@ -194,10 +193,11 @@ char rk_step_cf(
         
         // Find final dydt for this timestep
         // This will use the now final values at y_ptr and t_now_ptr. It will update values at dy_ptr.
-        diffeq_ptr(*cysolver_inst);
+        diffeq_ptr(cysolver_inst);
 
         // Check how well this step performed by calculating its error.
         if (rk_method == 2) {
+             double error_norm3, error_norm5, error_dot_2, error_denom; 
             // Calculate Error for DOP853
             // Dot Product (K, E5) / scale and Dot Product (K, E3) * step / scale
             error_norm3 = 0.0;
@@ -312,5 +312,11 @@ char rk_step_cf(
     // Update any other pointers
     *step_size_ptr = step_size;
 
+    return 0;
+}
+
+
+int main(){
+    int x = 2;
     return 0;
 }

@@ -191,7 +191,7 @@ cdef class CySolver:
 ctypedef void (*DiffeqType)(CySolver)
 
 cdef extern from "rk_step.c":
-    char rk_step_cf(
+    int rk_step_cf(
         # Pointer to differential equation
         DiffeqType diffeq_ptr,
         # Pointer to the CySolver instance
