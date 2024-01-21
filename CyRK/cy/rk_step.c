@@ -303,8 +303,7 @@ int rk_step_cf(
     // End of RK step. 
     // Update "old" pointers
     *t_old_ptr = t_now;
-    for (size_t i = 0; i < y_size; i++)
-    {
+    for (size_t i = 0; i < y_size; i++) {
         y_old_ptr[i]  = y_ptr[i];
         dy_old_ptr[i] = dy_ptr[i];
     }
