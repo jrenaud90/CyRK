@@ -2,18 +2,17 @@
 #include <stdbool.h>  // `bool`
 #include <math.h>     // `fmin`, `fmax`, `fabs`
 
-// Create a fake struct to trick C into accepting the CySolver class (which contains the diffeq function)
-struct CySolverStruct
-{
-    char status;
+// Create a fake struct to trick C into accepting the CySolver class (which contains the diffeq method)
+struct CySolverStruct {
+    char empty;
 };
 
 
 char rk_step_cf(
+        // Pointer to differential equation
+        void (*diffeq_ptr)(CySolverStruct),
         // Pointer to the CySolver instance
         struct CySolverStruct* cysolver_inst,
-        // Pointer to differential equation
-        void (*diffeq)(CySolverStruct),
 
         // t-related variables
         double t_end,
@@ -131,14 +130,14 @@ char rk_step_cf(
 
         // !! Calculate derivative using RK method
 
-        // t_now must be updated for each loop of s in order to make the diffeq calls.
+        // t_now must be updated for each loop of s in order to make the diffeq method calls.
         // But we need to return to its original value later on. Store in temp variable.
         time_tmp = t_now;
 
         for (size_t s = 1; s < len_C; s++) {
             // Find the current time based on the old time and the step size.
             t_now = t_old + C_ptr[s] * step;
-            // Update the value stored at the t_now pointer so it can be used in the diffeq function.
+            // Update the value stored at the t_now pointer so it can be used in the diffeq method.
             *t_now_ptr = t_now;
 
             // Dot Product (K, a) * step
@@ -164,9 +163,9 @@ char rk_step_cf(
                     }
                 }
             }
-            // Call diffeq to update K with the new dydt
+            // Call diffeq method to update K with the new dydt
             // This will use the now updated values at y_ptr and t_now_ptr. It will update values at dy_ptr.
-            (*diffeq)(*cysolver_inst);
+            diffeq_ptr(*cysolver_inst);
 
             // Update K based on the new dy values.
             for (size_t i = 0; i < y_size; i++) {
@@ -195,7 +194,7 @@ char rk_step_cf(
         
         // Find final dydt for this timestep
         // This will use the now final values at y_ptr and t_now_ptr. It will update values at dy_ptr.
-        (*diffeq)(*cysolver_inst);
+        diffeq_ptr(*cysolver_inst);
 
         // Check how well this step performed by calculating its error.
         if (rk_method == 2) {

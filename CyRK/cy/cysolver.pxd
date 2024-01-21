@@ -1,5 +1,3 @@
-from libcpp cimport bool as bool_cpp_t
-
 cdef class CySolver:
 
     # Class attributes
@@ -18,34 +16,34 @@ cdef class CySolver:
 
     # -- Time information
     cdef double t_start, t_end, t_delta, t_delta_abs, direction_inf
-    cdef bool_cpp_t direction_flag
+    cdef bint direction_flag
 
     # -- Optional args info
     cdef size_t num_args
     cdef double* args_ptr
-    cdef bool_cpp_t use_args
+    cdef bint use_args
 
     # -- Extra output info
-    cdef bool_cpp_t capture_extra
+    cdef bint capture_extra
     cdef size_t num_extra
 
     # -- Integration information
     cdef readonly char status
     cdef readonly str message
-    cdef public bool_cpp_t success
+    cdef public bint success
     cdef double* tol_ptrs
     cdef double* rtols_ptr
     cdef double* atols_ptr
     cdef double first_step, max_step
-    cdef bool_cpp_t user_provided_max_num_steps
+    cdef bint user_provided_max_num_steps
     cdef size_t max_num_steps
     cdef size_t expected_size, current_size, num_concats
-    cdef bool_cpp_t recalc_first_step
-    cdef bool_cpp_t force_fail
+    cdef bint recalc_first_step
+    cdef bint force_fail
 
     # -- Interpolation info
-    cdef bool_cpp_t run_interpolation
-    cdef bool_cpp_t interpolate_extra
+    cdef bint run_interpolation
+    cdef bint interpolate_extra
     cdef size_t len_t_eval
     cdef double* t_eval_ptr
 
@@ -96,12 +94,12 @@ cdef class CySolver:
 
     cpdef void solve(
             self,
-            bool_cpp_t reset = *
+            bint reset = *
             )
 
     cdef void _solve(
             self,
-            bool_cpp_t reset = *
+            bint reset = *
             )
 
     cdef void interpolate(
@@ -111,25 +109,25 @@ cdef class CySolver:
     cpdef void change_t_span(
             self,
             (double, double) t_span,
-            bool_cpp_t auto_reset_state = *
+            bint auto_reset_state = *
             )
 
     cpdef void change_y0(
             self,
             const double[::1] y0,
-            bool_cpp_t auto_reset_state = *
+            bint auto_reset_state = *
             )
 
     cdef void change_y0_pointer(
             self,
             double * y0_ptr,
-            bool_cpp_t auto_reset_state = *
+            bint auto_reset_state = *
             )
 
     cpdef void change_args(
             self,
             tuple args,
-            bool_cpp_t auto_reset_state = *
+            bint auto_reset_state = *
             )
 
     cpdef void change_tols(
@@ -138,32 +136,32 @@ cdef class CySolver:
             double atol = *,
             const double[::1] rtols = *,
             const double[::1] atols = *,
-            bool_cpp_t auto_reset_state = *
+            bint auto_reset_state = *
             )
 
     cpdef void change_max_step(
             self,
             double max_step,
-            bool_cpp_t auto_reset_state = *
+            bint auto_reset_state = *
             )
 
     cpdef void change_first_step(
             self,
             double first_step,
-            bool_cpp_t auto_reset_state = *
+            bint auto_reset_state = *
             )
 
     cpdef void change_t_eval(
             self,
             const double[::1] t_eval,
-            bool_cpp_t auto_reset_state = *
+            bint auto_reset_state = *
             )
 
     cdef void change_t_eval_pointer(
             self,
             double* new_t_eval_ptr,
             size_t new_len_t_eval,
-            bool_cpp_t auto_reset_state = *
+            bint auto_reset_state = *
             )
 
     cpdef void change_parameters(
@@ -178,8 +176,8 @@ cdef class CySolver:
             double max_step = *,
             double first_step = *,
             const double[::1] t_eval = *,
-            bool_cpp_t auto_reset_state = *,
-            bool_cpp_t auto_solve = *
+            bint auto_reset_state = *,
+            bint auto_solve = *
             )
 
     cdef void update_constants(
@@ -190,19 +188,18 @@ cdef class CySolver:
             self
             ) noexcept nogil
 
-
 ctypedef void (*DiffeqType)(CySolver)
 
 cdef extern from "rk_step.c":
     char rk_step_cf(
+        # Pointer to differential equation
+        DiffeqType diffeq_ptr,
         # Pointer to the CySolver instance
         CySolver cysolver_inst,
-        # Pointer to differential equation
-        DiffeqType diffeq,
 
         # t-related variables
         double t_end,
-        bool_cpp_t direction_flag,
+        bint direction_flag,
         double direction_inf,
 
         # y-related variables

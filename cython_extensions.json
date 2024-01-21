@@ -44,8 +44,7 @@
   "cysolver": {
     "name": "CyRK.cy.cysolver",
     "sources": [
-      ["CyRK", "cy", "cysolver.pyx"],
-      ["CyRK", "cy", "rk_step.c"]
+      ["CyRK", "cy", "cysolver.pyx"]
     ],
     "include_dirs": [["CyRK", "cy"]],
     "compile_args": [],

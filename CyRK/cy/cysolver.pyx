@@ -1,15 +1,12 @@
-# distutils: language = c++
+# distutils: language = c
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 
-from libcpp cimport bool as bool_cpp_t
-from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, isnan, NAN, pow, floor
+from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, isnan, NAN, floor
 
 from cpython.mem cimport PyMem_Free
 
 import numpy as np
 cimport numpy as np
-
-np.import_array()
 
 from CyRK.utils.utils cimport allocate_mem, reallocate_mem
 from CyRK.rk.rk cimport find_rk_properties
@@ -69,13 +66,13 @@ cdef class CySolver:
         Absolute value of t_delta.
     direction_inf : double
         Direction of integration. If forward then this = +Inf; -Inf otherwise.
-    direction_flag : bool_cpp_t
+    direction_flag : bint
         If True, then integration is in the forward direction.
     num_args : size_t
         Number of additional arguments that the `diffeq` method requires.
     args_ptr : double*
         Pointer of additional arguments used in the `diffeq` method.
-    capture_extra bool_cpp_t
+    capture_extra bint
         Flag used if extra parameters should be captured during integration.
     num_extra size_t
         Number of extra parameters that should be captured during integration.
@@ -84,7 +81,7 @@ cdef class CySolver:
         See "Status and Error Codes.md" in the documentation for more information.
     message : str; public
         Verbal message to accompany `self.status` explaining the state (and potential errors) of the integrator.
-    success : bool_cpp_t; public
+    success : bint; public
         Flag indicating if the integration was successful or not.
     rtols_ptr : double*
         Pointer of relative tolerances for each dependent y variable.
@@ -104,12 +101,12 @@ cdef class CySolver:
         If `expected_size` is too small then it will be expanded as needed. This variable tracks how many expansions
         were required.
         See Also: `CySolver.growths`
-    recalc_first_step : bool_cpp_t
+    recalc_first_step : bint
         If True, then the `first_step` size is recalculated when `reset_state` is called.
         Flag used when parameters are changed without reinitializing CySolver.
-    run_interpolation : bool_cpp_t
+    run_interpolation : bint
         Flag if a final interpolation should be run once integration is completed successfully.
-    interpolate_extra : bool_cpp_t
+    interpolate_extra : bint
         Flag if interpolation should be run on extra parameters.
         If set to False when `run_interpolation=True`, then interpolation will be run on solution's y, t. These will
         then be used to recalculate extra parameters rather than an interpolation on the extra parameters captured
@@ -231,14 +228,14 @@ cdef class CySolver:
             double first_step = 0.,
             size_t max_num_steps = 0,
             const double[::1] t_eval = None,
-            bool_cpp_t capture_extra = False,
+            bint capture_extra = False,
             size_t num_extra = 0,
-            bool_cpp_t interpolate_extra = False,
+            bint interpolate_extra = False,
             size_t expected_size = 0,
             size_t max_ram_MB = 2000,
-            bool_cpp_t call_first_reset = True,
-            bool_cpp_t auto_solve = True,
-            bool_cpp_t force_fail = False):
+            bint call_first_reset = True,
+            bint auto_solve = True,
+            bint force_fail = False):
         """
         Initialize new CySolver instance.
 
@@ -292,7 +289,7 @@ cdef class CySolver:
                 ```
         num_extra : int = 0
             The number of extra outputs the integrator should expect. With the previous example there is 1 extra output.
-        interpolate_extra : bool_cpp_t, default=False
+        interpolate_extra : bint, default=False
             Flag if interpolation should be run on extra parameters.
             If set to False when `run_interpolation=True`, then interpolation will be run on solution's y, t. These will
             then be used to recalculate extra parameters rather than an interpolation on the extra parameters captured
@@ -305,7 +302,7 @@ cdef class CySolver:
         call_first_reset : bool, default=True
             If set to True, then the solver will call its `reset_state` method at the end of initialization. This flag
             is overridden by the `auto_solve` flag.
-        auto_solve : bool_cpp_t, default=True
+        auto_solve : bint, default=True
             If set to True, then the solver's `solve` method will be called at the end of initialization.
             Otherwise, the user will have to call `solver_instance = CySolver(...); solver_instance.solve()`
             to perform integration.
@@ -715,7 +712,7 @@ cdef class CySolver:
     #     cdef double min_step, step, step_factor, time_tmp, t_delta_check
     #     cdef double scale, temp_double
     #     cdef double error_norm3, error_norm5, error_norm, error_dot_1, error_dot_2, error_denom, error_pow
-    #     cdef bool_cpp_t step_accepted, step_rejected, step_error
+    #     cdef bint step_accepted, step_rejected, step_error
 
     #     # Run RK integration step
     #     # Determine step size based on previous loop
@@ -918,28 +915,28 @@ cdef class CySolver:
 
     cpdef void solve(
             self,
-            bool_cpp_t reset = True
+            bint reset = True
             ):
         """
         Public wrapper to the private solve method which calculates the integral of the user-provided system of ODEs.
         
         Parameters
         ----------
-        reset : bool_cpp_t, default=True
+        reset : bint, default=True
             If True, `reset_state()` will be called before integration starts.
         """
         self._solve(reset=reset)
 
     cdef void _solve(
             self,
-            bool_cpp_t reset = True
+            bint reset = True
             ):
         """
         Calculates the integral of the user-provided system of ODEs.
         
         Parameters
         ----------
-        reset : bool_cpp_t, default=True
+        reset : bint, default=True
             If True, `reset_state()` will be called before integration starts.
         """
 
@@ -949,6 +946,7 @@ cdef class CySolver:
 
         # Setup loop variables
         cdef size_t i
+        cdef char rk_step_output
 
         # Setup storage arrays
         # These arrays are built to fit a number of points equal to `self.expected_size`
@@ -1015,9 +1013,9 @@ cdef class CySolver:
                 break
 
             # # Perform RK Step
-            rk_step_cf(
-                self,
+            rk_step_output = rk_step_cf(
                 self.diffeq,
+                self,
                 self.t_end,
                 self.direction_flag,
                 self.direction_inf,
@@ -1339,7 +1337,7 @@ cdef class CySolver:
     cpdef void change_t_span(
             self,
             (double, double) t_span,
-            bool_cpp_t auto_reset_state = False
+            bint auto_reset_state = False
             ):
         """
         Public method to change the independent variable limits (start and stop points of integration).
@@ -1348,7 +1346,7 @@ cdef class CySolver:
         ----------
         t_span : (double, double)
             New t_span to use during integration.
-        auto_reset_state : bool_cpp_t, default=False
+        auto_reset_state : bint, default=False
             If True, then the `reset_state` method will be called once parameter is changed.
         """
 
@@ -1374,7 +1372,7 @@ cdef class CySolver:
     cpdef void change_y0(
             self,
             const double[::1] y0,
-            bool_cpp_t auto_reset_state = False
+            bint auto_reset_state = False
             ):
         """
         Public method to change the initial conditions.
@@ -1386,7 +1384,7 @@ cdef class CySolver:
         y0 : double[::1]
             New dependent variable initial conditions.
             Must be the same size as the original y0.
-        auto_reset_state : bool_cpp_t, default=False
+        auto_reset_state : bint, default=False
             If True, then the `reset_state` method will be called once parameter is changed.
         """
 
@@ -1414,7 +1412,7 @@ cdef class CySolver:
     cdef void change_y0_pointer(
                 self,
                 double* y0_ptr,
-                bool_cpp_t auto_reset_state = False
+                bint auto_reset_state = False
                 ):
             """
             Public method to change the initial conditions.
@@ -1426,7 +1424,7 @@ cdef class CySolver:
             y0 : double*
                 New pointer to dependent variable initial conditions.
                 Must be the same size as the original y0.
-            auto_reset_state : bool_cpp_t, default=False
+            auto_reset_state : bint, default=False
                 If True, then the `reset_state` method will be called once parameter is changed.
             """
 
@@ -1448,7 +1446,7 @@ cdef class CySolver:
     cpdef void change_args(
             self,
             tuple args,
-            bool_cpp_t auto_reset_state = False
+            bint auto_reset_state = False
             ):
         """
         Public method to change additional arguments used during integration.
@@ -1457,7 +1455,7 @@ cdef class CySolver:
         ----------
         args : tuple
             New tuple of additional arguments.
-        auto_reset_state : bool_cpp_t, default=False
+        auto_reset_state : bint, default=False
             If True, then the `reset_state` method will be called once parameter is changed.
         """
 
@@ -1498,7 +1496,7 @@ cdef class CySolver:
             double atol = NAN,
             const double[::1] rtols = None,
             const double[::1] atols = None,
-            bool_cpp_t auto_reset_state = False
+            bint auto_reset_state = False
             ):
         """
         Public method to change relative and absolute tolerances and/or their arrays.
@@ -1517,13 +1515,13 @@ cdef class CySolver:
         atols : const double[::1]
             Numpy ndarray of absolute tolerances, one for each dependent y variable.
             if None (the default), then no change will be made.
-        auto_reset_state : bool_cpp_t, default=False
+        auto_reset_state : bint, default=False
             If True, then the `reset_state` method will be called once parameter is changed.
         """
 
         # This is one of the few change functions where nothing might change.
         # Track if updates need to be made
-        cdef bool_cpp_t something_changed = False
+        cdef bint something_changed = False
 
         # Update tolerances
         cdef double rtol_tmp
@@ -1573,7 +1571,7 @@ cdef class CySolver:
     cpdef void change_max_step(
             self,
             double max_step,
-            bool_cpp_t auto_reset_state = False
+            bint auto_reset_state = False
             ):
         """
         Public method to change maximum allowed step size.
@@ -1582,7 +1580,7 @@ cdef class CySolver:
         ----------
         max_step : double
             New maximum step size used during integration.
-        auto_reset_state : bool_cpp_t, default=False
+        auto_reset_state : bint, default=False
             If True, then the `reset_state` method will be called once parameter is changed.
         """
 
@@ -1594,7 +1592,7 @@ cdef class CySolver:
     cpdef void change_first_step(
             self,
             double first_step,
-            bool_cpp_t auto_reset_state = False
+            bint auto_reset_state = False
             ):
         """
         Public method to change first step's size.
@@ -1603,7 +1601,7 @@ cdef class CySolver:
         ----------
         first_step : double
             New first step's size.
-        auto_reset_state : bool_cpp_t, default=False
+        auto_reset_state : bint, default=False
             If True, then the `reset_state` method will be called once parameter is changed.
         """
 
@@ -1630,7 +1628,7 @@ cdef class CySolver:
     cpdef void change_t_eval(
             self,
             const double[::1] t_eval,
-            bool_cpp_t auto_reset_state = False
+            bint auto_reset_state = False
             ):
         """
         Public method to change user requested independent domain, `t_eval`.
@@ -1639,7 +1637,7 @@ cdef class CySolver:
         ----------
         t_eval : double[:]
             New independent domain at which solution will be interpolated.
-        auto_reset_state : bool_cpp_t, default=False
+        auto_reset_state : bint, default=False
             If True, then the `reset_state` method will be called once parameter is changed.
         """
 
@@ -1670,7 +1668,7 @@ cdef class CySolver:
             self,
             double* new_t_eval_ptr,
             size_t new_len_t_eval,
-            bool_cpp_t auto_reset_state = False
+            bint auto_reset_state = False
             ):
         """
         Public method to change user requested independent domain, `t_eval`.
@@ -1679,7 +1677,7 @@ cdef class CySolver:
         ----------
         t_eval_ptr : double[:]
             New pointer to independent domain at which solution will be interpolated.
-        auto_reset_state : bool_cpp_t, default=False
+        auto_reset_state : bint, default=False
             If True, then the `reset_state` method will be called once parameter is changed.
         """
 
@@ -1716,8 +1714,8 @@ cdef class CySolver:
             double max_step = NAN,
             double first_step = NAN,
             const double[::1] t_eval = None,
-            bool_cpp_t auto_reset_state = True,
-            bool_cpp_t auto_solve = False
+            bint auto_reset_state = True,
+            bint auto_solve = False
             ):
         """
         Public method to change one or more parameters which have their own `change_*` method.
@@ -1736,15 +1734,15 @@ cdef class CySolver:
         max_step
         first_step
         t_eval
-        auto_reset_state : bool_cpp_t, default=True
+        auto_reset_state : bint, default=True
             If True, then the `reset_state` method will be called once parameter is changed.
-        auto_solve : bool_cpp_t, default=False
+        auto_solve : bint, default=False
             If True, then the `solve` method will be called after all parameters have been changed and the state reset.
         """
 
         # This is one of the few change functions where nothing might change.
         # Track if updates need to be made
-        cdef bool_cpp_t something_changed
+        cdef bint something_changed
         something_changed = False
 
         if not isnan(t_span[0]):
