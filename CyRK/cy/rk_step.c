@@ -314,9 +314,3 @@ int rk_step_cf(
 
     return 0;
 }
-
-
-int main(){
-    int x = 2;
-    return 0;
-}
