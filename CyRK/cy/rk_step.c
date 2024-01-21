@@ -1,7 +1,7 @@
 #include <stddef.h>   // `size_t`
 #include <stdbool.h>  // `bool`
 #include <math.h>     // `fmin`, `fmax`, `fabs`
-
+#include <stdio.h>
 // Create a fake struct to trick C into accepting the CySolver class (which contains the diffeq method)
 struct CySolverStruct {
     char empty;
@@ -10,7 +10,7 @@ struct CySolverStruct {
 
 int rk_step_cf(
         // Pointer to differential equation
-        void (*diffeq_ptr)(struct CySolverStruct CyInst),
+        void (*diffeq_ptr)(struct CySolverStruct*),
         // Pointer to the CySolver instance
         struct CySolverStruct* cysolver_inst,
 
@@ -164,7 +164,7 @@ int rk_step_cf(
             }
             // Call diffeq method to update K with the new dydt
             // This will use the now updated values at y_ptr and t_now_ptr. It will update values at dy_ptr.
-            diffeq_ptr(*cysolver_inst);
+            diffeq_ptr(cysolver_inst);
 
             // Update K based on the new dy values.
             for (size_t i = 0; i < y_size; i++) {
@@ -193,7 +193,7 @@ int rk_step_cf(
         
         // Find final dydt for this timestep
         // This will use the now final values at y_ptr and t_now_ptr. It will update values at dy_ptr.
-        diffeq_ptr(*cysolver_inst);
+        diffeq_ptr(cysolver_inst);
 
         // Check how well this step performed by calculating its error.
         if (rk_method == 2) {
