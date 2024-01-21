@@ -13,7 +13,7 @@ jobs:
         shell: bash -el {0}
 
     name: Test CyRK on MacOS
-    runs-on: macos-latest
+    runs-on: macos-12.7.2
     strategy:
       matrix:
         python-version:
