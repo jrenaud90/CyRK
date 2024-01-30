@@ -27,6 +27,20 @@
     "compile_args": [],
     "link_args": []
   },
+  "base_driver": {
+    "name": "CyRK.cy.drivers.base_driver",
+    "sources": [["CyRK", "cy", "drivers", "base_driver.pyx"]],
+    "include_dirs": [["CyRK", "cy", "drivers"]],
+    "compile_args": [],
+    "link_args": []
+  },
+  "rk_driver": {
+    "name": "CyRK.cy.drivers.rk_driver",
+    "sources": [["CyRK", "cy", "drivers", "rk_driver.pyx"]],
+    "include_dirs": [["CyRK", "cy", "drivers"]],
+    "compile_args": [],
+    "link_args": []
+  },
   "common": {
     "name": "CyRK.cy.common",
     "sources": [["CyRK", "cy", "common.pyx"]],
