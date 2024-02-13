@@ -8,7 +8,7 @@
   },
   "interp": {
     "name": "CyRK.array.interp",
-    "sources": [["CyRK", "array", "interp.pyx"], ["CyRK", "array", "interp_common.c"]],
+    "sources": [["CyRK", "array", "interp.pyx"]],
     "include_dirs": [["CyRK", "array"]],
     "compile_args": [],
     "link_args": []
@@ -43,7 +43,9 @@
   },
   "cysolver": {
     "name": "CyRK.cy.cysolver",
-    "sources": [["CyRK", "cy", "cysolver.pyx"]],
+    "sources": [
+      ["CyRK", "cy", "cysolver.pyx"]
+    ],
     "include_dirs": [["CyRK", "cy"]],
     "compile_args": [],
     "link_args": []

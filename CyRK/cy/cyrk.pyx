@@ -1,4 +1,4 @@
-# distutils: language = c++
+# distutils: language = c
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 
 import cython
@@ -7,9 +7,7 @@ from cpython.mem cimport PyMem_Free
 
 import numpy as np
 cimport numpy as np
-np.import_array()
 
-from libcpp cimport bool as bool_cpp_t
 from libc.math cimport sqrt, fabs, nextafter, NAN, floor
 
 from CyRK.utils.utils cimport allocate_mem, reallocate_mem
@@ -80,9 +78,9 @@ def cyrk_ode(
         double first_step = 0.,
         unsigned char rk_method = 1,
         double[:] t_eval = None,
-        bool_cpp_t capture_extra = False,
+        bint capture_extra = False,
         size_t num_extra = 0,
-        bool_cpp_t interpolate_extra = False,
+        bint interpolate_extra = False,
         size_t expected_size = 0,
         size_t max_num_steps = 0,
         size_t max_ram_MB = 2000
@@ -148,7 +146,7 @@ def cyrk_ode(
             ```
     num_extra : int = 0
         The number of extra outputs the integrator should expect. With the previous example there is 1 extra output.
-    interpolate_extra : bool_cpp_t, default=False
+    interpolate_extra : bint, default=False
         Flag if interpolation should be run on extra parameters.
         If set to False when `run_interpolation=True`, then interpolation will be run on solution's y, t. These will
         then be used to recalculate extra parameters rather than an interpolation on the extra parameters captured
@@ -181,7 +179,7 @@ def cyrk_ode(
     # Determine information about the differential equation based on its initial conditions
     cdef size_t y_size
     cdef double y_size_dbl, y_size_sqrt
-    cdef bool_cpp_t y_is_complex
+    cdef bint y_is_complex
     y_size       = y0.size
     y_is_complex = False
     y_size_dbl   = <double>y_size
@@ -201,7 +199,7 @@ def cyrk_ode(
 
     # Build time domain
     cdef double t_start, t_end, t_delta, t_delta_check, t_delta_abs, direction_inf, t_old, t_now, time_
-    cdef bool_cpp_t direction_flag
+    cdef bint direction_flag
     t_start       = t_span[0]
     t_end         = t_span[1]
     t_delta       = t_end - t_start
@@ -218,7 +216,7 @@ def cyrk_ode(
         direction_inf = -INF
 
     # Pull out information on args
-    cdef bool_cpp_t use_args
+    cdef bint use_args
     if args is None:
         use_args = False
     else:
@@ -271,7 +269,7 @@ def cyrk_ode(
     
     # Determine max number of steps
     cdef size_t max_num_steps_touse
-    cdef bool_cpp_t user_provided_max_num_steps
+    cdef bint user_provided_max_num_steps
     find_max_num_steps(
         y_size,
         num_extra,
@@ -363,7 +361,7 @@ def cyrk_ode(
     cdef double_numeric[::1] diffeq_out_view = diffeq_out_array
 
     # Determine interpolation information
-    cdef bool_cpp_t run_interpolation
+    cdef bint run_interpolation
     cdef size_t len_t_eval
     if t_eval is None:
         run_interpolation = False
@@ -486,7 +484,7 @@ def cyrk_ode(
     cdef double step, step_size, min_step, step_factor
 
     # Integration flags and variables
-    cdef bool_cpp_t success, step_accepted, step_rejected, step_error
+    cdef bint success, step_accepted, step_rejected, step_error
     cdef size_t len_t
 
     # Integration completion variables
@@ -666,7 +664,7 @@ def cyrk_ode(
                                     # Initialize
                                     y_view[i] = y_old_ptr[i]
 
-                                y_view[i] += K_ptr[j * y_size + i] * A_at_sj
+                                y_view[i] = y_view[i] + K_ptr[j * y_size + i] * A_at_sj
 
                     if use_args:
                         diffeq(time_, y_array, diffeq_out_array, *args)
@@ -686,7 +684,7 @@ def cyrk_ode(
                             # Initialize
                             y_view[i] = y_old_ptr[i]
 
-                        y_view[i] += K_ptr[j * y_size + i] * B_at_j
+                        y_view[i] = y_view[i] + K_ptr[j * y_size + i] * B_at_j
 
                 # Find final dydt for this timestep
                 if use_args:

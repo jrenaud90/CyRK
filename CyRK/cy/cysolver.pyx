@@ -1,15 +1,12 @@
-# distutils: language = c++
+# distutils: language = c
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 
-from libcpp cimport bool as bool_cpp_t
-from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, isnan, NAN, pow, floor
+from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, isnan, NAN, floor
 
 from cpython.mem cimport PyMem_Free
 
 import numpy as np
 cimport numpy as np
-
-np.import_array()
 
 from CyRK.utils.utils cimport allocate_mem, reallocate_mem
 from CyRK.rk.rk cimport find_rk_properties
@@ -69,13 +66,13 @@ cdef class CySolver:
         Absolute value of t_delta.
     direction_inf : double
         Direction of integration. If forward then this = +Inf; -Inf otherwise.
-    direction_flag : bool_cpp_t
+    direction_flag : bint
         If True, then integration is in the forward direction.
     num_args : size_t
         Number of additional arguments that the `diffeq` method requires.
     args_ptr : double*
         Pointer of additional arguments used in the `diffeq` method.
-    capture_extra bool_cpp_t
+    capture_extra bint
         Flag used if extra parameters should be captured during integration.
     num_extra size_t
         Number of extra parameters that should be captured during integration.
@@ -84,7 +81,7 @@ cdef class CySolver:
         See "Status and Error Codes.md" in the documentation for more information.
     message : str; public
         Verbal message to accompany `self.status` explaining the state (and potential errors) of the integrator.
-    success : bool_cpp_t; public
+    success : bint; public
         Flag indicating if the integration was successful or not.
     rtols_ptr : double*
         Pointer of relative tolerances for each dependent y variable.
@@ -104,12 +101,12 @@ cdef class CySolver:
         If `expected_size` is too small then it will be expanded as needed. This variable tracks how many expansions
         were required.
         See Also: `CySolver.growths`
-    recalc_first_step : bool_cpp_t
+    recalc_first_step : bint
         If True, then the `first_step` size is recalculated when `reset_state` is called.
         Flag used when parameters are changed without reinitializing CySolver.
-    run_interpolation : bool_cpp_t
+    run_interpolation : bint
         Flag if a final interpolation should be run once integration is completed successfully.
-    interpolate_extra : bool_cpp_t
+    interpolate_extra : bint
         Flag if interpolation should be run on extra parameters.
         If set to False when `run_interpolation=True`, then interpolation will be run on solution's y, t. These will
         then be used to recalculate extra parameters rather than an interpolation on the extra parameters captured
@@ -231,14 +228,14 @@ cdef class CySolver:
             double first_step = 0.,
             size_t max_num_steps = 0,
             const double[::1] t_eval = None,
-            bool_cpp_t capture_extra = False,
+            bint capture_extra = False,
             size_t num_extra = 0,
-            bool_cpp_t interpolate_extra = False,
+            bint interpolate_extra = False,
             size_t expected_size = 0,
             size_t max_ram_MB = 2000,
-            bool_cpp_t call_first_reset = True,
-            bool_cpp_t auto_solve = True,
-            bool_cpp_t force_fail = False):
+            bint call_first_reset = True,
+            bint auto_solve = True,
+            bint force_fail = False):
         """
         Initialize new CySolver instance.
 
@@ -292,7 +289,7 @@ cdef class CySolver:
                 ```
         num_extra : int = 0
             The number of extra outputs the integrator should expect. With the previous example there is 1 extra output.
-        interpolate_extra : bool_cpp_t, default=False
+        interpolate_extra : bint, default=False
             Flag if interpolation should be run on extra parameters.
             If set to False when `run_interpolation=True`, then interpolation will be run on solution's y, t. These will
             then be used to recalculate extra parameters rather than an interpolation on the extra parameters captured
@@ -305,7 +302,7 @@ cdef class CySolver:
         call_first_reset : bool, default=True
             If set to True, then the solver will call its `reset_state` method at the end of initialization. This flag
             is overridden by the `auto_solve` flag.
-        auto_solve : bool_cpp_t, default=True
+        auto_solve : bint, default=True
             If set to True, then the solver's `solve` method will be called at the end of initialization.
             Otherwise, the user will have to call `solver_instance = CySolver(...); solver_instance.solve()`
             to perform integration.
@@ -707,239 +704,30 @@ cdef class CySolver:
 
         return step_size
 
-    cdef void rk_step(self) noexcept nogil:
-        """ Performs a Runge-Kutta step calculation including local error determination. """
-
-        # Initialize step variables
-        cdef size_t s, i, j
-        cdef double min_step, step, step_factor, time_tmp, t_delta_check
-        cdef double scale, temp_double
-        cdef double error_norm3, error_norm5, error_norm, error_dot_1, error_dot_2, error_denom, error_pow
-        cdef bool_cpp_t step_accepted, step_rejected, step_error
-
-        # Run RK integration step
-        # Determine step size based on previous loop
-        # Find minimum step size based on the value of t (less floating point numbers between numbers when t is large)
-        min_step = 10. * fabs(nextafter(self.t_old, self.direction_inf) - self.t_old)
-        # Look for over/undershoots in previous step size
-        if self.step_size > self.max_step:
-            self.step_size = self.max_step
-        elif self.step_size < min_step:
-            self.step_size = min_step
-
-        # Determine new step size
-        step_accepted = False
-        step_rejected = False
-        step_error    = False
-
-        # Optimization variables
-        cdef double A_at_10
-        # Define a very specific A (Row 1; Col 0) now since it is called consistently and does not change.
-        A_at_10 = self.A_ptr[1 * self.len_Acols + 0]
-
-        # # Step Loop
-        while not step_accepted:
-            if self.step_size < min_step:
-                step_error  = True
-                self.status = -1
-                break
-
-            # Move time forward for this particular step size
-            if self.direction_flag:
-                step          = self.step_size
-                self.t_now    = self.t_old + step
-                t_delta_check = self.t_now - self.t_end
-            else:
-                step          = -self.step_size
-                self.t_now    = self.t_old + step
-                t_delta_check = self.t_end - self.t_now
-
-            # Check that we are not at the end of integration with that move
-            if t_delta_check > 0.:
-                self.t_now = self.t_end
-
-                # If we are, correct the step so that it just hits the end of integration.
-                step = self.t_now - self.t_old
-                if self.direction_flag:
-                    self.step_size = step
-                else:
-                    self.step_size = -step
-
-            # # Calculate derivative using RK method
-
-            # t_now must be updated for each loop of s in order to make the diffeq calls.
-            # But we need to return to its original value later on. Store in temp variable.
-            time_tmp = self.t_now
-
-            for s in range(1, self.len_C):
-                # Update t_now so it can be used in the diffeq call.
-                self.t_now = self.t_old + self.C_ptr[s] * step
-
-                # Dot Product (K, a) * step
-                if s == 1:
-                    for i in range(self.y_size):
-                        # Set the first column of K
-                        temp_double = self.dy_old_ptr[i]
-                        # K[0, :] == first part of the array
-                        self.K_ptr[i] = temp_double
-
-                        # Calculate y_new for s==1
-                        self.y_ptr[i] = self.y_old_ptr[i] + (temp_double * A_at_10 * step)
-                else:
-                    for j in range(s):
-                        temp_double = self.A_ptr[s * self.len_Acols + j] * step
-                        for i in range(self.y_size):
-                            if j == 0:
-                                # Initialize
-                                self.y_ptr[i] = self.y_old_ptr[i]
-
-                            self.y_ptr[i] += self.K_ptr[j * self.y_size + i] * temp_double
-
-                # Call diffeq to update K with the new dydt
-                self.diffeq()
-
-                for i in range(self.y_size):
-                    self.K_ptr[s * self.y_size + i] = self.dy_ptr[i]
-
-            # Restore t_now to its previous value.
-            self.t_now = time_tmp
-
-            # Dot Product (K, B) * step
-            for j in range(self.rk_n_stages):
-                temp_double = self.B_ptr[j] * step
-                # We do not use rk_n_stages_plus1 here because we are chopping off the last row of K to match
-                #  the shape of B.
-                for i in range(self.y_size):
-                    if j == 0:
-                        # Initialize
-                        self.y_ptr[i] = self.y_old_ptr[i]
-
-                    self.y_ptr[i] += self.K_ptr[j * self.y_size + i] * temp_double
-
-            # Find final dydt for this timestep
-            self.diffeq()
-
-            # Check how well this step performed by calculating its error
-            if self.rk_method == 2:
-                # Calculate Error for DOP853
-                # Dot Product (K, E5) / scale and Dot Product (K, E3) * step / scale
-                error_norm3 = 0.
-                error_norm5 = 0.
-                for i in range(self.y_size):
-                    # Find scale of y for error calculations
-                    scale = (self.atols_ptr[i] +
-                             max(fabs(self.y_old_ptr[i]), fabs(self.y_ptr[i])) * self.rtols_ptr[i])
-
-                    # Set last array of K equal to dydt
-                    self.K_ptr[self.rk_n_stages * self.y_size + i] = self.dy_ptr[i]
-                    # Initialize
-                    error_dot_1 = 0.
-                    error_dot_2 = 0.
-                    for j in range(self.rk_n_stages_plus1):
-
-                        temp_double = self.K_ptr[j * self.y_size + i]
-                        error_dot_1 += temp_double * self.E3_ptr[j]
-                        error_dot_2 += temp_double * self.E5_ptr[j]
-
-                    # We need the absolute value but since we are taking the square, it is guaranteed to be positive.
-                    # TODO: This will need to change if CySolver ever accepts complex numbers
-                    # error_norm3_abs = fabs(error_dot_1)
-                    # error_norm5_abs = fabs(error_dot_2)
-                    error_dot_1 /= scale
-                    error_dot_2 /= scale
-
-                    error_norm3 += (error_dot_1 * error_dot_1)
-                    error_norm5 += (error_dot_2 * error_dot_2)
-
-                # Check if errors are zero
-                if (error_norm5 == 0.) and (error_norm3 == 0.):
-                    error_norm = 0.
-                else:
-                    error_denom = error_norm5 + 0.01 * error_norm3
-                    error_norm = self.step_size * error_norm5 / sqrt(error_denom * self.y_size_dbl)
-
-            else:
-                # Calculate Error for RK23 and RK45
-                # Dot Product (K, E) * step / scale
-                error_norm = 0.
-                for i in range(self.y_size):
-                    # Find scale of y for error calculations
-                    scale = (self.atols_ptr[i] +
-                             max(fabs(self.y_old_ptr[i]), fabs(self.y_ptr[i])) * self.rtols_ptr[i])
-
-                    # Set last array of K equal to dydt
-                    self.K_ptr[self.rk_n_stages * self.y_size + i] = self.dy_ptr[i]
-                    # Initialize
-                    error_dot_1 = 0.
-                    for j in range(self.rk_n_stages_plus1):
-
-                        error_dot_1 += self.K_ptr[j * self.y_size + i] * self.E_ptr[j]
-
-                    # We need the absolute value but since we are taking the square, it is guaranteed to be positive.
-                    # TODO: This will need to change if CySolver ever accepts complex numbers
-                    # error_norm_abs = fabs(error_dot_1)
-                    error_dot_1 *= (step / scale)
-
-                    error_norm += (error_dot_1 * error_dot_1)
-                error_norm = sqrt(error_norm) / self.y_size_sqrt
-
-            if error_norm < 1.:
-                # The error is low! Let's update this step for the next time loop
-                if error_norm == 0.:
-                    step_factor = MAX_FACTOR
-                else:
-                    error_pow = pow(error_norm, -self.error_expo)
-                    step_factor = fmin(MAX_FACTOR, SAFETY * error_pow)
-
-                if step_rejected:
-                    # There were problems with this step size on the previous step loop. Make sure factor does
-                    #    not exasperate them.
-                    step_factor = fmin(step_factor, 1.)
-
-                self.step_size = self.step_size * step_factor
-                step_accepted = True
-            else:
-                error_pow = pow(error_norm, -self.error_expo)
-                self.step_size = self.step_size * fmax(MIN_FACTOR, SAFETY * error_pow)
-                step_rejected = True
-
-        if step_error:
-            # Issue with step convergence
-            self.status = -1
-        elif not step_accepted:
-            # Issue with step convergence
-            self.status = -7
-
-        # End of step loop. Update the 'old' variables
-        self.t_old = self.t_now
-        for i in range(self.y_size):
-            self.y_old_ptr[i]  = self.y_ptr[i]
-            self.dy_old_ptr[i] = self.dy_ptr[i]
-
     cpdef void solve(
             self,
-            bool_cpp_t reset = True
+            bint reset = True
             ):
         """
         Public wrapper to the private solve method which calculates the integral of the user-provided system of ODEs.
         
         Parameters
         ----------
-        reset : bool_cpp_t, default=True
+        reset : bint, default=True
             If True, `reset_state()` will be called before integration starts.
         """
         self._solve(reset=reset)
 
     cdef void _solve(
             self,
-            bool_cpp_t reset = True
+            bint reset = True
             ):
         """
         Calculates the integral of the user-provided system of ODEs.
         
         Parameters
         ----------
-        reset : bool_cpp_t, default=True
+        reset : bint, default=True
             If True, `reset_state()` will be called before integration starts.
         """
 
@@ -949,6 +737,7 @@ cdef class CySolver:
 
         # Setup loop variables
         cdef size_t i
+        cdef int rk_step_output
 
         # Setup storage arrays
         # These arrays are built to fit a number of points equal to `self.expected_size`
@@ -1015,7 +804,43 @@ cdef class CySolver:
                 break
 
             # # Perform RK Step
-            self.rk_step()
+            rk_step_output = rk_step_cf(
+                self.diffeq,
+                self,
+                self.t_end,
+                self.direction_flag,
+                self.direction_inf,
+                self.y_size,
+                self.y_size_dbl,
+                self.y_size_sqrt,
+                &self.t_now,
+                self.y_ptr,
+                self.dy_ptr,
+                &self.t_old,
+                self.y_old_ptr,
+                self.dy_old_ptr,
+                &self.step_size,
+                &self.status,
+                self.atols_ptr,
+                self.rtols_ptr,
+                self.max_step,
+                self.rk_method,
+                self.rk_n_stages,
+                self.rk_n_stages_plus1,
+                self.len_Acols,
+                self.len_C,
+                self.A_ptr,
+                self.B_ptr,
+                self.C_ptr,
+                self.K_ptr,
+                self.E_ptr,
+                self.E3_ptr,
+                self.E5_ptr,
+                self.error_expo,
+                MIN_FACTOR,
+                MAX_FACTOR,
+                SAFETY
+                )
 
             # Check if an error occurred during step calculations before storing data.
             if self.status != 0:
@@ -1303,7 +1128,7 @@ cdef class CySolver:
     cpdef void change_t_span(
             self,
             (double, double) t_span,
-            bool_cpp_t auto_reset_state = False
+            bint auto_reset_state = False
             ):
         """
         Public method to change the independent variable limits (start and stop points of integration).
@@ -1312,7 +1137,7 @@ cdef class CySolver:
         ----------
         t_span : (double, double)
             New t_span to use during integration.
-        auto_reset_state : bool_cpp_t, default=False
+        auto_reset_state : bint, default=False
             If True, then the `reset_state` method will be called once parameter is changed.
         """
 
@@ -1338,7 +1163,7 @@ cdef class CySolver:
     cpdef void change_y0(
             self,
             const double[::1] y0,
-            bool_cpp_t auto_reset_state = False
+            bint auto_reset_state = False
             ):
         """
         Public method to change the initial conditions.
@@ -1350,7 +1175,7 @@ cdef class CySolver:
         y0 : double[::1]
             New dependent variable initial conditions.
             Must be the same size as the original y0.
-        auto_reset_state : bool_cpp_t, default=False
+        auto_reset_state : bint, default=False
             If True, then the `reset_state` method will be called once parameter is changed.
         """
 
@@ -1378,7 +1203,7 @@ cdef class CySolver:
     cdef void change_y0_pointer(
                 self,
                 double* y0_ptr,
-                bool_cpp_t auto_reset_state = False
+                bint auto_reset_state = False
                 ):
             """
             Public method to change the initial conditions.
@@ -1390,7 +1215,7 @@ cdef class CySolver:
             y0 : double*
                 New pointer to dependent variable initial conditions.
                 Must be the same size as the original y0.
-            auto_reset_state : bool_cpp_t, default=False
+            auto_reset_state : bint, default=False
                 If True, then the `reset_state` method will be called once parameter is changed.
             """
 
@@ -1412,7 +1237,7 @@ cdef class CySolver:
     cpdef void change_args(
             self,
             tuple args,
-            bool_cpp_t auto_reset_state = False
+            bint auto_reset_state = False
             ):
         """
         Public method to change additional arguments used during integration.
@@ -1421,7 +1246,7 @@ cdef class CySolver:
         ----------
         args : tuple
             New tuple of additional arguments.
-        auto_reset_state : bool_cpp_t, default=False
+        auto_reset_state : bint, default=False
             If True, then the `reset_state` method will be called once parameter is changed.
         """
 
@@ -1462,7 +1287,7 @@ cdef class CySolver:
             double atol = NAN,
             const double[::1] rtols = None,
             const double[::1] atols = None,
-            bool_cpp_t auto_reset_state = False
+            bint auto_reset_state = False
             ):
         """
         Public method to change relative and absolute tolerances and/or their arrays.
@@ -1481,13 +1306,13 @@ cdef class CySolver:
         atols : const double[::1]
             Numpy ndarray of absolute tolerances, one for each dependent y variable.
             if None (the default), then no change will be made.
-        auto_reset_state : bool_cpp_t, default=False
+        auto_reset_state : bint, default=False
             If True, then the `reset_state` method will be called once parameter is changed.
         """
 
         # This is one of the few change functions where nothing might change.
         # Track if updates need to be made
-        cdef bool_cpp_t something_changed = False
+        cdef bint something_changed = False
 
         # Update tolerances
         cdef double rtol_tmp
@@ -1537,7 +1362,7 @@ cdef class CySolver:
     cpdef void change_max_step(
             self,
             double max_step,
-            bool_cpp_t auto_reset_state = False
+            bint auto_reset_state = False
             ):
         """
         Public method to change maximum allowed step size.
@@ -1546,7 +1371,7 @@ cdef class CySolver:
         ----------
         max_step : double
             New maximum step size used during integration.
-        auto_reset_state : bool_cpp_t, default=False
+        auto_reset_state : bint, default=False
             If True, then the `reset_state` method will be called once parameter is changed.
         """
 
@@ -1558,7 +1383,7 @@ cdef class CySolver:
     cpdef void change_first_step(
             self,
             double first_step,
-            bool_cpp_t auto_reset_state = False
+            bint auto_reset_state = False
             ):
         """
         Public method to change first step's size.
@@ -1567,7 +1392,7 @@ cdef class CySolver:
         ----------
         first_step : double
             New first step's size.
-        auto_reset_state : bool_cpp_t, default=False
+        auto_reset_state : bint, default=False
             If True, then the `reset_state` method will be called once parameter is changed.
         """
 
@@ -1594,7 +1419,7 @@ cdef class CySolver:
     cpdef void change_t_eval(
             self,
             const double[::1] t_eval,
-            bool_cpp_t auto_reset_state = False
+            bint auto_reset_state = False
             ):
         """
         Public method to change user requested independent domain, `t_eval`.
@@ -1603,7 +1428,7 @@ cdef class CySolver:
         ----------
         t_eval : double[:]
             New independent domain at which solution will be interpolated.
-        auto_reset_state : bool_cpp_t, default=False
+        auto_reset_state : bint, default=False
             If True, then the `reset_state` method will be called once parameter is changed.
         """
 
@@ -1634,7 +1459,7 @@ cdef class CySolver:
             self,
             double* new_t_eval_ptr,
             size_t new_len_t_eval,
-            bool_cpp_t auto_reset_state = False
+            bint auto_reset_state = False
             ):
         """
         Public method to change user requested independent domain, `t_eval`.
@@ -1643,7 +1468,7 @@ cdef class CySolver:
         ----------
         t_eval_ptr : double[:]
             New pointer to independent domain at which solution will be interpolated.
-        auto_reset_state : bool_cpp_t, default=False
+        auto_reset_state : bint, default=False
             If True, then the `reset_state` method will be called once parameter is changed.
         """
 
@@ -1680,8 +1505,8 @@ cdef class CySolver:
             double max_step = NAN,
             double first_step = NAN,
             const double[::1] t_eval = None,
-            bool_cpp_t auto_reset_state = True,
-            bool_cpp_t auto_solve = False
+            bint auto_reset_state = True,
+            bint auto_solve = False
             ):
         """
         Public method to change one or more parameters which have their own `change_*` method.
@@ -1700,15 +1525,15 @@ cdef class CySolver:
         max_step
         first_step
         t_eval
-        auto_reset_state : bool_cpp_t, default=True
+        auto_reset_state : bint, default=True
             If True, then the `reset_state` method will be called once parameter is changed.
-        auto_solve : bool_cpp_t, default=False
+        auto_solve : bint, default=False
             If True, then the `solve` method will be called after all parameters have been changed and the state reset.
         """
 
         # This is one of the few change functions where nothing might change.
         # Track if updates need to be made
-        cdef bool_cpp_t something_changed
+        cdef bint something_changed
         something_changed = False
 
         if not isnan(t_span[0]):

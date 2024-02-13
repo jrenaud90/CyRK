@@ -1,3 +1,4 @@
+# distutils: language = c
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 
 from CyRK.rk.rk_constants cimport \
