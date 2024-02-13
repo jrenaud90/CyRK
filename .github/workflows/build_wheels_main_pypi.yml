@@ -25,8 +25,6 @@ jobs:
   build_macos_wheel:
     name: Build MacOS wheel for Python ${{ matrix.python }}
     runs-on: macos-latest
-    env:
-      KMP_DUPLICATE_LIB_OK: 'True'
     strategy:
       # Ensure that a wheel builder finishes even if another fails
       fail-fast: false
@@ -53,27 +51,17 @@ jobs:
         shell: bash -el {0}
         run: conda info
 
-      - name: Install llvm and libomp
+      - name: install gcc-13  # openMP does not play nice with clang on MacOS; also some versions of macos use older gcc so there is a need to install latest.
         shell: bash -el {0}
         run: |
-          brew reinstall llvm libomp
-
-      - name: Install Dependencies
-        shell: bash -el {0}
-        run: |
-          conda install numpy scipy cython llvm-openmp pytest
-          python -m pip install --upgrade build
+          brew install gcc@13
 
       - name: Install package
         shell: bash -el {0}
         run: |
-          export CC=/usr/bin/clang
-          export CXX=/usr/bin/clang++
-          export PATH="/usr/local/opt/llvm/bin:$PATH"
-          export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -I/usr/local/opt/llvm/include"
-          export CFLAGS="$CFLAGS -I/usr/local/opt/libomp/include"
-          export CXXFLAGS="$CXXFLAGS -I/usr/local/opt/libomp/include"
-          export LDFLAGS="$LDFLAGS -Wl,-rpath,/usr/local/opt/libomp/lib -L/usr/local/opt/libomp/lib -lomp -L/usr/local/opt/llvm/lib"
+          export CC='gcc-13'
+          export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp"
+          python -m pip install -v .
           python -m build --wheel --outdir ./wheelhouse/
 
       - uses: actions/upload-artifact@v4

@@ -2,10 +2,14 @@
 
 ## 2023
 
-#### v0.8.6 (2024-NNNN)
+#### v0.8.6 (2024-02-13)
 
 Major Changes:
 - Added support for Python 3.12.
+
+Bug Fixes:
+- Fixed issue where CyRK was not installing on MacOS due to issue with LLVM and OpenMP. 
+  - Have opted to go to gcc for macOS install due to issues with OpenMP and clang.
 
 #### v0.8.5 (2023-10-27)
 
