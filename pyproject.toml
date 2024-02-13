@@ -1,6 +1,6 @@
 [project]
 name='CyRK'
-version = '0.8.6dev2'
+version = '0.8.6dev3'
 description='Runge-Kutta ODE Integrator Implemented in Cython and Numba.'
 authors= [
     {name = 'Joe P. Renaud', email = 'joe.p.renaud@gmail.com'}
@@ -59,7 +59,7 @@ dev = [
 [build-system]
 requires = [
     'setuptools>=64.0.0',
-    'numpy >= 1.22, <1.26',
+    'numpy >= 1.22, <1.27',
     'cython>=3.0.0',
     'wheel>=0.38'
 ]
