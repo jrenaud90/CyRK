@@ -25,6 +25,8 @@ jobs:
   build_macos_wheel:
     name: Build MacOS wheel for Python ${{ matrix.python }}
     runs-on: macos-latest
+    env:
+      KMP_DUPLICATE_LIB_OK: 'True'
     strategy:
       # Ensure that a wheel builder finishes even if another fails
       fail-fast: false

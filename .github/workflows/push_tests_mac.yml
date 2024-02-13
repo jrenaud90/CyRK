@@ -8,10 +8,11 @@ on: [push, pull_request, workflow_dispatch]
 jobs:
 
   test-macos:
+    env:
+      KMP_DUPLICATE_LIB_OK: 'True'
     defaults:
       run:
         shell: bash -el {0}
-
     name: Test CyRK on MacOS
     runs-on: macos-latest
     strategy:
