@@ -16,6 +16,7 @@ jobs:
     name: Test CyRK on MacOS
     runs-on: macos-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version:
           - "3.8"

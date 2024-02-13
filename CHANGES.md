@@ -2,6 +2,11 @@
 
 ## 2023
 
+#### v0.8.6 (2024-NNNN)
+
+Major Changes:
+- Added support for Python 3.12.
+
 #### v0.8.5 (2023-10-27)
 
 Other Changes:
