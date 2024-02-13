@@ -46,6 +46,7 @@ jobs:
           export CC='gcc-13'
           export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp"
           python -m pip install -v .
+          python -m pip install pytest
         
       - name: Run pytest
         shell: bash -el {0}
