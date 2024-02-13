@@ -6,10 +6,15 @@
 
 Major Changes:
 - Added support for Python 3.12.
+- Converted `CySolver`'s `rk_step` method into a pure-c implementation to allow for further optimizations.
+- Changed all files to compile with c rather than c++.
+  - Had to change cpp_bools to bints to make this change.
 
 Bug Fixes:
 - Fixed issue where CyRK was not installing on MacOS due to issue with LLVM and OpenMP. 
   - Have opted to go to gcc for macOS install due to issues with OpenMP and clang.
+- Fixed incorrect type for rk method in CySolver (should eliminate some compile warnings).
+- Fixed issue in benchmark where incorrect results were being displayed for CySolver.
 
 #### v0.8.5 (2023-10-27)
 
