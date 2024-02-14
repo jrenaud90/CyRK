@@ -63,7 +63,6 @@ jobs:
           python -m pip install --upgrade build
           export CC='gcc-13'
           export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp"
-          python -m pip install -v .
           python -m build --wheel --outdir ./wheelhouse/
 
       - uses: actions/upload-artifact@v4
