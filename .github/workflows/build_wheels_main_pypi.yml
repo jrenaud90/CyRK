@@ -111,7 +111,6 @@ jobs:
     name: Upload wheels to PyPI
     needs: [build_macos_wheel, build_other_wheels, make_sdist, check_dist]
     runs-on: ubuntu-latest
-    if: github.event_name == 'release' && github.event.action == 'published'
     steps:
       - uses: actions/download-artifact@v4
         with:
