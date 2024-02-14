@@ -21,6 +21,7 @@ jobs:
     - uses: actions/upload-artifact@v4
       with:
         path: dist/*.tar.gz
+        name: artifact_sdist        
 
   build_macos_wheel:
     name: Build MacOS wheel for Python ${{ matrix.python }}
@@ -68,6 +69,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           path: ./wheelhouse/*.whl
+          name: artifact_Macos_${{ matrix.python }}_whl
 
   build_other_wheels:
     name: Build ${{ matrix.platform }} wheels
@@ -91,6 +93,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           path: ./wheelhouse/*.whl
+          name: artifact_${{ matrix.platform }}_whls
 
   check_dist:
     name: Check dist
@@ -99,7 +102,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: artifact
+          name: artifact_sdist
           path: dist
 
       - run: pipx run twine check --strict dist/*
@@ -112,7 +115,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: artifact
+          merge-multiple: true
           path: dist
 
       - uses: pypa/gh-action-pypi-publish@v1.8.11
