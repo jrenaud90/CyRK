@@ -60,6 +60,7 @@ jobs:
         shell: bash -el {0}
         run: |
           conda install pytest matplotlib numba numpy scipy cython
+          python -m pip install --upgrade build
           export CC='gcc-13'
           export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp"
           python -m pip install -v .
