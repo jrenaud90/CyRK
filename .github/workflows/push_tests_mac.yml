@@ -35,17 +35,17 @@ jobs:
         shell: bash -el {0}
         run: conda info
         
-      - name: install gcc-12 # openMP does not play nice with clang on MacOS; also some versions of macos use older gcc so there is a need to install latest.
+      - name: install gcc-13 # openMP does not play nice with clang on MacOS; also some versions of macos use older gcc so there is a need to install latest.
         shell: bash -el {0}
         run: |
-          brew install gcc@12
+          brew install gcc@13
 
       - name: Install package
         shell: bash -el {0}
         run: |
           conda install pytest matplotlib numba numpy scipy cython
-          export CC="gcc-12"
-          export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -gomp"
+          export CC="gcc-13"
+          export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
           python -m pip install -v .
         
       - name: Run pytest
