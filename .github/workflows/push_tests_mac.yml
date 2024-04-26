@@ -45,8 +45,8 @@ jobs:
         shell: bash -el {0}
         run: |
           conda install pytest matplotlib numba numpy scipy cython
-          export CC=/usr/local/opt/llvm/bin/clang
-          export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp"
+          export CC=/opt/homebrew/opt/llvm/bin/clang
+          export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -I/opt/homebrew/opt/llvm/include"
           python -m pip install -v .
         
       - name: Run pytest
