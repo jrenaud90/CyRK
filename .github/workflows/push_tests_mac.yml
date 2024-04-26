@@ -39,14 +39,13 @@ jobs:
         shell: bash -el {0}
         run: |
           brew install gcc@12
-          brew install llvm libomp
 
       - name: Install package
         shell: bash -el {0}
         run: |
           conda install pytest matplotlib numba numpy scipy cython
-          export CC=/opt/homebrew/opt/llvm/bin/clang
-          export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -I/opt/homebrew/opt/llvm/include"
+          export CC="gcc-12"
+          export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp"
           python -m pip install -v .
         
       - name: Run pytest
