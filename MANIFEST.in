@@ -1,2 +1,6 @@
+# MANIFEST.in
+
+# Include Cython pyx and pxd files
 global-include *.pxd
 global-include *.pyx
+include cython_extensions.json

@@ -1,6 +1,10 @@
 # CyRK - Change Log
 
-## 2023
+## 2024
+
+#### v0.8.7 (2024-02-13)
+
+Updated manifest and rebuilt wheels.
 
 #### v0.8.6 (2024-02-13)
 
@@ -15,6 +19,8 @@ Bug Fixes:
   - Have opted to go to gcc for macOS install due to issues with OpenMP and clang.
 - Fixed incorrect type for rk method in CySolver (should eliminate some compile warnings).
 - Fixed issue in benchmark where incorrect results were being displayed for CySolver.
+
+## 2023
 
 #### v0.8.5 (2023-10-27)
 
