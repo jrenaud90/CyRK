@@ -3,7 +3,7 @@
 
 import cython
 
-from cpython.mem cimport PyMem_Free
+from libc.stdlib cimport free
 
 import numpy as np
 cimport numpy as np
@@ -869,14 +869,14 @@ def cyrk_ode(
         else:
             # Clear the storage arrays used during the step loop
             if not (time_domain_array_ptr is NULL):
-                PyMem_Free(time_domain_array_ptr)
+                free(time_domain_array_ptr)
                 time_domain_array_ptr = NULL
             if not (y_results_array_ptr is NULL):
-                PyMem_Free(y_results_array_ptr)
+                free(y_results_array_ptr)
                 y_results_array_ptr = NULL
             if capture_extra:
                 if not (extra_array_ptr is NULL):
-                    PyMem_Free(extra_array_ptr)
+                    free(extra_array_ptr)
                     extra_array_ptr = NULL
 
             # Integration was not successful. Leave the solution pointers as length 1 nan arrays.
@@ -967,17 +967,17 @@ def cyrk_ode(
 
                 # Replace old pointers with new interpolated pointers and release the memory for the old stuff
                 if not (solution_extra_ptr is NULL):
-                    PyMem_Free(solution_extra_ptr)
+                    free(solution_extra_ptr)
                 solution_extra_ptr = interpolated_solution_extra_ptr
                 interpolated_solution_extra_ptr = NULL
 
             # Replace old pointers with new interpolated pointers and release the memory for the old stuff
             if not (solution_t_ptr is NULL):
-                PyMem_Free(solution_t_ptr)
+                free(solution_t_ptr)
             solution_t_ptr = interpolated_solution_t_ptr
             interpolated_solution_t_ptr = NULL
             if not (solution_y_ptr is NULL):
-                PyMem_Free(solution_y_ptr)
+                free(solution_y_ptr)
             solution_y_ptr = interpolated_solution_y_ptr
             interpolated_solution_y_ptr = NULL
 
@@ -1000,14 +1000,14 @@ def cyrk_ode(
                     solution_y_view[extra_start + j, i] = solution_extra_ptr[i * num_extra + j]
         # Free solution arrays
         if not (solution_t_ptr is NULL):
-            PyMem_Free(solution_t_ptr)
+            free(solution_t_ptr)
             solution_t_ptr = NULL
         if not (solution_y_ptr is NULL):
-            PyMem_Free(solution_y_ptr)
+            free(solution_y_ptr)
             solution_y_ptr = NULL
         if capture_extra:
             if not (solution_extra_ptr is NULL):
-                PyMem_Free(solution_extra_ptr)
+                free(solution_extra_ptr)
                 solution_extra_ptr = NULL
 
         # Update integration message
@@ -1029,55 +1029,55 @@ def cyrk_ode(
     finally:
         # Free pointers made from user inputs
         if not (tol_ptrs is NULL):
-            PyMem_Free(tol_ptrs)
+            free(tol_ptrs)
             tol_ptrs = NULL
         if not (t_eval_ptr is NULL):
-            PyMem_Free(t_eval_ptr)
+            free(t_eval_ptr)
             t_eval_ptr = NULL
 
         # Free pointers used to track y, dydt, and any extra outputs
         if not (y_storage_ptrs is NULL):
-            PyMem_Free(y_storage_ptrs)
+            free(y_storage_ptrs)
             y_storage_ptrs = NULL
         if not (extra_output_init_ptr is NULL):
-            PyMem_Free(extra_output_init_ptr)
+            free(extra_output_init_ptr)
             extra_output_init_ptr = NULL
         if not (extra_output_ptr is NULL):
-            PyMem_Free(extra_output_ptr)
+            free(extra_output_ptr)
             extra_output_ptr = NULL
 
         # Free RK Temp Storage Array
         if not (K_ptr is NULL):
-            PyMem_Free(K_ptr)
+            free(K_ptr)
             K_ptr = NULL
 
         # Free other pointers that should have been freed in main loop, but in case of an exception they were missed.
         if not (solution_t_ptr is NULL):
-            PyMem_Free(solution_t_ptr)
+            free(solution_t_ptr)
             solution_t_ptr = NULL
         if not (solution_y_ptr is NULL):
-            PyMem_Free(solution_y_ptr)
+            free(solution_y_ptr)
             solution_y_ptr = NULL
         if not (solution_extra_ptr is NULL):
-            PyMem_Free(solution_extra_ptr)
+            free(solution_extra_ptr)
             solution_extra_ptr = NULL
         if not (interpolated_solution_t_ptr is NULL):
-            PyMem_Free(interpolated_solution_t_ptr)
+            free(interpolated_solution_t_ptr)
             interpolated_solution_t_ptr= NULL
         if not (interpolated_solution_y_ptr is NULL):
-            PyMem_Free(interpolated_solution_y_ptr)
+            free(interpolated_solution_y_ptr)
             interpolated_solution_y_ptr = NULL
         if not (interpolated_solution_extra_ptr is NULL):
-            PyMem_Free(interpolated_solution_extra_ptr)
+            free(interpolated_solution_extra_ptr)
             interpolated_solution_extra_ptr = NULL
         if not (time_domain_array_ptr is NULL):
-            PyMem_Free(time_domain_array_ptr)
+            free(time_domain_array_ptr)
             time_domain_array_ptr = NULL
         if not (y_results_array_ptr is NULL):
-            PyMem_Free(y_results_array_ptr)
+            free(y_results_array_ptr)
             y_results_array_ptr = NULL
         if not (extra_array_ptr is NULL):
-            PyMem_Free(extra_array_ptr)
+            free(extra_array_ptr)
             extra_array_ptr = NULL
 
     return solution_t, solution_y, success, message

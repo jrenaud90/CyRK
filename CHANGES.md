@@ -2,6 +2,9 @@
 
 ## 2024
 
+#### v0.8.8 (2024-NNN)
+
+
 #### v0.8.7 (2024-02-13)
 
 Updated manifest and rebuilt wheels.
