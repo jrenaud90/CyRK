@@ -2,7 +2,15 @@
 
 ## 2024
 
-#### v0.8.7 (2024-02-13)
+#### v0.8.8 (2024-04-30)
+
+New Features:
+* Added `utils.free_mem` function to free memory so that future changes to the memory allocation system will call the proper free function that works with the `utils.allocs`.
+
+Changes:
+* Changed all instances of `PyMem_Free` to new `free_mem` from the utils. 
+
+#### v0.8.7 (2024-04-28)
 
 Updated manifest and rebuilt wheels.
 

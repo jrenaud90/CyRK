@@ -3,12 +3,10 @@
 
 from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, isnan, NAN, floor
 
-from cpython.mem cimport PyMem_Free
-
 import numpy as np
 cimport numpy as np
 
-from CyRK.utils.utils cimport allocate_mem, reallocate_mem
+from CyRK.utils.utils cimport allocate_mem, reallocate_mem, free_mem
 from CyRK.rk.rk cimport find_rk_properties
 from CyRK.cy.common cimport interpolate, SAFETY, MIN_FACTOR, MAX_FACTOR, MAX_STEP, INF, EPS_100, \
     find_expected_size, find_max_num_steps
@@ -894,14 +892,14 @@ cdef class CySolver:
             # Solution was successful.
             # Free any data stored in solution arrays so that we can repopulate them with the new solution
             if not (self.solution_t_ptr is NULL):
-                PyMem_Free(self.solution_t_ptr)
+                free_mem(self.solution_t_ptr)
                 self.solution_t_ptr = NULL
             if not (self.solution_y_ptr is NULL):
-                PyMem_Free(self.solution_y_ptr)
+                free_mem(self.solution_y_ptr)
                 self.solution_y_ptr = NULL
             if self.capture_extra:
                 if not (self.solution_extra_ptr is NULL):
-                    PyMem_Free(self.solution_extra_ptr)
+                    free_mem(self.solution_extra_ptr)
                     self.solution_extra_ptr = NULL
 
             # Load values into solution arrays.
@@ -931,14 +929,14 @@ cdef class CySolver:
             # Integration was not successful. Make solution pointers length 1 nan arrays.
             # Clear the storage arrays used during the step loop
             if not (self._solve_time_domain_array_ptr is NULL):
-                PyMem_Free(self._solve_time_domain_array_ptr)
+                free_mem(self._solve_time_domain_array_ptr)
                 self._solve_time_domain_array_ptr = NULL
             if not (self._solve_y_results_array_ptr is NULL):
-                PyMem_Free(self._solve_y_results_array_ptr)
+                free_mem(self._solve_y_results_array_ptr)
                 self._solve_y_results_array_ptr = NULL
             if self.capture_extra:
                 if not (self._solve_extra_array_ptr is NULL):
-                    PyMem_Free(self._solve_extra_array_ptr)
+                    free_mem(self._solve_extra_array_ptr)
                     self._solve_extra_array_ptr = NULL
 
             # We still need to build solution arrays so that accessing the solution will not cause access violations.
@@ -1003,13 +1001,13 @@ cdef class CySolver:
 
         # Release any memory that may still be alive due to exceptions being raised.
         if not (self._solve_time_domain_array_ptr is NULL):
-            PyMem_Free(self._solve_time_domain_array_ptr)
+            free_mem(self._solve_time_domain_array_ptr)
             self._solve_time_domain_array_ptr = NULL
         if not (self._solve_y_results_array_ptr is NULL):
-            PyMem_Free(self._solve_y_results_array_ptr)
+            free_mem(self._solve_y_results_array_ptr)
             self._solve_y_results_array_ptr = NULL
         if not (self._solve_extra_array_ptr is NULL):
-            PyMem_Free(self._solve_extra_array_ptr)
+            free_mem(self._solve_extra_array_ptr)
             self._solve_extra_array_ptr = NULL
 
     cdef void interpolate(self):
@@ -1097,17 +1095,17 @@ cdef class CySolver:
 
             # Replace old pointers with new interpolated pointers and release the memory for the old stuff
             if not (self.solution_extra_ptr is NULL):
-                PyMem_Free(self.solution_extra_ptr)
+                free_mem(self.solution_extra_ptr)
             self.solution_extra_ptr = self._interpolate_solution_extra_ptr
             self._interpolate_solution_extra_ptr = NULL
 
         # Replace old pointers with new interpolated pointers and release the memory for the old stuff
         if not (self.solution_t_ptr is NULL):
-            PyMem_Free(self.solution_t_ptr)
+            free_mem(self.solution_t_ptr)
         self.solution_t_ptr = self._interpolate_solution_t_ptr
         self._interpolate_solution_t_ptr = NULL
         if not (self.solution_y_ptr is NULL):
-            PyMem_Free(self.solution_y_ptr)
+            free_mem(self.solution_y_ptr)
         self.solution_y_ptr = self._interpolate_solution_y_ptr
         self._interpolate_solution_y_ptr = NULL
 
@@ -1116,13 +1114,13 @@ cdef class CySolver:
 
         # Free any memory that may still be alive if exceptions were raised.
         if not (self._interpolate_solution_t_ptr is NULL):
-            PyMem_Free(self._interpolate_solution_t_ptr)
+            free_mem(self._interpolate_solution_t_ptr)
             self._interpolate_solution_t_ptr = NULL
         if not (self._interpolate_solution_y_ptr is NULL):
-            PyMem_Free(self._interpolate_solution_y_ptr)
+            free_mem(self._interpolate_solution_y_ptr)
             self._interpolate_solution_y_ptr = NULL
         if not (self._interpolate_solution_extra_ptr is NULL):
-            PyMem_Free(self._interpolate_solution_extra_ptr)
+            free_mem(self._interpolate_solution_extra_ptr)
             self._interpolate_solution_extra_ptr = NULL
 
     cpdef void change_t_span(
@@ -1691,60 +1689,60 @@ cdef class CySolver:
     def __dealloc__(self):
         # Free pointers made from user inputs
         if not (self.y0_ptr is NULL):
-            PyMem_Free(self.y0_ptr)
+            free_mem(self.y0_ptr)
             self.y0_ptr = NULL
         if not (self.tol_ptrs is NULL):
-            PyMem_Free(self.tol_ptrs)
+            free_mem(self.tol_ptrs)
             self.tol_ptrs = NULL
         if not (self.args_ptr is NULL):
-            PyMem_Free(self.args_ptr)
+            free_mem(self.args_ptr)
             self.args_ptr = NULL
         if not (self.t_eval_ptr is NULL):
-            PyMem_Free(self.t_eval_ptr)
+            free_mem(self.t_eval_ptr)
             self.t_eval_ptr = NULL
 
         # Free pointers used to track y, dydt, and any extra outputs
         if not (self.temporary_y_ptrs is NULL):
-            PyMem_Free(self.temporary_y_ptrs)
+            free_mem(self.temporary_y_ptrs)
             self.temporary_y_ptrs = NULL
         if not (self.extra_output_ptrs is NULL):
-            PyMem_Free(self.extra_output_ptrs)
+            free_mem(self.extra_output_ptrs)
             self.extra_output_ptrs = NULL
 
         # Free final solution pointers
         if not (self.solution_t_ptr is NULL):
-            PyMem_Free(self.solution_t_ptr)
+            free_mem(self.solution_t_ptr)
             self.solution_t_ptr = NULL
         if not (self.solution_y_ptr is NULL):
-            PyMem_Free(self.solution_y_ptr)
+            free_mem(self.solution_y_ptr)
             self.solution_y_ptr = NULL
         if not (self.solution_extra_ptr is NULL):
-            PyMem_Free(self.solution_extra_ptr)
+            free_mem(self.solution_extra_ptr)
             self.solution_extra_ptr = NULL
         
         # Free pointers used during the solve method
         if not (self._solve_time_domain_array_ptr is NULL):
-            PyMem_Free(self._solve_time_domain_array_ptr)
+            free_mem(self._solve_time_domain_array_ptr)
             self._solve_time_domain_array_ptr = NULL
         if not (self._solve_y_results_array_ptr is NULL):
-            PyMem_Free(self._solve_y_results_array_ptr)
+            free_mem(self._solve_y_results_array_ptr)
             self._solve_y_results_array_ptr = NULL
         if not (self._solve_extra_array_ptr is NULL):
-            PyMem_Free(self._solve_extra_array_ptr)
+            free_mem(self._solve_extra_array_ptr)
             self._solve_extra_array_ptr = NULL
         
         # Free pointers used during interpolation
         if not (self._interpolate_solution_t_ptr is NULL):
-            PyMem_Free(self._interpolate_solution_t_ptr)
+            free_mem(self._interpolate_solution_t_ptr)
             self._interpolate_solution_t_ptr = NULL
         if not (self._interpolate_solution_y_ptr is NULL):
-            PyMem_Free(self._interpolate_solution_y_ptr)
+            free_mem(self._interpolate_solution_y_ptr)
             self._interpolate_solution_y_ptr = NULL
         if not (self._interpolate_solution_extra_ptr is NULL):
-            PyMem_Free(self._interpolate_solution_extra_ptr)
+            free_mem(self._interpolate_solution_extra_ptr)
             self._interpolate_solution_extra_ptr = NULL
 
         # Free RK Temp Storage Array
         if not (self.K_ptr is NULL):
-            PyMem_Free(self.K_ptr)
+            free_mem(self.K_ptr)
             self.K_ptr = NULL
