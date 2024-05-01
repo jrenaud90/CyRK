@@ -6,9 +6,8 @@ from libc.math cimport fmax, fmin, floor
 from libc.math cimport INFINITY as INF
 from libc.float cimport DBL_EPSILON as EPS
 from libc.stdint cimport SIZE_MAX, INT32_MAX
-from cpython.mem cimport PyMem_Free
 
-from CyRK.utils.utils cimport allocate_mem, reallocate_mem
+from CyRK.utils.utils cimport allocate_mem, reallocate_mem, free_mem
 from CyRK.array.interp cimport interp_array_ptr, interp_complex_array_ptr
 
 # # Integration Constants
@@ -96,10 +95,10 @@ cdef void interpolate(
     finally:
         # Release memory of any temporary variables
         if not (array_slice_ptr is NULL):
-            PyMem_Free(array_slice_ptr)
+            free_mem(array_slice_ptr)
             array_slice_ptr = NULL
         if not (interpolated_array_slice_ptr is NULL):
-            PyMem_Free(interpolated_array_slice_ptr)
+            free_mem(interpolated_array_slice_ptr)
             interpolated_array_slice_ptr = NULL
 
 cdef size_t find_expected_size(
