@@ -1,6 +1,6 @@
 # distutils: language = c
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
-from libc.stdlib cimport malloc, realloc, exit
+from libc.stdlib cimport malloc, realloc, free, exit
 from libc.stdio cimport printf
 
 
@@ -18,3 +18,6 @@ cdef inline void* reallocate_mem(void* old_pointer, size_t new_size, char* var_n
         printf('Failed to *re*allocate memory for %s \n\tRequested size = %d.', var_name, new_size)
         exit(-1)
     return new_memory
+
+cdef inline void free_mem(void* pointer) noexcept nogil:
+    free(pointer)
