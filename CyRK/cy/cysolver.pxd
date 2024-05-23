@@ -5,9 +5,6 @@ cdef class CySolver:
     cdef double* solution_y_ptr
     cdef double* solution_t_ptr
     cdef double* solution_extra_ptr
-    cdef double[::1] solution_t_view
-    cdef double[::1] solution_y_view
-    cdef double[::1] solution_extra_view
 
     # -- Dependent (y0) variable information
     cdef size_t y_size
@@ -29,7 +26,7 @@ cdef class CySolver:
 
     # -- Integration information
     cdef readonly char status
-    cdef readonly str message
+    cdef readonly char* _message
     cdef public bint success
     cdef double* tol_ptrs
     cdef double* rtols_ptr
@@ -84,27 +81,22 @@ cdef class CySolver:
     cdef double* _interpolate_solution_extra_ptr
 
     # Class functions
-    cpdef void reset_state(
+    cdef void _reset_state(
             self
-            )
+            ) noexcept nogil
 
     cdef double calc_first_step(
             self
             ) noexcept nogil
 
-    cpdef void solve(
-            self,
-            bint reset = *
-            )
-
     cdef void _solve(
             self,
-            bint reset = *
-            )
+            bint reset
+            ) noexcept nogil
 
     cdef void interpolate(
             self
-            )
+            ) noexcept nogil
 
     cpdef void change_t_span(
             self,
@@ -122,7 +114,7 @@ cdef class CySolver:
             self,
             double * y0_ptr,
             bint auto_reset_state = *
-            )
+            ) noexcept nogil
 
     cpdef void change_args(
             self,

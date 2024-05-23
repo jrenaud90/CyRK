@@ -32,7 +32,7 @@ cdef void interpolate(
         size_t t_len_reduced,
         size_t target_len,
         bint is_complex
-        ) noexcept
+        ) noexcept nogil
 
 cdef size_t find_expected_size(
         size_t y_size,

@@ -2,6 +2,17 @@
 
 ## 2024
 
+### v0.9.0 (2024-05-22)
+
+Major Changes:
+- Shifted from using the Python-based `PyMem_Alloc`, `PyMem_Free` to c-based `malloc`, `free`. 
+- CySolver `_solve` method is now gil-free.
+  - This has led to a 35%--230% speed boost at low values of steps (faster start up).
+
+Other Changes:
+- CI will now build x64-86 and arm64 wheels for MacOS (change suggested by @dihm in [#49](https://github.com/jrenaud90/CyRK/issues/49)).
+  - Did have to use this `nomkl` [workaround](https://stackoverflow.com/questions/53014306/error-15-initializing-libiomp5-dylib-but-found-libiomp5-dylib-already-initial) which may cause problems. TBD.
+
 #### v0.8.8 (2024-04-30)
 
 New Features:

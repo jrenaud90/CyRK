@@ -26,7 +26,7 @@ else:
     extra_link_args = ['-fopenmp', '-O3']
 macro_list = [("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")]
 
-# Load TidalPy's cython extensions
+# Load CyRK's cython extensions
 absolute_path = os.path.dirname(__file__)
 cython_ext_path = os.path.join(absolute_path, 'cython_extensions.json')
 with open(cython_ext_path, 'r') as cython_ext_file:
