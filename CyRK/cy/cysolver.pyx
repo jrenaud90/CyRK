@@ -8,7 +8,7 @@ from libc.stdlib cimport free
 import numpy as np
 cimport numpy as np
 
-from CyRK.utils.utils cimport allocate_mem, reallocate_mem
+from CyRK.utils.utils cimport allocate_mem, reallocate_mem, free_mem
 from CyRK.rk.rk cimport find_rk_properties
 from CyRK.cy.common cimport interpolate, SAFETY, MIN_FACTOR, MAX_FACTOR, MAX_STEP, INF, EPS_100, \
     find_expected_size, find_max_num_steps

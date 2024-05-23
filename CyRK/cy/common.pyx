@@ -8,7 +8,7 @@ from libc.float cimport DBL_EPSILON as EPS
 from libc.stdint cimport SIZE_MAX, INT32_MAX
 from libc.stdlib cimport free
 
-from CyRK.utils.utils cimport allocate_mem, reallocate_mem
+from CyRK.utils.utils cimport allocate_mem, reallocate_mem, free_mem
 from CyRK.array.interp cimport interp_array_ptr, interp_complex_array_ptr
 
 # # Integration Constants

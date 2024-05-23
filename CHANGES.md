@@ -13,7 +13,15 @@ Other Changes:
 - CI will now build x64-86 and arm64 wheels for MacOS (change suggested by @dihm in [#49](https://github.com/jrenaud90/CyRK/issues/49)).
   - Did have to use this `nomkl` [workaround](https://stackoverflow.com/questions/53014306/error-15-initializing-libiomp5-dylib-but-found-libiomp5-dylib-already-initial) which may cause problems. TBD.
 
-#### v0.8.7 (2024-02-13)
+#### v0.8.8 (2024-04-30)
+
+New Features:
+* Added `utils.free_mem` function to free memory so that future changes to the memory allocation system will call the proper free function that works with the `utils.allocs`.
+
+Changes:
+* Changed all instances of `PyMem_Free` to new `free_mem` from the utils. 
+
+#### v0.8.7 (2024-04-28)
 
 Updated manifest and rebuilt wheels.
 
