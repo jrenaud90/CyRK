@@ -108,7 +108,9 @@ jobs:
       - name: Install package
         shell: bash -el {0}
         run: |
+          conda install nomkl
           conda install pytest matplotlib numba numpy scipy cython
+          conda remove mkl mkl-service          
           python -m pip install --upgrade build
           export CC='gcc-13'
           export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
