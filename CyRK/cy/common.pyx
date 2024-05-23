@@ -1,4 +1,4 @@
-# distutils: language = c++
+# distutils: language = c
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 import cython
 
@@ -6,7 +6,7 @@ from libc.math cimport fmax, fmin, floor
 from libc.math cimport INFINITY as INF
 from libc.float cimport DBL_EPSILON as EPS
 from libc.stdint cimport SIZE_MAX, INT32_MAX
-from cpython.mem cimport PyMem_Free
+from libc.stdlib cimport free
 
 from CyRK.utils.utils cimport allocate_mem, reallocate_mem
 from CyRK.array.interp cimport interp_array_ptr, interp_complex_array_ptr
@@ -46,8 +46,8 @@ cdef void interpolate(
         size_t t_len_full,
         size_t t_len_reduced,
         size_t target_len,
-        bool_cpp_t is_complex
-        ) noexcept:
+        bint is_complex
+        ) noexcept nogil:
     """ Interpolate the results of a successful integration over the user provided time domain, `time_domain_full`. """
 
     # Setup loop variables
@@ -96,10 +96,10 @@ cdef void interpolate(
     finally:
         # Release memory of any temporary variables
         if not (array_slice_ptr is NULL):
-            PyMem_Free(array_slice_ptr)
+            free(array_slice_ptr)
             array_slice_ptr = NULL
         if not (interpolated_array_slice_ptr is NULL):
-            PyMem_Free(interpolated_array_slice_ptr)
+            free(interpolated_array_slice_ptr)
             interpolated_array_slice_ptr = NULL
 
 cdef size_t find_expected_size(
@@ -107,8 +107,8 @@ cdef size_t find_expected_size(
         size_t num_extra,
         double t_delta_abs,
         double rtol_min,
-        bool_cpp_t capture_extra,
-        bool_cpp_t is_complex) noexcept nogil:
+        bint capture_extra,
+        bint is_complex) noexcept nogil:
 
     cdef double temp_expected_size
     # Pick starting value that works with most problems
@@ -145,9 +145,9 @@ cdef void find_max_num_steps(
         size_t num_extra,
         size_t max_num_steps,
         size_t max_ram_MB,
-        bool_cpp_t capture_extra,
-        bool_cpp_t is_complex,
-        bool_cpp_t* user_provided_max_num_steps,
+        bint capture_extra,
+        bint is_complex,
+        bint* user_provided_max_num_steps,
         size_t* max_num_steps_touse) noexcept nogil:
 
     # Determine max number of steps

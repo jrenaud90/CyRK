@@ -13,14 +13,14 @@ if install_platform.lower() == 'windows':
     extra_link_args = []
 elif install_platform.lower() == 'darwin':
     # OpenMP is installed via llvm. See https://stackoverflow.com/questions/60005176/how-to-deal-with-clang-error-unsupported-option-fopenmp-on-travis
-    extra_compile_args = []
+    extra_compile_args = ['-O3']
     extra_link_args = []
 else:
-    extra_compile_args = ['-fopenmp']
-    extra_link_args = ['-fopenmp']
+    extra_compile_args = ['-fopenmp', '-O3']
+    extra_link_args = ['-fopenmp', '-O3']
 macro_list = [("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")]
 
-# Load TidalPy's cython extensions
+# Load CyRK's cython extensions
 absolute_path = os.path.dirname(__file__)
 cython_ext_path = os.path.join(absolute_path, 'cython_extensions.json')
 with open(cython_ext_path, 'r') as cython_ext_file:
