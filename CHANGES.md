@@ -11,6 +11,7 @@ Major Changes:
 
 Other Changes:
 - CI will now build x64-86 and arm64 wheels for MacOS (change suggested by @dihm in [#49](https://github.com/jrenaud90/CyRK/issues/49)).
+  - Did have to use this `nomkl` [workaround](https://stackoverflow.com/questions/53014306/error-15-initializing-libiomp5-dylib-but-found-libiomp5-dylib-already-initial) which may cause problems. TBD.
 
 #### v0.8.7 (2024-02-13)
 
