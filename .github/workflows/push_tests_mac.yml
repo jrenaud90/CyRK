@@ -7,12 +7,57 @@ on: [push, pull_request, workflow_dispatch]
 
 jobs:
 
-  test-macos:
+  test-macos-latest:
     defaults:
       run:
         shell: bash -el {0}
-    name: Test CyRK on MacOS
+    name: Test CyRK on MacOS (latest; arm64)
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          activate-environment: cyrk_test
+          auto-update-conda: true
+          python-version: ${{ matrix.python-version }}
+          auto-activate-base: false
+        
+      - name: Conda info
+        shell: bash -el {0}
+        run: conda info
+        
+      - name: install gcc-13 # openMP does not play nice with clang on MacOS; also some versions of macos use older gcc so there is a need to install latest.
+        shell: bash -el {0}
+        run: |
+          brew install gcc@13
+
+      - name: Install package
+        shell: bash -el {0}
+        run: |
+          conda install pytest matplotlib numba numpy scipy cython
+          export CC="gcc-13"
+          export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
+          python -m pip install -v .
+        
+      - name: Run pytest
+        shell: bash -el {0}
+        run: pytest --capture=sys -v Tests/
+  
+  test-macos-13:
+    defaults:
+      run:
+        shell: bash -el {0}
+    name: Test CyRK on MacOS (v13; x64-86)
+    runs-on: macos-13
     strategy:
       fail-fast: false
       matrix:

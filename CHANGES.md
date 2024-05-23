@@ -9,6 +9,9 @@ Major Changes:
 - CySolver `_solve` method is now gil-free.
   - This has led to a 35%--230% speed boost at low values of steps (faster start up).
 
+Other Changes:
+- CI will now build x64-86 and arm64 wheels for MacOS (change suggested by @dihm in [#49](https://github.com/jrenaud90/CyRK/issues/49)).
+
 #### v0.8.7 (2024-02-13)
 
 Updated manifest and rebuilt wheels.
