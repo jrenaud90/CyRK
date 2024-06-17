@@ -5,13 +5,16 @@
 #### v0.9.1 (2024-06-17)
 
 CySolver:
-- Changed error message to use a stack-allocated char-array and associated pointer.
+* Changed error message to use a stack-allocated char-array and associated pointer.
 
 Memory Management:
-- Changed exit code when memory can not be allocated.
+* Changed exit code when memory can not be allocated.
+* Changed some heap allocated arrays in `CySolver` to be stack allocated
+  * This change limits the total number of y-dependent variables and extra output that is tracked to 50. This size is
+  easy to change. If your use case requires a larger size then open an issue and an alternative can be discussed.
 
 Bug Fixes:
-- Fixed issue where the Cython-based solvers might use the incorrect memory freeing function.
+* Fixed issue where the Cython-based solvers might use the incorrect memory freeing function.
 
 ### v0.9.0 (2024-05-22)
 

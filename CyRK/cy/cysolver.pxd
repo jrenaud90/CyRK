@@ -1,7 +1,17 @@
+
+from CyRK.utils.utils cimport LinkedList
+
 cdef class CySolver:
 
     # Class attributes
     # -- Solution variables
+    cdef (LinkedList*)[500] solution_chunks_y
+    cdef LinkedList** solution_chunks_y_ptr
+    cdef (LinkedList*)[500] solution_chunks_t
+    cdef LinkedList** solution_chunks_t_ptr
+    cdef (LinkedList*)[500] solution_chunks_extra
+    cdef LinkedList** solution_chunks_extra_ptr
+
     cdef double* solution_y_ptr
     cdef double* solution_t_ptr
     cdef double* solution_extra_ptr
@@ -9,6 +19,7 @@ cdef class CySolver:
     # -- Dependent (y0) variable information
     cdef size_t y_size
     cdef double y_size_dbl, y_size_sqrt
+    cdef double[10] y0_array
     cdef double* y0_ptr
 
     # -- Time information
@@ -29,8 +40,9 @@ cdef class CySolver:
     cdef char* _message_ptr
     cdef readonly char status
     cdef public bint success
-    cdef double* tol_ptrs
+    cdef double[50] rtols_array
     cdef double* rtols_ptr
+    cdef double[50] atols_array
     cdef double* atols_ptr
     cdef double first_step, max_step
     cdef bint user_provided_max_num_steps
@@ -57,18 +69,24 @@ cdef class CySolver:
     cdef double* E3_ptr
     cdef double* E5_ptr
     # K is not constant. It is a temp storage variable used in RK calculations
+    # Its size is based on the largest supported y (100) * largest RK n-stage (+1) of 13
+    cdef double[650] K_array
     cdef double* K_ptr
 
     # -- Live variables
     cdef double t_now, t_old, step_size
     cdef size_t len_t, len_t_touse
-    cdef double* temporary_y_ptrs
+    cdef double[50] y_array
     cdef double* y_ptr
+    cdef double[50] y_old_array
     cdef double* y_old_ptr
+    cdef double[50] dy_array
     cdef double* dy_ptr
+    cdef double[50] dy_old_array
     cdef double* dy_old_ptr
-    cdef double* extra_output_ptrs
+    cdef double[50] extra_output_init_array
     cdef double* extra_output_init_ptr
+    cdef double[50] extra_output_array
     cdef double* extra_output_ptr
 
     # -- Pointers used during solve method

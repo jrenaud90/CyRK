@@ -313,7 +313,6 @@ cdef class CySolver:
         """
 
         # Initialize all class pointers to null
-        self.tol_ptrs = NULL
         self.rtols_ptr = NULL
         self.atols_ptr = NULL
         self.solution_y_ptr = NULL
@@ -329,12 +328,10 @@ cdef class CySolver:
         self.E3_ptr = NULL
         self.E5_ptr = NULL
         self.K_ptr = NULL
-        self.temporary_y_ptrs = NULL
         self.y_ptr = NULL
         self.y_old_ptr = NULL
         self.dy_ptr = NULL
         self.dy_old_ptr = NULL
-        self.extra_output_ptrs = NULL
         self.extra_output_init_ptr = NULL
         self.extra_output_ptr = NULL
         self._solve_time_domain_array_ptr = NULL
@@ -350,17 +347,31 @@ cdef class CySolver:
         # Set integration information
         self.status  = -4  # Status code to indicate that integration has not started.
         self._message_ptr = &self._message[0]
-        strcpy(self._message_ptr, 'CySolverInstance:: Integration has not started.')
+        strcpy(self._message_ptr, 'CySolverInstance:: Integration has not started.\n')
         self.success = False
         self.recalc_first_step = False
         self.force_fail = force_fail
 
+        # Setup pointers
+        self.y_ptr                 = &self.y_array[0]
+        self.y_old_ptr             = &self.y_old_array[0]
+        self.dy_ptr                = &self.dy_array[0]
+        self.dy_old_ptr            = &self.dy_old_array[0]
+        self.extra_output_init_ptr = &self.extra_output_init_array[0]
+        self.extra_output_ptr      = &self.extra_output_array[0]
+        self.y0_ptr                = &self.y0_array[0]
+        self.rtols_ptr             = &self.rtols_array[0]
+        self.atols_ptr             = &self.atols_array[0]
+
         # Store y0 values and determine y-size information
         self.y_size = y0.size
+        if self.y_size > 100:
+            strcpy(self._message_ptr, 'CySolverInstance:: Attribute Error: CySolver only supports up to 100 dependent variables (y-values).\n')
+            raise AttributeError(self.message)
         self.y_size_dbl = <double> self.y_size
         self.y_size_sqrt = sqrt(self.y_size_dbl)
 
-        self.y0_ptr = <double *> allocate_mem(self.y_size * sizeof(double), 'y0_ptr (init)')
+        # Make a copy of the y0 values.
         for i in range(self.y_size):
             self.y0_ptr[i] = y0[i]
 
@@ -380,16 +391,14 @@ cdef class CySolver:
             self.t_delta_abs    = -self.t_delta
 
         # Determine integration tolerances
-        self.tol_ptrs  = <double *> allocate_mem(2 * self.y_size * sizeof(double), 'tol_ptrs (init)')
-        self.rtols_ptr = &self.tol_ptrs[0]
-        self.atols_ptr = &self.tol_ptrs[self.y_size]
         cdef double rtol_tmp, rtol_min
         rtol_min = INF
 
         if rtols is not None:
             # User provided an arrayed version of rtol.
             if len(rtols) != self.y_size:
-                raise AttributeError('rtol array must be the same size as y0.')
+                strcpy(self._message_ptr, 'CySolverInstance:: Attribute Error: rtol array must be the same size as y0.\n')
+                raise AttributeError(self.message)
             for i in range(self.y_size):
                 rtol_tmp = rtols[i]
                 # Check that the tolerances are not too small.
@@ -409,7 +418,8 @@ cdef class CySolver:
         if atols is not None:
             # User provided an arrayed version of atol.
             if len(atols) != self.y_size:
-                raise AttributeError('atol array must be the same size as y0.')
+                strcpy(self._message_ptr, 'CySolverInstance:: Attribute Error: atol array must be the same size as y0.\n')
+                raise AttributeError(self.message)
             for i in range(self.y_size):
                 self.atols_ptr[i] = atols[i]
         else:
@@ -424,7 +434,12 @@ cdef class CySolver:
         if self.capture_extra:
             if num_extra <= 0:
                 self.status = -8
-                raise AttributeError('Capture extra set to True, but number of extra set to 0 (or negative).')
+                strcpy(self._message_ptr, 'CySolverInstance:: Attribute Error: Capture extra set to True, but number of extra set to 0 (or negative).\n')
+                raise AttributeError(self.message)
+            elif num_extra > 100:
+                strcpy(self._message_ptr, 'CySolverInstance:: Attribute Error: CySolver only supports up to 100 extra outputs.\n')
+                raise AttributeError(self.message)
+
             self.num_extra = num_extra
         else:
             # Even though we are not capturing extra, we still want num_extra to be equal to 1 so that nan arrays
@@ -478,17 +493,6 @@ cdef class CySolver:
                 self.args_ptr[i] = NAN
 
         # Initialize live variable arrays
-        self.temporary_y_ptrs = <double *> allocate_mem(4 * self.y_size * sizeof(double), 'temporary_y_ptrs (init)')
-        self.y_ptr      = &self.temporary_y_ptrs[0 * self.y_size]
-        self.y_old_ptr  = &self.temporary_y_ptrs[1 * self.y_size]
-        self.dy_ptr     = &self.temporary_y_ptrs[2 * self.y_size]
-        self.dy_old_ptr = &self.temporary_y_ptrs[3 * self.y_size]
-
-        self.extra_output_ptrs = <double *> allocate_mem(2 * self.num_extra * sizeof(double), 'extra_output_ptrs (init)')
-
-        self.extra_output_init_ptr = &self.extra_output_ptrs[0 * self.num_extra]
-        self.extra_output_ptr      = &self.extra_output_ptrs[1 * self.num_extra]
-       
         for i in range(self.num_extra):
             self.extra_output_init_ptr[i] = NAN
             self.extra_output_ptr[i]      = NAN
@@ -548,7 +552,10 @@ cdef class CySolver:
         self.error_expo        = 1. / (<double>self.error_order + 1.)
 
         # Initialize other RK-related Arrays
-        self.K_ptr = <double *> allocate_mem(self.rk_n_stages_plus1 * self.y_size * sizeof(double), 'K_ptr (init)')
+        # The size of K is rk_n_stages_plus1 * y_size. We assume that the max number of supported y's is 100
+        # Currently the biggest that rk_n_stages_plus1 can be is for DOP853 at 13.
+        # So let K be stack allocated with a size of 1,300
+        self.K_ptr = &self.K_array[0]
 
         # Store user provided step information
         self.first_step = first_step
@@ -1705,26 +1712,12 @@ cdef class CySolver:
     # Special methods
     def __dealloc__(self):
         # free_mem pointers made from user inputs
-        if not (self.y0_ptr is NULL):
-            free_mem(self.y0_ptr)
-            self.y0_ptr = NULL
-        if not (self.tol_ptrs is NULL):
-            free_mem(self.tol_ptrs)
-            self.tol_ptrs = NULL
         if not (self.args_ptr is NULL):
             free_mem(self.args_ptr)
             self.args_ptr = NULL
         if not (self.t_eval_ptr is NULL):
             free_mem(self.t_eval_ptr)
             self.t_eval_ptr = NULL
-
-        # free_mem pointers used to track y, dydt, and any extra outputs
-        if not (self.temporary_y_ptrs is NULL):
-            free_mem(self.temporary_y_ptrs)
-            self.temporary_y_ptrs = NULL
-        if not (self.extra_output_ptrs is NULL):
-            free_mem(self.extra_output_ptrs)
-            self.extra_output_ptrs = NULL
 
         # free_mem final solution pointers
         if not (self.solution_t_ptr is NULL):
@@ -1758,8 +1751,3 @@ cdef class CySolver:
         if not (self._interpolate_solution_extra_ptr is NULL):
             free_mem(self._interpolate_solution_extra_ptr)
             self._interpolate_solution_extra_ptr = NULL
-
-        # free_mem RK Temp Storage Array
-        if not (self.K_ptr is NULL):
-            free_mem(self.K_ptr)
-            self.K_ptr = NULL
