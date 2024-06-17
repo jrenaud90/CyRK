@@ -25,8 +25,9 @@ cdef class CySolver:
     cdef size_t num_extra
 
     # -- Integration information
+    cdef char[256] _message
+    cdef char* _message_ptr
     cdef readonly char status
-    cdef readonly char* _message
     cdef public bint success
     cdef double* tol_ptrs
     cdef double* rtols_ptr

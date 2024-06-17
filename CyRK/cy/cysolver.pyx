@@ -3,7 +3,9 @@
 
 from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, isnan, NAN, floor
 
-from libc.stdlib cimport free
+from libc.stdlib cimport exit, EXIT_FAILURE
+from libc.stdio cimport printf, sprintf
+from libc.string cimport strcpy
 
 import numpy as np
 cimport numpy as np
@@ -79,8 +81,10 @@ cdef class CySolver:
     status : char; public
         Numerical flag to indicate status of integrator.
         See "Status and Error Codes.md" in the documentation for more information.
-    _message : str; public
+    _message : char[256]
         Verbal _message to accompany `self.status` explaining the state (and potential errors) of the integrator.
+    _message_ptr : char*
+        Pointer to `_message`.
     success : bint; public
         Flag indicating if the integration was successful or not.
     rtols_ptr : double*
@@ -345,7 +349,8 @@ cdef class CySolver:
 
         # Set integration information
         self.status  = -4  # Status code to indicate that integration has not started.
-        self._message = 'Integration has not started.'
+        self._message_ptr = &self._message[0]
+        strcpy(self._message_ptr, 'CySolverInstance:: Integration has not started.')
         self.success = False
         self.recalc_first_step = False
         self.force_fail = force_fail
@@ -604,12 +609,14 @@ cdef class CySolver:
         else:
             if self.first_step <= 0.:
                 self.status = -8
-                self._message = "Attribute error."
-                raise AttributeError('Error in user-provided step size: Step size must be a positive number.')
+                strcpy(self._message_ptr, "CySolverInstance._reset_state:: Error in user-provided step size: Step size must be a positive number.")
+                printf(self._message_ptr)
+                exit(EXIT_FAILURE)
             elif self.first_step > self.t_delta_abs:
                 self.status = -8
-                self._message = "Attribute error."
-                raise AttributeError('Error in user-provided step size: Step size can not exceed bounds.')
+                strcpy(self._message_ptr, "CySolverInstance._reset_state:: Error in user-provided step size: Step size can not exceed bounds.")
+                printf(self._message_ptr)
+                exit(EXIT_FAILURE)
             self.step_size = self.first_step
 
         # Reset output storage
@@ -626,7 +633,7 @@ cdef class CySolver:
         # Other integration flags and _messages
         self.success = False
         self.status = -5  # status == -5 means that reset has been called but solve has not yet been called.
-        self._message = "CySolver has been reset."
+        strcpy(self._message_ptr, "CySolverInstance._reset_state:: CySolver instance has been reset.")
     
     def reset_state(self):
         self._reset_state()
@@ -885,16 +892,16 @@ cdef class CySolver:
 
         if self.success:
             # Solution was successful.
-            # Free any data stored in solution arrays so that we can repopulate them with the new solution
+            # free_mem any data stored in solution arrays so that we can repopulate them with the new solution
             if not (self.solution_t_ptr is NULL):
-                free(self.solution_t_ptr)
+                free_mem(self.solution_t_ptr)
                 self.solution_t_ptr = NULL
             if not (self.solution_y_ptr is NULL):
-                free(self.solution_y_ptr)
+                free_mem(self.solution_y_ptr)
                 self.solution_y_ptr = NULL
             if self.capture_extra:
                 if not (self.solution_extra_ptr is NULL):
-                    free(self.solution_extra_ptr)
+                    free_mem(self.solution_extra_ptr)
                     self.solution_extra_ptr = NULL
 
             # Load values into solution arrays.
@@ -924,14 +931,14 @@ cdef class CySolver:
             # Integration was not successful. Make solution pointers length 1 nan arrays.
             # Clear the storage arrays used during the step loop
             if not (self._solve_time_domain_array_ptr is NULL):
-                free(self._solve_time_domain_array_ptr)
+                free_mem(self._solve_time_domain_array_ptr)
                 self._solve_time_domain_array_ptr = NULL
             if not (self._solve_y_results_array_ptr is NULL):
-                free(self._solve_y_results_array_ptr)
+                free_mem(self._solve_y_results_array_ptr)
                 self._solve_y_results_array_ptr = NULL
             if self.capture_extra:
                 if not (self._solve_extra_array_ptr is NULL):
-                    free(self._solve_extra_array_ptr)
+                    free_mem(self._solve_extra_array_ptr)
                     self._solve_extra_array_ptr = NULL
 
             # We still need to build solution arrays so that accessing the solution will not cause access violations.
@@ -970,29 +977,29 @@ cdef class CySolver:
 
         # Update integration _message
         if self.status == 1:
-            self._message = "Integration completed without issue."
+            strcpy(self._message_ptr, "Integration completed without issue.\n")
         elif self.status == 0:
-            self._message = "Integration is/was ongoing (perhaps it was interrupted?)."
+            strcpy(self._message_ptr, "Integration is/was ongoing (perhaps it was interrupted?).\n")
         elif self.status == -1:
-            self._message = "Error in step size calculation:\n\tRequired step size is less than spacing between numbers."
+            strcpy(self._message_ptr, "Error in step size calculation:\n\tRequired step size is less than spacing between numbers.\n")
         elif self.status == -2:
-            self._message = "Maximum number of steps (set by user) exceeded during integration."
+            strcpy(self._message_ptr, "Maximum number of steps (set by user) exceeded during integration.\n")
         elif self.status == -3:
-            self._message = "Maximum number of steps (set by system architecture) exceeded during integration."
+            strcpy(self._message_ptr, "Maximum number of steps (set by system architecture) exceeded during integration.\n")
         elif self.status == -6:
-            self._message = "Integration never started: y-size is zero."
+            strcpy(self._message_ptr, "Integration never started: y-size is zero.\n")
         elif self.status == -7:
-            self._message = "Error in step size calculation:\n\tError in step size acceptance."
+            strcpy(self._message_ptr, "Error in step size calculation:\n\tError in step size acceptance.\n")
 
         # Release any memory that may still be alive due to exceptions being raised.
         if not (self._solve_time_domain_array_ptr is NULL):
-            free(self._solve_time_domain_array_ptr)
+            free_mem(self._solve_time_domain_array_ptr)
             self._solve_time_domain_array_ptr = NULL
         if not (self._solve_y_results_array_ptr is NULL):
-            free(self._solve_y_results_array_ptr)
+            free_mem(self._solve_y_results_array_ptr)
             self._solve_y_results_array_ptr = NULL
         if not (self._solve_extra_array_ptr is NULL):
-            free(self._solve_extra_array_ptr)
+            free_mem(self._solve_extra_array_ptr)
             self._solve_extra_array_ptr = NULL
 
     cdef void interpolate(self) noexcept nogil:
@@ -1080,32 +1087,32 @@ cdef class CySolver:
 
             # Replace old pointers with new interpolated pointers and release the memory for the old stuff
             if not (self.solution_extra_ptr is NULL):
-                free(self.solution_extra_ptr)
+                free_mem(self.solution_extra_ptr)
             self.solution_extra_ptr = self._interpolate_solution_extra_ptr
             self._interpolate_solution_extra_ptr = NULL
 
         # Replace old pointers with new interpolated pointers and release the memory for the old stuff
         if not (self.solution_t_ptr is NULL):
-            free(self.solution_t_ptr)
+            free_mem(self.solution_t_ptr)
         self.solution_t_ptr = self._interpolate_solution_t_ptr
         self._interpolate_solution_t_ptr = NULL
         if not (self.solution_y_ptr is NULL):
-            free(self.solution_y_ptr)
+            free_mem(self.solution_y_ptr)
         self.solution_y_ptr = self._interpolate_solution_y_ptr
         self._interpolate_solution_y_ptr = NULL
 
         # Interpolation is done.
         self.status = old_status
 
-        # Free any memory that may still be alive if exceptions were raised.
+        # free_mem any memory that may still be alive if exceptions were raised.
         if not (self._interpolate_solution_t_ptr is NULL):
-            free(self._interpolate_solution_t_ptr)
+            free_mem(self._interpolate_solution_t_ptr)
             self._interpolate_solution_t_ptr = NULL
         if not (self._interpolate_solution_y_ptr is NULL):
-            free(self._interpolate_solution_y_ptr)
+            free_mem(self._interpolate_solution_y_ptr)
             self._interpolate_solution_y_ptr = NULL
         if not (self._interpolate_solution_extra_ptr is NULL):
-            free(self._interpolate_solution_extra_ptr)
+            free_mem(self._interpolate_solution_extra_ptr)
             self._interpolate_solution_extra_ptr = NULL
 
     cpdef void change_t_span(
@@ -1169,9 +1176,8 @@ cdef class CySolver:
         if self.y_size != y_size_new:
             # So many things need to update if ysize changes that the user should just create a new class instance.
             self.status = -8
-            self._message = "Attribute error."
-            raise AttributeError('New y0 must be the same size as the original y0 used to create CySolver class.'
-                                 'Create new CySolver instance instead.')
+            strcpy(self._message_ptr, "CySolverInstance.change_y0:: Attribute Error. New y0 must be the same size as the original y0 used to create CySolver class. Create new CySolver instance instead.\n")
+            raise AttributeError(self.message)
 
         # Store y0 values for later
         for i in range(self.y_size):
@@ -1307,7 +1313,8 @@ cdef class CySolver:
             if rtols is not None:
                 # Using arrayed rtol
                 if len(rtols) != self.y_size:
-                    raise AttributeError('rtols must be the same size as y0.')
+                    strcpy(self._message_ptr, "CySolverInstance.change_tols:: Attribute Error. rtols must be the same size as y0.\n")
+                    raise AttributeError(self.message)
                 for i in range(self.y_size):
                     rtol_tmp = rtols[i]
                     if rtol_tmp < EPS_100:
@@ -1328,7 +1335,8 @@ cdef class CySolver:
             if atols is not None:
                 # Using arrayed atol
                 if len(atols) != self.y_size:
-                    raise AttributeError('atols must be the same size as y0.')
+                    strcpy(self._message_ptr, "CySolverInstance.change_tols:: Attribute Error. atols must be the same size as y0.\n")
+                    raise AttributeError(self.message)
                 for i in range(self.y_size):
                     self.atols_ptr[i] = atols[i]
             elif not isnan(atol):
@@ -1385,12 +1393,12 @@ cdef class CySolver:
         else:
             if self.first_step <= 0.:
                 self.status = -8
-                self._message = "Attribute error."
-                raise AttributeError('Error in user-provided step size: Step size must be a positive number.')
+                strcpy(self._message_ptr, "CySolverInstance.change_tols:: Attribute Error. Error in user-provided step size: Step size must be a positive number.\n")
+                raise AttributeError(self.message)
             elif self.first_step > self.t_delta_abs:
                 self.status = -8
-                self._message = "Attribute error."
-                raise AttributeError('Error in user-provided step size: Step size can not exceed bounds.')
+                strcpy(self._message_ptr, "CySolverInstance.change_tols:: Attribute Error. Error in user-provided step size: Step size can not exceed bounds.\n")
+                raise AttributeError(self.message)
             self.step_size = self.first_step
 
         # If first step has already been reset then no need to call it again later.
@@ -1651,7 +1659,7 @@ cdef class CySolver:
     # Public accessed properties
     @property
     def message(self):
-        return str(self._message, 'UTF-8')
+        return str(self._message_ptr, 'UTF-8')
 
     @property
     def solution_t_view(self):
@@ -1696,62 +1704,62 @@ cdef class CySolver:
 
     # Special methods
     def __dealloc__(self):
-        # Free pointers made from user inputs
+        # free_mem pointers made from user inputs
         if not (self.y0_ptr is NULL):
-            free(self.y0_ptr)
+            free_mem(self.y0_ptr)
             self.y0_ptr = NULL
         if not (self.tol_ptrs is NULL):
-            free(self.tol_ptrs)
+            free_mem(self.tol_ptrs)
             self.tol_ptrs = NULL
         if not (self.args_ptr is NULL):
-            free(self.args_ptr)
+            free_mem(self.args_ptr)
             self.args_ptr = NULL
         if not (self.t_eval_ptr is NULL):
-            free(self.t_eval_ptr)
+            free_mem(self.t_eval_ptr)
             self.t_eval_ptr = NULL
 
-        # Free pointers used to track y, dydt, and any extra outputs
+        # free_mem pointers used to track y, dydt, and any extra outputs
         if not (self.temporary_y_ptrs is NULL):
-            free(self.temporary_y_ptrs)
+            free_mem(self.temporary_y_ptrs)
             self.temporary_y_ptrs = NULL
         if not (self.extra_output_ptrs is NULL):
-            free(self.extra_output_ptrs)
+            free_mem(self.extra_output_ptrs)
             self.extra_output_ptrs = NULL
 
-        # Free final solution pointers
+        # free_mem final solution pointers
         if not (self.solution_t_ptr is NULL):
-            free(self.solution_t_ptr)
+            free_mem(self.solution_t_ptr)
             self.solution_t_ptr = NULL
         if not (self.solution_y_ptr is NULL):
-            free(self.solution_y_ptr)
+            free_mem(self.solution_y_ptr)
             self.solution_y_ptr = NULL
         if not (self.solution_extra_ptr is NULL):
-            free(self.solution_extra_ptr)
+            free_mem(self.solution_extra_ptr)
             self.solution_extra_ptr = NULL
         
-        # Free pointers used during the solve method
+        # free_mem pointers used during the solve method
         if not (self._solve_time_domain_array_ptr is NULL):
-            free(self._solve_time_domain_array_ptr)
+            free_mem(self._solve_time_domain_array_ptr)
             self._solve_time_domain_array_ptr = NULL
         if not (self._solve_y_results_array_ptr is NULL):
-            free(self._solve_y_results_array_ptr)
+            free_mem(self._solve_y_results_array_ptr)
             self._solve_y_results_array_ptr = NULL
         if not (self._solve_extra_array_ptr is NULL):
-            free(self._solve_extra_array_ptr)
+            free_mem(self._solve_extra_array_ptr)
             self._solve_extra_array_ptr = NULL
         
-        # Free pointers used during interpolation
+        # free_mem pointers used during interpolation
         if not (self._interpolate_solution_t_ptr is NULL):
-            free(self._interpolate_solution_t_ptr)
+            free_mem(self._interpolate_solution_t_ptr)
             self._interpolate_solution_t_ptr = NULL
         if not (self._interpolate_solution_y_ptr is NULL):
-            free(self._interpolate_solution_y_ptr)
+            free_mem(self._interpolate_solution_y_ptr)
             self._interpolate_solution_y_ptr = NULL
         if not (self._interpolate_solution_extra_ptr is NULL):
-            free(self._interpolate_solution_extra_ptr)
+            free_mem(self._interpolate_solution_extra_ptr)
             self._interpolate_solution_extra_ptr = NULL
 
-        # Free RK Temp Storage Array
+        # free_mem RK Temp Storage Array
         if not (self.K_ptr is NULL):
-            free(self.K_ptr)
+            free_mem(self.K_ptr)
             self.K_ptr = NULL

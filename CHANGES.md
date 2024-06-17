@@ -2,6 +2,17 @@
 
 ## 2024
 
+#### v0.9.1 (2024-06-17)
+
+CySolver:
+- Changed error message to use a stack-allocated char-array and associated pointer.
+
+Memory Management:
+- Changed exit code when memory can not be allocated.
+
+Bug Fixes:
+- Fixed issue where the Cython-based solvers might use the incorrect memory freeing function.
+
 ### v0.9.0 (2024-05-22)
 
 Major Changes:
