@@ -641,8 +641,6 @@ cdef class CySolver:
         # Set pointers to new arrays
         self.num_expansions += 1
 
-        printf('EXPAND STORAGE CALLED, initial=%d; num_expand=%d\n', initial_expansion, self.num_expansions)
-
         cdef size_t expansion_amount
         if initial_expansion:
             expansion_amount = self.expected_size
@@ -698,8 +696,6 @@ cdef class CySolver:
             new_linkedlist_ptr[0].array_ptr = <double *>allocate_mem(
                 sizeof(double) * data_size,
                 "Linked List Data Array (expand_storage)")
-            
-            printf('\tEXPANDED ARRAY LL: %p; Array %p\n', new_linkedlist_ptr, new_linkedlist_ptr[0].array_ptr)
             
             # Clear any values stored in the next pointer
             new_linkedlist_ptr[0].next = NULL
@@ -992,7 +988,6 @@ cdef class CySolver:
                         last_index = self.len_t - running_count
                     else:
                         last_index = linked_list_size
-                    running_count += last_index
 
                     # Loop through the arrays and store the results
                     for j in range(last_index):
@@ -1004,9 +999,10 @@ cdef class CySolver:
                         
                         if self.capture_extra:
                             for k in range(self.num_extra):
-                                self._contiguous_extra_ptr[shifted_index * self.num_extra + k] = self.solution_extra_ptr[j * self.y_size + k]
+                                self._contiguous_extra_ptr[shifted_index * self.num_extra + k] = self.solution_extra_ptr[j * self.num_extra + k]
 
                     # Prepare for next loop
+                    running_count += last_index
                     current_t_linked_list_ptr = current_t_linked_list_ptr[0].next
                     current_y_linked_list_ptr = current_y_linked_list_ptr[0].next
                     if self.capture_extra:
@@ -1029,9 +1025,7 @@ cdef class CySolver:
                 current_extra_linked_list_ptr = NULL
 
                 # Free linked list memory
-                printf('SOLVE 6a\n')
                 self.free_linked_lists()
-                printf('SOLVE 6b\n')
 
         else:
             # Integration was not successful.
@@ -1041,37 +1035,23 @@ cdef class CySolver:
             
             # Make solution pointers length 1 nan arrays.
             # Use the first linked list to create these arrays
+            self.expected_size = 1
             self.expand_storage(True)
             self.solution_t_ptr = self.stack_linkedlists_t_ptr[0].array_ptr
             self.solution_y_ptr = self.stack_linkedlists_y_ptr[0].array_ptr
             self.solution_extra_ptr = self.stack_linkedlists_extra_ptr[0].array_ptr
 
-            # We still need to build solution arrays so that accessing the solution will not cause access violations.
-            # Build size-1 arrays. Since the solution was not successful, set all arrays to NANs
-            self.solution_t_ptr = <double *> reallocate_mem(
-                self.solution_t_ptr,
-                sizeof(double),
-                'solution_t_ptr (_solve; fail stage)')
-            self.solution_t_ptr[0] = NAN
-
-            self.solution_y_ptr = <double *> reallocate_mem(
-                self.solution_y_ptr,
-                self.y_size * sizeof(double),
-                'solution_y_ptr (_solve; fail stage)')
-            for i in range(self.y_size):
-                self.solution_y_ptr[i] = NAN
-
-            self.solution_extra_ptr = <double *> reallocate_mem(
-                self.solution_extra_ptr,
-                self.num_extra * sizeof(double),
-                'solution_extra_ptr (_solve; fail stage)')
-            for i in range(self.num_extra):
-                self.solution_extra_ptr[i] = NAN
-            
             # Set old reference to the newly allocated arrays to null
             self.stack_linkedlists_t_ptr[0].array_ptr = NULL
             self.stack_linkedlists_y_ptr[0].array_ptr = NULL
             self.stack_linkedlists_extra_ptr[0].array_ptr = NULL
+
+            self.solution_t_ptr[0] = NAN
+            for i in range(self.y_size):
+                self.solution_y_ptr[i] = NAN
+            if self.capture_extra:
+                for i in range(self.num_extra):
+                    self.solution_extra_ptr[i] = NAN
 
         # Integration is complete. Check if interpolation was requested.
         if self.success:
@@ -1810,9 +1790,6 @@ cdef class CySolver:
             max_j = 3
         else:
             max_j = 2
-        
-        printf("Free Linked Lists Called: %d\n", self.num_expansions)
-
         # Make a list of all three stroage types first pointer location
         next_linked_list_ptr[0] = &self.stack_linkedlists_t_ptr[0]
         next_linked_list_ptr[1] = &self.stack_linkedlists_y_ptr[0]
@@ -1821,23 +1798,14 @@ cdef class CySolver:
         for i in range(self.num_expansions):
             for j in range(max_j):
                 linked_list_ptr = next_linked_list_ptr[j]
-                printf("FREEING %d (%d).. %p; array: %p\n", i, j, linked_list_ptr, linked_list_ptr[0].array_ptr)
                 if not (linked_list_ptr[0].array_ptr is NULL):
-
-                    printf("TEST INDEX\n")
-                    for ii in range(linked_list_ptr[0].size):
-                        printf("\tLL Index %d = %f\n", ii, linked_list_ptr[0].array_ptr[ii])
-
-                    printf('OKAY NOW FREEeeeeeee\n')
                     free_mem(linked_list_ptr[0].array_ptr)
                     linked_list_ptr[0].array_ptr = NULL
-                printf("FREEING DONE\n")
                 linked_list_ptr[0].size = 0
 
                 # Update pointer list for next loop.
                 next_linked_list_ptr[j] = linked_list_ptr[0].next
                 linked_list_ptr.next = NULL
-                printf("NEXT\n")
                 if i >= 100:
                     # We are into heap allocated linked lists. We need to free both the underlying array as well as the
                     # linked list structure
