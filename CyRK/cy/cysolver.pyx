@@ -1798,6 +1798,9 @@ cdef class CySolver:
         for i in range(self.num_expansions):
             for j in range(max_j):
                 linked_list_ptr = next_linked_list_ptr[j]
+                if linked_list_ptr is NULL:
+                    continue
+
                 if not (linked_list_ptr[0].array_ptr is NULL):
                     free_mem(linked_list_ptr[0].array_ptr)
                     linked_list_ptr[0].array_ptr = NULL
@@ -1823,7 +1826,7 @@ cdef class CySolver:
 
         # Free final solution pointers
         self.free_linked_lists()
-        
+
         # Free pointers used during solve
         if not (self._contiguous_t_ptr is NULL):
             free_mem(self._contiguous_t_ptr)
