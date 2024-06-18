@@ -80,6 +80,7 @@ class build_cyrk(_build_py):
                 self.distribution.ext_modules,
                 compiler_directives={'language_level': "3"},
                 include_path=['.', np.get_include()],
-                nthreads=num_threads 
+                nthreads=num_threads,
+                gdb_debug=True
                 )
         print('!-- Finished Cythonizing CyRK')

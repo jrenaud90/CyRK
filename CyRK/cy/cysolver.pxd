@@ -5,12 +5,15 @@ cdef class CySolver:
 
     # Class attributes
     # -- Solution variables
-    cdef (LinkedList*)[500] solution_chunks_y
-    cdef LinkedList** solution_chunks_y_ptr
-    cdef (LinkedList*)[500] solution_chunks_t
-    cdef LinkedList** solution_chunks_t_ptr
-    cdef (LinkedList*)[500] solution_chunks_extra
-    cdef LinkedList** solution_chunks_extra_ptr
+    cdef LinkedList[100] solution_linkedlists_y
+    cdef LinkedList* stack_linkedlists_y_ptr
+    cdef LinkedList* current_linkedlist_y_ptr
+    cdef LinkedList[100] solution_linkedlists_t
+    cdef LinkedList* stack_linkedlists_t_ptr
+    cdef LinkedList* current_linkedlist_t_ptr
+    cdef LinkedList[100] solution_linkedlists_extra
+    cdef LinkedList* stack_linkedlists_extra_ptr
+    cdef LinkedList* current_linkedlist_extra_ptr
 
     cdef double* solution_y_ptr
     cdef double* solution_t_ptr
@@ -47,7 +50,7 @@ cdef class CySolver:
     cdef double first_step, max_step
     cdef bint user_provided_max_num_steps
     cdef size_t max_num_steps
-    cdef size_t expected_size, current_size, num_concats
+    cdef size_t last_expansion_size, expected_size, current_size, num_expansions
     cdef bint recalc_first_step
     cdef bint force_fail
 
@@ -88,11 +91,11 @@ cdef class CySolver:
     cdef double* extra_output_init_ptr
     cdef double[50] extra_output_array
     cdef double* extra_output_ptr
-
-    # -- Pointers used during solve method
-    cdef double* _solve_time_domain_array_ptr
-    cdef double* _solve_y_results_array_ptr
-    cdef double* _solve_extra_array_ptr
+    
+    # -- Pointers used during solve
+    cdef double* _contiguous_t_ptr
+    cdef double* _contiguous_y_ptr
+    cdef double* _contiguous_extra_ptr
 
     # -- Pointers used during interpolation
     cdef double* _interpolate_solution_t_ptr
@@ -102,6 +105,11 @@ cdef class CySolver:
     # Class functions
     cdef void _reset_state(
             self
+            ) noexcept nogil
+
+    cdef void expand_storage(
+            self,
+            bint initial_expansion
             ) noexcept nogil
 
     cdef double calc_first_step(
@@ -198,6 +206,11 @@ cdef class CySolver:
     cdef void diffeq(
             self
             ) noexcept nogil
+
+    cdef void free_linked_lists(
+            self
+            ) noexcept nogil
+
 
 ctypedef void (*DiffeqType)(CySolver)
 
