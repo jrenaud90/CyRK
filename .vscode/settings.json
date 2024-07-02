@@ -53,6 +53,8 @@
         "xlocnum": "c",
         "xloctime": "c",
         "xstring": "c",
-        "xtr1common": "c"
+        "xtr1common": "c",
+        "vector": "cpp",
+        "iostream": "cpp"
     }
 }

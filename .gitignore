@@ -7,6 +7,12 @@
 !CyRK/array/interp_common.c
 !CyRK/cy/rk_step.c
 
+!CyRK/cy/common.cpp
+!CyRK/cy/cysolution.cpp
+!CyRK/cy/cysolve.cpp
+!CyRK/cy/cysolver.cpp
+!CyRK/cy/rk.cpp
+
 # Ignore coverage files
 .coverage
 

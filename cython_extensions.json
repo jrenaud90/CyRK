@@ -6,6 +6,20 @@
     "compile_args": [],
     "link_args": []
   },
+  "vector": {
+    "name": "CyRK.utils.vector",
+    "sources": [["CyRK", "utils", "vector.pyx"]],
+    "include_dirs": [["CyRK", "utils"]],
+    "compile_args": [],
+    "link_args": []
+  },
+  "memory": {
+    "name": "CyRK.utils.memory",
+    "sources": [["CyRK", "utils", "memory.pyx"]],
+    "include_dirs": [["CyRK", "utils"]],
+    "compile_args": [],
+    "link_args": []
+  },
   "interp": {
     "name": "CyRK.array.interp",
     "sources": [["CyRK", "array", "interp.pyx"]],
@@ -34,6 +48,13 @@
     "compile_args": [],
     "link_args": []
   },
+  "cydiffeqs": {
+    "name": "CyRK.cy.diffeqs",
+    "sources": [["CyRK", "cy", "diffeqs.pyx"]],
+    "include_dirs": [["CyRK", "cy"]],
+    "compile_args": [],
+    "link_args": []
+  },
   "cyrk_ode": {
     "name": "CyRK.cy.cyrk",
     "sources": [["CyRK", "cy", "cyrk.pyx"]],
@@ -45,6 +66,15 @@
     "name": "CyRK.cy.cysolver",
     "sources": [
       ["CyRK", "cy", "cysolver.pyx"]
+    ],
+    "include_dirs": [["CyRK", "cy"]],
+    "compile_args": [],
+    "link_args": []
+  },
+  "cysolve": {
+    "name": "CyRK.cy.cysolver2",
+    "sources": [
+      ["CyRK", "cy", "cysolver2.pyx"]
     ],
     "include_dirs": [["CyRK", "cy"]],
     "compile_args": [],
