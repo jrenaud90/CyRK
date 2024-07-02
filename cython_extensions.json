@@ -48,6 +48,20 @@
     "compile_args": [],
     "link_args": []
   },
+  "pysolver_cyhook": {
+    "name": "CyRK.cy.pysolver_cyhook",
+    "sources": [["CyRK", "cy", "pysolver_cyhook.pyx"]],
+    "include_dirs": [["CyRK", "cy"]],
+    "compile_args": [],
+    "link_args": []
+  },
+  "pysolver": {
+    "name": "CyRK.cy.pysolver",
+    "sources": [["CyRK", "cy", "pysolver.pyx"]],
+    "include_dirs": [["CyRK", "cy"]],
+    "compile_args": [],
+    "link_args": []
+  },
   "cydiffeqs": {
     "name": "CyRK.cy.diffeqs",
     "sources": [["CyRK", "cy", "diffeqs.pyx"]],

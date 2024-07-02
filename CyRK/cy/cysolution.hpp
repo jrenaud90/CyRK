@@ -13,7 +13,9 @@ class CySolverResult {
 // Attributes
 protected:
     // Message storage
-    char message[256];
+    char message[MESSAGE_SIZE];
+
+    // Metadata
     size_t num_extra = 0;
     double num_dy_dbl = 0.0;
 
@@ -45,6 +47,7 @@ public:
     // Error codes 1 to 10 and -1 to -10 are defined by CySolver. See the `take_step` method in the base class.
     // -11   : Value Error: Requested new vector size is larger than the limits set by the system (specifically the max of size_t).
     // -12   : Memory Error: Malloc failed when reserving more memory for vectors.
+    // -50   : Error calling cython wrapper function from PySolver.
     int error_code = -999;
 
 

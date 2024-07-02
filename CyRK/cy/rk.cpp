@@ -6,7 +6,7 @@
 // Constructors
 RKSolver::RKSolver() {}
 RKSolver::RKSolver(
-        // Input variables
+        // Base Class input arguments
         DiffeqFuncType diffeq_ptr,
         std::shared_ptr<CySolverResult> storage_ptr,
         const double t_start,
@@ -18,6 +18,7 @@ RKSolver::RKSolver(
         double* args_ptr,
         size_t max_num_steps,
         size_t max_ram_MB,
+        // RKSolver input arguments
         double rtol,
         double atol,
         double* rtols_ptr,
@@ -100,7 +101,7 @@ RKSolver::~RKSolver()
 
 
 // Protected Methods
-void RKSolver::p_estimate_error()
+inline void RKSolver::p_estimate_error()
 {
 
     size_t stride_K;
@@ -247,6 +248,7 @@ void RKSolver::p_step_implementation()
                 this->step_size = -this->step;
             }
         }
+
         // !! Calculate derivative using RK method
 
         // t_now must be updated for each loop of s in order to make the diffeq method calls.
@@ -608,6 +610,7 @@ void RKSolver::reset()
         this->step_size = this->user_provided_first_step_size;
         this->step_size_old = this->step_size;
     }
+
     size_t stride_K;
     // It is important to initialize the K variable with zeros
     for (size_t y_i = 0; y_i < this->num_y; y_i++)

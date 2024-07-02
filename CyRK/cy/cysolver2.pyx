@@ -28,6 +28,10 @@ cdef class PyCySolverResult:
         self.y_view    = <double[:self.size * self.num_dy]>self.y_ptr
 
     @property
+    def success(self):
+        return self.cyresult_ptr.success
+        
+    @property
     def message(self):
         return str(self.cyresult_ptr.message_ptr, 'UTF-8')
     

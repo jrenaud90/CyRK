@@ -3,6 +3,11 @@
 #include <cmath>
 #include <limits>
 
+// Pre-processor constants
+static const int Y_LIMIT      = 32;
+static const int DY_LIMIT     = 64;      // dy limit is defined by Y_LIMIT and number of extra output allowed. Typically we allow 2x the Y_LIMIT.
+static const int MESSAGE_SIZE = 256;
+
 // Integration Constants
 // Multiply steps computed from asymptotic behaviour of errors by this.
 const double SAFETY = 0.9;  // Error coefficient factor (1 == use calculated error; < 1 means be conservative).

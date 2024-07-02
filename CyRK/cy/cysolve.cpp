@@ -1,5 +1,6 @@
 #include "cysolve.hpp"
 
+
 template <typename T>
 void method_solve(
         DiffeqFuncType diffeq_ptr,
@@ -29,7 +30,6 @@ void method_solve(
         // RK Inputs
         capture_extra, num_extra, args_ptr, max_num_steps, max_ram_MB, rtol, atol, rtols_ptr, atols_ptr, max_step_size, first_step_size
     );
-
 
     // Run integrator
     while (solver.check_status())

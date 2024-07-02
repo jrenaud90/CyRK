@@ -3,6 +3,7 @@ import os
 import platform
 import math
 import json
+import sys
 from setuptools.extension import Extension
 from setuptools.command.build_py import build_py as _build_py
 from setuptools.command.build_ext import build_ext as _build_ext
@@ -38,8 +39,8 @@ for cython_ext, ext_data in cython_ext_dict.items():
         Extension(
             name=ext_data['name'],
             sources=[os.path.join(*tuple(source_path)) for source_path in ext_data['sources']],
-            # Always add numpy to any includes
-            include_dirs=[os.path.join(*tuple(dir_path)) for dir_path in ext_data['include_dirs']] + [np.get_include()],
+            # Always add numpy to any includes; also add sys.path so we can capture python.h
+            include_dirs=[os.path.join(*tuple(dir_path)) for dir_path in ext_data['include_dirs']] + [np.get_include()] + sys.path,
             extra_compile_args=ext_data['compile_args'] + extra_compile_args,
             define_macros=macro_list,
             extra_link_args=ext_data['link_args'] + extra_link_args,

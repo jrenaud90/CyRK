@@ -1,5 +1,6 @@
 #include "cysolver.hpp"
 
+
 // Constructors
 CySolverBase::CySolverBase() {}
 CySolverBase::CySolverBase(
@@ -32,7 +33,7 @@ CySolverBase::CySolverBase(
             this->storage_ptr->error_code = -1;
             this->storage_ptr->update_message("CySolverBase Attribute Error: `capture_extra` set to True, but `num_extra` set to 0.");
         }
-        else if (num_extra > 25)
+        else if (num_extra > (DY_LIMIT - Y_LIMIT))
         {
             this->storage_ptr->error_code = -1;
             this->storage_ptr->update_message("CySolverBase Attribute Error: `num_extra` exceeds the maximum supported value of 25.");
@@ -45,7 +46,7 @@ CySolverBase::CySolverBase(
         this->storage_ptr->update_message("CySolverBase Attribute Error: `capture_extra` set to False, but `num_extra` > 0.");
     }
 
-    if (num_y > 25)
+    if (num_y > Y_LIMIT)
     {
         this->storage_ptr->error_code = -1;
         this->storage_ptr->update_message("CySolverBase Attribute Error: `num_y` exceeds the maximum supported value of 25.");
@@ -140,10 +141,18 @@ bool CySolverBase::check_status()
     return true;
 }
 
+
+inline void CySolverBase::c_diffeq()
+{
+    /* Function to call pure c-based differential equation (provided by the user) */
+
+    this->diffeq_ptr(this->dy_now_ptr, this->t_now, this->y_now_ptr, this->args_ptr);
+}
+
 void CySolverBase::diffeq()
 {
-    // Call the user-provided differential equation
-    this->diffeq_ptr(this->dy_now_ptr, this->t_now, this->y_now_ptr, this->args_ptr);
+    /* Wrapper that can be overriden by subclasses. In the base class it will call the pure-c based, user-provided diffeq. */
+    this->c_diffeq();
 }
 
 void CySolverBase::reset()

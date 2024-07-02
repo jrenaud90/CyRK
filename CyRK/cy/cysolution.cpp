@@ -1,6 +1,5 @@
 #include "cysolution.hpp"
 
-
 // Constructors
 CySolverResult::CySolverResult() {}
 CySolverResult::CySolverResult(size_t num_y, size_t num_extra, size_t expected_size)
