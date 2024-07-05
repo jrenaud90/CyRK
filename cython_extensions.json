@@ -55,9 +55,9 @@
     "compile_args": [],
     "link_args": []
   },
-  "pysolver": {
-    "name": "CyRK.cy.pysolver",
-    "sources": [["CyRK", "cy", "pysolver.pyx"]],
+  "cysolverX": {
+    "name": "CyRK.cy.cysolverX",
+    "sources": [["CyRK", "cy", "cysolverX.pyx"]],
     "include_dirs": [["CyRK", "cy"]],
     "compile_args": [],
     "link_args": []
@@ -80,15 +80,6 @@
     "name": "CyRK.cy.cysolver",
     "sources": [
       ["CyRK", "cy", "cysolver.pyx"]
-    ],
-    "include_dirs": [["CyRK", "cy"]],
-    "compile_args": [],
-    "link_args": []
-  },
-  "cysolve": {
-    "name": "CyRK.cy.cysolver2",
-    "sources": [
-      ["CyRK", "cy", "cysolver2.pyx"]
     ],
     "include_dirs": [["CyRK", "cy"]],
     "compile_args": [],

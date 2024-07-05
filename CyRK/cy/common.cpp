@@ -1,59 +1,53 @@
+/* Helper functions and global constants */
+
 #include "common.hpp"
 
 
-void find_max_num_steps(
-    size_t num_y,
-    size_t num_extra,
-    size_t max_num_steps,
-    size_t max_ram_MB,
-    bool capture_extra,
-    bool* user_provided_max_num_steps,
-    size_t* max_num_steps_touse) {
+MaxNumStepsOutput find_max_num_steps(
+    const int num_y,
+    const int num_extra,
+    const size_t max_num_steps,
+    const size_t max_ram_MB)
+{
+    /* Determines the maximum number of steps (max size of time domain) that the integrator is allowed to take. */
 
     // Determine the maximum number of steps permitted during integration run.
-    double max_num_steps_ram_dbl = max_ram_MB * (1000.0 * 1000.0);
-
-    // Divide by number of dependnet and extra variables that will be stored. The extra "1" is for the time domain.
-    if (capture_extra)
-    {
-        max_num_steps_ram_dbl /= (sizeof(double) * (1.0 + num_y + num_extra));
-    }
-    else {
-        max_num_steps_ram_dbl /= (sizeof(double) * (1.0 + num_y));
-    }
+    // Then divide by number of dependnet and extra variables that will be stored. The extra "1" is for the time domain.
+    double max_num_steps_ram_dbl = max_ram_MB * (1000.0 * 1000.0) / (sizeof(double) * (1.0 + num_y + num_extra));
     size_t max_num_steps_ram = (size_t)std::floor(max_num_steps_ram_dbl);
 
-    // Parse user-provided max number of steps
-    user_provided_max_num_steps[0] = false;
-    if (max_num_steps == 0)
+    MaxNumStepsOutput output(false, max_num_steps_ram);
+
+    if (max_num_steps > 0)
     {
-        // No user input; use ram-based value
-        max_num_steps_touse[0] = max_num_steps_ram;
-    }
-    else {
+        // User provided a maximum number of steps; parse their input.
         if (max_num_steps > max_num_steps_ram)
         {
-            max_num_steps_touse[0] = max_num_steps_ram;
+            output.max_num_steps = max_num_steps_ram;
         }
-        else {
-            user_provided_max_num_steps[0] = true;
-            max_num_steps_touse[0] = max_num_steps;
+        else
+        {
+            output.user_provided_max_num_steps = true;
+            output.max_num_steps = max_num_steps;
         }
     }
 
     // Make sure that max number of steps does not exceed size_t limit
-    if (max_num_steps_touse[0] > (MAX_SIZET_SIZE / 10))
+    if (output.max_num_steps > (MAX_SIZET_SIZE / 10))
     {
-        max_num_steps_touse[0] = (MAX_SIZET_SIZE / 10);
+        output.max_num_steps = (MAX_SIZET_SIZE / 10);
     }
+
+    return output;
 }
 
+
 size_t find_expected_size(
-    size_t num_y,
-    size_t num_extra,
-    double t_delta_abs,
-    double rtol_min,
-    bool capture_extra)
+    const int num_y,
+    const int num_extra,
+    const double t_delta_abs,
+    const double rtol_min)
+    /* Finds an expected size for storage arrays (length of time domain) that is suitable to the provided problem */
 {
     // Pick starting value that works with most problems
     double temp_expected_size = 500.0;
@@ -61,16 +55,8 @@ size_t find_expected_size(
     temp_expected_size = std::fmax(temp_expected_size, std::fmax(t_delta_abs / ARRAY_PREALLOC_TABS_SCALE, ARRAY_PREALLOC_RTOL_SCALE / rtol_min));
     // Fix values that are very small / large
     temp_expected_size = std::fmax(temp_expected_size, MIN_ARRAY_PREALLOCATE_SIZE);
-    double max_expected = MAX_ARRAY_PREALLOCATE_SIZE_DBL;
-    if (capture_extra)
-    {
-        max_expected /= (num_y + num_extra);
-    }
-    else
-    {
-        max_expected /= num_y;
+    double max_expected = num_extra ? MAX_ARRAY_PREALLOCATE_SIZE_DBL / (num_y + num_extra) : MAX_ARRAY_PREALLOCATE_SIZE_DBL / num_y;
 
-    }
     temp_expected_size = fmin(temp_expected_size, max_expected);
     size_t expected_size_to_use = (size_t)std::floor(temp_expected_size);
     

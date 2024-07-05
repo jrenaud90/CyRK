@@ -1,84 +1,64 @@
 #include "cysolver.hpp"
 
+#include <cstdio>
 
 // Constructors
 CySolverBase::CySolverBase() {}
 CySolverBase::CySolverBase(
-        DiffeqFuncType diffeq_ptr,
-        std::shared_ptr<CySolverResult> storage_ptr,
-        const double t_start,
-        const double t_end,
-        double* y0_ptr,
-        size_t num_y,
-        bool capture_extra,
-        size_t num_extra,
-        double* args_ptr,
-        size_t max_num_steps,
-        size_t max_ram_MB)
+    DiffeqFuncType diffeq_ptr,
+    std::shared_ptr<CySolverResult> storage_ptr,
+    const double t_start,
+    const double t_end,
+    const double* const y0_ptr,
+    const unsigned int num_y,
+    const unsigned int num_extra,
+    const double* const args_ptr,
+    const size_t max_num_steps,
+    const size_t max_ram_MB) :
+        status(0),
+        num_y(num_y),
+        num_extra(num_extra),
+        t_start(t_start),
+        t_end(t_end),
+        storage_ptr(storage_ptr),
+        diffeq_ptr(diffeq_ptr),
+        args_ptr(args_ptr)
 {   
-    // Assume no errors for now.
-    this->reset_called = false;
-    this->status = 0;
-
+    // Parse inputs
+    this->capture_extra = num_extra > 0;
+    
     // Setup storage
-    this->storage_ptr = storage_ptr;
-
     this->storage_ptr->update_message("CySolverBase Initializing.");
 
     // Check for errors
-    if (capture_extra)
+    if (this->num_extra > (DY_LIMIT - Y_LIMIT))
     {
-        if (num_extra == 0)
-        {
-            this->storage_ptr->error_code = -1;
-            this->storage_ptr->update_message("CySolverBase Attribute Error: `capture_extra` set to True, but `num_extra` set to 0.");
-        }
-        else if (num_extra > (DY_LIMIT - Y_LIMIT))
-        {
-            this->storage_ptr->error_code = -1;
-            this->storage_ptr->update_message("CySolverBase Attribute Error: `num_extra` exceeds the maximum supported value of 25.");
-        }
-
-    }
-    else if (num_extra > 0)
-    {
+        this->status = -9;
         this->storage_ptr->error_code = -1;
-        this->storage_ptr->update_message("CySolverBase Attribute Error: `capture_extra` set to False, but `num_extra` > 0.");
+        this->storage_ptr->update_message("CySolverBase Attribute Error: `num_extra` exceeds the maximum supported size.");
     }
 
-    if (num_y > Y_LIMIT)
+    if (this->num_y > Y_LIMIT)
     {
+        this->status = -9;
         this->storage_ptr->error_code = -1;
-        this->storage_ptr->update_message("CySolverBase Attribute Error: `num_y` exceeds the maximum supported value of 25.");
+        this->storage_ptr->update_message("CySolverBase Attribute Error: `num_y` exceeds the maximum supported size.");
     }
-    else if (num_y == 0)
+    else if (this->num_y == 0)
     {
+        this->status = -9;
         this->storage_ptr->error_code = -1;
-        this->storage_ptr->update_message("CySolverBase Attribute Error: Integration completed. `num_y` = 0 so nothing to integrate.");
+        this->storage_ptr->update_message("CySolverBase Attribute Error: `num_y` = 0 so nothing to integrate.");
     }
-
-    // Parse differential equation
-    this->diffeq_ptr = diffeq_ptr;
-    this->args_ptr = args_ptr;
-
-    // Parse capture extra information
-    this->capture_extra = capture_extra;
-    this->num_extra = num_extra;
 
     // Parse y values
-    this->num_y      = num_y;
     this->num_y_dbl  = (double)this->num_y;
     this->num_y_sqrt = std::sqrt(this->num_y_dbl);
     this->num_dy     = this->num_y + this->num_extra;
     // Make a copy of y0
-    for (size_t y_i = 0; y_i < this->num_y; y_i++)
-    {
-        this->y0_ptr[y_i] = y0_ptr[y_i];
-    }
+    std::memcpy(this->y0_ptr, y0_ptr, sizeof(double) * this->num_y);
 
     // Parse time information
-    this->t_start = t_start;
-    this->t_end = t_end;
     this->t_delta = t_end - t_start;
     this->t_delta_abs = std::fabs(this->t_delta);
     if (this->t_delta >= 0.0)
@@ -94,21 +74,21 @@ CySolverBase::CySolverBase(
     }
 
     // Parse maximum number of steps
-    find_max_num_steps(
+    MaxNumStepsOutput max_num_steps_output = find_max_num_steps(
         this->num_y,
         num_extra,
         max_num_steps,
-        max_ram_MB,
-        capture_extra,
-        &this->user_provided_max_num_steps,
-        &this->max_num_steps);
+        max_ram_MB
+    );
+    this->user_provided_max_num_steps = max_num_steps_output.user_provided_max_num_steps;
+    this->max_num_steps = max_num_steps_output.max_num_steps;
 }
 
 
 // Destructors
 CySolverBase::~CySolverBase()
 {
-    this->storage_ptr = nullptr;
+    //this->storage_ptr = nullptr;
 }
 
 
@@ -120,7 +100,7 @@ void CySolverBase::p_step_implementation()
 
 
 // Public methods
-bool CySolverBase::check_status()
+bool CySolverBase::check_status() const
 {
     // If the solver is not in state 0 then that is an automatic rejection.
     if (this->status != 0)
@@ -141,24 +121,25 @@ bool CySolverBase::check_status()
     return true;
 }
 
-
-inline void CySolverBase::c_diffeq()
-{
-    /* Function to call pure c-based differential equation (provided by the user) */
-
-    this->diffeq_ptr(this->dy_now_ptr, this->t_now, this->y_now_ptr, this->args_ptr);
-}
-
 void CySolverBase::diffeq()
 {
-    /* Wrapper that can be overriden by subclasses. In the base class it will call the pure-c based, user-provided diffeq. */
-    this->c_diffeq();
+    // Should we call the c function or the python one?
+    if (this->use_pysolver)
+    {
+        // Call cython-wrapped python function
+        printf("\tDEBUG Point 10-INNER:: Calling PyDiffeq\n");
+        this->py_diffeq();
+        printf("\tDEBUG Point 10-INNER:: Calling PyDiffeq DONE\n");
+    }
+    else
+    {
+        // Call c function
+        this->diffeq_ptr(this->dy_now_ptr, this->t_now, this->y_now_ptr, this->args_ptr);
+    }
 }
 
 void CySolverBase::reset()
 {
-    double temp_double;
-
     this->status = 0;
     this->reset_called = false;
 
@@ -167,40 +148,44 @@ void CySolverBase::reset()
     this->t_old = this->t_start;
     this->len_t = 1;
 
+    printf("\tDEBUG Point 10-INNER:: RESET CK1\n");
     // Reset ys
-    for (size_t y_i = 0; y_i < this->num_y; y_i++)
-    {
-        temp_double = this->y0_ptr[y_i];
-        this->y_now_ptr[y_i] = temp_double;
-        this->y_old_ptr[y_i] = temp_double;
-    }
+    std::memcpy(this->y_now_ptr, this->y0_ptr, sizeof(double) * this->num_y);
+    std::memcpy(this->y_old_ptr, this->y0_ptr, sizeof(double) * this->num_y);
 
     // Call differential equation to set dy0
+    printf("\tDEBUG Point 10-INNER:: RESET CK2\n");
     this->diffeq();
+    printf("\tDEBUG Point 10-INNER:: RESET CK2b\n");
 
     // Update dys
-    for (size_t dy_i = 0; dy_i < this->num_dy; dy_i++)
-    {
-        this->dy_old_ptr[dy_i] = this->dy_now_ptr[dy_i];
-    }
+    printf("\tDEBUG Point 10-INNER:: RESET CK3\n");
+    std::memcpy(this->dy_old_ptr, this->dy_now_ptr, sizeof(double) * this->num_y);
 
-    // Inititialize storage
+    // Initialize storage
+    printf("\tDEBUG Point 10-INNER:: RESET CK4\n");
     this->storage_ptr->reset();
+    printf("\tDEBUG Point 10-INNER:: RESET CK5\n");
     this->storage_ptr->update_message("CySolverStorage reset, ready for data.");
+    printf("\tDEBUG Point 10-INNER:: RESET CK6\n");
 
     // Store initial conditions
+    printf("\tDEBUG Point 10-INNER:: RESET CK7\n");
     this->storage_ptr->save_data(this->t_now, this->y_now_ptr, this->dy_now_ptr);
-
+    printf("\tDEBUG Point 10-INNER:: RESET CK8\n");
 
     this->reset_called = true;
 }
 
 void CySolverBase::take_step()
 {
+    printf("DEBUG Point 10-INNER:: Take Step\n");
     if (!this->reset_called)
     {
         // Reset must be called first.
+        printf("DEBUG Point 10-INNER:: Calling Reset\n");
         this->reset();
+        printf("DEBUG Point 10-INNER:: Calling Reset DONE\n");
     }
 
     if (this->status == 0)
@@ -226,26 +211,33 @@ void CySolverBase::take_step()
         else
         {
             // ** Make call to solver's step implementation **
+            printf("DEBUG Point 10-INNER:: Taking Step\n");
             this->p_step_implementation();
+            printf("DEBUG Point 10-INNER:: Taking Step DONE\n");
             this->len_t++;
 
             // Save data
+            printf("DEBUG Point 10-INNER:: Saving Data\n");
             this->storage_ptr->save_data(this->t_now, this->y_now_ptr, this->dy_now_ptr);
+            printf("DEBUG Point 10-INNER:: Saving Data DONE\n");
         }
     }
 
+    // Note this is not an "else" block because the integrator may have finished with that last step.
     // Check status again to see if we are finished or there was an error in the last step
     if (this->status != 0)
     {
         // Update integration message
         this->storage_ptr->error_code = this->status;
+        this->storage_ptr->success    = false;
         switch (this->status)
         {
         case 2:
-            this->storage_ptr->update_message("Integration storage was changed but integrator was not reset. Call `.reset()` before integrating after storage change.\n");
+            this->storage_ptr->update_message("Integration storage changed but integrator was not reset. Call `.reset()` before integrating after change.\n");
             break;
         case 1:
             this->storage_ptr->update_message("Integration completed without issue.\n");
+            this->storage_ptr->success = true;
             break;
         case -1:
             this->storage_ptr->update_message("Error in step size calculation:\n\tRequired step size is less than spacing between numbers.\n");
@@ -259,16 +251,22 @@ void CySolverBase::take_step()
         case -4:
             this->storage_ptr->update_message("Error in step size calculation:\n\tError in step size acceptance.\n");
             break;
+        case -9:
+            this->storage_ptr->update_message("Error in CySolver initialization.\n");
+            break;
         default:
             this->storage_ptr->update_message("Unknown status encountered during integration.\n");
             break;
         }
+        
+        // Call the finalizer on the storage class instance
+        this->storage_ptr->finalize();
     }
 }
 
 
 void CySolverBase::change_storage(std::shared_ptr<CySolverResult> new_storage_ptr, bool auto_reset)
-{
+{   
     // Change the storage reference. 
     this->storage_ptr = new_storage_ptr;
     
@@ -279,5 +277,68 @@ void CySolverBase::change_storage(std::shared_ptr<CySolverResult> new_storage_pt
     if (auto_reset)
     {
         this->reset();
+    }
+}
+
+
+// Main Solve Method!
+void CySolverBase::solve()
+{
+    while (this->check_status())
+    {
+        this->take_step();
+    }
+}
+
+
+/* PySolver Methods */
+// !!!
+// Uncomment these dummy methods if working outside of CyRK and you just want the program to compile and run for testing/developing the C++ only code.
+/*
+bool import_CyRK__cy__pysolver_cyhook()
+{
+    return true;
+}
+
+int call_diffeq_from_cython(PyObject* x)
+{
+    return 1;
+}
+
+void Py_XINCREF(PyObject* x)
+{
+}
+*/
+
+void CySolverBase::set_cython_extension_instance(PyObject* cython_extension_class_instance)
+{
+    this->use_pysolver = true;
+    if (cython_extension_class_instance)
+    {
+        this->cython_extension_class_instance = cython_extension_class_instance;
+
+        // Import the cython/python module (functionality provided by "pysolver_api.h")
+        if (import_CyRK__cy__pysolver_cyhook())
+        {
+            // pass
+        }
+        else
+        {
+            Py_XINCREF(this->cython_extension_class_instance);
+        }
+    }
+}
+
+void CySolverBase::py_diffeq()
+{
+    // Call the differential equation in python space. Note that the optional arguments are handled by the python 
+    // wrapper class. `this->args_ptr` is not used.
+    int diffeq_status = call_diffeq_from_cython(this->cython_extension_class_instance);
+
+    if (diffeq_status < 0)
+    {
+        this->status = -50;
+        this->storage_ptr->error_code = -50;
+        this->storage_ptr->update_message("Error when calling cython diffeq wrapper from PySolverBase c++ class.\n");
     }
 }

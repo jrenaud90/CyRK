@@ -1,17 +1,19 @@
 #pragma once
 
+
+#include "common.hpp"
 #include "cysolver.hpp"
 
 
 // ########################################################################################################################
 // Runge - Kutta 2(3)
 // ########################################################################################################################
-const int RK23_order = 3;
-const size_t RK23_n_stages = 3;
-const size_t RK23_len_Arows = 3;
-const size_t RK23_len_Acols = 3;
-const size_t RK23_len_C = 3;
-const int RK23_error_estimator_order = 2;
+const unsigned int RK23_order = 3;
+const unsigned int RK23_n_stages = 3;
+const unsigned int RK23_len_Arows = 3;
+const unsigned int RK23_len_Acols = 3;
+const unsigned int RK23_len_C = 3;
+const unsigned int RK23_error_estimator_order = 2;
 const double RK23_error_exponent = 1.0 / (2.0 + 1.0);  // Defined as 1 / (error_order + 1)
 
 const double RK23_A[9] = {
@@ -52,12 +54,12 @@ const double RK23_E[4] = {
 // ########################################################################################################################
 // Runge - Kutta 4(5)
 // ########################################################################################################################
-const int RK45_order = 5;
-const size_t RK45_n_stages = 6;
-const size_t RK45_len_Arows = 6;
-const size_t RK45_len_Acols = 5;
-const size_t RK45_len_C = 6;
-const int RK45_error_estimator_order = 4;
+const unsigned int RK45_order = 5;
+const unsigned int RK45_n_stages = 6;
+const unsigned int RK45_len_Arows = 6;
+const unsigned int RK45_len_Acols = 5;
+const unsigned int RK45_len_C = 6;
+const unsigned int RK45_error_estimator_order = 4;
 const double RK45_error_exponent = 1.0 / (4.0 + 1.0);  // Defined as 1 / (error_order + 1)
 
 const double RK45_A[30] = {
@@ -131,12 +133,12 @@ const double RK45_E[7] = {
 // ########################################################################################################################
 // Runge - Kutta DOP 8(5; 3)
 // ########################################################################################################################
-const int DOP853_order = 8;
-const size_t DOP853_n_stages = 12;
-const size_t DOP853_A_rows = 12;
-const size_t DOP853_A_cols = 12;
-const size_t DOP853_len_C = 12;
-const int DOP853_error_estimator_order = 7;
+const unsigned int DOP853_order = 8;
+const unsigned int DOP853_n_stages = 12;
+const unsigned int DOP853_A_rows = 12;
+const unsigned int DOP853_A_cols = 12;
+const unsigned int DOP853_len_C = 12;
+const unsigned int DOP853_error_estimator_order = 7;
 const double DOP853_error_exponent = 1.0 / (7.0 + 1.0);  // Defined as 1 / (error_order + 1)
 
 // Note both A and C are the _reduced_ versions.The full A and C are not shown.
@@ -375,33 +377,33 @@ class RKSolver : public CySolverBase {
 // Attributes
 protected:
     // Step globals
-    const double error_safety = SAFETY;
+    const double error_safety    = SAFETY;
     const double min_step_factor = MIN_FACTOR;
     const double max_step_factor = MAX_FACTOR;
 
     // RK constants
-    int order = 0;
-    int error_estimator_order = 0;
+    unsigned int order = 0;
+    unsigned int error_estimator_order = 0;
+    unsigned int n_stages     = 0;
+    unsigned int n_stages_p1  = 0;
+    unsigned int len_Acols    = 0;
+    unsigned int len_C        = 0;
+    unsigned int nstages_numy = 0;
     double error_exponent = 0.0;
-    size_t n_stages = 0;
-    size_t n_stages_p1 = 0;
-    size_t len_Acols = 0;
-    size_t len_C = 0;
-    size_t nstages_numy = 0;
 
     // Pointers to RK constant arrays
-    const double* C_ptr = nullptr;
-    const double* A_ptr = nullptr;
-    const double* B_ptr = nullptr;
-    const double* E_ptr = nullptr;
+    const double* C_ptr  = nullptr;
+    const double* A_ptr  = nullptr;
+    const double* B_ptr  = nullptr;
+    const double* E_ptr  = nullptr;
     const double* E3_ptr = nullptr;
     const double* E5_ptr = nullptr;
-    const double* P_ptr = nullptr;
-    const double* D_ptr = nullptr;
-    double* K_ptr = &this->K[0];
+    const double* P_ptr  = nullptr;
+    const double* D_ptr  = nullptr;
 
     // K is not const. Its values are stored in an array that is held by this class.
-    double K[1] = { std::nan("") };
+    double K[1]   = { std::nan("") };
+    double* K_ptr = &this->K[0];
 
     // Tolerances
     // For the same reason num_y is limited, the total number of tolerances are limited.
@@ -413,11 +415,10 @@ protected:
     bool use_array_atols = false;
 
     // Step size parameters
-    double step = 0.0;
-    double step_size_old = 0.0;
-    double step_size = 0.0;
+    double user_provided_first_step_size = 0.0;
+    double step          = 0.0;
+    double step_size     = 0.0;
     double max_step_size = 0.0;
-    bool user_provided_first_step_size = false;
 
     // Error estimate
     double error_norm = 0.0;
@@ -425,7 +426,7 @@ protected:
 
 // Methods
 protected:
-    virtual inline void p_estimate_error();
+    virtual void p_estimate_error() override;
     virtual void p_step_implementation() override;
 
 public:
@@ -434,26 +435,25 @@ public:
     RKSolver(
         // Base Class input arguments
         DiffeqFuncType diffeq_ptr,
-        std::shared_ptr<CySolverResult> storage_ptr,
+        std::shared_ptr<CySolverResult> const storage_ptr,
         const double t_start,
         const double t_end,
-        double* y0_ptr,
-        size_t num_y,
-        bool capture_extra = false,
-        size_t num_extra = 0,
-        double* args_ptr = nullptr,
-        size_t max_num_steps = 0,
-        size_t max_ram_MB = 2000,
+        const double* y0_ptr,
+        const unsigned int num_y,
+        const unsigned int num_extra = 0,
+        const double* args_ptr = nullptr,
+        const size_t max_num_steps = 0,
+        const size_t max_ram_MB = 2000,
         // RKSolver input arguments
-        double rtol = 1.0e-3,
-        double atol = 1.0e-6,
-        double* rtols_ptr = nullptr,
-        double* atols_ptr = nullptr,
-        double max_step_size = MAX_STEP,
-        double first_step_size = 0.0
+        const double rtol = 1.0e-3,
+        const double atol = 1.0e-6,
+        const double* rtols_ptr = nullptr,
+        const double* atols_ptr = nullptr,
+        const double max_step_size = MAX_STEP,
+        const double first_step_size = 0.0
     );
     virtual void reset() override;
-    void calc_first_step_size();
+    virtual void calc_first_step_size() override;
 };
 
 

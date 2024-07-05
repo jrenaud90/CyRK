@@ -6,5 +6,6 @@ cdef public api int call_diffeq_from_cython(object py_instance):
     The "public api" prefix tells Cython to produce header files "pysolver_api.h" which can be included in
     C++ files.
     """
-
+    
+    # Call the python diffeq.
     return py_instance.diffeq()
