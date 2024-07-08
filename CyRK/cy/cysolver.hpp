@@ -113,7 +113,8 @@ public:
 
     // State attributes
     size_t len_t = 0;
-    double t_now = 0.0;
+    double t_now[1] = {0.0};
+    double* t_now_ptr  = &t_now[0];
     double* y_now_ptr  = &y_now[0];
     double* dy_now_ptr = &dy_now[0];
 

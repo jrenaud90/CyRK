@@ -123,6 +123,7 @@ bool CySolverBase::check_status() const
 
 void CySolverBase::diffeq()
 {
+    printf("\tCySOLVER Diffeq Called\n");
     // Should we call the c function or the python one?
     if (this->use_pysolver)
     {
@@ -134,7 +135,9 @@ void CySolverBase::diffeq()
     else
     {
         // Call c function
-        this->diffeq_ptr(this->dy_now_ptr, this->t_now, this->y_now_ptr, this->args_ptr);
+        printf("\tTRIED TO DO A BADDIE!\n");
+        // uncomment this later
+        // this->diffeq_ptr(this->dy_now_ptr, this->t_now_ptr[0], this->y_now_ptr, this->args_ptr);
     }
 }
 
@@ -144,7 +147,7 @@ void CySolverBase::reset()
     this->reset_called = false;
 
     // Reset time
-    this->t_now = this->t_start;
+    this->t_now_ptr[0] = this->t_start;
     this->t_old = this->t_start;
     this->len_t = 1;
 
@@ -171,7 +174,7 @@ void CySolverBase::reset()
 
     // Store initial conditions
     printf("\tDEBUG Point 10-INNER:: RESET CK7\n");
-    this->storage_ptr->save_data(this->t_now, this->y_now_ptr, this->dy_now_ptr);
+    this->storage_ptr->save_data(this->t_now_ptr[0], this->y_now_ptr, this->dy_now_ptr);
     printf("\tDEBUG Point 10-INNER:: RESET CK8\n");
 
     this->reset_called = true;
@@ -190,7 +193,7 @@ void CySolverBase::take_step()
 
     if (this->status == 0)
     {
-        if (this->t_now == this->t_end)
+        if (this->t_now_ptr[0] == this->t_end)
         {
             // Integration finished
             this->t_old = this->t_end;
@@ -218,7 +221,7 @@ void CySolverBase::take_step()
 
             // Save data
             printf("DEBUG Point 10-INNER:: Saving Data\n");
-            this->storage_ptr->save_data(this->t_now, this->y_now_ptr, this->dy_now_ptr);
+            this->storage_ptr->save_data(this->t_now_ptr[0], this->y_now_ptr, this->dy_now_ptr);
             printf("DEBUG Point 10-INNER:: Saving Data DONE\n");
         }
     }
@@ -313,6 +316,7 @@ void Py_XINCREF(PyObject* x)
 void CySolverBase::set_cython_extension_instance(PyObject* cython_extension_class_instance)
 {
     this->use_pysolver = true;
+    printf("--> DEBUG:: diffeq ptr (inside set_cython_extenstion method ) %p\n", cython_extension_class_instance);
     if (cython_extension_class_instance)
     {
         this->cython_extension_class_instance = cython_extension_class_instance;
@@ -333,6 +337,8 @@ void CySolverBase::py_diffeq()
 {
     // Call the differential equation in python space. Note that the optional arguments are handled by the python 
     // wrapper class. `this->args_ptr` is not used.
+    printf("--> DEBUG:: diffeq ptr (inside py_diffeq method ) %p\n", this->cython_extension_class_instance);
+
     int diffeq_status = call_diffeq_from_cython(this->cython_extension_class_instance);
 
     if (diffeq_status < 0)

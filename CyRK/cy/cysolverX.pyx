@@ -71,16 +71,17 @@ cdef class WrapPyDiffeq:
         self.y_now_arr   = np.empty(self.num_y, dtype=np.float64, order='C')
         self.y_now_view  = self.y_now_arr
     
-    cdef void set_state(self, double* dy_ptr, double* t_ptr, double* y_ptr) noexcept nogil:
+    cdef void set_state(self, double* dy_ptr, double* t_ptr, double* y_ptr):
         self.dy_now_ptr = dy_ptr
         self.t_now_ptr  = t_ptr
         self.y_now_ptr  = y_ptr
 
     def diffeq(self):
         # Copy over pointer values to python-safe arrays
+        printf("\t\tPYDIFFEQ t NOW = %e\n", self.t_now_ptr[0])
         cdef unsigned int y_i
         for y_i in range(self.num_y):
-            printf("PYDIFFEQ Y NOW at %d = %e\n", y_i, self.y_now_ptr[y_i])
+            printf("\t\tPYDIFFEQ Y NOW at %d = %e\n", y_i, self.y_now_ptr[y_i])
             self.y_now_view[y_i] = self.y_now_ptr[y_i]
         
         # Run python diffeq
@@ -94,10 +95,11 @@ cdef class WrapPyDiffeq:
         # Note that num_dy may be larger than num_y if the user is capturing extra output during integration.
         # TODO: Could we just have the pointer point to this memory view? Perhaps if we stored the view as a self.? Or will it dealloc as soon as we leave the scope of the diffeq?
         # TODO: Also maybe a memcpy would work here too.
+        printf("\t\tPYDIFFEQ LOOPING DY for %d\n", self.num_dy)
         for y_i in range(self.num_dy):
-            printf("PYDIFFEQ DY PRE at %d = %e\n", y_i, self.dy_now_ptr[y_i])
+            printf("\t\tPYDIFFEQ DY PRE at %d = %e\n", y_i, self.dy_now_ptr[y_i])
             self.dy_now_ptr[y_i] = dy_view[y_i]
-            printf("PYDIFFEQ DY POST at %d = %e\n", y_i, self.dy_now_ptr[y_i])
+            printf("\t\tPYDIFFEQ DY POST at %d = %e\n", y_i, self.dy_now_ptr[y_i])
 
         return 1
 
@@ -226,6 +228,8 @@ def pysolve_ivp(
     cdef DiffeqFuncType diffeq_ptr = NULL
     cdef double* args_ptr          = NULL
 
+    printf("--> DEBUG:: diffeq ptr %p\n", <cpy_ref.PyObject*>diffeq_wrap)
+
     printf("DEBUG Point 7\n")
     cdef PySolver solver = PySolver(
             integration_method,
@@ -259,7 +263,13 @@ def pysolve_ivp(
         state_pointers.t_now_ptr,
         state_pointers.y_now_ptr
         )
+    
+    
+    printf("POINTERS %p %p %p\n", state_pointers.dy_now_ptr, state_pointers.t_now_ptr, state_pointers.y_now_ptr)
 
+    printf("\t\tVALUES (t) %e\n", state_pointers.t_now_ptr[0])
+    printf("\t\tVALUES (dy) %e %e\n", state_pointers.dy_now_ptr[0], state_pointers.dy_now_ptr[1])
+    printf("\t\tVALUES (y) %e %e\n", state_pointers.y_now_ptr[0], state_pointers.y_now_ptr[1])
     ##
     # Run the integrator!
     ##

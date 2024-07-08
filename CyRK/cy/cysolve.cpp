@@ -1,5 +1,5 @@
 #include "cysolve.hpp"
-
+#include <cstdio>
 
 /* Pure C++ / Cython solvers and helpers */
 template <typename IntegratorType>
@@ -177,6 +177,8 @@ PySolver::PySolver(
         integration_method(integration_method)
 
 {   
+    printf("--> DEBUG:: diffeq ptr (inside PySolver init method ) %p\n", cython_extension_class_instance);
+
     // Save reference to solution pointer
     this->solution_ptr = solution_ptr;
 
@@ -257,7 +259,7 @@ PySolver::PySolver(
     this->solver->set_cython_extension_instance(cython_extension_class_instance);
 
     // Install solver's state pointers
-    this->state_pointers = PySolverStatePointers(this->solver->dy_now_ptr, &this->solver->t_now, this->solver->y_now_ptr);
+    this->state_pointers = PySolverStatePointers(this->solver->dy_now_ptr, this->solver->t_now_ptr, this->solver->y_now_ptr);
     
 };
 
@@ -271,7 +273,10 @@ PySolverStatePointers PySolver::get_state_pointers() const
 void PySolver::solve()
 {
     // Run integrator
-    this->solver->solve();
+    if (this->solver)
+    {
+        this->solver->solve();
+    }
 
     // Finalize solution storage
     this->solution_ptr->finalize();

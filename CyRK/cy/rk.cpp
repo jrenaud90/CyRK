@@ -200,21 +200,21 @@ void RKSolver::p_step_implementation()
         double t_delta_check;
         if (this->direction_flag) {
             this->step    = this->step_size;
-            this->t_now   = this->t_old + this->step;
-            t_delta_check = this->t_now - this->t_end;
+            this->t_now_ptr[0]   = this->t_old + this->step;
+            t_delta_check = this->t_now_ptr[0] - this->t_end;
         }
         else {
             this->step    = -this->step_size;
-            this->t_now   = this->t_old + this->step;
-            t_delta_check = this->t_end - this->t_now;
+            this->t_now_ptr[0]   = this->t_old + this->step;
+            t_delta_check = this->t_end - this->t_now_ptr[0];
         }
 
         // Check that we are not at the end of integration with that move
         if (t_delta_check > 0.0) {
-            this->t_now = this->t_end;
+            this->t_now_ptr[0] = this->t_end;
 
             // If we are, correct the step so that it just hits the end of integration.
-            this->step = this->t_now - this->t_old;
+            this->step = this->t_now_ptr[0] - this->t_old;
             if (this->direction_flag) {
                 this->step_size = this->step;
             }
@@ -227,11 +227,11 @@ void RKSolver::p_step_implementation()
 
         // t_now must be updated for each loop of s in order to make the diffeq method calls.
         // But we need to return to its original value later on. Store in temp variable.
-        const double time_tmp = this->t_now;
+        const double time_tmp = this->t_now_ptr[0];
 
         for (unsigned int s = 1; s < this->len_C; s++) {
             // Find the current time based on the old time and the step size.
-            this->t_now = this->t_old + this->C_ptr[s] * this->step;
+            this->t_now_ptr[0] = this->t_old + this->C_ptr[s] * this->step;
             const unsigned int stride_A = s * this->len_Acols;
 
             for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
@@ -434,7 +434,7 @@ void RKSolver::p_step_implementation()
         }
 
         // Restore t_now to its previous value.
-        this->t_now = time_tmp;
+        this->t_now_ptr[0] = time_tmp;
 
         // Dot Product (K, B) * step
         for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
@@ -545,7 +545,7 @@ void RKSolver::p_step_implementation()
 
     // End of RK step. 
     // Update "old" pointers
-    this->t_old = this->t_now;
+    this->t_old = this->t_now_ptr[0];
     std::memcpy(this->y_old_ptr, this->y_now_ptr, sizeof(double) * this->num_y);
     std::memcpy(this->dy_old_ptr, this->dy_now_ptr, sizeof(double) * this->num_dy);
 }
@@ -630,7 +630,7 @@ void RKSolver::calc_first_step_size()
 
         h0_direction = this->direction_flag ? h0 : -h0;
 
-        this->t_now = this->t_old + h0_direction;
+        this->t_now_ptr[0] = this->t_old + h0_direction;
         for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
         {
             this->y_now_ptr[y_i] = this->y_old_ptr[y_i] + h0_direction * this->dy_old_ptr[y_i];

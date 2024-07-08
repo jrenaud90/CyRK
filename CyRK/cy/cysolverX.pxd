@@ -7,12 +7,12 @@ from CyRK.utils.vector cimport vector
 from CyRK.utils.memory cimport shared_ptr, make_shared
 
 
-ctypedef void (*DiffeqFuncType)(double*, double, double*, double*) noexcept nogil
+ctypedef void (*DiffeqFuncType)(double*, double, double*, double*)
 
 # =====================================================================================================================
 # Import common functions and constants
 # =====================================================================================================================
-cdef extern from "common.cpp" nogil:
+cdef extern from "common.cpp":
     const double INF
     const double EPS_100
     const unsigned int Y_LIMIT
@@ -28,7 +28,7 @@ cdef extern from "common.cpp" nogil:
 # =====================================================================================================================
 # Import CySolverResult (container for integration results)
 # =====================================================================================================================
-cdef extern from "cysolution.cpp" nogil:
+cdef extern from "cysolution.cpp":
     cdef cppclass CySolverResult:
             CySolverResult()
             CySolverResult(size_t num_y, size_t num_extra, size_t expected_size)
@@ -65,7 +65,7 @@ cdef class WrapCySolverResult:
 # =====================================================================================================================
 # Import CySolver Integrator Base Class
 # =====================================================================================================================
-cdef extern from "cysolver.cpp" nogil:
+cdef extern from "cysolver.cpp":
     cdef cppclass CySolverBase:
         CySolverBase()
         CySolverBase(
@@ -118,12 +118,12 @@ cdef class WrapPyDiffeq:
         double* dy_ptr,
         double* t_ptr,
         double* y_ptr
-        ) noexcept nogil
+        )
 
 # =====================================================================================================================
 # Import CySolver Runge-Kutta Integrators
 # =====================================================================================================================
-cdef extern from "rk.cpp" nogil:
+cdef extern from "rk.cpp":
     cdef cppclass RKSolver(CySolverBase):
         RKSolver()
         RKSolver(
@@ -209,16 +209,10 @@ cdef extern from "rk.cpp" nogil:
         )
 
 
-# Make fused type of all integrators
-ctypedef fused KnownIntegrators:
-    RK23
-    RK45
-    DOP853
-
 # =====================================================================================================================
 # Import the C++ cysolve_ivp helper function
 # =====================================================================================================================
-cdef extern from "cysolve.cpp" nogil:
+cdef extern from "cysolve.cpp":
     # Pure C++ and Cython implementation
     cdef shared_ptr[CySolverResult] cysolve_ivp(
             DiffeqFuncType diffeq_ptr,
