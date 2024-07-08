@@ -24,7 +24,7 @@ class CySolverBase {
 
 // Methods
 protected:
-    virtual void p_estimate_error() { };
+    virtual void p_estimate_error();
     virtual void p_step_implementation();
 
 public:
@@ -49,7 +49,7 @@ public:
     void diffeq();
     void take_step();
     void change_storage(std::shared_ptr<CySolverResult> new_storage_ptr, bool auto_reset = true);
-    virtual void calc_first_step_size() { };
+    virtual void calc_first_step_size();
 
     // PySolver methods
     void set_cython_extension_instance(PyObject* cython_extension_class_instance);

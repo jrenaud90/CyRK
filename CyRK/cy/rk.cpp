@@ -93,7 +93,7 @@ RKSolver::~RKSolver()
 
 
 // Protected Methods
-inline void RKSolver::p_estimate_error()
+void RKSolver::p_estimate_error()
 {
     // Initialize rtol and atol
     double rtol = this->rtols_ptr[0];
@@ -718,7 +718,6 @@ void RK45::reset()
     this->len_C     = RK45_len_C;
     this->error_estimator_order = RK45_error_estimator_order;
     this->error_exponent = RK45_error_exponent;
-
 
     RKSolver::reset();
 }

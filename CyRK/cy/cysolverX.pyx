@@ -2,7 +2,6 @@
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 
 import numpy as np
-from libc.stdio cimport printf
 
 # =====================================================================================================================
 # Import CySolverResult (container for integration results)
@@ -78,10 +77,8 @@ cdef class WrapPyDiffeq:
 
     def diffeq(self):
         # Copy over pointer values to python-safe arrays
-        printf("\t\tPYDIFFEQ t NOW = %e\n", self.t_now_ptr[0])
         cdef unsigned int y_i
         for y_i in range(self.num_y):
-            printf("\t\tPYDIFFEQ Y NOW at %d = %e\n", y_i, self.y_now_ptr[y_i])
             self.y_now_view[y_i] = self.y_now_ptr[y_i]
         
         # Run python diffeq
@@ -95,11 +92,8 @@ cdef class WrapPyDiffeq:
         # Note that num_dy may be larger than num_y if the user is capturing extra output during integration.
         # TODO: Could we just have the pointer point to this memory view? Perhaps if we stored the view as a self.? Or will it dealloc as soon as we leave the scope of the diffeq?
         # TODO: Also maybe a memcpy would work here too.
-        printf("\t\tPYDIFFEQ LOOPING DY for %d\n", self.num_dy)
         for y_i in range(self.num_dy):
-            printf("\t\tPYDIFFEQ DY PRE at %d = %e\n", y_i, self.dy_now_ptr[y_i])
             self.dy_now_ptr[y_i] = dy_view[y_i]
-            printf("\t\tPYDIFFEQ DY POST at %d = %e\n", y_i, self.dy_now_ptr[y_i])
 
         return 1
 
@@ -125,7 +119,6 @@ def pysolve_ivp(
         size_t max_ram_MB = 2000
         ):
 
-    printf("DEBUG Point 1\n")
     # Parse method
     method = method.lower()
     cdef unsigned int integration_method = 1
@@ -141,14 +134,13 @@ def pysolve_ivp(
             f"Supported methods are: RK23, RK45, DOP853."
             )
     
-    printf("DEBUG Point 2\n")
     # Parse time_span
     cdef double t_start = time_span[0]
     cdef double t_end   = time_span[1]
 
     # Parse y0
     cdef unsigned int num_y = len(y0)
-    cdef double* y0_ptr = &y0[0]
+    cdef double* y0_ptr     = &y0[0]
     if num_y > Y_LIMIT:
         raise AttributeError(
             f"CyRK only supports a maximum number of {Y_LIMIT} dependent variables. {num_y} were provided."
@@ -169,9 +161,7 @@ def pysolve_ivp(
             )
     cdef unsigned int num_dy = num_y + num_extra
     
-    printf("DEBUG Point 3\n")
     # Parse rtol
-    cdef cpp_bool use_rtol_array = False
     cdef double* rtols_ptr = NULL
     cdef double[::1] rtols_view
     cdef double rtol_float = 0.0
@@ -182,7 +172,6 @@ def pysolve_ivp(
         rtols_ptr = &rtols_view[0]
     
     # Parse atol
-    cdef cpp_bool use_atol_array = False
     cdef double* atols_ptr = NULL
     cdef double[::1] atols_view
     cdef double atol_float = 0.0
@@ -192,7 +181,6 @@ def pysolve_ivp(
         atols_view = np.asarray(atol, dtype=np.float64, order='C')
         atols_ptr = &atols_view[0]
     
-    printf("DEBUG Point 4\n")
     # Parse expected size
     cdef double expected_size_touse = expected_size
     cdef double rtol_tmp
@@ -214,24 +202,22 @@ def pysolve_ivp(
         expected_size_touse = find_expected_size(num_y, num_extra, fabs(t_end - t_start), min_rtol)
 
     # Build solution storage
-    printf("DEBUG Point 5\n")
     cdef shared_ptr[CySolverResult] result_ptr = make_shared[CySolverResult](num_y, num_extra, expected_size)
 
     # Build diffeq wrapper
-    printf("DEBUG Point 6\n")
     cdef WrapPyDiffeq diffeq_wrap = WrapPyDiffeq(py_diffeq, args, num_y, num_dy)
+
 
     # Finally we can actually run the integrator!
     # The following effectively copies the functionality of cysolve_ivp. We can not directly use that function
     # because we need to tie in the python-based diffeq function (via its wrapper)
+    
     # Build null pointers to unused arguments
-    cdef DiffeqFuncType diffeq_ptr = NULL
-    cdef double* args_ptr          = NULL
+    cdef double* args_ptr = NULL
 
-    printf("--> DEBUG:: diffeq ptr %p\n", <cpy_ref.PyObject*>diffeq_wrap)
-
-    printf("DEBUG Point 7\n")
-    cdef PySolver solver = PySolver(
+    # We need to heap allocate the PySolver class instance otherwise it can get garbage collected while the solver
+    # is running.
+    cdef PySolver* solver = new PySolver(
             integration_method,
             <cpy_ref.PyObject*>diffeq_wrap,
             result_ptr,
@@ -243,44 +229,31 @@ def pysolve_ivp(
             args_ptr,
             max_num_steps,
             max_ram_MB,
-            rtol,
-            atol,
+            rtol_float,
+            atol_float,
             rtols_ptr,
             atols_ptr,
             max_step,
             first_step
         )
-    printf("DEBUG Point 7b\n")
 
-    # Get state pointers
-    printf("DEBUG Point 8\n")
+    # Get pointers to the solver's state variables so that the Python differential equation can use and update them.
     cdef PySolverStatePointers state_pointers = solver.get_state_pointers()
-
-    # Tell the diffeq wrapper class where to find the solver's state attributes
-    printf("DEBUG Point 9\n")
     diffeq_wrap.set_state(
         state_pointers.dy_now_ptr,
         state_pointers.t_now_ptr,
         state_pointers.y_now_ptr
         )
     
-    
-    printf("POINTERS %p %p %p\n", state_pointers.dy_now_ptr, state_pointers.t_now_ptr, state_pointers.y_now_ptr)
-
-    printf("\t\tVALUES (t) %e\n", state_pointers.t_now_ptr[0])
-    printf("\t\tVALUES (dy) %e %e\n", state_pointers.dy_now_ptr[0], state_pointers.dy_now_ptr[1])
-    printf("\t\tVALUES (y) %e %e\n", state_pointers.y_now_ptr[0], state_pointers.y_now_ptr[1])
     ##
     # Run the integrator!
     ##
-    printf("DEBUG Point 10\n")
     solver.solve()
     
     # Wrap the solution in a python-safe wrapper class
-    printf("DEBUG Point 11\n")
     cdef WrapCySolverResult pyresult = WrapCySolverResult()
-    printf("DEBUG Point 12\n")
     pyresult.set_cyresult_pointer(result_ptr)
-    printf("DEBUG Point 13\n")
+
+    del solver
 
     return pyresult

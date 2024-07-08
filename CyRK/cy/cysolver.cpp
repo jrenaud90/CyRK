@@ -1,7 +1,5 @@
 #include "cysolver.hpp"
 
-#include <cstdio>
-
 // Constructors
 CySolverBase::CySolverBase() {}
 CySolverBase::CySolverBase(
@@ -88,18 +86,27 @@ CySolverBase::CySolverBase(
 // Destructors
 CySolverBase::~CySolverBase()
 {
-    //this->storage_ptr = nullptr;
+    this->storage_ptr = nullptr;
 }
 
 
 // Protected methods
+void CySolverBase::p_estimate_error()
+{
+    // Overwritten by subclasses.
+}
+
 void CySolverBase::p_step_implementation()
 {
     // Overwritten by subclasses.
 }
 
-
 // Public methods
+void CySolverBase::calc_first_step_size()
+{
+    // Overwritten by subclasses.
+}
+
 bool CySolverBase::check_status() const
 {
     // If the solver is not in state 0 then that is an automatic rejection.
@@ -123,21 +130,16 @@ bool CySolverBase::check_status() const
 
 void CySolverBase::diffeq()
 {
-    printf("\tCySOLVER Diffeq Called\n");
     // Should we call the c function or the python one?
     if (this->use_pysolver)
     {
         // Call cython-wrapped python function
-        printf("\tDEBUG Point 10-INNER:: Calling PyDiffeq\n");
         this->py_diffeq();
-        printf("\tDEBUG Point 10-INNER:: Calling PyDiffeq DONE\n");
     }
     else
     {
         // Call c function
-        printf("\tTRIED TO DO A BADDIE!\n");
-        // uncomment this later
-        // this->diffeq_ptr(this->dy_now_ptr, this->t_now_ptr[0], this->y_now_ptr, this->args_ptr);
+        this->diffeq_ptr(this->dy_now_ptr, this->t_now_ptr[0], this->y_now_ptr, this->args_ptr);
     }
 }
 
@@ -151,46 +153,33 @@ void CySolverBase::reset()
     this->t_old = this->t_start;
     this->len_t = 1;
 
-    printf("\tDEBUG Point 10-INNER:: RESET CK1\n");
     // Reset ys
     std::memcpy(this->y_now_ptr, this->y0_ptr, sizeof(double) * this->num_y);
     std::memcpy(this->y_old_ptr, this->y0_ptr, sizeof(double) * this->num_y);
 
     // Call differential equation to set dy0
-    printf("\tDEBUG Point 10-INNER:: RESET CK2\n");
     this->diffeq();
-    printf("\tDEBUG Point 10-INNER:: RESET CK2b\n");
 
     // Update dys
-    printf("\tDEBUG Point 10-INNER:: RESET CK3\n");
     std::memcpy(this->dy_old_ptr, this->dy_now_ptr, sizeof(double) * this->num_y);
 
     // Initialize storage
-    printf("\tDEBUG Point 10-INNER:: RESET CK4\n");
     this->storage_ptr->reset();
-    printf("\tDEBUG Point 10-INNER:: RESET CK5\n");
     this->storage_ptr->update_message("CySolverStorage reset, ready for data.");
-    printf("\tDEBUG Point 10-INNER:: RESET CK6\n");
 
     // Store initial conditions
-    printf("\tDEBUG Point 10-INNER:: RESET CK7\n");
     this->storage_ptr->save_data(this->t_now_ptr[0], this->y_now_ptr, this->dy_now_ptr);
-    printf("\tDEBUG Point 10-INNER:: RESET CK8\n");
 
     this->reset_called = true;
 }
 
 void CySolverBase::take_step()
-{
-    printf("DEBUG Point 10-INNER:: Take Step\n");
+{    
     if (!this->reset_called)
     {
         // Reset must be called first.
-        printf("DEBUG Point 10-INNER:: Calling Reset\n");
         this->reset();
-        printf("DEBUG Point 10-INNER:: Calling Reset DONE\n");
     }
-
     if (this->status == 0)
     {
         if (this->t_now_ptr[0] == this->t_end)
@@ -214,15 +203,11 @@ void CySolverBase::take_step()
         else
         {
             // ** Make call to solver's step implementation **
-            printf("DEBUG Point 10-INNER:: Taking Step\n");
             this->p_step_implementation();
-            printf("DEBUG Point 10-INNER:: Taking Step DONE\n");
             this->len_t++;
 
             // Save data
-            printf("DEBUG Point 10-INNER:: Saving Data\n");
             this->storage_ptr->save_data(this->t_now_ptr[0], this->y_now_ptr, this->dy_now_ptr);
-            printf("DEBUG Point 10-INNER:: Saving Data DONE\n");
         }
     }
 
@@ -316,7 +301,6 @@ void Py_XINCREF(PyObject* x)
 void CySolverBase::set_cython_extension_instance(PyObject* cython_extension_class_instance)
 {
     this->use_pysolver = true;
-    printf("--> DEBUG:: diffeq ptr (inside set_cython_extenstion method ) %p\n", cython_extension_class_instance);
     if (cython_extension_class_instance)
     {
         this->cython_extension_class_instance = cython_extension_class_instance;
@@ -328,6 +312,7 @@ void CySolverBase::set_cython_extension_instance(PyObject* cython_extension_clas
         }
         else
         {
+            // TODO: Do we need to decref this at some point? During CySolver's deconstruction?
             Py_XINCREF(this->cython_extension_class_instance);
         }
     }
@@ -337,8 +322,6 @@ void CySolverBase::py_diffeq()
 {
     // Call the differential equation in python space. Note that the optional arguments are handled by the python 
     // wrapper class. `this->args_ptr` is not used.
-    printf("--> DEBUG:: diffeq ptr (inside py_diffeq method ) %p\n", this->cython_extension_class_instance);
-
     int diffeq_status = call_diffeq_from_cython(this->cython_extension_class_instance);
 
     if (diffeq_status < 0)

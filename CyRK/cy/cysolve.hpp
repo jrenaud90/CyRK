@@ -66,10 +66,16 @@ struct PySolverStatePointers
 class PySolver
 {
 public:
-    CySolverBase* solver;
-    std::shared_ptr<CySolverResult> solution_ptr = std::make_shared<CySolverResult>();
+    // State information
+    int status = -999;
+
+    // Integrator information
     unsigned int integration_method = 1;
+    CySolverBase* solver = nullptr;
     PySolverStatePointers state_pointers = PySolverStatePointers();
+
+    // Solution information
+    std::shared_ptr<CySolverResult> solution_ptr = std::make_shared<CySolverResult>();
 
 public:
     PySolver();

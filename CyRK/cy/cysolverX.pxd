@@ -144,6 +144,11 @@ cdef extern from "rk.cpp":
             const double max_step_size,
             const double first_step_size
         )
+        void p_step_implementation()
+        void p_estimate_error()
+        void reset()
+        void calc_first_step_size()
+
     
     cdef cppclass RK23(RKSolver):
         RK23()
@@ -165,6 +170,7 @@ cdef extern from "rk.cpp":
             const double max_step_size,
             const double first_step_size
         )
+        void reset()
     
     cdef cppclass RK45(RKSolver):
         RK45()
@@ -186,6 +192,7 @@ cdef extern from "rk.cpp":
             const double max_step_size,
             const double first_step_size
         )
+        void reset()
     
     cdef cppclass DOP853(RKSolver):
         DOP853()
@@ -207,6 +214,7 @@ cdef extern from "rk.cpp":
             const double max_step_size,
             const double first_step_size
         )
+        void reset()
 
 
 # =====================================================================================================================

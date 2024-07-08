@@ -1,5 +1,4 @@
 #include "cysolve.hpp"
-#include <cstdio>
 
 /* Pure C++ / Cython solvers and helpers */
 template <typename IntegratorType>
@@ -174,23 +173,23 @@ PySolver::PySolver(
     const double* atols_ptr,
     const double max_step_size,
     const double first_step_size) :
+        status(0),
         integration_method(integration_method)
 
 {   
-    printf("--> DEBUG:: diffeq ptr (inside PySolver init method ) %p\n", cython_extension_class_instance);
-
     // Save reference to solution pointer
     this->solution_ptr = solution_ptr;
 
-    // Need a fake diffeq pointer (this is unused in python-based solver
+    // We need to pass a fake diffeq pointer (diffeq ptr is unused in python-based solver)
     DiffeqFuncType diffeq_ptr = nullptr;
-    
 
+    // Build the solver class. This must be heap allocated to take advantage of polymorphism.
     switch (this->integration_method)
     {
     case 0:
         // RK23
-        this->solver = new RK23(diffeq_ptr,
+        this->solver = new RK23(
+            diffeq_ptr,
             solution_ptr,
             t_start,
             t_end,
@@ -211,7 +210,8 @@ PySolver::PySolver(
         break;
     case 1:
         // RK45
-        this->solver = new RK45(diffeq_ptr,
+        this->solver = new RK45(
+            diffeq_ptr,
             solution_ptr,
             t_start,
             t_end,
@@ -232,7 +232,8 @@ PySolver::PySolver(
         break;
     case 2:
         // DOP853
-        this->solver = new DOP853(diffeq_ptr,
+        this->solver = new DOP853(
+            diffeq_ptr,
             solution_ptr,
             t_start,
             t_end,
@@ -252,20 +253,30 @@ PySolver::PySolver(
             first_step_size);
         break;
     default:
+        this->status = -1;
         break;
     }
 
-    // Add in python hooks
-    this->solver->set_cython_extension_instance(cython_extension_class_instance);
+    if (this->solver)
+    {
+        // Add in python hooks
+        this->solver->set_cython_extension_instance(cython_extension_class_instance);
 
-    // Install solver's state pointers
-    this->state_pointers = PySolverStatePointers(this->solver->dy_now_ptr, this->solver->t_now_ptr, this->solver->y_now_ptr);
-    
+        // Install solver's state pointers
+        this->state_pointers = PySolverStatePointers(
+            this->solver->dy_now_ptr,
+            this->solver->t_now_ptr,
+            this->solver->y_now_ptr);
+    }
 };
 
 
 PySolverStatePointers PySolver::get_state_pointers() const
 {
+    /*
+    The differential equation is called from the python side but it must use and update state pointers in the
+    CySolver class instance. This function returns all required pointers so Python can properly use and update them.
+    */
     return this->state_pointers;
 }
 

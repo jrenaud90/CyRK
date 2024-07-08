@@ -1,6 +1,6 @@
 [project]
 name='CyRK'
-version = '0.10.0a3.dev12'
+version = '0.10.0a3.dev14'
 description='Runge-Kutta ODE Integrator Implemented in Cython and Numba.'
 authors= [
     {name = 'Joe P. Renaud', email = 'joe.p.renaud@gmail.com'}
@@ -33,6 +33,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: Implementation :: CPython",
     "Natural Language :: English",
     "Intended Audience :: Science/Research",
