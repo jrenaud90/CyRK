@@ -14,3 +14,6 @@ from .helper import nb2cy, cy2nb
 
 # Import test functions
 from ._test import test_cyrk, test_nbrk, test_cysolver
+
+# Import python solver
+from CyRK.cy.cysolverNew import pysolve_ivp

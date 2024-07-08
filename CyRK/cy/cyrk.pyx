@@ -13,6 +13,7 @@ from CyRK.rk.rk cimport find_rk_properties
 from CyRK.cy.common cimport double_numeric, interpolate, SAFETY, MIN_FACTOR, MAX_FACTOR, MAX_STEP, INF, \
     EPS_100, find_expected_size, find_max_num_steps
 
+import warnings
 
 cdef double cabs(
         double complex value
@@ -81,7 +82,8 @@ def cyrk_ode(
         bint interpolate_extra = False,
         size_t expected_size = 0,
         size_t max_num_steps = 0,
-        size_t max_ram_MB = 2000
+        size_t max_ram_MB = 2000,
+        bint raise_warnings = True
         ):
     """
     cyrk_ode: A Runge-Kutta Solver Implemented in Cython.
@@ -166,6 +168,13 @@ def cyrk_ode(
     message : str
         Any integration messages, useful if success=False.
     """
+
+    if raise_warnings:
+        warnings.warn(
+            "`cyrk_ode` method is now deprecated it will be removed in the next major update of CyRK. "
+            "Please see the documentation on the new `pysolve_ivp` function which acts as its replacement.",
+            DeprecationWarning
+            )
 
     # Setup loop variables
     cdef size_t s, i, j

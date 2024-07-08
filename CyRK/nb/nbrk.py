@@ -99,7 +99,8 @@ def nbrk_ode(
         t_eval: np.ndarray = EMPTY_ARR,
         capture_extra: bool = False,
         interpolate_extra: bool = False,
-        max_num_steps: int = 0
+        max_num_steps: int = 0,
+        raise_warnings: bool = True
         ):
     """ A Numba-safe Runge-Kutta Integrator based on Scipy's solve_ivp RK integrator.
 
@@ -164,6 +165,12 @@ def nbrk_ode(
         Any integration messages, useful if success=False.
 
     """
+
+    if raise_warnings:
+        print(
+            "`nbrk_ode` method is now deprecated it will be removed in the next major update of CyRK. "
+            "Please see the documentation on the new `nbsolve_ivp` function which acts as its replacement."
+            )
 
     # Clean up and interpret inputs
     t_start = t_span[0]

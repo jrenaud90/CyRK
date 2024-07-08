@@ -55,16 +55,16 @@
     "compile_args": [],
     "link_args": []
   },
-  "cysolverX": {
-    "name": "CyRK.cy.cysolverX",
-    "sources": [["CyRK", "cy", "cysolverX.pyx"]],
+  "cysolverNew": {
+    "name": "CyRK.cy.cysolverNew",
+    "sources": [["CyRK", "cy", "cysolverNew.pyx"]],
     "include_dirs": [["CyRK", "cy"]],
     "compile_args": [],
     "link_args": []
   },
-  "cydiffeqs": {
-    "name": "CyRK.cy.diffeqs",
-    "sources": [["CyRK", "cy", "diffeqs.pyx"]],
+  "cysolverNew_test": {
+    "name": "CyRK.cy.cysolverNew_test",
+    "sources": [["CyRK", "cy", "cysolverNew_test.pyx"]],
     "include_dirs": [["CyRK", "cy"]],
     "compile_args": [],
     "link_args": []

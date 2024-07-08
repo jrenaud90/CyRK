@@ -15,6 +15,8 @@ from CyRK.rk.rk cimport find_rk_properties
 from CyRK.cy.common cimport interpolate, SAFETY, MIN_FACTOR, MAX_FACTOR, MAX_STEP, INF, EPS_100, \
     find_expected_size, find_max_num_steps
 
+import warnings
+
 cdef (double, double) EMPTY_T_SPAN = (NAN, NAN)
 
 
@@ -239,7 +241,8 @@ cdef class CySolver:
             size_t max_ram_MB = 2000,
             bint call_first_reset = True,
             bint auto_solve = True,
-            bint force_fail = False):
+            bint force_fail = False,
+            bint raise_warnings = True):
         """
         Initialize new CySolver instance.
 
@@ -311,6 +314,13 @@ cdef class CySolver:
             Otherwise, the user will have to call `solver_instance = CySolver(...); solver_instance.solve()`
             to perform integration.
         """
+
+        if raise_warnings:
+            warnings.warn(
+                "CySolver method is now deprecated it will be removed in the next major update of CyRK. "
+                "Please see the documentation on the new `cysolve_ivp` function which acts as its replacement.",
+                DeprecationWarning
+                )
 
         # Initialize all class pointers to null
         self.rtols_ptr = NULL

@@ -37,7 +37,7 @@ void find_cysolver_and_solve(
     solution_ptr->finalize();
 }
 
-std::shared_ptr<CySolverResult> cysolve_ivp(
+std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
     DiffeqFuncType diffeq_ptr,
     const double* t_span_ptr,
     const double* y0_ptr,

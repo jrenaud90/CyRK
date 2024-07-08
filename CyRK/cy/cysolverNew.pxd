@@ -7,16 +7,17 @@ from CyRK.utils.vector cimport vector
 from CyRK.utils.memory cimport shared_ptr, make_shared
 
 
-ctypedef void (*DiffeqFuncType)(double*, double, double*, double*)
-
 # =====================================================================================================================
 # Import common functions and constants
 # =====================================================================================================================
-cdef extern from "common.cpp":
+cdef extern from "common.cpp" nogil:
     const double INF
     const double EPS_100
     const unsigned int Y_LIMIT
     const unsigned int DY_LIMIT
+    const double MAX_STEP
+
+    ctypedef void (*DiffeqFuncType)(double*, double, double*, double*)
 
     cdef size_t find_expected_size(        
         int num_y,
@@ -28,7 +29,7 @@ cdef extern from "common.cpp":
 # =====================================================================================================================
 # Import CySolverResult (container for integration results)
 # =====================================================================================================================
-cdef extern from "cysolution.cpp":
+cdef extern from "cysolution.cpp" nogil:
     cdef cppclass CySolverResult:
             CySolverResult()
             CySolverResult(size_t num_y, size_t num_extra, size_t expected_size)
@@ -65,7 +66,7 @@ cdef class WrapCySolverResult:
 # =====================================================================================================================
 # Import CySolver Integrator Base Class
 # =====================================================================================================================
-cdef extern from "cysolver.cpp":
+cdef extern from "cysolver.cpp" nogil:
     cdef cppclass CySolverBase:
         CySolverBase()
         CySolverBase(
@@ -118,12 +119,12 @@ cdef class WrapPyDiffeq:
         double* dy_ptr,
         double* t_ptr,
         double* y_ptr
-        )
+        ) noexcept nogil
 
 # =====================================================================================================================
 # Import CySolver Runge-Kutta Integrators
 # =====================================================================================================================
-cdef extern from "rk.cpp":
+cdef extern from "rk.cpp" nogil:
     cdef cppclass RKSolver(CySolverBase):
         RKSolver()
         RKSolver(
@@ -220,9 +221,9 @@ cdef extern from "rk.cpp":
 # =====================================================================================================================
 # Import the C++ cysolve_ivp helper function
 # =====================================================================================================================
-cdef extern from "cysolve.cpp":
+cdef extern from "cysolve.cpp" nogil:
     # Pure C++ and Cython implementation
-    cdef shared_ptr[CySolverResult] cysolve_ivp(
+    cdef shared_ptr[CySolverResult] baseline_cysolve_ivp(
             DiffeqFuncType diffeq_ptr,
             const double* t_span_ptr,
             const double* y0_ptr,
@@ -270,5 +271,25 @@ cdef extern from "cysolve.cpp":
         PySolverStatePointers get_state_pointers()
         void solve()
 
-# TODO List:
-# Assume that cysolve_ivp does not carry its default argument values once wrapped by cython. Do we need to wrap in an actual cython func to perserve those?
+
+# =====================================================================================================================
+# Cython-based wrapper for baseline_cysolve_ivp that carries default values.
+# =====================================================================================================================
+cdef shared_ptr[CySolverResult] cysolve_ivp(
+    DiffeqFuncType diffeq_ptr,
+    double* t_span_ptr,
+    double* y0_ptr,
+    size_t num_y,
+    int method = *,
+    size_t expected_size = *,
+    size_t num_extra = *,
+    double* args_ptr = *,
+    size_t max_num_steps = *,
+    size_t max_ram_MB = *,
+    double rtol = *,
+    double atol = *,
+    double* rtols_ptr = *,
+    double* atols_ptr = *,
+    double max_step_size = *,
+    double first_step_size = *
+    ) noexcept nogil

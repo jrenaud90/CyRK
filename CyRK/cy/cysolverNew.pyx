@@ -43,6 +43,48 @@ cdef class WrapCySolverResult:
         return self.size
 
 # =====================================================================================================================
+# Create Wrapped cysolve_ivp (has various defaults)
+# =====================================================================================================================
+
+cdef shared_ptr[CySolverResult] cysolve_ivp(
+            DiffeqFuncType diffeq_ptr,
+            double* t_span_ptr,
+            double* y0_ptr,
+            size_t num_y,
+            int method = 1,
+            size_t expected_size = 0,
+            size_t num_extra = 0,
+            double* args_ptr = NULL,
+            size_t max_num_steps = 0,
+            size_t max_ram_MB = 2000,
+            double rtol = 1.0e-3,
+            double atol = 1.0e-6,
+            double* rtols_ptr = NULL,
+            double* atols_ptr = NULL,
+            double max_step_size = MAX_STEP,
+            double first_step_size = 0.0
+            ) noexcept nogil:
+
+    return baseline_cysolve_ivp(
+        diffeq_ptr,
+        t_span_ptr,
+        y0_ptr,
+        num_y,
+        method,
+        expected_size,
+        num_extra,
+        args_ptr,
+        max_num_steps,
+        max_ram_MB,
+        rtol,
+        atol,
+        rtols_ptr,
+        atols_ptr,
+        max_step_size,
+        first_step_size
+        )
+
+# =====================================================================================================================
 # PySolver Class (holds the intergrator class and reference to the python diffeq function)
 # =====================================================================================================================
 cdef class WrapPyDiffeq:
@@ -70,7 +112,7 @@ cdef class WrapPyDiffeq:
         self.y_now_arr   = np.empty(self.num_y, dtype=np.float64, order='C')
         self.y_now_view  = self.y_now_arr
     
-    cdef void set_state(self, double* dy_ptr, double* t_ptr, double* y_ptr):
+    cdef void set_state(self, double* dy_ptr, double* t_ptr, double* y_ptr) noexcept nogil:
         self.dy_now_ptr = dy_ptr
         self.t_now_ptr  = t_ptr
         self.y_now_ptr  = y_ptr

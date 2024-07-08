@@ -4,8 +4,32 @@
 
 #### v0.10.0 (2024-06-17)
 
+C++ Backend:
+* This version of CyRK introduces a major rework of the backend integrator which is now written in pure C++.
+* CySolver is now a Cython wrapper to this C++ integrator which can be accessed via Python.
+  * Access this function by using `from CyRK cimport cysolve_ivp` (this must be done within Cython).
+  * The plan is to replace CyRK's older `CySolver` with this function.
+* There is now a new PySolver version of this wrapper that allows a user to pass a python function to the C++ backend.
+  * Access this function by using `from CyRK import pysolve_ivp`.
+  * This is designed as a drop-in-place replacement for SciPy's `solve_ivp`.
+  * The plan is to replace CyRK's older `cyrk_ode` with this function.
+
+Deprecating Older CyRK Methods:
+* The new C++ backend is more flexible, faster, and allows for easy additions of new features. It is common across the cython-only, python, and njit-safe numba solvers. Therefore making a change to it propagates to all three solvers - allowing for easier maintenance and new features. For these reasons, the older `cyrk_ode`, `CySolver`, and `nbrk_ode` are now marked as deprecated. No new features will be implemented for those functions and they will be removed in the next major release of CyRK.
+* Deprecated `nbrk_ode`
+* Deprecated `cyrk_ode`
+* Deprecated `CySolver`
+* Warnings will be issued if these functions are used in this release. To suppress these warnings set `raise_warnings` to False in the respective function calls.
+
 CySolver:
 * Changed error message to use a stack-allocated char-array and associated pointer.
+* Added new argument to constructor `raise_warnings` (default: True) to allow users to suppress warnings.
+
+cyrk_ode:
+* Added new argument to constructor `raise_warnings` (default: True) to allow users to suppress warnings.
+
+nbrk_ode:
+* Added new argument to constructor `raise_warnings` (default: True) to allow users to suppress warnings.
 
 Memory Management:
 * Changed exit code when memory can not be allocated.
