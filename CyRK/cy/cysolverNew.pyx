@@ -1,5 +1,4 @@
 # distutils: language = c++
-# distutils: extra_compile_args=["-std=c++11"]
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 
 import numpy as np

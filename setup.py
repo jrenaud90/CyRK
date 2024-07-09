@@ -14,7 +14,7 @@ if install_platform.lower() == 'windows':
 elif install_platform.lower() == 'darwin':
     # OpenMP is installed via llvm. See https://stackoverflow.com/questions/60005176/how-to-deal-with-clang-error-unsupported-option-fopenmp-on-travis
     os.environ["CXX"] = "g++"
-    extra_compile_args = ['-O3']
+    extra_compile_args = ['-O3', "-ld_classic"]
     extra_link_args = []
 else:
     extra_compile_args = ['-fopenmp', '-O3']
