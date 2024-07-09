@@ -116,15 +116,9 @@ cdef class WrapPyDiffeq:
         # Build python-safe arrays
         self.num_y  = num_y
         self.num_dy = num_dy
-        # self.y_now_arr     = np.empty(self.num_y, dtype=np.float64, order='C')
-        # self.y_now_view    = self.y_now_arr
-        # self.y_now_mem_ptr = &self.y_now_view[0]
 
         if pass_dy_as_arg:
             self.pass_dy_as_arg = True
-            self.dy_now_arr     = np.empty(self.num_dy, dtype=np.float64, order='C')
-            self.dy_now_view    = self.dy_now_arr
-            self.dy_now_mem_ptr = &self.dy_now_view[0]
         else:
             self.pass_dy_as_arg = False
     
@@ -153,10 +147,7 @@ cdef class WrapPyDiffeq:
             shape[0]         = <np.npy_intp>self.num_dy  # dy may have a larger shape than y
             self.dy_now_arr  = np.PyArray_SimpleNewFromData(1, shape_ptr, np.NPY_DOUBLE, self.dy_now_ptr)   
 
-    def diffeq(self):
-        # Copy over pointer values to python-safe arrays
-        # memcpy(self.y_now_mem_ptr, self.y_now_ptr, sizeof(double) * self.num_y)
-
+    cdef void diffeq(self) noexcept:
         # Run python diffeq
         if self.pass_dy_as_arg:
             if self.use_args:
@@ -170,13 +161,8 @@ cdef class WrapPyDiffeq:
                 self.dy_now_view = self.diffeq_func(self.t_now_ptr[0], self.y_now_arr)
             # Since we do not have a static dy that we can pass to the function and use in the solver we must copy over
             # the values from the newly created dy memory view
+            # Note that num_dy may be larger than num_y if the user is capturing extra output during integration.
             memcpy(self.dy_now_ptr, &self.dy_now_view[0], sizeof(double) * self.num_dy)
-        
-        # Store results in dy pointer for the integrator
-        # Note that num_dy may be larger than num_y if the user is capturing extra output during integration.
-        # memcpy(self.dy_now_ptr, self.dy_now_mem_ptr, sizeof(double) * self.num_dy)
-
-        return 1
 
 # =====================================================================================================================
 # PySolver wrapper function
@@ -264,7 +250,7 @@ def pysolve_ivp(
         atols_ptr = &atols_view[0]
     
     # Parse expected size
-    cdef double expected_size_touse = expected_size
+    cdef unsigned int expected_size_touse = expected_size
     cdef double rtol_tmp
     cdef double min_rtol = INF
     if expected_size_touse == 0:
@@ -288,7 +274,7 @@ def pysolve_ivp(
 
     # Build diffeq wrapper
     cdef WrapPyDiffeq diffeq_wrap = WrapPyDiffeq(py_diffeq, args, num_y, num_dy, pass_dy_as_arg=pass_dy_as_arg)
-
+    cdef DiffeqMethod diffeq_func = <DiffeqMethod>diffeq_wrap.diffeq
 
     # Finally we can actually run the integrator!
     # The following effectively copies the functionality of cysolve_ivp. We can not directly use that function
@@ -302,6 +288,7 @@ def pysolve_ivp(
     cdef PySolver* solver = new PySolver(
             integration_method,
             <cpy_ref.PyObject*>diffeq_wrap,
+            diffeq_func,
             result_ptr,
             t_start,
             t_end,

@@ -84,6 +84,7 @@ public:
         unsigned int integration_method,
         // Cython class instance used for pyhook
         PyObject* cython_extension_class_instance,
+        DiffeqMethod cython_extension_class_diffeq_method,
         // Regular integrator inputs
         std::shared_ptr<CySolverResult> solution_ptr,
         const double t_start,

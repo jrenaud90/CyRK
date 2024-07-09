@@ -6,6 +6,7 @@ from libcpp.cmath cimport fmin, fabs
 cimport cpython.ref as cpy_ref
 from CyRK.utils.vector cimport vector
 from CyRK.utils.memory cimport shared_ptr, make_shared
+from CyRK.cy.pysolver_cyhook cimport DiffeqMethod
 
 cimport numpy as np
 
@@ -112,10 +113,8 @@ cdef class WrapPyDiffeq:
 
     cdef np.ndarray y_now_arr
     cdef double[::1] y_now_view
-    cdef double* y_now_mem_ptr
     cdef np.ndarray dy_now_arr
     cdef double[::1] dy_now_view
-    cdef double* dy_now_mem_ptr
 
     # State attributes
     cdef double* y_now_ptr
@@ -127,6 +126,8 @@ cdef class WrapPyDiffeq:
         double* t_ptr,
         double* y_ptr
         ) noexcept
+    
+    cdef void diffeq(self) noexcept
 
 # =====================================================================================================================
 # Import CySolver Runge-Kutta Integrators
@@ -260,6 +261,7 @@ cdef extern from "cysolve.cpp" nogil:
         PySolver(
             unsigned int integration_method,
             cpy_ref.PyObject* cython_extension_class_instance,
+            DiffeqMethod cython_extension_class_diffeq_method,
             shared_ptr[CySolverResult] solution_ptr,
             const double t_start,
             const double t_end,

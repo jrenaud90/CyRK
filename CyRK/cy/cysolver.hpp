@@ -52,7 +52,7 @@ public:
     virtual void calc_first_step_size();
 
     // PySolver methods
-    void set_cython_extension_instance(PyObject* cython_extension_class_instance);
+    void set_cython_extension_instance(PyObject* cython_extension_class_instance, DiffeqMethod py_diffeq_method);
     void py_diffeq();
     void solve();
 
@@ -120,6 +120,6 @@ public:
 
     // PySolver Attributes
     bool use_pysolver = false;
+    DiffeqMethod py_diffeq_method = nullptr;
     PyObject* cython_extension_class_instance = nullptr;
-
 };

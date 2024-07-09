@@ -8,7 +8,7 @@
 #include "Python.h"
 #include "pysolver_cyhook.h"
 
-static int (*__pyx_api_f_4CyRK_2cy_15pysolver_cyhook_call_diffeq_from_cython)(PyObject *) = 0;
+static void (*__pyx_api_f_4CyRK_2cy_15pysolver_cyhook_call_diffeq_from_cython)(PyObject *, DiffeqMethod) = 0;
 #define call_diffeq_from_cython __pyx_api_f_4CyRK_2cy_15pysolver_cyhook_call_diffeq_from_cython
 #ifndef __PYX_HAVE_RT_ImportFunction_3_0_10
 #define __PYX_HAVE_RT_ImportFunction_3_0_10
@@ -52,7 +52,7 @@ static int import_CyRK__cy__pysolver_cyhook(void) {
   PyObject *module = 0;
   module = PyImport_ImportModule("CyRK.cy.pysolver_cyhook");
   if (!module) goto bad;
-  if (__Pyx_ImportFunction_3_0_10(module, "call_diffeq_from_cython", (void (**)(void))&__pyx_api_f_4CyRK_2cy_15pysolver_cyhook_call_diffeq_from_cython, "int (PyObject *)") < 0) goto bad;
+  if (__Pyx_ImportFunction_3_0_10(module, "call_diffeq_from_cython", (void (**)(void))&__pyx_api_f_4CyRK_2cy_15pysolver_cyhook_call_diffeq_from_cython, "void (PyObject *, DiffeqMethod)") < 0) goto bad;
   Py_DECREF(module); module = 0;
   return 0;
   bad:

@@ -5,6 +5,11 @@
 
 #include "Python.h"
 
+/* "CyRK/cy/pysolver_cyhook.pxd":1
+ * ctypedef public api void (*DiffeqMethod)(object py_instance) noexcept             # <<<<<<<<<<<<<<
+ */
+typedef void (*DiffeqMethod)(PyObject *);
+
 #ifndef __PYX_HAVE_API__CyRK__cy__pysolver_cyhook
 
 #ifdef CYTHON_EXTERN_C
@@ -24,7 +29,7 @@
   #define DL_IMPORT(_T) _T
 #endif
 
-__PYX_EXTERN_C int call_diffeq_from_cython(PyObject *);
+__PYX_EXTERN_C void call_diffeq_from_cython(PyObject *, DiffeqMethod);
 
 #endif /* !__PYX_HAVE_API__CyRK__cy__pysolver_cyhook */
 

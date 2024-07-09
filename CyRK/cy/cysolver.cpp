@@ -298,12 +298,13 @@ void Py_XINCREF(PyObject* x)
 }
 */
 
-void CySolverBase::set_cython_extension_instance(PyObject* cython_extension_class_instance)
+void CySolverBase::set_cython_extension_instance(PyObject* cython_extension_class_instance, DiffeqMethod py_diffeq_method)
 {
     this->use_pysolver = true;
     if (cython_extension_class_instance)
     {
         this->cython_extension_class_instance = cython_extension_class_instance;
+        this->py_diffeq_method = py_diffeq_method;
 
         // Import the cython/python module (functionality provided by "pysolver_api.h")
         if (import_CyRK__cy__pysolver_cyhook())
@@ -322,12 +323,6 @@ void CySolverBase::py_diffeq()
 {
     // Call the differential equation in python space. Note that the optional arguments are handled by the python 
     // wrapper class. `this->args_ptr` is not used.
-    int diffeq_status = call_diffeq_from_cython(this->cython_extension_class_instance);
-
-    if (diffeq_status < 0)
-    {
-        this->status = -50;
-        this->storage_ptr->error_code = -50;
-        this->storage_ptr->update_message("Error when calling cython diffeq wrapper from PySolverBase c++ class.\n");
-    }
+    call_diffeq_from_cython(this->cython_extension_class_instance, this->py_diffeq_method);
+    
 }
