@@ -3,7 +3,7 @@
 
 from cython.parallel import prange
 
-cdef void f():
+cdef void f() noexcept nogil:
     cdef int i, j, k, x
     for i in prange(100_000):
         for j in range(i):
