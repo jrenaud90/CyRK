@@ -51,10 +51,10 @@ cdef shared_ptr[CySolverResult] cysolve_ivp(
             DiffeqFuncType diffeq_ptr,
             double* t_span_ptr,
             double* y0_ptr,
-            size_t num_y,
-            int method = 1,
+            unsigned int num_y,
+            unsigned int method = 1,
             size_t expected_size = 0,
-            size_t num_extra = 0,
+            unsigned int num_extra = 0,
             double* args_ptr = NULL,
             size_t max_num_steps = 0,
             size_t max_ram_MB = 2000,
@@ -176,7 +176,7 @@ def pysolve_ivp(
         double[::1] t_eval = None,
         bint dense_output = False,
         tuple args = None,
-        unsigned int expected_size = 0,
+        size_t expected_size = 0,
         unsigned int num_extra = 0,
         double first_step = 0.0,
         double max_step = INF,
@@ -250,7 +250,7 @@ def pysolve_ivp(
         atols_ptr = &atols_view[0]
     
     # Parse expected size
-    cdef unsigned int expected_size_touse = expected_size
+    cdef size_t expected_size_touse = expected_size
     cdef double rtol_tmp
     cdef double min_rtol = INF
     if expected_size_touse == 0:
