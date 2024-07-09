@@ -9,14 +9,14 @@ import numpy as np
 install_platform = platform.system()
 
 if install_platform.lower() == 'windows':
-    extra_compile_args = ['/openmp']
+    extra_compile_args = ['/openmp', "-std=c++14"]
     extra_link_args = []
 elif install_platform.lower() == 'darwin':
     # OpenMP is installed via llvm. See https://stackoverflow.com/questions/60005176/how-to-deal-with-clang-error-unsupported-option-fopenmp-on-travis
-    extra_compile_args = ['-O3']
-    extra_link_args = []
+    extra_compile_args = ['-O3', "-std=c++14"]
+    extra_link_args = ["-Wl","-ld_classic"]
 else:
-    extra_compile_args = ['-fopenmp', '-O3']
+    extra_compile_args = ['-fopenmp', '-O3', "-std=c++14"]
     extra_link_args = ['-fopenmp', '-O3']
 macro_list = [("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")]
 
