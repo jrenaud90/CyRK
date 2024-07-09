@@ -1,3 +1,4 @@
+from libc.string cimport memcpy
 from libcpp cimport nullptr
 from libcpp cimport bool as cpp_bool
 from libcpp.cmath cimport fmin, fabs
@@ -6,6 +7,7 @@ cimport cpython.ref as cpy_ref
 from CyRK.utils.vector cimport vector
 from CyRK.utils.memory cimport shared_ptr, make_shared
 
+cimport numpy as cnp
 
 # =====================================================================================================================
 # Import common functions and constants
@@ -103,12 +105,17 @@ cdef class WrapPyDiffeq:
     cdef object diffeq_func
     cdef tuple args
     cdef cpp_bool use_args
+    cdef cpp_bool pass_dy_as_arg
 
     cdef unsigned int num_y
     cdef unsigned int num_dy
 
-    cdef object y_now_arr
+    cdef cnp.ndarray y_now_arr
     cdef double[::1] y_now_view
+    cdef double* y_now_mem_ptr
+    cdef cnp.ndarray dy_now_arr
+    cdef double[::1] dy_now_view
+    cdef double* dy_now_mem_ptr
 
     # State attributes
     cdef double* y_now_ptr

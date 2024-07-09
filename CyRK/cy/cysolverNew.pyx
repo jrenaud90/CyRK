@@ -94,23 +94,38 @@ cdef class WrapPyDiffeq:
             object diffeq_func,
             tuple args,
             unsigned int num_y,
-            unsigned int num_dy
+            unsigned int num_dy,
+            bint pass_dy_as_arg = False
             ):
         
         # Install differential equation function and any additional args
         self.diffeq_func = diffeq_func
         if args is None:
-            self.args = None
+            self.args     = None
             self.use_args = False
         else:
-            self.args = args
-            self.use_args = True
+            if len(args) == 0:
+                # Empty tuple provided. Don't use args.
+                self.args     = None
+                self.use_args = False
+            else:
+                self.args     = args
+                self.use_args = True
         
         # Build python-safe arrays
         self.num_y  = num_y
         self.num_dy = num_dy
-        self.y_now_arr   = np.empty(self.num_y, dtype=np.float64, order='C')
-        self.y_now_view  = self.y_now_arr
+        self.y_now_arr     = np.empty(self.num_y, dtype=np.float64, order='C')
+        self.y_now_view    = self.y_now_arr
+        self.y_now_mem_ptr = &self.y_now_view[0]
+
+        if pass_dy_as_arg:
+            self.pass_dy_as_arg = True
+            self.dy_now_arr     = np.empty(self.num_dy, dtype=np.float64, order='C')
+            self.dy_now_view    = self.dy_now_arr
+            self.dy_now_mem_ptr = &self.dy_now_view[0]
+        else:
+            self.pass_dy_as_arg = False
     
     cdef void set_state(self, double* dy_ptr, double* t_ptr, double* y_ptr) noexcept nogil:
         self.dy_now_ptr = dy_ptr
@@ -119,23 +134,23 @@ cdef class WrapPyDiffeq:
 
     def diffeq(self):
         # Copy over pointer values to python-safe arrays
-        cdef unsigned int y_i
-        for y_i in range(self.num_y):
-            self.y_now_view[y_i] = self.y_now_ptr[y_i]
-        
+        memcpy(self.y_now_mem_ptr, self.y_now_ptr, sizeof(double) * self.num_y)
+
         # Run python diffeq
-        cdef double[::1] dy_view
-        if self.use_args:
-            dy_view = self.diffeq_func(self.t_now_ptr[0], self.y_now_arr, *self.args)
+        if self.pass_dy_as_arg:
+            if self.use_args:
+                self.diffeq_func(self.dy_now_arr, self.t_now_ptr[0], self.y_now_arr, *self.args)
+            else:
+                self.diffeq_func(self.dy_now_arr, self.t_now_ptr[0], self.y_now_arr)
         else:
-            dy_view = self.diffeq_func(self.t_now_ptr[0], self.y_now_arr)
+            if self.use_args:
+                self.dy_now_view = self.diffeq_func(self.t_now_ptr[0], self.y_now_arr, *self.args)
+            else:
+                self.dy_now_view = self.diffeq_func(self.t_now_ptr[0], self.y_now_arr)
         
         # Store results in dy pointer for the integrator
         # Note that num_dy may be larger than num_y if the user is capturing extra output during integration.
-        # TODO: Could we just have the pointer point to this memory view? Perhaps if we stored the view as a self.? Or will it dealloc as soon as we leave the scope of the diffeq?
-        # TODO: Also maybe a memcpy would work here too.
-        for y_i in range(self.num_dy):
-            self.dy_now_ptr[y_i] = dy_view[y_i]
+        memcpy(self.dy_now_ptr, self.dy_now_mem_ptr, sizeof(double) * self.num_dy)
 
         return 1
 
@@ -158,7 +173,8 @@ def pysolve_ivp(
         rtol = 1.0e-3,
         atol = 1.0e-6,
         size_t max_num_steps = 0,
-        size_t max_ram_MB = 2000
+        size_t max_ram_MB = 2000,
+        bint pass_dy_as_arg = False
         ):
 
     # Parse method
@@ -247,7 +263,7 @@ def pysolve_ivp(
     cdef shared_ptr[CySolverResult] result_ptr = make_shared[CySolverResult](num_y, num_extra, expected_size)
 
     # Build diffeq wrapper
-    cdef WrapPyDiffeq diffeq_wrap = WrapPyDiffeq(py_diffeq, args, num_y, num_dy)
+    cdef WrapPyDiffeq diffeq_wrap = WrapPyDiffeq(py_diffeq, args, num_y, num_dy, pass_dy_as_arg=pass_dy_as_arg)
 
 
     # Finally we can actually run the integrator!
