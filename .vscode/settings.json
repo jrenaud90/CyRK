@@ -70,5 +70,8 @@
         "unordered_map": "cpp",
         "xhash": "cpp",
         "xtree": "cpp"
-    }
+    },
+    "cSpell.words": [
+        "pysolve"
+    ]
 }
