@@ -2,6 +2,7 @@
 
 #include <cstring>
 
+#include <functional>
 #include <memory>
 
 #include "common.hpp"
@@ -46,10 +47,12 @@ public:
 
     bool check_status() const;
     virtual void reset();
-    void diffeq();
+    void cy_diffeq();
     void take_step();
     void change_storage(std::shared_ptr<CySolverResult> new_storage_ptr, bool auto_reset = true);
     virtual void calc_first_step_size();
+    // Diffeq can either be the C++ class method or the python hook diffeq. By default set to C++ version.
+    std::function<void(CySolverBase*)> diffeq;
 
     // PySolver methods
     void set_cython_extension_instance(PyObject* cython_extension_class_instance, DiffeqMethod py_diffeq_method);

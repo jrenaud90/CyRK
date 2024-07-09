@@ -80,6 +80,9 @@ CySolverBase::CySolverBase(
     );
     this->user_provided_max_num_steps = max_num_steps_output.user_provided_max_num_steps;
     this->max_num_steps = max_num_steps_output.max_num_steps;
+
+    // Bind diffeq to C++ version
+    this->diffeq = &CySolverBase::cy_diffeq;
 }
 
 
@@ -87,6 +90,11 @@ CySolverBase::CySolverBase(
 CySolverBase::~CySolverBase()
 {
     this->storage_ptr = nullptr;
+    if (this->use_pysolver)
+    {
+        // Decrease reference count on the cython extension class instance
+        Py_XDECREF(this->cython_extension_class_instance);
+    }
 }
 
 
@@ -128,19 +136,10 @@ bool CySolverBase::check_status() const
     return true;
 }
 
-void CySolverBase::diffeq()
+void CySolverBase::cy_diffeq()
 {
-    // Should we call the c function or the python one?
-    if (this->use_pysolver)
-    {
-        // Call cython-wrapped python function
-        this->py_diffeq();
-    }
-    else
-    {
-        // Call c function
-        this->diffeq_ptr(this->dy_now_ptr, this->t_now_ptr[0], this->y_now_ptr, this->args_ptr);
-    }
+    // Call c function
+    this->diffeq_ptr(this->dy_now_ptr, this->t_now_ptr[0], this->y_now_ptr, this->args_ptr);
 }
 
 void CySolverBase::reset()
@@ -158,7 +157,7 @@ void CySolverBase::reset()
     std::memcpy(this->y_old_ptr, this->y0_ptr, sizeof(double) * this->num_y);
 
     // Call differential equation to set dy0
-    this->diffeq();
+    this->diffeq(this);
 
     // Update dys
     std::memcpy(this->dy_old_ptr, this->dy_now_ptr, sizeof(double) * this->num_y);
@@ -306,10 +305,17 @@ void CySolverBase::set_cython_extension_instance(PyObject* cython_extension_clas
         this->cython_extension_class_instance = cython_extension_class_instance;
         this->py_diffeq_method = py_diffeq_method;
 
+        // Change diffeq binding to the python version
+        this->diffeq = &CySolverBase::py_diffeq;
+
         // Import the cython/python module (functionality provided by "pysolver_api.h")
-        if (import_CyRK__cy__pysolver_cyhook())
+        const int import_error = import_CyRK__cy__pysolver_cyhook();
+        if (import_error)
         {
-            // pass
+            this->use_pysolver = false;
+            this->status = -1;
+            this->storage_ptr->error_code = -51;
+            this->storage_ptr->update_message("Error encountered importing python hooks.\n");
         }
         else
         {
@@ -324,5 +330,4 @@ void CySolverBase::py_diffeq()
     // Call the differential equation in python space. Note that the optional arguments are handled by the python 
     // wrapper class. `this->args_ptr` is not used.
     call_diffeq_from_cython(this->cython_extension_class_instance, this->py_diffeq_method);
-    
 }

@@ -424,7 +424,7 @@ void RKSolver::p_step_implementation()
             }
             // Call diffeq method to update K with the new dydt
             // This will use the now updated dy_now_ptr based on the values of y_now_ptr and t_now_ptr.
-            this->diffeq();
+            this->diffeq(this);
 
             // Update K based on the new dy values.
             for (unsigned int y_i = 0; y_i < this->num_y; y_i++) {
@@ -491,7 +491,7 @@ void RKSolver::p_step_implementation()
 
         // Find final dydt for this timestep
         // This will use the now updated dy_now_ptr based on the values of y_now_ptr and t_now_ptr.
-        this->diffeq();
+        this->diffeq(this);
 
         // Set last column of K equal to dydt. K has size num_y * (n_stages + 1) so the last column is at n_stages
         for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
@@ -637,7 +637,7 @@ void RKSolver::calc_first_step_size()
         }
 
         // Update dy
-        this->diffeq();
+        this->diffeq(this);
 
         // Find the norm for d2
         d2 = 0.0;
