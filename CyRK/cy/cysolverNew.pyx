@@ -2,6 +2,7 @@
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 
 import numpy as np
+np.import_array()
 
 # =====================================================================================================================
 # Import CySolverResult (container for integration results)
@@ -115,9 +116,9 @@ cdef class WrapPyDiffeq:
         # Build python-safe arrays
         self.num_y  = num_y
         self.num_dy = num_dy
-        self.y_now_arr     = np.empty(self.num_y, dtype=np.float64, order='C')
-        self.y_now_view    = self.y_now_arr
-        self.y_now_mem_ptr = &self.y_now_view[0]
+        # self.y_now_arr     = np.empty(self.num_y, dtype=np.float64, order='C')
+        # self.y_now_view    = self.y_now_arr
+        # self.y_now_mem_ptr = &self.y_now_view[0]
 
         if pass_dy_as_arg:
             self.pass_dy_as_arg = True
@@ -127,14 +128,34 @@ cdef class WrapPyDiffeq:
         else:
             self.pass_dy_as_arg = False
     
-    cdef void set_state(self, double* dy_ptr, double* t_ptr, double* y_ptr) noexcept nogil:
+    cdef void set_state(self, double* dy_ptr, double* t_ptr, double* y_ptr) noexcept:
         self.dy_now_ptr = dy_ptr
         self.t_now_ptr  = t_ptr
         self.y_now_ptr  = y_ptr
 
+        # Create memoryviews of the pointers
+        self.y_now_view  = <double[:self.num_y]>self.y_now_ptr
+
+        # Create numpy arrays which will be passed to the python diffeq.
+        # We need to make sure that this is a not a new ndarray, but one that points to the same data. 
+        # That is why we use `PyArray_SimpleNewFromData` instead of a more simple `asarray`.
+        # Note that it is not safe to return these arrays outside of this class because they may get deallocated while
+        # the numpy array still points to the underlying memory.
+        cdef np.npy_intp[1] shape
+        cdef np.npy_intp* shape_ptr = &shape[0]
+        shape_ptr[0] = <np.npy_intp>self.num_y
+        
+        self.y_now_arr = np.PyArray_SimpleNewFromData(1, shape_ptr, np.NPY_DOUBLE, self.y_now_ptr)
+        
+        # Do the same for dy if the user provided the appropriate kind of differential equation.
+        if self.pass_dy_as_arg:
+            self.dy_now_view = <double[:self.num_dy]>self.dy_now_ptr
+            shape[0]         = <np.npy_intp>self.num_dy  # dy may have a larger shape than y
+            self.dy_now_arr  = np.PyArray_SimpleNewFromData(1, shape_ptr, np.NPY_DOUBLE, self.dy_now_ptr)   
+
     def diffeq(self):
         # Copy over pointer values to python-safe arrays
-        memcpy(self.y_now_mem_ptr, self.y_now_ptr, sizeof(double) * self.num_y)
+        # memcpy(self.y_now_mem_ptr, self.y_now_ptr, sizeof(double) * self.num_y)
 
         # Run python diffeq
         if self.pass_dy_as_arg:
@@ -147,10 +168,13 @@ cdef class WrapPyDiffeq:
                 self.dy_now_view = self.diffeq_func(self.t_now_ptr[0], self.y_now_arr, *self.args)
             else:
                 self.dy_now_view = self.diffeq_func(self.t_now_ptr[0], self.y_now_arr)
+            # Since we do not have a static dy that we can pass to the function and use in the solver we must copy over
+            # the values from the newly created dy memory view
+            memcpy(self.dy_now_ptr, &self.dy_now_view[0], sizeof(double) * self.num_dy)
         
         # Store results in dy pointer for the integrator
         # Note that num_dy may be larger than num_y if the user is capturing extra output during integration.
-        memcpy(self.dy_now_ptr, self.dy_now_mem_ptr, sizeof(double) * self.num_dy)
+        # memcpy(self.dy_now_ptr, self.dy_now_mem_ptr, sizeof(double) * self.num_dy)
 
         return 1
 

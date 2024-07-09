@@ -7,7 +7,7 @@ cimport cpython.ref as cpy_ref
 from CyRK.utils.vector cimport vector
 from CyRK.utils.memory cimport shared_ptr, make_shared
 
-cimport numpy as cnp
+cimport numpy as np
 
 # =====================================================================================================================
 # Import common functions and constants
@@ -110,10 +110,10 @@ cdef class WrapPyDiffeq:
     cdef unsigned int num_y
     cdef unsigned int num_dy
 
-    cdef cnp.ndarray y_now_arr
+    cdef np.ndarray y_now_arr
     cdef double[::1] y_now_view
     cdef double* y_now_mem_ptr
-    cdef cnp.ndarray dy_now_arr
+    cdef np.ndarray dy_now_arr
     cdef double[::1] dy_now_view
     cdef double* dy_now_mem_ptr
 
@@ -126,7 +126,7 @@ cdef class WrapPyDiffeq:
         double* dy_ptr,
         double* t_ptr,
         double* y_ptr
-        ) noexcept nogil
+        ) noexcept
 
 # =====================================================================================================================
 # Import CySolver Runge-Kutta Integrators

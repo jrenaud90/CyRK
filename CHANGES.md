@@ -16,7 +16,6 @@ C++ Backend:
 
 Deprecating Older CyRK Methods:
 * The new C++ backend is more flexible, faster, and allows for easy additions of new features. It is common across the cython-only, python, and njit-safe numba solvers. Therefore making a change to it propagates to all three solvers - allowing for easier maintenance and new features. For these reasons, the older `cyrk_ode`, `CySolver`, and `nbrk_ode` are now marked as deprecated. No new features will be implemented for those functions and they will be removed in the next major release of CyRK.
-* Deprecated `nbrk_ode`
 * Deprecated `cyrk_ode`
 * Deprecated `CySolver`
 * Warnings will be issued if these functions are used in this release. To suppress these warnings set `raise_warnings` to False in the respective function calls.
@@ -26,9 +25,6 @@ CySolver:
 * Added new argument to constructor `raise_warnings` (default: True) to allow users to suppress warnings.
 
 cyrk_ode:
-* Added new argument to constructor `raise_warnings` (default: True) to allow users to suppress warnings.
-
-nbrk_ode:
 * Added new argument to constructor `raise_warnings` (default: True) to allow users to suppress warnings.
 
 Memory Management:
