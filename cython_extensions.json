@@ -1,4 +1,11 @@
 {
+  "parallel_test": {
+    "name": "CyRK.utils.parallel",
+    "sources": [["CyRK", "utils", "parallel.pyx"]],
+    "include_dirs": [["CyRK", "utils"]],
+    "compile_args": [],
+    "link_args": []
+  },
   "utils": {
     "name": "CyRK.utils.utils",
     "sources": [["CyRK", "utils", "utils.pyx"]],
