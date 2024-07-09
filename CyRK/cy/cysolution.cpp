@@ -3,20 +3,6 @@
 #include "cysolution.hpp"
 
 
-inline void round_to_2(size_t &initital_value)
-{
-    /* Rounds the initial value to the nearest power of 2 */
-    // Method is the fastest for 64-bit numbers
-    initital_value--;
-    initital_value |= initital_value >> 1;
-    initital_value |= initital_value >> 2;
-    initital_value |= initital_value >> 4;
-    initital_value |= initital_value >> 8;
-    initital_value |= initital_value >> 16;
-    initital_value |= initital_value >> 32;
-    initital_value++;
-}
-
 // Constructors
 CySolverResult::CySolverResult()
 {

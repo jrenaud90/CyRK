@@ -158,7 +158,8 @@ cdef extern from "rk.cpp" nogil:
         void reset()
         void calc_first_step_size()
 
-    
+
+    cdef unsigned int RK23_METHOD_INT
     cdef cppclass RK23(RKSolver):
         RK23()
         RK23(
@@ -181,6 +182,7 @@ cdef extern from "rk.cpp" nogil:
         )
         void reset()
     
+    cdef unsigned int RK45_METHOD_INT
     cdef cppclass RK45(RKSolver):
         RK45()
         RK45(
@@ -203,6 +205,7 @@ cdef extern from "rk.cpp" nogil:
         )
         void reset()
     
+    cdef unsigned int DOP853_METHOD_INT
     cdef cppclass DOP853(RKSolver):
         DOP853()
         DOP853(

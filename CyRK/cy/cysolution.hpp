@@ -6,9 +6,6 @@
 
 #include "common.hpp"
 
-
-inline void round_to_2(size_t& initital_value);
-
 class CySolverResult {
 
 // Attributes

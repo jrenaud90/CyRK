@@ -3,6 +3,20 @@
 #include "common.hpp"
 
 
+inline void round_to_2(size_t &initial_value)
+{
+    /* Rounds the initial value to the nearest power of 2 */
+    // Method is the fastest for 64-bit numbers
+    initial_value--;
+    initial_value |= initial_value >> 1;
+    initial_value |= initial_value >> 2;
+    initial_value |= initial_value >> 4;
+    initial_value |= initial_value >> 8;
+    initial_value |= initial_value >> 16;
+    initial_value |= initial_value >> 32;
+    initial_value++;
+}
+
 MaxNumStepsOutput find_max_num_steps(
     const int num_y,
     const int num_extra,
