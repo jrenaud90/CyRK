@@ -41,7 +41,11 @@ cdef class WrapCySolverResult:
     
     @property
     def size(self):
-        return self.size
+        return self.cyresult_ptr.size
+    
+    @property
+    def error_code(self):
+        return self.cyresult_ptr.error_code
 
 # =====================================================================================================================
 # Create Wrapped cysolve_ivp (has various defaults)
@@ -93,6 +97,7 @@ cdef WrapCySolverResult cysolve_ivp(
 # =====================================================================================================================
 # PySolver Class (holds the intergrator class and reference to the python diffeq function)
 # =====================================================================================================================
+from libc.stdio cimport printf
 cdef class WrapPyDiffeq:
 
     def __cinit__(
@@ -240,8 +245,9 @@ def pysolve_ivp(
     cdef double rtol_float = 0.0
     if type(rtol) == float:
         rtol_float = rtol
+        rtol_float = fabs(rtol_float)
     else:
-        rtols_view = np.asarray(rtol, dtype=np.float64, order='C')
+        rtols_view = np.abs(np.asarray(rtol, dtype=np.float64, order='C'))
         rtols_ptr = &rtols_view[0]
     
     # Parse atol
@@ -250,8 +256,9 @@ def pysolve_ivp(
     cdef double atol_float = 0.0
     if type(atol) == float:
         atol_float = atol
+        atol_float = fabs(atol_float)
     else:
-        atols_view = np.asarray(atol, dtype=np.float64, order='C')
+        atols_view = np.abs(np.asarray(atol, dtype=np.float64, order='C'))
         atols_ptr = &atols_view[0]
     
     # Parse expected size
@@ -273,6 +280,14 @@ def pysolve_ivp(
                 rtol_tmp = EPS_100
             min_rtol = rtol_tmp
         expected_size_touse = find_expected_size(num_y, num_extra, fabs(t_end - t_start), min_rtol)
+    
+    # Parse first step size
+    if first_step < 0.0:
+        raise AttributeError("First step size must be a postive float (or 0.0 to use automatic finder).")
+
+    # Parse maximum step size
+    if max_step <= 0.0:
+        raise AttributeError("Maximum step size must be a postive float.")
 
     # Build solution storage
     cdef shared_ptr[CySolverResult] result_ptr = make_shared[CySolverResult](num_y, num_extra, expected_size)

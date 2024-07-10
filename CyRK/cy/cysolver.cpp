@@ -220,29 +220,29 @@ void CySolverBase::take_step()
         switch (this->status)
         {
         case 2:
-            this->storage_ptr->update_message("Integration storage changed but integrator was not reset. Call `.reset()` before integrating after change.\n");
+            this->storage_ptr->update_message("Integration storage changed but integrator was not reset. Call `.reset()` before integrating after change.");
             break;
         case 1:
-            this->storage_ptr->update_message("Integration completed without issue.\n");
+            this->storage_ptr->update_message("Integration completed without issue.");
             this->storage_ptr->success = true;
             break;
         case -1:
-            this->storage_ptr->update_message("Error in step size calculation:\n\tRequired step size is less than spacing between numbers.\n");
+            this->storage_ptr->update_message("Error in step size calculation:\n\tRequired step size is less than spacing between numbers.");
             break;
         case -2:
-            this->storage_ptr->update_message("Maximum number of steps (set by user) exceeded during integration.\n");
+            this->storage_ptr->update_message("Maximum number of steps (set by user) exceeded during integration.");
             break;
         case -3:
-            this->storage_ptr->update_message("Maximum number of steps (set by system architecture) exceeded during integration.\n");
+            this->storage_ptr->update_message("Maximum number of steps (set by system architecture) exceeded during integration.");
             break;
         case -4:
-            this->storage_ptr->update_message("Error in step size calculation:\n\tError in step size acceptance.\n");
+            this->storage_ptr->update_message("Error in step size calculation:\n\tError in step size acceptance.");
             break;
         case -9:
-            this->storage_ptr->update_message("Error in CySolver initialization.\n");
+            this->storage_ptr->update_message("Error in CySolver initialization.");
             break;
         default:
-            this->storage_ptr->update_message("Unknown status encountered during integration.\n");
+            this->storage_ptr->update_message("Unknown status encountered during integration.");
             break;
         }
         

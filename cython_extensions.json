@@ -1,4 +1,11 @@
 {
+  "parallel_test": {
+    "name": "CyRK.utils.parallel",
+    "sources": [["CyRK", "utils", "parallel.pyx"]],
+    "include_dirs": [["CyRK", "utils"]],
+    "compile_args": [],
+    "link_args": []
+  },
   "utils": {
     "name": "CyRK.utils.utils",
     "sources": [["CyRK", "utils", "utils.pyx"]],
@@ -52,21 +59,21 @@
     "name": "CyRK.cy.pysolver_cyhook",
     "sources": [["CyRK", "cy", "pysolver_cyhook.pyx"]],
     "include_dirs": [["CyRK", "cy"]],
-    "compile_args": [],
+    "compile_args": ["-std=c++11"],
     "link_args": []
   },
   "cysolverNew": {
     "name": "CyRK.cy.cysolverNew",
     "sources": [["CyRK", "cy", "cysolverNew.pyx"]],
     "include_dirs": [["CyRK", "cy"]],
-    "compile_args": [],
+    "compile_args": ["-std=c++11"],
     "link_args": []
   },
   "cysolverNew_test": {
     "name": "CyRK.cy.cysolverNew_test",
     "sources": [["CyRK", "cy", "cysolverNew_test.pyx"]],
     "include_dirs": [["CyRK", "cy"]],
-    "compile_args": [],
+    "compile_args": ["-std=c++11"],
     "link_args": []
   },
   "cyrk_ode": {

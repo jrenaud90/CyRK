@@ -1,0 +1,338 @@
+import numpy as np
+import pytest
+from numba import njit
+
+from CyRK.cy.cysolverNew import pysolve_ivp, WrapCySolverResult
+
+# TODO: Missing Tests
+#  - t_eval
+#
+
+def test_pysolve_ivp_test():
+    """Check that the builtin test function for the CySolver integrator is working"""
+
+    # from CyRK import test_cysolver
+    # test_cysolver()
+    #TODO
+
+
+def diffeq(dy, t, y):
+    dy[0] = (1. - 0.01 * y[1]) * y[0]
+    dy[1] = (0.02 * y[0] - 1.) * y[1]
+
+
+def diffeq_stiff(t, y):
+    # TODO: Replace with function that is actually stiff
+    dy = np.empty(y.size, dtype=np.float64)
+    dy[0] = (1. - 0.01 * y[1]) * np.exp(y[0])
+    dy[1] = (0.02 * y[0] - 1.) * np.exp(y[1])
+    return dy
+
+def diffeq_args(dy, t, y, a, b):
+    dy[0] = (1. - a * y[1]) * y[0]
+    dy[1] = (b * y[0] - 1.) * y[1]
+
+def diffeq_scipy_style(t, y):
+    dy = np.empty(y.size, dtype=np.float64)
+    dy[0] = (1. - 0.01 * y[1]) * y[0]
+    dy[1] = (0.02 * y[0] - 1.) * y[1]
+    return dy
+
+def diffeq_scipy_style_args(t, y, a, b):
+    dy = np.empty(y.size, dtype=np.float64)
+    dy[0] = (1. - a * y[1]) * y[0]
+    dy[1] = (b * y[0] - 1.) * y[1]
+    return dy
+
+def diffeq_extra(dy, t, y):
+    extra_1 = (1. - 0.01 * y[1])
+    extra_2 = (0.02 * y[0] - 1.)
+    dy[0] = extra_1 * y[0]
+    dy[1] = extra_2 * y[1]
+    dy[2] = extra_1
+    dy[3] = extra_2
+
+def diffeq_args_extra(dy, t, y, a, b):
+    extra_1 = (1. - 0.01 * y[1])
+    extra_2 = (0.02 * y[0] - 1.)
+    dy[0] = extra_1 * y[0]
+    dy[1] = extra_2 * y[1]
+    dy[2] = extra_1
+    dy[3] = extra_2
+
+def diffeq_scipy_style_extra(t, y):
+    dy = np.empty(y.size + 2, dtype=np.float64)
+    extra_1 = (1. - 0.01 * y[1])
+    extra_2 = (0.02 * y[0] - 1.)
+    dy[0] = extra_1 * y[0]
+    dy[1] = extra_2 * y[1]
+    dy[2] = extra_1
+    dy[3] = extra_2
+    return dy
+
+def diffeq_scipy_style_args_extra(t, y, a, b):
+    dy = np.empty(y.size + 2, dtype=np.float64)
+    extra_1 = (1. - 0.01 * y[1])
+    extra_2 = (0.02 * y[0] - 1.)
+    dy[0] = extra_1 * y[0]
+    dy[1] = extra_2 * y[1]
+    dy[2] = extra_1
+    dy[3] = extra_2
+    return dy
+
+args = (0.01, 0.02)
+
+initial_conds = np.asarray((20., 20.), dtype=np.float64, order='C')
+time_span = (0., 10.)
+time_span_large = (0., 1000.)
+rtol = 1.0e-7
+atol = 1.0e-8
+
+rtols = np.asarray((1.0e-7, 1.0e-8), dtype=np.float64, order='C')
+atols = np.asarray((1.0e-8, 1.0e-9), dtype=np.float64, order='C')
+
+@pytest.mark.filterwarnings("error")  # Some exceptions get propagated via cython as warnings; we want to make sure the lead to crashes.
+@pytest.mark.parametrize('capture_extra', (True, False))
+@pytest.mark.parametrize('max_step', (1.0, 100_000.0))
+@pytest.mark.parametrize('first_step', (0.0, 0.01))
+@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853"))
+@pytest.mark.parametrize('use_different_tols', (True, False))
+@pytest.mark.parametrize('use_rtol_array', (True, False))
+@pytest.mark.parametrize('use_atol_array', (True, False))
+@pytest.mark.parametrize('use_large_timespan', (True, False))
+@pytest.mark.parametrize('use_njit', (True, False))
+@pytest.mark.parametrize('use_args', (True, False))
+@pytest.mark.parametrize('use_scipy_style', (True, False))
+def test_pysolve_ivp(use_scipy_style, use_args, use_njit,
+                     use_large_timespan, use_atol_array, use_rtol_array, use_different_tols, integration_method,
+                     first_step, max_step, capture_extra):
+    """Check that the pysolve_ivp function is able to run with various changes to its arguments. """
+
+    if use_args:
+        if use_scipy_style:
+            if capture_extra:
+                diffeq_to_use = diffeq_scipy_style_args_extra
+            else:
+                diffeq_to_use = diffeq_scipy_style_args
+        else:
+            if capture_extra:
+                diffeq_to_use = diffeq_args_extra
+            else:
+                diffeq_to_use = diffeq_args
+    else:
+        if use_scipy_style:
+            if capture_extra:
+                diffeq_to_use = diffeq_scipy_style_extra
+            else:
+                diffeq_to_use = diffeq_scipy_style
+        else:
+            if capture_extra:
+                diffeq_to_use = diffeq_extra
+            else:
+                diffeq_to_use = diffeq
+
+    if use_njit:
+        diffeq_to_use = njit(diffeq_to_use)
+
+    if use_atol_array:
+        atols_use = atols
+    else:
+        atols_use = atol
+    if use_rtol_array:
+        rtols_use = rtols
+    else:
+        rtols_use = rtol
+    
+    if use_different_tols:
+        # Check that it can run with smaller tolerances
+        atols_use = atols_use / 100.0
+        rtols_use = rtols_use / 100.0
+    
+    if use_large_timespan:
+        time_span_touse = time_span_large
+    else:
+        time_span_touse = time_span
+
+    if use_args:
+        args_touse = args
+    else:
+        args_touse = None
+    
+    if capture_extra:
+        num_extra = 2
+    else:
+        num_extra = 0
+
+    result = \
+        pysolve_ivp(diffeq_to_use, time_span_touse, initial_conds,
+                    method=integration_method,
+                    args=args_touse, rtol=rtols_use, atol=atols_use,
+                    num_extra=num_extra, first_step=first_step, max_step=max_step,
+                    pass_dy_as_arg=(not use_scipy_style))
+
+    assert isinstance(result, WrapCySolverResult)
+    assert result.success
+    assert result.error_code == 1
+    assert result.size > 1
+    assert result.message == "Integration completed without issue."
+    # Check that the ndarrays make sense
+    assert type(result.t) == np.ndarray
+    assert result.t.dtype == np.float64
+    assert result.y.dtype == np.float64
+    assert result.t.size > 1
+    assert result.t.size == result.y[0].size
+    assert len(result.y.shape) == 2
+    assert result.y[0].size == result.y[1].size
+    assert result.t.size == result.size
+    assert result.y[0].size == result.size
+
+    if capture_extra:
+        assert result.y.shape[0] == 4
+        assert result.y[2].size == result.y[1].size
+        assert result.y[3].size == result.y[1].size
+    else:
+        assert result.y.shape[0] == 2
+
+    assert type(result.message) == str
+
+
+
+def test_pysolve_ivp_errors():
+    """ Test that the correct exceptions are raised when incorrect input is provided. """
+
+    with pytest.raises(NotImplementedError) as e_info:
+        # check for unsupported integrator
+        result = pysolve_ivp(diffeq_scipy_style, time_span, initial_conds,
+                        method="FakeIntegrationMethod",
+                        args=None, rtol=rtol, atol=atol,
+                        pass_dy_as_arg=False)
+    
+    with pytest.raises(NotImplementedError) as e_info:
+        # Check for t eval usage.
+        result = pysolve_ivp(diffeq_scipy_style, time_span, initial_conds,
+                        method="RK23", t_eval=np.linspace(0.0, 1.0, 10),
+                        args=None, rtol=rtol, atol=atol,
+                        pass_dy_as_arg=False)
+    
+    with pytest.raises(NotImplementedError) as e_info:
+        # Check for dense output usage
+        result = pysolve_ivp(diffeq_scipy_style, time_span, initial_conds,
+                        method="RK23", dense_output=True,
+                        args=None, rtol=rtol, atol=atol,
+                        pass_dy_as_arg=False)
+    
+    with pytest.raises(AttributeError) as e_info:
+        # Check for unsupported number of dependent variables
+        result = pysolve_ivp(diffeq_scipy_style, time_span, np.linspace(0.0, 1.0, 1000),
+                        method="RK23",
+                        args=None, rtol=rtol, atol=atol,
+                        pass_dy_as_arg=False)
+    
+    with pytest.raises(AttributeError) as e_info:
+        # Check for unsupported number of additional captures
+        result = pysolve_ivp(diffeq_scipy_style, time_span, initial_conds,
+                        method="RK23",
+                        args=None, rtol=rtol, atol=atol,
+                        num_extra=1000,
+                        pass_dy_as_arg=False)
+    
+    with pytest.raises(AttributeError) as e_info:
+        # Check for bad first step
+        result = pysolve_ivp(diffeq_scipy_style, time_span, initial_conds,
+                        method="RK23",
+                        args=None, rtol=rtol, atol=atol,
+                        first_step = -10.0,
+                        pass_dy_as_arg=False)
+    
+    with pytest.raises(AttributeError) as e_info:
+        # Check for bad max step
+        result = pysolve_ivp(diffeq_scipy_style, time_span, initial_conds,
+                        method="RK23",
+                        args=None, rtol=rtol, atol=atol,
+                        max_step = -10.0,
+                        pass_dy_as_arg=False)
+        
+    # Run integrator with a too small maximum number of steps. No exceptions should be raised but the integration should
+    # not be successful
+    result = pysolve_ivp(diffeq_scipy_style, time_span, initial_conds,
+                        method="RK23",
+                        args=None, rtol=rtol, atol=atol,
+                        max_num_steps=5,
+                        pass_dy_as_arg=False)
+
+    assert not result.success
+    assert result.error_code == -2
+    assert result.message == "Maximum number of steps (set by user) exceeded during integration."
+
+    # Do the same thing but now for max ram
+    result = pysolve_ivp(diffeq_scipy_style, time_span, initial_conds,
+                        method="RK23",
+                        args=None, rtol=rtol, atol=atol,
+                        max_ram_MB=0.0001,
+                        pass_dy_as_arg=False)
+    
+    assert not result.success
+    assert result.error_code == -3
+    assert result.message == "Maximum number of steps (set by system architecture) exceeded during integration."
+
+    # Do an integration with tolerances that are just way too small for the method
+    result = pysolve_ivp(diffeq_stiff, time_span, initial_conds,
+                        method="RK45",
+                        args=None, rtol=1.0e-20, atol=1.0e-22,
+                        pass_dy_as_arg=False)
+    
+    assert not result.success
+    assert result.error_code == -1
+    assert result.message == "Error in step size calculation:\n\tRequired step size is less than spacing between numbers."
+
+@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853"))
+def test_pysolve_ivp_accuracy(integration_method):
+    #Check that the cython function solver is able to reproduce a known functions integral with reasonable accuracy
+
+    # TODO: This is only checking one equation. Add other types of diffeqs to provide better coverage.
+
+    # Differential Equation
+    @njit
+    def diffeq_accuracy(dy, t, y):
+        dy[0] = np.sin(t) - y[1]  # dydt = sin(t) - x(t)
+        dy[1] = np.cos(t) + y[0]  # dxdt = cos(t) + y(t)
+
+    @njit
+    def correct_answer(t, c1_, c2_):
+        y = np.empty((2, t.size), dtype=np.float64)
+        y[0] = -c1_ * np.sin(t) + c2_ * np.cos(t) - (np.cos(t) / 2)  # -c1 * sin(t) + c2 * cos(t) - cos(t) / 2
+        # At t=0; y = c2 - 1/2
+        y[1] = c2_ * np.sin(t) + c1_ * np.cos(t) + (np.sin(t) / 2)   # c2 * sin(t) + c1 * cos(t) + sin(t) / 2
+        # At t=0; x = c1
+        return y
+
+    # Initial Conditions
+    # y=0 --> c2 = + 1/2
+    c2 = 0.5
+    # x=1 --> c1 = + 1
+    c1 = 1.0
+    y0 = np.asarray((0., 1.), dtype=np.float64)
+    time_span_ = (0., 10.)
+
+    result = \
+        pysolve_ivp(diffeq_accuracy, time_span_, y0, method=integration_method,
+                    rtol=1.0e-8, atol=1.0e-9, pass_dy_as_arg=True)
+    
+    # Use the integrator's time domain to build a correct solution
+    real_answer = correct_answer(result.t, c1, c2)
+
+    if integration_method == "RK23":
+        assert np.allclose(result.y, real_answer, rtol=1.0e-3, atol=1.0e-6)
+    elif integration_method == "DOP853":
+        assert np.allclose(result.y, real_answer, rtol=1.0e-4, atol=1.0e-7)
+    else:
+        assert np.allclose(result.y, real_answer, rtol=1.0e-5, atol=1.0e-8)
+
+    # Check the accuracy of the results
+    # import matplotlib.pyplot as plt
+    # fig, ax = plt.subplots()
+    # ax.plot(result.t, result.y[0], 'r', label='PySolver')
+    # ax.plot(result.t, result.y[1], 'r:')
+    # ax.plot(result.t, real_answer[0], 'b', label='Analytic')
+    # ax.plot(result.t, real_answer[1], 'b:')
+    # plt.show()
