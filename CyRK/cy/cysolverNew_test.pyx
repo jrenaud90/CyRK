@@ -4,7 +4,7 @@
 from libc.math cimport sin, cos, fabs, fmin, fmax
 
 from CyRK.utils.memory cimport shared_ptr
-from CyRK.cy.cysolverNew cimport cysolve_ivp, WrapCySolverResult, CySolverResult, DiffeqFuncType, MAX_STEP, EPS_100, INF, find_expected_size
+from CyRK.cy.cysolverNew cimport baseline_cysolve_ivp, WrapCySolverResult, CySolverResult, DiffeqFuncType, MAX_STEP, EPS_100, INF, find_expected_size
 
 import numpy as np
 
@@ -187,7 +187,7 @@ def cytester(
     if atol_array is not None:
         atols_ptr = &atol_array[0]
 
-    cdef shared_ptr[CySolverResult] result = cysolve_ivp(
+    cdef shared_ptr[CySolverResult] result = baseline_cysolve_ivp(
         diffeq,
         t_span_ptr,
         y0_ptr,

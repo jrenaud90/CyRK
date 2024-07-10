@@ -287,7 +287,7 @@ cdef extern from "cysolve.cpp" nogil:
 # =====================================================================================================================
 # Cython-based wrapper for baseline_cysolve_ivp that carries default values.
 # =====================================================================================================================
-cdef shared_ptr[CySolverResult] cysolve_ivp(
+cdef WrapCySolverResult cysolve_ivp(
     DiffeqFuncType diffeq_ptr,
     double* t_span_ptr,
     double* y0_ptr,
@@ -304,4 +304,4 @@ cdef shared_ptr[CySolverResult] cysolve_ivp(
     double* atols_ptr = *,
     double max_step_size = *,
     double first_step_size = *
-    ) noexcept nogil
+    ) noexcept

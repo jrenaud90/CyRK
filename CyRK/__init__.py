@@ -13,7 +13,7 @@ from CyRK.cy.cyrk import cyrk_ode
 from .helper import nb2cy, cy2nb
 
 # Import test functions
-from ._test import test_cyrk, test_nbrk, test_cysolver
+from ._test import test_cyrk, test_nbrk, test_cysolver, test_pysolver
 
 # Import python solver
 from CyRK.cy.cysolverNew import pysolve_ivp

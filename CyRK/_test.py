@@ -2,6 +2,7 @@ import numpy as np
 from numba import njit
 
 initial_conds = np.asarray((20., 20.), dtype=np.complex128)
+initial_conds_float = np.asarray((20., 20.), dtype=np.float64)
 time_span = (0., 20.)
 rtol = 1.0e-7
 atol = 1.0e-8
@@ -34,6 +35,18 @@ def test_cyrk():
 
     print("CyRK's cyrk_ode was tested successfully.")
 
+def test_pysolver():
+
+    from CyRK import pysolve_ivp
+
+    result = pysolve_ivp(cy_diffeq, time_span, initial_conds_float)
+
+    assert result.success
+    assert type(result.t) == np.ndarray
+    assert type(result.y) == np.ndarray
+    assert result.y.shape[0] == 2
+
+    print("CyRK's PySolver was tested successfully.")
 
 def test_nbrk():
 
@@ -51,15 +64,14 @@ def test_nbrk():
 
 def test_cysolver():
 
-    from CyRK.cy.cysolvertest import CySolverTester
+    from CyRK.cy.cysolverNew_test import cytester
 
     # TODO: Currently CySolver only works with floats not complex
-    CySolverTesterInst = CySolverTester(time_span, np.asarray(np.real(initial_conds), dtype=np.float64, order='C'))
-    CySolverTesterInst.solve()
+    result = cytester(0, time_span, initial_conds, None, 1, 0, 0, 2000, rtol, atol)
 
-    assert CySolverTesterInst.success
-    assert type(CySolverTesterInst.t) == np.ndarray
-    assert type(CySolverTesterInst.y) == np.ndarray
-    assert CySolverTesterInst.y.shape[0] == 2
+    assert result.success
+    assert type(result.t) == np.ndarray
+    assert type(result.y) == np.ndarray
+    assert result.y.shape[0] == 2
 
     print("CyRK's CySolver was tested successfully.")

@@ -16,14 +16,14 @@
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
 
-CyRK provides fast integration tools to solve systems of ODEs using an adaptive time stepping scheme. CyRK can accept differential equations that are written in pure Python, njited numba, or cython-based cdef class methods. These kinds of functions are generally easier to implement than pure c functions and can be used in existing Python software. Using CyRK can speed up development time while avoiding the slow performance that comes with using pure Python-based solvers like SciPy.
+CyRK provides fast integration tools to solve systems of ODEs using an adaptive time stepping scheme. CyRK can accept differential equations that are written in pure Python, njited numba, or cython-based cdef functions. These kinds of functions are generally easier to implement than pure c functions and can be used in existing Python software. Using CyRK can speed up development time while avoiding the slow performance that comes with using pure Python-based solvers like SciPy's `solve_ivp`.
 
 The purpose of this package is to provide some 
 functionality of [scipy's solve_ivp](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html) with greatly improved performance.
 
-Currently, CyRK's [numba](https://numba.discourse.group/) (njit-safe) implementation is **10-120+x faster** than scipy's solve_ivp function.
-The [cython](https://cython.org/) `cyrk_ode` function that works with python (or numba) functions is **20-40+x faster** than scipy.
-The [cython](https://cython.org/) `CySolver` class that works with cython-based cdef classes is **30-500+x faster** than scipy.
+Currently, CyRK's [numba-based](https://numba.discourse.group/) (njit-safe) implementation is **10-140x faster** than scipy's solve_ivp function.
+The [cython-based](https://cython.org/) `pysolve_ivp` function that works with python (or njit'd) functions is **20-50x faster** than scipy.
+The [cython-based](https://cython.org/) `cysolver_ivp` function that works with cython-based cdef functions is **50-700+x faster** than scipy.
 
 An additional benefit of the two cython implementations is that they are pre-compiled. This avoids most of the start-up performance hit experienced by just-in-time compilers like numba.
 
@@ -32,24 +32,25 @@ An additional benefit of the two cython implementations is that they are pre-com
 
 ## Installation
 
-*CyRK has been tested on Python 3.8--3.11; Windows, Ubuntu, and MacOS.*
+*CyRK has been tested on Python 3.8--3.12; Windows, Ubuntu, and MacOS.*
 
 To install simply open a terminal and call:
 
 `pip install CyRK`
 
-If not installing from a wheel, CyRK will attempt to install `Cython` and `Numpy` in order to compile the source code. 
+If not installing from a wheel, CyRK will attempt to install `Cython` and `Numpy` in order to compile the source code. A "C++ 14" compatible compiler is required.
+Compiling CyRK has been tested on the latest versions of Windows, Ubuntu, and MacOS. Your milage may vary if you are using a older or different operating system.
 After everything has been compiled, cython will be uninstalled and CyRK's runtime dependencies (see the pyproject.toml file for the latest list) will be installed instead.
 
 A new installation of CyRK can be tested quickly by running the following from a python console.
 ```python
-from CyRK import test_cyrk, test_nbrk, test_cysolver
-test_cyrk()
-# Should see "CyRK's cyrk_ode was tested successfully."
-test_nbrk()
-# Should see "CyRK's nbrk_ode was tested successfully."
+from CyRK import test_pysolver, test_cysolver, test_nbrk
+test_pysolver()
+# Should see "CyRK's PySolver was tested successfully."
 test_cysolver()
 # Should see "CyRK's CySolver was tested successfully."
+test_nbrk()
+# Should see "CyRK's nbrk_ode was tested successfully."
 ```
 
 ### Troubleshooting Installation and Runtime Problems
@@ -91,6 +92,8 @@ atol = 1.0e-8
 ```
 
 ### Numba-based `nbrk_ode`
+_Future Development Note: The numba-based solver is currently in a feature-locked state and will not receive new features (as of CyRK v0.9.0). The reason for this is because it uses a different backend than the rest of CyRK and is not as flexible or easy to expand without significant code duplication. Please see GitHub Issue: TBD to see the status of this new numba-based solver or share your interest in continued development._
+
 The system of ODEs can then be solved using CyRK's numba solver by,
 
 ```python
@@ -100,6 +103,7 @@ time_domain, y_results, success, message = \
 ```
 
 ### Cython-based `cyrk_ode`
+**Deprecation Warning:** cyrk_ode was a previous version of CyRK's cython solver that could take in python functions. It is no longer supported and will be removed in a future version of CyRK.
 To call the cython version of the integrator you need to slightly edit the differential equation so that it does not
 return the derivative. Instead, the output is passed as an input argument (a `np.ndarray`) to the function. 
 
@@ -135,6 +139,7 @@ time_domain, y_results, success, message = \
 ```
 
 ### Cython-based `CySolver`
+**Deprecation Warning:** CySolverc class based method was a previous version of CyRK's cython solver for cython-only functions. It has been replaced by `from CyRK cimport cysolve_ivp`. `CySolver` is no longer supported and will be removed in a future version of CyRK.
 The cython-based `CySolver` class requires writing a new cython cdef class. This is done in a new cython .pyx file which must then be cythonized and compiled before it can be used.
 
 ```cython
@@ -228,7 +233,7 @@ All three integrators can take the following optional inputs:
 
 ## Limitations and Known Issues
 
-- [Issue 30](https://github.com/jrenaud90/CyRK/issues/30): CyRK's CySolver does not allow for complex-valued dependent variables. 
+- [Issue 30](https://github.com/jrenaud90/CyRK/issues/30): CyRK's cysolve_ivp and pysolve_ivp does not allow for complex-valued dependent variables. 
 
 ## Citing CyRK
 
