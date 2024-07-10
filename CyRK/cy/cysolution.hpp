@@ -53,7 +53,7 @@ public:
 
     // Pointer to storage arrays
     std::vector<double> time_domain = std::vector<double>(0);
-    std::vector<double> solution = std::vector<double>(0);
+    std::vector<double> solution    = std::vector<double>(0);
 
 private:
     // Put data buffers at the end of memory stack
@@ -73,5 +73,10 @@ public:
     void finalize();
     void reset();
     void update_message(const char* const new_message_ptr);
+
+    std::vector<double> get_time_domain();
+    std::vector<double> get_solution();
+    __declspec(property(get = get_time_domain)) std::vector<double> t;
+    __declspec(property(get = get_solution)) std::vector<double> y;
 
 };

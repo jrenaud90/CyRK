@@ -4,8 +4,10 @@
 from libc.math cimport sin, cos, fabs, fmin, fmax
 
 from CyRK.cy.cysolverNew cimport (
-    cysolve_ivp, find_expected_size, WrapCySolverResult, DiffeqFuncType,MAX_STEP, EPS_100, INF
+    cysolve_ivp, find_expected_size, WrapCySolverResult, DiffeqFuncType,MAX_STEP, EPS_100, INF,
+    CySolverResult
     )
+from CyRK.utils.memory cimport shared_ptr
 
 import numpy as np
 

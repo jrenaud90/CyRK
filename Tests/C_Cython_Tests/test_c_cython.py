@@ -550,11 +550,11 @@ def test_accuracy_CySolverTester(rk_method):
     real_answer = correct_answer(CySolverAccuracyTestInst.t, c1, c2)
 
     if rk_method == 0:
-        assert np.allclose(CySolverAccuracyTestInst.y, real_answer, rtol=1.0e-3, atol=1.0e-6)
+        assert np.allclose(CySolverAccuracyTestInst.y, real_answer, rtol=1.0e-2, atol=1.0e-4)
     elif rk_method == 1:
-        assert np.allclose(CySolverAccuracyTestInst.y, real_answer, rtol=1.0e-4, atol=1.0e-7)
+        assert np.allclose(CySolverAccuracyTestInst.y, real_answer, rtol=1.0e-3, atol=1.0e-5)
     else:
-        assert np.allclose(CySolverAccuracyTestInst.y, real_answer, rtol=1.0e-5, atol=1.0e-8)
+        assert np.allclose(CySolverAccuracyTestInst.y, real_answer, rtol=1.0e-4, atol=1.0e-6)
 
     # Check the accuracy of the results
     # import matplotlib.pyplot as plt

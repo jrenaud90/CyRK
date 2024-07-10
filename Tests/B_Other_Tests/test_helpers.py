@@ -1,7 +1,7 @@
 import numpy as np
 from numba import njit
 
-from CyRK import nb2cy, cy2nb, nbrk_ode, cyrk_ode
+from CyRK import nb2cy, cy2nb, nbsolve_ivp, cyrk_ode
 
 
 @njit
@@ -46,9 +46,9 @@ def test_nb2cy_noargs():
     check_rtol = 0.1
 
     # First calculate the result of an integration using nbrk.
-    time_domain_nb, y_results_nb, success_nb, message_nb = \
-        nbrk_ode(diffeq_scipy, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
-    assert success_nb
+    result_nb = \
+        nbsolve_ivp(diffeq_scipy, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
+    assert result_nb.success
 
     # Perform a cyrk integration using the diffeq that was written for cyrk
     time_domain_cy, y_results_cy, success_cy, message_cy = \
@@ -71,8 +71,8 @@ def test_nb2cy_noargs():
     assert np.all(p_diff_2_cy < check_rtol)
 
     # # Converted vs. nbrk
-    p_diff_1_nb = 2. * np.abs((y_results_cy_conv[0] - y_results_nb[0]) / (y_results_cy_conv[0] + y_results_nb[0]))
-    p_diff_2_nb = 2. * np.abs((y_results_cy_conv[1] - y_results_nb[1]) / (y_results_cy_conv[1] + y_results_nb[1]))
+    p_diff_1_nb = 2. * np.abs((y_results_cy_conv[0] - result_nb.y[0]) / (y_results_cy_conv[0] + result_nb.y[0]))
+    p_diff_2_nb = 2. * np.abs((y_results_cy_conv[1] - result_nb.y[1]) / (y_results_cy_conv[1] + result_nb.y[1]))
     assert np.all(p_diff_1_nb < check_rtol)
     assert np.all(p_diff_2_nb < check_rtol)
 
@@ -84,9 +84,9 @@ def test_nb2cy_args():
     check_rtol = 0.1
 
     # First calculate the result of an integration using nbrk.
-    time_domain_nb, y_results_nb, success_nb, message_nb = \
-        nbrk_ode(diffeq_scipy_args, time_span, initial_conds, t_eval=t_eval, args=(0.01, 0.02), rtol=rtol, atol=atol)
-    assert success_nb
+    result_nb = \
+        nbsolve_ivp(diffeq_scipy_args, time_span, initial_conds, t_eval=t_eval, args=(0.01, 0.02), rtol=rtol, atol=atol)
+    assert result_nb.success
 
     # Perform a cyrk integration using the diffeq that was written for cyrk
     time_domain_cy, y_results_cy, success_cy, message_cy = \
@@ -109,8 +109,8 @@ def test_nb2cy_args():
     assert np.all(p_diff_2_cy < check_rtol)
 
     # # Converted vs. nbrk
-    p_diff_1_nb = 2. * np.abs((y_results_cy_conv[0] - y_results_nb[0]) / (y_results_cy_conv[0] + y_results_nb[0]))
-    p_diff_2_nb = 2. * np.abs((y_results_cy_conv[1] - y_results_nb[1]) / (y_results_cy_conv[1] + y_results_nb[1]))
+    p_diff_1_nb = 2. * np.abs((y_results_cy_conv[0] - result_nb.y[0]) / (y_results_cy_conv[0] + result_nb.y[0]))
+    p_diff_2_nb = 2. * np.abs((y_results_cy_conv[1] - result_nb.y[1]) / (y_results_cy_conv[1] + result_nb.y[1]))
     assert np.all(p_diff_1_nb < check_rtol)
     assert np.all(p_diff_2_nb < check_rtol)
 
@@ -122,10 +122,9 @@ def test_cy2nb_noargs():
     check_rtol = 0.1
 
     # First calculate the result of an integration using nbrk.
-    time_domain_nb, y_results_nb, success_nb, message_nb = \
-        nbrk_ode(diffeq_scipy, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
-    print(message_nb)
-    assert success_nb
+    result_nb = \
+        nbsolve_ivp(diffeq_scipy, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
+    assert result_nb.success
 
     # Perform a cyrk integration using the diffeq that was written for cyrk
     time_domain_cy, y_results_cy, success_cy, message_cy = \
@@ -137,7 +136,7 @@ def test_cy2nb_noargs():
 
     # Use this function to recalculate using cyrk
     time_domain_nb_conv, y_results_nb_conv, success_nb_conv, message_nb_conv = \
-        nbrk_ode(diffeq_nb_converted, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
+        nbsolve_ivp(diffeq_nb_converted, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
     assert success_nb_conv
 
     # Check that the results match
@@ -148,8 +147,8 @@ def test_cy2nb_noargs():
     assert np.all(p_diff_2_cy < check_rtol)
 
     # # Converted vs. nbrk
-    p_diff_1_nb = 2. * np.abs((y_results_nb_conv[0] - y_results_nb[0]) / (y_results_nb_conv[0] + y_results_nb[0]))
-    p_diff_2_nb = 2. * np.abs((y_results_nb_conv[1] - y_results_nb[1]) / (y_results_nb_conv[1] + y_results_nb[1]))
+    p_diff_1_nb = 2. * np.abs((y_results_nb_conv[0] - result_nb.y[0]) / (y_results_nb_conv[0] + result_nb.y[0]))
+    p_diff_2_nb = 2. * np.abs((y_results_nb_conv[1] - result_nb.y[1]) / (y_results_nb_conv[1] + result_nb.y[1]))
     assert np.all(p_diff_1_nb < check_rtol)
     assert np.all(p_diff_2_nb < check_rtol)
 
@@ -161,9 +160,9 @@ def test_cy2nb_args():
     check_rtol = 0.1
 
     # First calculate the result of an integration using nbrk.
-    time_domain_nb, y_results_nb, success_nb, message_nb = \
-        nbrk_ode(diffeq_scipy_args, time_span, initial_conds, t_eval=t_eval, args=(0.01, 0.02), rtol=rtol, atol=atol)
-    assert success_nb
+    result_nb = \
+        nbsolve_ivp(diffeq_scipy_args, time_span, initial_conds, t_eval=t_eval, args=(0.01, 0.02), rtol=rtol, atol=atol)
+    assert result_nb.success
 
     # Perform a cyrk integration using the diffeq that was written for cyrk
     time_domain_cy, y_results_cy, success_cy, message_cy = \
@@ -175,7 +174,7 @@ def test_cy2nb_args():
 
     # Use this function to recalculate using cyrk
     time_domain_nb_conv, y_results_nb_conv, success_nb_conv, message_nb_conv = \
-        nbrk_ode(diffeq_nb_converted_args, time_span, initial_conds, t_eval=t_eval, args=(0.01, 0.02), rtol=rtol, atol=atol)
+        nbsolve_ivp(diffeq_nb_converted_args, time_span, initial_conds, t_eval=t_eval, args=(0.01, 0.02), rtol=rtol, atol=atol)
     assert success_nb_conv
 
     # Check that the results match
@@ -186,8 +185,8 @@ def test_cy2nb_args():
     assert np.all(p_diff_2_cy < check_rtol)
 
     # # Converted vs. nbrk
-    p_diff_1_nb = 2. * np.abs((y_results_nb_conv[0] - y_results_nb[0]) / (y_results_nb_conv[0] + y_results_nb[0]))
-    p_diff_2_nb = 2. * np.abs((y_results_nb_conv[1] - y_results_nb[1]) / (y_results_nb_conv[1] + y_results_nb[1]))
+    p_diff_1_nb = 2. * np.abs((y_results_nb_conv[0] - result_nb.y[0]) / (y_results_nb_conv[0] + result_nb.y[0]))
+    p_diff_2_nb = 2. * np.abs((y_results_nb_conv[1] - result_nb.y[1]) / (y_results_nb_conv[1] + result_nb.y[1]))
     assert np.all(p_diff_1_nb < check_rtol)
     assert np.all(p_diff_2_nb < check_rtol)
 
@@ -199,9 +198,9 @@ def test_cy2nb_cache_njit():
     check_rtol = 0.1
 
     # First calculate the result of an integration using nbrk.
-    time_domain_nb, y_results_nb, success_nb, message_nb = \
-        nbrk_ode(diffeq_scipy, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
-    assert success_nb
+    result_nb = \
+        nbsolve_ivp(diffeq_scipy, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
+    assert result_nb.success
 
     # Perform a cyrk integration using the diffeq that was written for cyrk
     time_domain_cy, y_results_cy, success_cy, message_cy = \
@@ -213,7 +212,7 @@ def test_cy2nb_cache_njit():
 
     # Use this function to recalculate using cyrk
     time_domain_nb_conv, y_results_nb_conv, success_nb_conv, message_nb_conv = \
-        nbrk_ode(diffeq_nb_converted, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
+        nbsolve_ivp(diffeq_nb_converted, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
     assert success_nb_conv
 
     # Check that the results match
@@ -224,8 +223,8 @@ def test_cy2nb_cache_njit():
     assert np.all(p_diff_2_cy < check_rtol)
 
     # # Converted vs. nbrk
-    p_diff_1_nb = 2. * np.abs((y_results_nb_conv[0] - y_results_nb[0]) / (y_results_nb_conv[0] + y_results_nb[0]))
-    p_diff_2_nb = 2. * np.abs((y_results_nb_conv[1] - y_results_nb[1]) / (y_results_nb_conv[1] + y_results_nb[1]))
+    p_diff_1_nb = 2. * np.abs((y_results_nb_conv[0] - result_nb.y[0]) / (y_results_nb_conv[0] + result_nb.y[0]))
+    p_diff_2_nb = 2. * np.abs((y_results_nb_conv[1] - result_nb.y[1]) / (y_results_nb_conv[1] + result_nb.y[1]))
     assert np.all(p_diff_1_nb < check_rtol)
     assert np.all(p_diff_2_nb < check_rtol)
 
@@ -237,9 +236,9 @@ def test_nb2cy_cache_njit():
     check_rtol = 0.1
 
     # First calculate the result of an integration using nbrk.
-    time_domain_nb, y_results_nb, success_nb, message_nb = \
-        nbrk_ode(diffeq_scipy, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
-    assert success_nb
+    result_nb = \
+        nbsolve_ivp(diffeq_scipy, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
+    assert result_nb.success
 
     # Perform a cyrk integration using the diffeq that was written for cyrk
     time_domain_cy, y_results_cy, success_cy, message_cy = \
@@ -262,7 +261,7 @@ def test_nb2cy_cache_njit():
     assert np.all(p_diff_2_cy < check_rtol)
 
     # # Converted vs. nbrk
-    p_diff_1_nb = 2. * np.abs((y_results_cy_conv[0] - y_results_nb[0]) / (y_results_cy_conv[0] + y_results_nb[0]))
-    p_diff_2_nb = 2. * np.abs((y_results_cy_conv[1] - y_results_nb[1]) / (y_results_cy_conv[1] + y_results_nb[1]))
+    p_diff_1_nb = 2. * np.abs((y_results_cy_conv[0] - result_nb.y[0]) / (y_results_cy_conv[0] + result_nb.y[0]))
+    p_diff_2_nb = 2. * np.abs((y_results_cy_conv[1] - result_nb.y[1]) / (y_results_cy_conv[1] + result_nb.y[1]))
     assert np.all(p_diff_1_nb < check_rtol)
     assert np.all(p_diff_2_nb < check_rtol)

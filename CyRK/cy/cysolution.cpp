@@ -164,3 +164,14 @@ void CySolverResult::update_message(const char* const new_message_ptr)
 {
     std::strcpy(this->message_ptr, new_message_ptr);
 }
+
+// Getters
+std::vector<double> CySolverResult::get_time_domain()
+{
+    return this->time_domain;
+}
+
+std::vector<double> CySolverResult::get_solution()
+{
+    return this->solution;
+}

@@ -26,18 +26,18 @@ def nb_diffeq(t, y):
     return dy
 
 
-def test_cyrk():
+def test_nbrk():
 
-    from CyRK import cyrk_ode
+    from CyRK import nbsolve_ivp
 
-    time_domain, y_results, success, message = cyrk_ode(cy_diffeq, time_span, initial_conds)
+    nbrk_result = nbsolve_ivp(nb_diffeq, time_span, initial_conds)
 
-    assert success
-    assert type(time_domain) == np.ndarray
-    assert type(y_results) == np.ndarray
-    assert y_results.shape[0] == 2
+    assert nbrk_result.success
+    assert type(nbrk_result.t) == np.ndarray
+    assert type(nbrk_result.y) == np.ndarray
+    assert nbrk_result.y.shape[0] == 2
 
-    print("CyRK's cyrk_ode was tested successfully.")
+    print("CyRK's nbsolve_ivp was tested successfully.")
 
 def test_pysolver():
 
@@ -52,25 +52,10 @@ def test_pysolver():
 
     print("CyRK's PySolver was tested successfully.")
 
-def test_nbrk():
-
-    from CyRK import nbrk_ode
-
-    time_domain, y_results, success, message = nbrk_ode(nb_diffeq, time_span, initial_conds)
-
-    assert success
-    assert type(time_domain) == np.ndarray
-    assert type(y_results) == np.ndarray
-    assert y_results.shape[0] == 2
-
-    print("CyRK's nbrk_ode was tested successfully.")
-
-
 def test_cysolver():
 
     from CyRK.cy.cysolverNew_test import cytester
 
-    # TODO: Currently CySolver only works with floats not complex
     result = cytester(0, time_span, initial_conds, None, 1, 0, 0, 2000, rtol, atol)
 
     assert result.success

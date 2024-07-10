@@ -88,11 +88,28 @@ cdef WrapCySolverResult cysolve_ivp(
         max_step,
         first_step
         )
-
+    
     cdef WrapCySolverResult pysafe_result = WrapCySolverResult()
     pysafe_result.set_cyresult_pointer(result)
 
     return pysafe_result
+
+# =====================================================================================================================
+# Build a cffi reference that can be hooked into numba njit'd functions
+# =====================================================================================================================
+# from libc.stdint cimport uintptr_t
+
+# cdef void f(int x) nogil:
+#     with gil:
+#         print(x+1)
+
+# def get_cffi_f():
+#     cdef void_int_func_pointer f_ptr = f
+#     cdef uintptr_t f_ptr_int = <uintptr_t>f_ptr
+
+#     from cffi import FFI
+#     ffi = FFI()
+#     return ffi.cast('void (*)(int)',f_ptr_int)
 
 # =====================================================================================================================
 # PySolver Class (holds the intergrator class and reference to the python diffeq function)
