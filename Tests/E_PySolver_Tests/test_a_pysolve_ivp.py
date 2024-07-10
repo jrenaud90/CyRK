@@ -6,15 +6,8 @@ from CyRK.cy.cysolverNew import pysolve_ivp, WrapCySolverResult
 
 # TODO: Missing Tests
 #  - t_eval
+#  - dense output
 #
-
-def test_pysolve_ivp_test():
-    """Check that the builtin test function for the CySolver integrator is working"""
-
-    # from CyRK import test_cysolver
-    # test_cysolver()
-    #TODO
-
 
 def diffeq(dy, t, y):
     dy[0] = (1. - 0.01 * y[1]) * y[0]
@@ -90,6 +83,13 @@ atol = 1.0e-8
 
 rtols = np.asarray((1.0e-7, 1.0e-8), dtype=np.float64, order='C')
 atols = np.asarray((1.0e-8, 1.0e-9), dtype=np.float64, order='C')
+
+
+def test_pysolve_ivp_test():
+    """Check that the builtin test function for the PySolver integrator is working"""
+
+    from CyRK import test_pysolver
+    test_pysolver()
 
 @pytest.mark.filterwarnings("error")  # Some exceptions get propagated via cython as warnings; we want to make sure the lead to crashes.
 @pytest.mark.parametrize('capture_extra', (True, False))

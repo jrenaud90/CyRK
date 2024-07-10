@@ -66,8 +66,8 @@ cdef WrapCySolverResult cysolve_ivp(
             double atol = 1.0e-6,
             double* rtols_ptr = NULL,
             double* atols_ptr = NULL,
-            double max_step_size = MAX_STEP,
-            double first_step_size = 0.0
+            double max_step = MAX_STEP,
+            double first_step = 0.0
             ) noexcept:
     
     cdef shared_ptr[CySolverResult] result = baseline_cysolve_ivp(
@@ -85,8 +85,8 @@ cdef WrapCySolverResult cysolve_ivp(
         atol,
         rtols_ptr,
         atols_ptr,
-        max_step_size,
-        first_step_size
+        max_step,
+        first_step
         )
 
     cdef WrapCySolverResult pysafe_result = WrapCySolverResult()
@@ -97,7 +97,6 @@ cdef WrapCySolverResult cysolve_ivp(
 # =====================================================================================================================
 # PySolver Class (holds the intergrator class and reference to the python diffeq function)
 # =====================================================================================================================
-from libc.stdio cimport printf
 cdef class WrapPyDiffeq:
 
     def __cinit__(

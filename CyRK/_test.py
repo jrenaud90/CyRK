@@ -13,6 +13,10 @@ def cy_diffeq(t, y, dy):
     dy[0] = (1. - 0.01 * y[1]) * y[0]
     dy[1] = (0.02 * y[0] - 1.) * y[1]
 
+@njit
+def pysolve_diffeq(dy, t, y):
+    dy[0] = (1. - 0.01 * y[1]) * y[0]
+    dy[1] = (0.02 * y[0] - 1.) * y[1]
 
 @njit
 def nb_diffeq(t, y):
@@ -39,7 +43,7 @@ def test_pysolver():
 
     from CyRK import pysolve_ivp
 
-    result = pysolve_ivp(cy_diffeq, time_span, initial_conds_float)
+    result = pysolve_ivp(pysolve_diffeq, time_span, initial_conds_float, pass_dy_as_arg=True)
 
     assert result.success
     assert type(result.t) == np.ndarray

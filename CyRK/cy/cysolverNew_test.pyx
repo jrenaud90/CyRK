@@ -3,8 +3,9 @@
 
 from libc.math cimport sin, cos, fabs, fmin, fmax
 
-from CyRK.utils.memory cimport shared_ptr
-from CyRK.cy.cysolverNew cimport baseline_cysolve_ivp, WrapCySolverResult, CySolverResult, DiffeqFuncType, MAX_STEP, EPS_100, INF, find_expected_size
+from CyRK.cy.cysolverNew cimport (
+    cysolve_ivp, find_expected_size, WrapCySolverResult, DiffeqFuncType,MAX_STEP, EPS_100, INF
+    )
 
 import numpy as np
 
@@ -140,8 +141,8 @@ def cytester(
         double atol = 1.0e-6,
         double[::1] rtol_array = None,
         double[::1] atol_array = None,
-        double max_step_size = MAX_STEP,
-        double first_step_size = 0.0
+        double max_step = MAX_STEP,
+        double first_step = 0.0
         ):
     
     cdef double[2] t_span_arr
@@ -150,7 +151,7 @@ def cytester(
     t_span_ptr[1] = t_span[1]
 
     cdef unsigned int num_y = len(y0)
-    cdef double* y0_ptr = &y0[0]
+    cdef double* y0_ptr     = &y0[0]
 
     cdef int num_extra = 0
     cdef DiffeqFuncType diffeq
@@ -187,7 +188,7 @@ def cytester(
     if atol_array is not None:
         atols_ptr = &atol_array[0]
 
-    cdef shared_ptr[CySolverResult] result = baseline_cysolve_ivp(
+    cdef WrapCySolverResult result = cysolve_ivp(
         diffeq,
         t_span_ptr,
         y0_ptr,
@@ -202,10 +203,7 @@ def cytester(
         atol,
         rtols_ptr,
         atols_ptr,
-        max_step_size,
-        first_step_size)
+        max_step,
+        first_step)
 
-    cdef WrapCySolverResult wrapped_result = WrapCySolverResult()
-    wrapped_result.set_cyresult_pointer(result)
-
-    return wrapped_result
+    return result

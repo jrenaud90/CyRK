@@ -302,6 +302,6 @@ cdef WrapCySolverResult cysolve_ivp(
     double atol = *,
     double* rtols_ptr = *,
     double* atols_ptr = *,
-    double max_step_size = *,
-    double first_step_size = *
+    double max_step = *,
+    double first_step = *
     ) noexcept
