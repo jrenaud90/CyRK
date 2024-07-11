@@ -76,7 +76,4 @@ public:
 
     std::vector<double> get_time_domain();
     std::vector<double> get_solution();
-    __declspec(property(get = get_time_domain)) std::vector<double> t;
-    __declspec(property(get = get_solution)) std::vector<double> y;
-
 };
