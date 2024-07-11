@@ -1,10 +1,10 @@
 import os
 import platform
 import json
+import sys
 from setuptools import Extension, setup
 
 import numpy as np
-
 
 install_platform = platform.system()
 
@@ -13,6 +13,7 @@ if install_platform.lower() == 'windows':
     extra_link_args = []
 elif install_platform.lower() == 'darwin':
     # OpenMP is installed via llvm. See https://stackoverflow.com/questions/60005176/how-to-deal-with-clang-error-unsupported-option-fopenmp-on-travis
+    # os.environ["CXX"] = "g++"
     extra_compile_args = ['-O3']
     extra_link_args = []
 else:
@@ -32,8 +33,8 @@ for cython_ext, ext_data in cython_ext_dict.items():
         Extension(
             name=ext_data['name'],
             sources=[os.path.join(*tuple(source_path)) for source_path in ext_data['sources']],
-            # Always add numpy to any includes
-            include_dirs=[os.path.join(*tuple(dir_path)) for dir_path in ext_data['include_dirs']] + [np.get_include()],
+            # Always add numpy to any includes; also add sys.path so we can capture python.h
+            include_dirs=[os.path.join(*tuple(dir_path)) for dir_path in ext_data['include_dirs']] + [np.get_include()] + sys.path,
             extra_compile_args=ext_data['compile_args'] + extra_compile_args,
             define_macros=macro_list,
             extra_link_args=ext_data['link_args'] + extra_link_args,

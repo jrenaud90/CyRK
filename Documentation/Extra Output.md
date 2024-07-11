@@ -35,7 +35,7 @@ Current limitations of this feature as of v0.4.0:
 - All extra outputs must have the same _type_ as the input `y`s. This means if you are using `y`s which are floats, but you need to capture a complex number, 
 then you will either need to change the `y`s to complex-valued (with a zero imaginary portion) or, a better option, return the real and imaginary portions of the extra parameter separately.
 
-## How to use with `CyRK.nbrk_ode` (Numba-based)
+## How to use with `CyRK.nbsolve_ivp` (Numba-based)
 
 Define a differential equation function with the additional extra outputs put _after_ the y-derivatives.
 It is a good idea to turn the output into numpy ndarray before the final return.
@@ -55,12 +55,12 @@ def diffeq(t, y, arg_0, arg_1):
     return np.asarray([dy_0, dy_1, extra_parameter_0, extra_parameter_1], dtype=y.dtype)
 ```
 
-Call the `nbrk_ode` solver in the standard form except now with the `capture_extra` flag to `True` (by default it is `False`).
+Call the `nbsolve_ivp` solver in the standard form except now with the `capture_extra` flag to `True` (by default it is `False`).
 
 ```python
-from CyRK import nbrk_ode
+from CyRK import nbsolve_ivp
 time_domain, all_output, success, message = \
-    nbrk_ode(diffeq, time_span, initial_conds, rk_method=1, rtol=rtol, atol=atol, capture_extra=True)
+    nbsolve_ivp(diffeq, time_span, initial_conds, rk_method=1, rtol=rtol, atol=atol, capture_extra=True)
 ```
 
 The output of the solver (if successful) will now contain both the dependent `y` values over time as well as the extra parameters.
@@ -72,118 +72,67 @@ extra_parameter_0 = all_output[2, :]
 extra_parameter_1 = all_output[3, :]
 ```
 
-## How to use with `CyRK.cyrk_ode` (Cython-based)
+## How to use with `CyRK.pysolve_ivp` (Cython-based)
 
-The process for capturing extra outputs with the cython-based solver follows similar steps to the numba-based approach discussed above with two exceptions.
+The process for capturing extra outputs with the cython-based solver follows similar steps to the numba-based approach where extra outputs are stored in the dy/dt output array.
+Note that the extra outputs must be stored at the end of the output array, after all dy/dts.
 
-First, as is the case with the general solving method, the differential equation signature for `cyrk_ode` requires the output to be given as an input.
-Otherwise, the same rules apply here as they did with the numba version: extra outputs must come after the `dy/dt`s, and they must have the same type (TODO: for `cyrk_ode` as of v0.4.0 the type has to be complex).
+If you are using a returned dy/dt the format would look like:
 
 ```python
-def diffeq_cy(t, y, output, arg_0, arg_1):
+def diffeq_cy(t, y, arg_0, arg_1):
+    
+    dy = np.empty(y.shape, dtype=np.float64)
+    extra_0 = (1. - arg_0 * y[1])
+    extra_1 = (arg_1 * y[0] - 1.)
+    # The differential equations
+    dy[0] = extra_0 * y[0]
+    dy[1] = extra_1 * y[1]
+
+    # The extra output
+    dy[2] = extra_0
+    dy[3] = extra_1
+```
+
+Or if you pass in the differential equation as the first argument of the diffeq (recommended for improved performance!):
+
+```python
+def diffeq_cy(dy, t, y, arg_0, arg_1):
     
     extra_0 = (1. - arg_0 * y[1])
     extra_1 = (arg_1 * y[0] - 1.)
-    output[0] = extra_0 * y[0]
-    output[1] = extra_1 * y[1]
-    output[2] = extra_0
-    output[3] = extra_1
+    # The differential equations
+    dy[0] = extra_0 * y[0]
+    dy[1] = extra_1 * y[1]
+
+    # The extra output
+    dy[2] = extra_0
+    dy[3] = extra_1
 ```
 
 The next change is that the solver needs to know how many extra outputs it should expect. In our example there are two additional outputs.
 
 ```python
-from CyRK import cyrk_ode
-time_domain, all_output, success, message = \
-    cyrk_ode(diffeq_cy, time_span, initial_conds, rk_method=1, rtol=rtol, atol=atol, capture_extra=True, num_extra=2)
+from CyRK import pysolve_ivp
+result = \
+    cyrk_ode(diffeq_cy, time_span, initial_conds, rk_method=1, rtol=rtol, atol=atol, num_extra=2)
 ```
 
 The output matches the output described for the numba-based approach,
 
 ```python
-y_0 = all_output[0, :]
-y_1 = all_output[1, :]
-extra_parameter_0 = all_output[2, :]
-extra_parameter_1 = all_output[3, :]
+y_0 = result.y[0, :]
+y_1 = result.y[1, :]
+extra_parameter_0 = result.y[2, :]
+extra_parameter_1 = result.y[3, :]
 ```
 
-## How to use with `CySolver` (Cython-based)
 
-The process to extract extra outputs is straight forward when using the cython-based cdef class. First, as described in the readme.md, you must create a new sub class that defines the diffeq. Note the following code must be made in a .pyx file, cythonized, and compiled. After that it can be imported and used in a regular python file.
-
-```cython
-"""ODE.pyx"""
-# distutils: language = c++
-# cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
-from CyRK.cy.cysolver cimport CySolver
-# Note the `cimport` here^
-
-cdef class CySolverTester(CySolver):
-
-    @cython.exceptval(check=False)
-    cdef void diffeq(self):
-        
-        # Unpack dependent variables using the `self.y_ptr` variable.
-        cdef double y0, y1
-        y0 = self.y_ptr[0]
-        y1 = self.y_ptr[1]
-
-        # If needed, unpack the time variable using `self.t_now`
-        cdef double t
-        t = self.t_now
-
-        # Unpack any additional arguments that do not change with time using the `self.args_ptr` variable.
-        cdef double a, b
-        # These must be float64s
-        a  = self.args_ptr[0]
-        b  = self.args_ptr[1]
-
-        # Define extra variables that you are interested in storing and accessing later.
-        cdef double extra_0, extra_1
-        # These extra parameters must be float64s
-        extra_0 = (1. - a * y1)
-        extra_1 = (b * y0 - 1.)
-        # These are then stored in the self.
-        self.extra_output_ptr[0] = extra_0
-        self.extra_output_ptr[0] = extra_1
-
-        # This function must set the dydt variable `self.dy_ptr`
-        self.dy_ptr[0] = extra_0 * y0
-        self.dy_ptr[1] = extra_1 * y1
-```
-
-Once you compile the differential equation it can be imported in a regular python file and used in a similar fashion to the other integrators.
-
-```python
-"""run.py"""
-from CyRK.cy.cysolvertest import CySolverTester
-
-# Need to make an instance of the integrator.
-# We need to tell the solver how many extra outputs we want to capture. In this case, 2.
-CySolverTesterInst = CySolverTester(time_span, initial_conds, args=(0.01, 0.02),
-                                    rk_method=1, rtol=rtol, atol=atol,
-                                    num_extra=2, interpolate_extra=False)
-
-# To perform the integration make a call to the solve method.
-CySolverTesterInst.solve()
-
-# Once complete, you can access the results via...
-CySolverTesterInst.success     # True / False
-CySolverTesterInst.message     # Note about integration
-CySolverTesterInst.solution_t  # Time domain
-CySolverTesterInst.solution_y  # y dependent variables
-
-# Extra output that was captured during integration.
-CySolverTesterInst.extra
-print(CySolverTesterInst.extra[0, :])
-print(CySolverTesterInst.extra[1, :])
-```
-
-## Additional Considerations When Using `t_eval`
+## Additional Considerations When Using `t_eval` (for numba-based method)
 
 _This is applicable to either the numba- or cython-based solver._
 
-By setting the `t_eval` argument for either the `nbrk_ode` or `cyrk_ode` solver, an interpolation will occur at the end of integration.
+By setting the `t_eval` argument for either the `nbsolve_ivp` or `cyrk_ode` solver, an interpolation will occur at the end of integration.
 This uses the solved `y`s and `time_domain` to find a new reduced `y_reduced` at `t_eval` intervals using a method similar to `numpy.interp` function. 
 Since we are potentially storing extra parameters during integration, we need to tell the solvers how to handle any potential interpolation on these new parameters.
 

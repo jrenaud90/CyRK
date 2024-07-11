@@ -4,8 +4,42 @@
 
 #### v0.10.0 (2024-06-17)
 
+C++ Backend:
+* This version of CyRK introduces a major rework of the backend integrator which is now written in pure C++.
+* CySolver is now a Cython wrapper to this C++ integrator which can be accessed via Python.
+  * Access this function by using `from CyRK cimport cysolve_ivp` (this must be done within Cython).
+  * The plan is to replace CyRK's older `CySolver` with this function.
+* There is now a new PySolver version of this wrapper that allows a user to pass a python function to the C++ backend.
+  * Access this function by using `from CyRK import pysolve_ivp`.
+  * This is designed as a drop-in-place replacement for SciPy's `solve_ivp`.
+  * The plan is to replace CyRK's older `cyrk_ode` with this function.
+
+Deprecating Older CyRK Methods:
+* The new C++ backend is more flexible, faster, and allows for easy additions of new features. It is common across the cython-only, python, and njit-safe numba solvers. Therefore making a change to it propagates to all three solvers - allowing for easier maintenance and new features. For these reasons, the older `cyrk_ode`, `CySolver`, and `nbrk_ode` are now marked as deprecated. No new features will be implemented for those functions and they will be removed in the next major release of CyRK.
+* Deprecated `cyrk_ode`
+* Deprecated `CySolver`
+* Warnings will be issued if these functions are used in this release. To suppress these warnings set `raise_warnings` to False in the respective function calls.
+
 CySolver:
 * Changed error message to use a stack-allocated char-array and associated pointer.
+* Added new argument to constructor `raise_warnings` (default: True) to allow users to suppress warnings.
+
+cyrk_ode:
+* Added new argument to constructor `raise_warnings` (default: True) to allow users to suppress warnings.
+
+WrapCySolverResult:
+* `cysolve_ivp` and `pysolve_ivp` now return a class structure that stores the result of the integration along with some meta data. The accessible attributes are:
+  * `cysolve_ivp`s `CySolverResult`:
+    * success (bool): Flag if the integration was successful.
+    * message (str): Message to give a hint on what happened during integration.
+    * error_code (int): Additional error/status code that hints on what happened during integration.
+    * size (int): Length of time domain.
+    * y (float[:, :]): 2D Float Array of y solutions (and any extra output).
+    * t (float[:]): 1D Float Array of time domain at which y is defined.
+
+numba based `nbsolve_ivp`:
+* The older `nbrk_ode` has been refactored to `nbsolve_ivp` to match the signature of the new cython-based functions (and scipy's solve_ivp).
+* The output of `nbsolve_ivp` is now a named tuple that functions similar to the `WrapCySolverResult`
 
 Memory Management:
 * Changed exit code when memory can not be allocated.
@@ -16,6 +50,9 @@ Memory Management:
 
 Bug Fixes:
 * Fixed issue where the Cython-based solvers might use the incorrect memory freeing function.
+
+Other Changes:
+* Moved from GCC to Clang on MacOS builds. There was a new problem that appeared with GCC's linker and could not find a working solution. The original move away from clang was done to support openMP multiprocessing. CyRK does not currently use that so the switch back should be okay.
 
 ### v0.9.0 (2024-05-22)
 
