@@ -135,20 +135,20 @@ def test_cy2nb_noargs():
     diffeq_nb_converted = cy2nb(diffeq_cy)
 
     # Use this function to recalculate using cyrk
-    time_domain_nb_conv, y_results_nb_conv, success_nb_conv, message_nb_conv = \
+    result_nb_conv = \
         nbsolve_ivp(diffeq_nb_converted, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
-    assert success_nb_conv
+    assert result_nb.success
 
     # Check that the results match
     # # Converted vs. hardcoded
-    p_diff_1_cy = 2. * np.abs((y_results_nb_conv[0] - y_results_cy[0]) / (y_results_nb_conv[0] + y_results_cy[0]))
-    p_diff_2_cy = 2. * np.abs((y_results_nb_conv[1] - y_results_cy[1]) / (y_results_nb_conv[1] + y_results_cy[1]))
+    p_diff_1_cy = 2. * np.abs((result_nb_conv.y[0] - y_results_cy[0]) / (result_nb_conv.y[0] + y_results_cy[0]))
+    p_diff_2_cy = 2. * np.abs((result_nb_conv.y[1] - y_results_cy[1]) / (result_nb_conv.y[1] + y_results_cy[1]))
     assert np.all(p_diff_1_cy < check_rtol)
     assert np.all(p_diff_2_cy < check_rtol)
 
     # # Converted vs. nbrk
-    p_diff_1_nb = 2. * np.abs((y_results_nb_conv[0] - result_nb.y[0]) / (y_results_nb_conv[0] + result_nb.y[0]))
-    p_diff_2_nb = 2. * np.abs((y_results_nb_conv[1] - result_nb.y[1]) / (y_results_nb_conv[1] + result_nb.y[1]))
+    p_diff_1_nb = 2. * np.abs((result_nb_conv.y[0] - result_nb.y[0]) / (result_nb_conv.y[0] + result_nb.y[0]))
+    p_diff_2_nb = 2. * np.abs((result_nb_conv.y[1] - result_nb.y[1]) / (result_nb_conv.y[1] + result_nb.y[1]))
     assert np.all(p_diff_1_nb < check_rtol)
     assert np.all(p_diff_2_nb < check_rtol)
 
@@ -173,20 +173,20 @@ def test_cy2nb_args():
     diffeq_nb_converted_args = cy2nb(diffeq_cy_args)
 
     # Use this function to recalculate using cyrk
-    time_domain_nb_conv, y_results_nb_conv, success_nb_conv, message_nb_conv = \
+    nb_result_conv = \
         nbsolve_ivp(diffeq_nb_converted_args, time_span, initial_conds, t_eval=t_eval, args=(0.01, 0.02), rtol=rtol, atol=atol)
-    assert success_nb_conv
+    assert nb_result_conv.success
 
     # Check that the results match
     # # Converted vs. hardcoded
-    p_diff_1_cy = 2. * np.abs((y_results_nb_conv[0] - y_results_cy[0]) / (y_results_nb_conv[0] + y_results_cy[0]))
-    p_diff_2_cy = 2. * np.abs((y_results_nb_conv[1] - y_results_cy[1]) / (y_results_nb_conv[1] + y_results_cy[1]))
+    p_diff_1_cy = 2. * np.abs((nb_result_conv.y[0] - y_results_cy[0]) / (nb_result_conv.y[0] + y_results_cy[0]))
+    p_diff_2_cy = 2. * np.abs((nb_result_conv.y[1] - y_results_cy[1]) / (nb_result_conv.y[1] + y_results_cy[1]))
     assert np.all(p_diff_1_cy < check_rtol)
     assert np.all(p_diff_2_cy < check_rtol)
 
     # # Converted vs. nbrk
-    p_diff_1_nb = 2. * np.abs((y_results_nb_conv[0] - result_nb.y[0]) / (y_results_nb_conv[0] + result_nb.y[0]))
-    p_diff_2_nb = 2. * np.abs((y_results_nb_conv[1] - result_nb.y[1]) / (y_results_nb_conv[1] + result_nb.y[1]))
+    p_diff_1_nb = 2. * np.abs((nb_result_conv.y[0] - result_nb.y[0]) / (nb_result_conv.y[0] + result_nb.y[0]))
+    p_diff_2_nb = 2. * np.abs((nb_result_conv.y[1] - result_nb.y[1]) / (nb_result_conv.y[1] + result_nb.y[1]))
     assert np.all(p_diff_1_nb < check_rtol)
     assert np.all(p_diff_2_nb < check_rtol)
 
@@ -211,20 +211,20 @@ def test_cy2nb_cache_njit():
     diffeq_nb_converted = cy2nb(diffeq_cy)
 
     # Use this function to recalculate using cyrk
-    time_domain_nb_conv, y_results_nb_conv, success_nb_conv, message_nb_conv = \
+    nb_result_conv = \
         nbsolve_ivp(diffeq_nb_converted, time_span, initial_conds, t_eval=t_eval, rtol=rtol, atol=atol)
-    assert success_nb_conv
+    assert nb_result_conv.success
 
     # Check that the results match
     # # Converted vs. hardcoded
-    p_diff_1_cy = 2. * np.abs((y_results_nb_conv[0] - y_results_cy[0]) / (y_results_nb_conv[0] + y_results_cy[0]))
-    p_diff_2_cy = 2. * np.abs((y_results_nb_conv[1] - y_results_cy[1]) / (y_results_nb_conv[1] + y_results_cy[1]))
+    p_diff_1_cy = 2. * np.abs((nb_result_conv.y[0] - y_results_cy[0]) / (nb_result_conv.y[0] + y_results_cy[0]))
+    p_diff_2_cy = 2. * np.abs((nb_result_conv.y[1] - y_results_cy[1]) / (nb_result_conv.y[1] + y_results_cy[1]))
     assert np.all(p_diff_1_cy < check_rtol)
     assert np.all(p_diff_2_cy < check_rtol)
 
     # # Converted vs. nbrk
-    p_diff_1_nb = 2. * np.abs((y_results_nb_conv[0] - result_nb.y[0]) / (y_results_nb_conv[0] + result_nb.y[0]))
-    p_diff_2_nb = 2. * np.abs((y_results_nb_conv[1] - result_nb.y[1]) / (y_results_nb_conv[1] + result_nb.y[1]))
+    p_diff_1_nb = 2. * np.abs((nb_result_conv.y[0] - result_nb.y[0]) / (nb_result_conv.y[0] + result_nb.y[0]))
+    p_diff_2_nb = 2. * np.abs((nb_result_conv.y[1] - result_nb.y[1]) / (nb_result_conv.y[1] + result_nb.y[1]))
     assert np.all(p_diff_1_nb < check_rtol)
     assert np.all(p_diff_2_nb < check_rtol)
 

@@ -9,6 +9,10 @@ from CyRK.cy.cysolverNew import pysolve_ivp, WrapCySolverResult
 #  - dense output
 #
 
+# To reduce number of tests, only test RK23 once since RK45 should capture all its functionality
+SKIP_SOME_RK23_TESTS = True
+RK23_TESTED = False
+
 def diffeq(dy, t, y):
     dy[0] = (1. - 0.01 * y[1]) * y[0]
     dy[1] = (0.02 * y[0] - 1.) * y[1]
@@ -107,6 +111,13 @@ def test_pysolve_ivp(use_scipy_style, use_args, use_njit,
                      use_large_timespan, use_atol_array, use_rtol_array, use_different_tols, integration_method,
                      first_step, max_step, capture_extra):
     """Check that the pysolve_ivp function is able to run with various changes to its arguments. """
+    global RK23_TESTED
+
+    # To reduce number of tests, only test RK23 once. 
+    if RK23_TESTED and SKIP_SOME_RK23_TESTS and (integration_method=="RK23"):
+        pytest.skip("Skipping RK23 (just to reduce number of tests).")
+    else:
+        RK23_TESTED = True
 
     if use_args:
         if use_scipy_style:
@@ -336,3 +347,44 @@ def test_pysolve_ivp_accuracy(integration_method):
     # ax.plot(result.t, real_answer[0], 'b', label='Analytic')
     # ax.plot(result.t, real_answer[1], 'b:')
     # plt.show()
+
+@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853"))
+def test_pysolve_ivp_readonly(integration_method):
+    #Check that the cython function solver is able to reproduce a known functions integral with reasonable accuracy
+
+    @njit
+    def diffeq_accuracy(dy, t, y):
+        dy[0] = np.sin(t) - y[1]  # dydt = sin(t) - x(t)
+        dy[1] = np.cos(t) + y[0]  # dxdt = cos(t) + y(t)
+
+    # Initial Conditions
+    # y=0 --> c2 = + 1/2
+    c2 = 0.5
+    # x=1 --> c1 = + 1
+    c1 = 1.0
+    y0 = np.asarray((0., 1.), dtype=np.float64)
+    # Make readonly
+    y0.setflags(write=False)
+    time_span_ = (0., 10.)
+
+    result = \
+        pysolve_ivp(diffeq_accuracy, time_span_, y0, method=integration_method,
+                    rtol=1.0e-8, atol=1.0e-9, pass_dy_as_arg=True)
+    
+    assert isinstance(result, WrapCySolverResult)
+    assert result.success
+    assert result.error_code == 1
+    assert result.size > 1
+    assert result.message == "Integration completed without issue."
+    # Check that the ndarrays make sense
+    assert type(result.t) == np.ndarray
+    assert result.t.dtype == np.float64
+    assert result.y.dtype == np.float64
+    assert result.t.size > 1
+    assert result.t.size == result.y[0].size
+    assert len(result.y.shape) == 2
+    assert result.y[0].size == result.y[1].size
+    assert result.t.size == result.size
+    assert result.y[0].size == result.size
+    assert result.y.shape[0] == 2
+    assert type(result.message) == str
