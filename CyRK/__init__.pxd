@@ -1,1 +1,1 @@
-from CyRK.cy.cysolverNew cimport cysolve_ivp, DiffeqFuncType, CySolverResult, WrapCySolverResult, CySolverBase
+from CyRK.cy.cysolverNew cimport cysolve_ivp, cysolve_ivp_gil, DiffeqFuncType, CySolverResult, WrapCySolverResult, CySolverBase, CySolveOutput, RK23_METHOD_INT, RK45_METHOD_INT, DOP853_METHOD_INT

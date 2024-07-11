@@ -5,7 +5,7 @@ from libc.math cimport sin, cos, fabs, fmin, fmax
 
 from CyRK.cy.cysolverNew cimport (
     cysolve_ivp, find_expected_size, WrapCySolverResult, DiffeqFuncType,MAX_STEP, EPS_100, INF,
-    CySolverResult
+    CySolverResult, CySolveOutput
     )
 from CyRK.utils.memory cimport shared_ptr
 
@@ -190,22 +190,26 @@ def cytester(
     if atol_array is not None:
         atols_ptr = &atol_array[0]
 
-    cdef WrapCySolverResult result = cysolve_ivp(
+    cdef CySolveOutput result = cysolve_ivp(
         diffeq,
         t_span_ptr,
         y0_ptr,
         num_y,
-        method,
-        expected_size,
-        num_extra,
-        args_ptr,
-        max_num_steps,
-        max_ram_MB,
-        rtol,
-        atol,
-        rtols_ptr,
-        atols_ptr,
-        max_step,
-        first_step)
+        method = method,
+        rtol = rtol,
+        atol = atol,
+        args_ptr = args_ptr,
+        num_extra = num_extra,
+        max_num_steps = max_num_steps,
+        max_ram_MB = max_ram_MB,
+        rtols_ptr = rtols_ptr,
+        atols_ptr = atols_ptr,
+        max_step = max_step,
+        first_step = first_step,
+        expected_size = expected_size
+        )
+    
+    cdef WrapCySolverResult pysafe_result = WrapCySolverResult()
+    pysafe_result.set_cyresult_pointer(result)
 
-    return result
+    return pysafe_result

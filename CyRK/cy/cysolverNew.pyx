@@ -51,26 +51,26 @@ cdef class WrapCySolverResult:
 # Create Wrapped cysolve_ivp (has various defaults)
 # =====================================================================================================================
 
-cdef WrapCySolverResult cysolve_ivp(
+cdef CySolveOutput cysolve_ivp(
             DiffeqFuncType diffeq_ptr,
             double* t_span_ptr,
             double* y0_ptr,
             unsigned int num_y,
             unsigned int method = 1,
-            size_t expected_size = 0,
-            unsigned int num_extra = 0,
-            double* args_ptr = NULL,
-            size_t max_num_steps = 0,
-            size_t max_ram_MB = 2000,
             double rtol = 1.0e-3,
             double atol = 1.0e-6,
+            double* args_ptr = NULL,
+            unsigned int num_extra = 0,
+            size_t max_num_steps = 0,
+            size_t max_ram_MB = 2000,
             double* rtols_ptr = NULL,
             double* atols_ptr = NULL,
             double max_step = MAX_STEP,
-            double first_step = 0.0
-            ) noexcept:
+            double first_step = 0.0,
+            size_t expected_size = 0
+            ) noexcept nogil:
     
-    cdef shared_ptr[CySolverResult] result = baseline_cysolve_ivp(
+    cdef CySolveOutput result = baseline_cysolve_ivp(
         diffeq_ptr,
         t_span_ptr,
         y0_ptr,
@@ -88,28 +88,48 @@ cdef WrapCySolverResult cysolve_ivp(
         max_step,
         first_step
         )
+
+    return result
+
+cdef CySolveOutput cysolve_ivp_gil(
+            DiffeqFuncType diffeq_ptr,
+            double* t_span_ptr,
+            double* y0_ptr,
+            unsigned int num_y,
+            unsigned int method = 1,
+            double rtol = 1.0e-3,
+            double atol = 1.0e-6,
+            double* args_ptr = NULL,
+            unsigned int num_extra = 0,
+            size_t max_num_steps = 0,
+            size_t max_ram_MB = 2000,
+            double* rtols_ptr = NULL,
+            double* atols_ptr = NULL,
+            double max_step = MAX_STEP,
+            double first_step = 0.0,
+            size_t expected_size = 0
+            ) noexcept:
     
-    cdef WrapCySolverResult pysafe_result = WrapCySolverResult()
-    pysafe_result.set_cyresult_pointer(result)
+    cdef CySolveOutput result = baseline_cysolve_ivp(
+        diffeq_ptr,
+        t_span_ptr,
+        y0_ptr,
+        num_y,
+        method,
+        expected_size,
+        num_extra,
+        args_ptr,
+        max_num_steps,
+        max_ram_MB,
+        rtol,
+        atol,
+        rtols_ptr,
+        atols_ptr,
+        max_step,
+        first_step
+        )
 
-    return pysafe_result
-
-# =====================================================================================================================
-# Build a cffi reference that can be hooked into numba njit'd functions
-# =====================================================================================================================
-# from libc.stdint cimport uintptr_t
-
-# cdef void f(int x) nogil:
-#     with gil:
-#         print(x+1)
-
-# def get_cffi_f():
-#     cdef void_int_func_pointer f_ptr = f
-#     cdef uintptr_t f_ptr_int = <uintptr_t>f_ptr
-
-#     from cffi import FFI
-#     ffi = FFI()
-#     return ffi.cast('void (*)(int)',f_ptr_int)
+    return result
 
 # =====================================================================================================================
 # PySolver Class (holds the intergrator class and reference to the python diffeq function)

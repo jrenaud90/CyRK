@@ -71,12 +71,13 @@ If you intend to work on CyRK's code base you will want to install the following
 `conda install` can be replaced with `pip install` if you prefer.
 
 ## Using CyRK
+
+**The following code can be found in a Jupyter Notebook called "Getting Started.ipynb" in the "Demos" folder.**
+
 *Note: some older CyRK functions like `cyrk_ode` and `CySolver` class-based method have been deprecated. Read more in "Documentation/Deprecated Methods.md".*
 CyRK's API is similar to SciPy's solve_ivp function. A differential equation can be defined in python such as:
 
 ```python
-import numpy as np
-
 # For even more speed up you can use numba's njit to compile the diffeq
 from numba import njit
 @njit
@@ -85,53 +86,255 @@ def diffeq_nb(t, y):
     dy[0] = (1. - 0.01 * y[1]) * y[0]
     dy[1] = (0.02 * y[0] - 1.) * y[1]
     return dy
-
-initial_conds = np.asarray((20., 20.), dtype=np.complex128, order='C')
-time_span = (0., 50.)
-rtol = 1.0e-7
-atol = 1.0e-8
 ```
 
-### Numba-based `nbrk_ode`
+### Numba-based `nbsolve_ivp`
+
 _Future Development Note: The numba-based solver is currently in a feature-locked state and will not receive new features (as of CyRK v0.9.0). The reason for this is because it uses a different backend than the rest of CyRK and is not as flexible or easy to expand without significant code duplication. Please see GitHub Issue: TBD to see the status of this new numba-based solver or share your interest in continued development._
 
 The system of ODEs can then be solved using CyRK's numba solver by,
 
 ```python
-from CyRK import nbrk_ode
-time_domain, y_results, success, message = \
-    nbrk_ode(diffeq_nb, time_span, initial_conds, rk_method=1, rtol=rtol, atol=atol)
+import numpy as np
+from CyRK import nbsolve_ivp
+
+initial_conds = np.asarray((20., 20.), dtype=np.float64, order='C')
+time_span = (0., 50.)
+rtol = 1.0e-7
+atol = 1.0e-8
+
+result = \
+    nbsolve_ivp(diffeq_nb, time_span, initial_conds, rk_method=1, rtol=rtol, atol=atol)
+
+print("Was Integration was successful?", result.success)
+print(result.message)
+print("Size of solution: ", result.size)
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots()
+ax.plot(result.t, result.y[0], c='r')
+ax.plot(result.t, result.y[1], c='b')
 ```
 
+#### `nbsolve_ivp` Arguments
+```python
+nbsolve_ivp(
+    diffeq: callable,                  # Differential equation defined as a numba.njit'd python function
+    t_span: Tuple[float, float],       # Python tuple of floats defining the start and stop points for integration
+    y0: np.ndarray,                    # Numpy array defining initial y0 conditions.
+    args: tuple = tuple(),             # Python Tuple of additional args passed to the differential equation. These can be any njit-safe object.
+    rtol: float = 1.e-3,               # Relative tolerance used to control integration error.
+    atol: float = 1.e-6,               # Absolute tolerance (near 0) used to control integration error.
+    rtols: np.ndarray = EMPTY_ARR,     # Overrides rtol if provided. Array of floats of rtols if you'd like a different rtol for each y.
+    atols: np.ndarray = EMPTY_ARR,     # Overrides atol if provided. Array of floats of atols if you'd like a different atol for each y.
+    max_step: float = np.inf,          # Maximum allowed step size.
+    first_step: float = None,          # Initial step size. If set to 0.0 then CyRK will guess a good step size.
+    rk_method: int = 1,                # Integration method. Current options: 0 == RK23, 1 == RK45, 2 == DOP853
+    t_eval: np.ndarray = EMPTY_ARR,    # `nbsolve_ivp` uses an adaptive time stepping protocol based on the recent error at each step. This results in a final non-uniform time domain of variable size. If the user would like the results at specific time steps then they can provide a np.ndarray array at the desired steps via `t_eval`. The solver will then interpolate the results to fit this 
+    capture_extra: bool = False,       # Set to True if the diffeq is designed to provide extra outputs.
+    interpolate_extra: bool = False,   # See "Documentation/Extra Output.md" for details.
+    max_num_steps: int = 0             # Maximum number of steps allowed. If exceeded then integration will fail. 0 (the default) turns this off.
+    )
+```
 
-## Optional Arguments
+### Python wrapped `pysolve_ivp`
 
-All three integrators can take the following optional inputs:
-- `rtol`: Relative Tolerance (default is 1.0e-6).
-- `atol`: Absolute Tolerance (default is 1.0e-8).
-- `rtols`: A numpy ndarray of relative tolerances set for each y0 (default is None; e.g., use `rtol` for each).
-- `atols`: A numpy ndarray of absolute tolerances set for each y0 (default is None; e.g., use `atol` for each).
-- `max_step`: Maximum step size (default is +infinity).
-- `first_step`: Initial step size (default is 0).
-  - If 0, then the solver will try to determine an ideal value.
-- `args`: Python tuple of additional arguments passed to the `diffeq`.
-  - For the cython solvers these arguments must be floating point numbers only.
-- `t_eval`: Both solvers uses an adaptive time stepping protocol based on the recent error at each step. This results in a final non-uniform time domain of variable size. If the user would like the results at specific time steps then they can provide a np.ndarray array at the desired steps via `t_eval`. The solver will then interpolate the results to fit this array.
-- `rk_method`: Runge-Kutta method (default is 1; all of these methods are based off of
-[SciPy implementations](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html)):
-  - `0` - "RK23" Explicit Runge-Kutta method of order 3(2).
-  - `1` - "RK45" Explicit Runge-Kutta method of order 5(4).
-  - `2` - "DOP853" Explicit Runge-Kutta method of order 8.
-- `capture_extra` and `interpolate_extra`: CyRK has the capability of capturing additional parameters during integration. Please see `Documentation\Extra Output.md` for more details.
-- `max_num_steps`: Maximum number of steps the solver is allowed to use. Defaults to system architecture's max size for ints.
+CyRK's main integration functions utilize a C++ backend system which is then wrapped and accessible to Python via Cython. The easiest way to interface with this system is through CyRK's `pysolve_ivp` function. It follows a very similar format to both `nbsolve_ivp` and Scipy's `solve_ivp`. First you must build a function in Python. This could look the same as the function described above for `nbsolve_ivp` (see `diffeq_nb`). However, there are a few advantages that pysolve_ivp provides over nbsolve_ivp:
 
-### Additional Arguments for `cysolve_ivp` and `pysolve_ivp`
-- `num_extra` : The number of extra outputs the integrator should expect.
-  - Please see `Documentation\Extra Output.md` for more details.
-- `expected_size` : Best guess on the expected size of the final time domain (number of points).
-    - The integrator must pre-allocate memory to store results from the integration. It will attempt to use arrays sized to `expected_size`. However, if this is too small or too large then performance will be negatively impacted. It is recommended you try out different values based on the problem you are trying to solve.
-    - If `expected_size=0` (the default) then the solver will attempt to guess a best size. Currently this is a very basic guess so it is not recommended.
-    - It is better to overshoot than undershoot this guess.
+  1. It accepts both functions that use numba's njit wrapper (as `diffeq_nb` did above) or pure Python functions (`nbsolve_ivp` only accepts njit'd functions).
+  2. You can provide the resultant dy/dt as an argument which can provide a significant performance boost.
+
+Utilizing point 2, we can re-write the differential equation function as,
+
+```python
+# Note if using this format, `dy` must be the first argument. Additionally, a special flag must be set to True when calling pysolve_ivp, see below.
+def cy_diffeq(dy, t, y):
+    dy[0] = (1. - 0.01 * y[1]) * y[0]
+    dy[1] = (0.02 * y[0] - 1.) * y[1]
+```
+
+Since this function is not using any special functions we could easily wrap it with njit for additional performance boost: `cy_diffeq = njit(cy_diffeq)`.
+
+Once you have built your function the procedure to solve it is:
+
+```python
+import numpy as np
+from CyRK import pysolve_ivp
+
+initial_conds = np.asarray((20., 20.), dtype=np.complex128, order='C')
+time_span = (0., 50.)
+rtol = 1.0e-7
+atol = 1.0e-8
+
+result = \
+    pysolve_ivp(cy_diffeq, time_span, initial_conds, method="RK45", rtol=rtol, atol=atol,
+                # Note if you did build a differential equation that has `dy` as the first argument then you must pass the following flag as `True`.
+                # You could easily pass the `diffeq_nb` example which returns dy. You would just set this flag to False (and experience a hit to your performance).
+                pass_dy_as_arg=True)
+
+print("Was Integration was successful?", result.success)
+print(result.message)
+print("Size of solution: ", result.size)
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots()
+ax.plot(result.t, result.y[0], c='r')
+ax.plot(result.t, result.y[1], c='b')
+```
+
+#### `pysolve_ivp` Arguments
+
+```python
+def pysolve_ivp(
+        object py_diffeq,            # Differential equation defined as a python function
+        tuple time_span,             # Python tuple of floats defining the start and stop points for integration
+        double[::1] y0,              # Numpy array defining initial y0 conditions.
+        str method = 'RK45',         # Integration method. Current options are: RK23, RK45, DOP853
+        double[::1] t_eval = None,   # Placeholder: Not Supported Yet
+        bint dense_output = False,   # Placeholder: Not Supported Yet
+        tuple args = None,           # Python Tuple of additional args passed to the differential equation. These can be any python object.
+        size_t expected_size = 0,    # Expected size of the solution. There is a slight performance improvement if you provide a decent guess.
+        unsigned int num_extra = 0,  # Number of extra outputs you want to capture during integration.
+        double first_step = 0.0,     # Initial step size. If set to 0.0 then CyRK will guess a good step size.
+        double max_step = INF,       # Maximum allowed step size.
+        rtol = 1.0e-3,               # Relative tolerance used to control integration error. This can be provided as a numpy array if you'd like a different rtol for each y.
+        atol = 1.0e-6,               # Absolute tolerance (near 0) used to control integration error. This can be provided as a numpy array if you'd like a different atol for each y.
+        size_t max_num_steps = 0,    # Maximum number of steps allowed. If exceeded then integration will fail. 0 (the default) turns this off.
+        size_t max_ram_MB = 2000,    # Maximum amount of system memory the integrator is allowed to use. If this is exceeded then integration will fail.
+        bint pass_dy_as_arg = False  # Flag if differential equation returns dy (False) or is passed dy as the first argument (True).
+        ):
+```
+
+### Pure Cython `cysolve_ivp`
+
+A final method is provided to users in the form of `cysolve_ivp`. This function can only be accessed and used by code written in Cython. Details about how to setup and use Cython can be found on the project's [website](https://cython.readthedocs.io/en/stable/index.html). The below code examples assume you are running the code in a [Jupyter Notebook](https://jupyter.org/).
+
+`cysolve_ivp` has a slightly different interface than `nbsolve_ivp` and `pysolve_ivp` as it only accepts C types. For that reason, python functions will not work with `cysolve_ivp`. While developing in Cython is more challenging than Python, there is a huge performance advantage (`cysolve_ivp` is roughly 5x faster than `pysolve_ivp` and 700x faster than scipy's `solve_ivp`). Below is a demonstration of how it can be used.
+
+First a pure Cython file (written as a Jupyter notebook).
+```cython
+%%cython --force 
+# distutils: language = c++
+# cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
+
+import numpy as np
+cimport numpy as np
+np.import_array()
+
+# Note the "distutils" and "cython" headers above are functional. They tell cython how to compile the code. In this case we want to use C++ and to turn off several safety checks (which improve performance).
+
+# The cython diffeq is much less flexible than the others described above. It must follow this format, including the type information. 
+# Currently, CyRK only allows additional arguments to be passed in as a double array pointer (they all must be of type double). Mixed type args will be explored in the future if there is demand for it (make a GitHub issue if you'd like to see this feature!).
+# The "noexcept nogil" tells cython that the Python Global Interpretor Lock is not required, and that no exceptions should be raised by the code within this function (both improve performance).
+# If you do need the gil for your differential equation then you must use the `cysolve_ivp_gil` function instead of `cysolve_ivp`
+cdef void cython_diffeq(double* dy, double t, double* y, const double* args) noexcept nogil:
+    
+    # Unpack args
+    cdef double a = args[0]
+    cdef double b = args[1]
+    
+    # Build Coeffs
+    cdef double coeff_1 = (1. - a * y[1])
+    cdef double coeff_2 = (b * y[0] - 1.)
+    
+    # Store results
+    dy[0] = coeff_1 * y[0]
+    dy[1] = coeff_2 * y[1]
+    # We can also capture additional output with cysolve_ivp.
+    dy[2] = coeff_1
+    dy[3] = coeff_2
+
+# Import the required functions from CyRK
+from CyRK cimport cysolve_ivp, DiffeqFuncType, WrapCySolverResult, CySolveOutput
+
+# Let's get the integration number for the RK45 method
+from CyRK cimport RK45_METHOD_INT
+
+# Now let's import cysolve_ivp and build a function that runs it. We will not make this function `cdef` like the diffeq was. That way we can run it from python (this is not a requirement. If you want you can do everything within Cython).
+# Since this function is not `cdef` we can use Python types for its input. We just need to clean them up and convert them to pure C before we call cysolve_ivp.
+def run_cysolver(tuple t_span, double[::1] y0):
+    
+    # Cast our diffeq to the accepted format
+    cdef DiffeqFuncType diffeq = cython_diffeq
+    
+    # Convert the python user input to pure C types
+    cdef double* y0_ptr       = &y0[0]
+    cdef unsigned int num_y   = len(y0)
+    cdef double[2] t_span_arr = [t_span[0], t_span[1]]
+    cdef double* t_span_ptr   = &t_span_arr[0]
+
+    # Assume constant args
+    cdef double[2] args   = [0.01, 0.02]
+    cdef double* args_ptr = &args[0]
+
+    # Run the integrator!
+    cdef CySolveOutput result = cysolve_ivp(
+        diffeq,
+        t_span_ptr,
+        y0_ptr,
+        num_y,
+        method = RK45_METHOD_INT, # Integration method
+        rtol = 1.0e-7,
+        atol = 1.0e-8,
+        args_ptr = args_ptr,
+        num_extra = 2
+    )
+
+    # The CySolveOutput is not accesible via Python. We need to wrap it first
+    cdef WrapCySolverResult pysafe_result = WrapCySolverResult()
+    pysafe_result.set_cyresult_pointer(result)
+
+    return pysafe_result
+```
+
+Now we can make a python script that calls our new cythonized wrapper function. Everything below is in pure Python.
+
+```python
+# Assume we are working in a Jupyter notebook so we don't need to import `run_cysolver` if it was defined in an earlier cell.
+# from my_cython_code import run_cysolver
+
+import numpy as np
+initial_conds = np.asarray((20., 20.), dtype=np.float64, order='C')
+time_span = (0., 50.)
+
+result = run_cysolver(time_span, initial_conds)
+
+print("Was Integration was successful?", result.success)
+print(result.message)
+print("Size of solution: ", result.size)
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots()
+ax.plot(result.t, result.y[0], c='r')
+ax.plot(result.t, result.y[1], c='b')
+
+# Can also plot the extra output. They are small for this example so scaling them up by 100
+ax.plot(result.t, 100*result.y[2], c='green', ls=':')
+ax.plot(result.t, 100*result.y[3], c='purple', ls=':')
+```
+
+There is a lot more you can do to interface with CyRK's C++ backend and fully optimize the integrators to your needs. These details will be documented in "Documentation/Advanced CySolver.md".
+
+#### `cysolve_ivp` and `cysolve_ivp_gil` Arguments
+
+```cython
+cdef shared_ptr[CySolverResult] cysolve_ivp(
+    DiffeqFuncType diffeq_ptr,    # Differential equation defined as a cython function
+    double* t_span_ptr,           # Pointer to array (size 2) of floats defining the start and stop points for integration
+    double* y0_ptr,               # Pointer to array defining initial y0 conditions.
+    unsigned int num_y,           # Size of y0_ptr array.
+    unsigned int method = 1,      # Integration method. Current options: 0 == RK23, 1 == RK45, 2 == DOP853
+    double rtol = 1.0e-3,         # Relative tolerance used to control integration error.
+    double atol = 1.0e-6,         # Absolute tolerance (near 0) used to control integration error.
+    double* args_ptr = NULL,      # Pointer to array of additional arguments passed to the diffeq. Currently cysolve_ivp only supports doubles as additional arguments.
+    unsigned int num_extra = 0,   # Number of extra outputs you want to capture during integration.
+    size_t max_num_steps = 0,     # Maximum number of steps allowed. If exceeded then integration will fail. 0 (the default) turns this off.
+    size_t max_ram_MB = 2000,     # Maximum amount of system memory the integrator is allowed to use. If this is exceeded then integration will fail.
+    double* rtols_ptr = NULL,     # Overrides rtol if provided. Pointer to array of floats of rtols if you'd like a different rtol for each y.
+    double* atols_ptr = NULL,     # Overrides atol if provided. Pointer to array of floats of atols if you'd like a different atol for each y.
+    double max_step = MAX_STEP,   # Maximum allowed step size.
+    double first_step = 0.0       # Initial step size. If set to 0.0 then CyRK will guess a good step size.
+    size_t expected_size = 0,     # Expected size of the solution. There is a slight performance improvement if you provide a decent guess.
+    )
+```
+
 
 ## Limitations and Known Issues
 

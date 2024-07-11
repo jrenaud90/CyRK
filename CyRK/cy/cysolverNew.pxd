@@ -50,6 +50,8 @@ cdef extern from "cysolution.cpp" nogil:
             void reset()
             void update_message(const char* new_message)
 
+ctypedef shared_ptr[CySolverResult] CySolveOutput
+
 cdef class WrapCySolverResult:
     """ Wrapper for the C++ class `CySolverResult` defined in "cysolution.cpp" """
 
@@ -287,21 +289,40 @@ cdef extern from "cysolve.cpp" nogil:
 # =====================================================================================================================
 # Cython-based wrapper for baseline_cysolve_ivp that carries default values.
 # =====================================================================================================================
-cdef WrapCySolverResult cysolve_ivp(
+cdef CySolveOutput cysolve_ivp(
     DiffeqFuncType diffeq_ptr,
     double* t_span_ptr,
     double* y0_ptr,
     unsigned int num_y,
     unsigned int method = *,
-    size_t expected_size = *,
-    unsigned int num_extra = *,
-    double* args_ptr = *,
-    size_t max_num_steps = *,
-    size_t max_ram_MB = *,
     double rtol = *,
     double atol = *,
+    double* args_ptr = *,
+    unsigned int num_extra = *,
+    size_t max_num_steps = *,
+    size_t max_ram_MB = *,
     double* rtols_ptr = *,
     double* atols_ptr = *,
     double max_step = *,
-    double first_step = *
+    double first_step = *,
+    size_t expected_size = *
+    ) noexcept nogil
+
+cdef CySolveOutput cysolve_ivp_gil(
+    DiffeqFuncType diffeq_ptr,
+    double* t_span_ptr,
+    double* y0_ptr,
+    unsigned int num_y,
+    unsigned int method = *,
+    double rtol = *,
+    double atol = *,
+    double* args_ptr = *,
+    unsigned int num_extra = *,
+    size_t max_num_steps = *,
+    size_t max_ram_MB = *,
+    double* rtols_ptr = *,
+    double* atols_ptr = *,
+    double max_step = *,
+    double first_step = *,
+    size_t expected_size = *
     ) noexcept

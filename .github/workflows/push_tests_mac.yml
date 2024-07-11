@@ -78,11 +78,6 @@ jobs:
       - name: Conda info
         shell: bash -el {0}
         run: conda info
-        
-      - name: install gcc-13 # openMP does not play nice with clang on MacOS; also some versions of macos use older gcc so there is a need to install latest.
-        shell: bash -el {0}
-        run: |
-          brew install gcc@13
 
       - name: Install package
         shell: bash -el {0}
