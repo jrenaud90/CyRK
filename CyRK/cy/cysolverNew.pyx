@@ -253,8 +253,8 @@ def pysolve_ivp(
     cdef double t_end   = time_span[1]
 
     # Parse y0
-    cdef unsigned int num_y = len(y0)
-    cdef double* y0_ptr     = &y0[0]
+    cdef unsigned int num_y   = len(y0)
+    cdef const double* y0_ptr = &y0[0]
     if num_y > Y_LIMIT:
         raise AttributeError(
             f"CyRK only supports a maximum number of {Y_LIMIT} dependent variables. {num_y} were provided."
