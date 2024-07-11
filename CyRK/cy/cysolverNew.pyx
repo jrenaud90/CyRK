@@ -217,9 +217,9 @@ cdef class WrapPyDiffeq:
 def pysolve_ivp(
         object py_diffeq,
         tuple time_span,
-        double[::1] y0,
+        const double[::1] y0,
         str method = 'RK45',
-        double[::1] t_eval = None,
+        const double[::1] t_eval = None,
         bint dense_output = False,
         tuple args = None,
         size_t expected_size = 0,
