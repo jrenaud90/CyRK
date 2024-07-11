@@ -179,7 +179,7 @@ void CySolverBase::take_step()
         // Reset must be called first.
         this->reset();
     }
-    if (this->status == 0)
+    if (!this->status)
     {
         if (this->t_now_ptr[0] == this->t_end)
         {

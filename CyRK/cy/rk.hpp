@@ -31,18 +31,21 @@ const double RK23_A[9] = {
     3.0 / 4.0,
     0.0
 };
+const double* const RK23_A_ptr = &RK23_A[0];
 
 const double RK23_B[3] = {
     2.0 / 9.0,
     1.0 / 3.0,
     4.0 / 9.0
 };
+const double* const RK23_B_ptr = &RK23_B[0];
 
 const double RK23_C[3] = {
     0.0,
     1.0 / 2.0,
     3.0 / 4.0
 };
+const double* const RK23_C_ptr = &RK23_C[0];
 
 const double RK23_E[4] = {
     5.0 / 72.0,
@@ -50,7 +53,7 @@ const double RK23_E[4] = {
     -1.0 / 9.0,
     1.0 / 8.0
 };
-
+const double* const RK23_E_ptr = &RK23_E[0];
 
 // #####################################################################################################################
 // Runge - Kutta 4(5)
@@ -102,6 +105,7 @@ const double RK45_A[30] = {
     49.0 / 176.0,
     -5103.0 / 18656.0
 };
+const double* const RK45_A_ptr = &RK45_A[0];
 
 const double RK45_B[6] = {
     35.0 / 384.0,
@@ -111,6 +115,7 @@ const double RK45_B[6] = {
     -2187.0 / 6784.0,
     11.0 / 84.0
 };
+const double* const RK45_B_ptr = &RK45_B[0];
 
 const double RK45_C[6] = {
     0.0,
@@ -120,6 +125,7 @@ const double RK45_C[6] = {
     8.0 / 9.0,
     1.0
 };
+const double* const RK45_C_ptr = &RK45_C[0];
 
 const double RK45_E[7] = {
     -71.0 / 57600.0,
@@ -130,6 +136,7 @@ const double RK45_E[7] = {
     -22.0 / 525.0,
     1.0 / 40.0
 };
+const double* const RK45_E_ptr = &RK45_E[0];
 
 
 // #####################################################################################################################
@@ -303,6 +310,7 @@ const double DOP853_A[144] = {
     6.43392746015763530355970484046e-1,
     0.0
 };
+const double* const DOP853_A_ptr = &DOP853_A[0];
 
 // Note: B is equal to the 13th row of the expanded version of A(which we do not define above)
 const double DOP853_B[12] = {
@@ -319,6 +327,7 @@ const double DOP853_B[12] = {
     2.01365400804030348374776537501e-1,
     4.47106157277725905176885569043e-2
 };
+const double* const DOP853_B_ptr = &DOP853_B[0];
 
 
 // Note this is the reduced C array.The expanded version is not shown.
@@ -336,6 +345,7 @@ const double DOP853_C[12] = {
     0.857142857142857142857142857142,
     1.0
 };
+const double* const DOP853_C_ptr = &DOP853_C[0];
 
 // All except last value equals B(B length is one less than E3).
 const double DOP853_E3[13] = {
@@ -353,7 +363,7 @@ const double DOP853_E3[13] = {
     4.47106157277725905176885569043e-2 - 0.220588235294117647058823529412e-1,
     0.0
 };
-
+const double* const DOP853_E3_ptr = &DOP853_E3[0];
 
 const double DOP853_E5[13] = {
     0.1312004499419488073250102996e-1,
@@ -370,7 +380,7 @@ const double DOP853_E5[13] = {
     -0.2235530786388629525884427845e-1,
     0.
 };
-
+const double* const DOP853_E5_ptr = &DOP853_E5[0];
 
 // ########################################################################################################################
 // Classes
@@ -471,7 +481,6 @@ public:
     using RKSolver::RKSolver;
     virtual void reset() override;
 };
-
 
 class RK45 : public RKSolver {
 
