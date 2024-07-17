@@ -122,6 +122,7 @@ jobs:
         platform:
           #              - macos-12  ## macos is not playing nice with cibuildwheel with openmp from cython.
           - windows-2022
+          - windows-latest
           - ubuntu-20.04
 
     steps:
@@ -130,7 +131,7 @@ jobs:
           fetch-depth: 0
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.16.5
+        uses: pypa/cibuildwheel@v2.19.2
 
       - uses: actions/upload-artifact@v4
         with:
@@ -159,7 +160,7 @@ jobs:
           merge-multiple: true
           path: dist
 
-      - uses: pypa/gh-action-pypi-publish@v1.8.11
+      - uses: pypa/gh-action-pypi-publish@v1.9.0
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
