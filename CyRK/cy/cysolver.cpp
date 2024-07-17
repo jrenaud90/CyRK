@@ -238,7 +238,7 @@ void CySolverBase::take_step()
         this->reset();
     }
 
-    double t_now = this->t_now_ptr[0];
+    bool skip_t_eval = false;
 
     if (!this->status)
     {
@@ -277,8 +277,8 @@ void CySolverBase::take_step()
                 // Save to storage array.
                 this->storage_ptr->save_dense(this->t_now_ptr[0], dense_output_heap_ptr);
             }
-                
-            if (this->use_t_eval)
+
+            if (this->use_t_eval && !skip_t_eval)
             {
                 // Don't save data at the end
                 save_data = false;
@@ -299,6 +299,13 @@ void CySolverBase::take_step()
                 // Need to step through t_eval and call dense to determine correct data at each t_eval step.
                 // Find the first index in t_eval that is close to current time.
                 size_t t_eval_index_new = 1 + binary_search_with_guess(this->t_now_ptr[0], this->t_eval_ptr, this->len_t_eval, this->t_eval_index_old);
+                if (t_eval_index_new >= this->len_t_eval)
+                {
+                    t_eval_index_new = this->len_t_eval;
+                    // We are done with t_eval. Skip it from now on. 
+                    skip_t_eval = true;
+                }                
+                
                 // Check if there are any t_eval steps between this new index and the last index.
                 int t_eval_index_delta = (int)t_eval_index_new - (int)this->t_eval_index_old;
                 // If t_eval_index_delta == 0 then there are no new interpolations required between the last integration step and now.

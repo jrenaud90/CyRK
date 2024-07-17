@@ -138,7 +138,7 @@ def cytester(
         int method = 1,
         size_t expected_size = 0,
         size_t max_num_steps = 0,
-        size_t max_ram_MB = 2000,    
+        size_t max_ram_MB = 2000,
         bint dense_output = False,
         double[::1] t_eval = None,
         double rtol = 1.0e-3, 

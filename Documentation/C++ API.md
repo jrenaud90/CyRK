@@ -1,6 +1,8 @@
 # CyRK's C++ API Description
 CyRK uses a C++ backend for most of its functionality. These files are described below.
 
+This backend can be found in a dedicated repository [here](https://github.com/jrenaud90/CyRK_CPP).
+
 ## "CyRK/cy/common.hpp(cpp)"
 Contains common functions and global constants.
 

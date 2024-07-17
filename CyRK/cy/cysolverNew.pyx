@@ -77,11 +77,11 @@ cdef class WrapCySolverResult:
         return self.cyresult_ptr.error_code
     
     def __call__(self, t):
-        t_array = np.asarray(t, dtype=np.float64)
-        if t_array.size == 1:
-            return self.call(t_array[0])
+
+        if type(t) == np.ndarray:
+            return self.call_vectorize(t)
         else:
-            return self.call_vectorize(t_array)
+            return self.call(t).reshape(self.cyresult_ptr.num_y, 1)
 
 # =====================================================================================================================
 # Create Wrapped cysolve_ivp (has various defaults)

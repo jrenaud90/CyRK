@@ -130,7 +130,7 @@ void RKSolver::p_estimate_error()
         }
 
         // Dot product between K and E
-        double error_dot;
+        double error_dot = 0.0;
         const unsigned int stride_K = y_i * this->n_stages_p1;
 
         switch (this->n_stages)
@@ -139,7 +139,7 @@ void RKSolver::p_estimate_error()
         // Note: DOP853 is handled in an override by its subclass.
         case(3):
             // RK23
-            error_dot =  this->E_ptr[0] * this->K_ptr[stride_K];
+            error_dot += this->E_ptr[0] * this->K_ptr[stride_K];
             error_dot += this->E_ptr[1] * this->K_ptr[stride_K + 1];
             error_dot += this->E_ptr[2] * this->K_ptr[stride_K + 2];
             error_dot += this->E_ptr[3] * this->K_ptr[stride_K + 3];
@@ -147,7 +147,7 @@ void RKSolver::p_estimate_error()
             break;
         case(6):
             // RK45
-            error_dot =  this->E_ptr[0] * this->K_ptr[stride_K];
+            error_dot += this->E_ptr[0] * this->K_ptr[stride_K];
             error_dot += this->E_ptr[1] * this->K_ptr[stride_K + 1];
             error_dot += this->E_ptr[2] * this->K_ptr[stride_K + 2];
             error_dot += this->E_ptr[3] * this->K_ptr[stride_K + 3];
@@ -158,10 +158,8 @@ void RKSolver::p_estimate_error()
             break;
         [[unlikely]] default:
             // Resort to unrolled loops
-            // Initialize
-            error_dot = 0.0;
             // New or Non-optimized RK method. default to for loop.
-            for (unsigned int j = 0; j < (this->n_stages + 1); j++)
+            for (unsigned int j = 0; j < this->n_stages_p1; j++)
             {
                 error_dot += this->E_ptr[j] * this->K_ptr[stride_K + j];
             }
@@ -182,6 +180,13 @@ void RKSolver::p_estimate_error()
 }
 
 
+    //     double error_norm_abs = std::fabs(error_dot) * scale_inv * this->step;
+
+    //     this->error_norm += (error_norm_abs * error_norm_abs);
+    // }
+    // this->error_norm = std::sqrt(this->error_norm) / this->num_y_sqrt;
+
+
 void RKSolver::p_step_implementation()
 {
     // Run RK integration step
@@ -196,17 +201,12 @@ void RKSolver::p_step_implementation()
     double* const l_dy_now_ptr  = this->dy_now_ptr;
     double* const l_dy_old_ptr  = this->dy_old_ptr;
 
-    // Other local variables
-    double l_t_old     = this->t_old;
-    double l_step      = this->step;
-    double l_step_size = this->step_size;
-
     // Determine step size based on previous loop
     // Find minimum step size based on the value of t (less floating point numbers between numbers when t is large)
-    const double min_step_size = 10. * std::fabs(std::nextafter(l_t_old, this->direction_inf) - l_t_old);
+    const double min_step_size = 10. * std::fabs(std::nextafter(this->t_old, this->direction_inf) - this->t_old);
     // Look for over/undershoots in previous step size
-    l_step_size = std::min<double>(l_step_size, this->max_step_size);
-    l_step_size = std::max<double>(l_step_size, min_step_size);
+    this->step_size = std::min<double>(this->step_size, this->max_step_size);
+    this->step_size = std::max<double>(this->step_size, min_step_size);
 
     // Optimization variables
     // Define a very specific A (Row 1; Col 0) now since it is called consistently and does not change.
@@ -222,7 +222,7 @@ void RKSolver::p_step_implementation()
 
         // Check if step size is too small
         // This will cause integration to fail: step size smaller than spacing between numbers
-        if (l_step_size < min_step_size) [[unlikely]] {
+        if (this->step_size < min_step_size) [[unlikely]] {
             step_error = true;
             this->status = -1;
             break;
@@ -231,13 +231,13 @@ void RKSolver::p_step_implementation()
         // Move time forward for this particular step size
         double t_delta_check;
         if (this->direction_flag) {
-            l_step             = l_step_size;
-            this->t_now_ptr[0] = l_t_old + l_step;
+            this->step             = this->step_size;
+            this->t_now_ptr[0] = this->t_old + this->step;
             t_delta_check      = this->t_now_ptr[0] - this->t_end;
         }
         else {
-            l_step             = -l_step_size;
-            this->t_now_ptr[0] = l_t_old + l_step;
+            this->step             = -this->step_size;
+            this->t_now_ptr[0] = this->t_old + this->step;
             t_delta_check      = this->t_end - this->t_now_ptr[0];
         }
 
@@ -246,12 +246,12 @@ void RKSolver::p_step_implementation()
             this->t_now_ptr[0] = this->t_end;
 
             // If we are, correct the step so that it just hits the end of integration.
-            l_step = this->t_now_ptr[0] - l_t_old;
+            this->step = this->t_now_ptr[0] - this->t_old;
             if (this->direction_flag) {
-                l_step_size = l_step;
+                this->step_size = this->step;
             }
             else {
-                l_step_size = -l_step;
+                this->step_size = -this->step;
             }
         }
 
@@ -263,7 +263,7 @@ void RKSolver::p_step_implementation()
 
         for (unsigned int s = 1; s < this->len_C; s++) {
             // Find the current time based on the old time and the step size.
-            this->t_now_ptr[0] = l_t_old + l_C_ptr[s] * l_step;
+            this->t_now_ptr[0] = this->t_old + l_C_ptr[s] * this->step;
             const unsigned int stride_A = s * this->len_Acols;
 
             for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
@@ -452,7 +452,7 @@ void RKSolver::p_step_implementation()
                     break;
                 }
                 // Update value of y_now
-                l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + (l_step * temp_double);
+                l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + (this->step * temp_double);
             }
             // Call diffeq method to update K with the new dydt
             // This will use the now updated dy_now_ptr based on the values of y_now_ptr and t_now_ptr.
@@ -518,7 +518,7 @@ void RKSolver::p_step_implementation()
                 break;
             }
             // Update y_now
-            l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + (l_step * temp_double);
+            l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + (this->step * temp_double);
         }
 
         // Find final dydt for this timestep
@@ -540,7 +540,11 @@ void RKSolver::p_step_implementation()
             // We found our step size because the error is low!
             // Update this step for the next time loop
             double step_factor = this->max_step_factor;
-            if (this->error_norm != 0.0)
+            if (this->error_norm == 0.0)
+            {
+                 // Pass, leave as max.
+            }
+            else
             {
                 // Estimate a new step size based on the error.
                 const double error_safe = this->error_safety / std::pow(this->error_norm, this->error_exponent);
@@ -554,13 +558,13 @@ void RKSolver::p_step_implementation()
             }
 
             // Update step size
-            l_step_size *= step_factor;
+            this->step_size *= step_factor;
             step_accepted = true;
         }
         else {
             // Error is still large. Keep searching for a better step size.
             const double error_safe = this->error_safety / std::pow(this->error_norm, this->error_exponent);
-            l_step_size *= std::max<double>(this->min_step_factor, error_safe);
+            this->step_size *= std::max<double>(this->min_step_factor, error_safe);
             step_rejected = true;
         }
     }
@@ -579,8 +583,8 @@ void RKSolver::p_step_implementation()
 
     // End of RK step. 
     // Update state variables
-    this->step_size = l_step_size;
-    this->step      = l_step;
+    this->step_size = this->step_size;
+    this->step      = this->step;
 }
 
 
