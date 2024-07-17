@@ -29,26 +29,60 @@ cdef extern from "common.cpp" nogil:
         double rtol_min)
 
 
+cdef extern from "cy_array.cpp" nogil:
+    size_t binary_search_with_guess(double key, const double* array, size_t length, size_t guess)
+
+
+cdef extern from "dense.cpp" nogil:
+    cdef cppclass CySolverDense:
+        CySolverDense()
+        CySolverDense(
+            int integrator_int,
+            double t_old,
+            double t_now,
+            double* y_in_ptr,
+            unsigned int num_y,
+            unsigned int Q_order)
+        int integrator_int
+        unsigned int num_y
+        double t_old
+        double t_now
+        void call(double t_interp, double* y_interped)
+
+
+
 # =====================================================================================================================
 # Import CySolverResult (container for integration results)
 # =====================================================================================================================
 cdef extern from "cysolution.cpp" nogil:
     cdef cppclass CySolverResult:
             CySolverResult()
-            CySolverResult(size_t num_y, size_t num_extra, size_t expected_size)
+            CySolverResult(
+                const size_t num_y,
+                const size_t num_extra,
+                const size_t expected_size,
+                const size_t last_t,
+                const cpp_bool direction_flag,
+                const cpp_bool capture_dense_output,
+                const cpp_bool t_eval_provided)
             cpp_bool success
             cpp_bool reset_called
             char* message_ptr
             int error_code
-            size_t size            
+            size_t size
             size_t num_y
             size_t num_dy
+            cpp_bool capture_extra
+            cpp_bool capture_dense_output
+            cpp_bool t_eval_provided
             vector[double] time_domain
             vector[double] solution
             void save_data(double new_t, double* new_solution_y, double* new_solution_dy)
             void finalize()
             void reset()
             void update_message(const char* new_message)
+            void call(const double t, double* y_interp)
+            void call_vectorize(const double* t_array_ptr, size_t len_t, double* y_interp)
 
 ctypedef shared_ptr[CySolverResult] CySolveOutput
 
@@ -84,10 +118,15 @@ cdef extern from "cysolver.cpp" nogil:
             const unsigned int num_extra,
             const double* args_ptr,
             const size_t max_num_steps,
-            const size_t max_ram_MB
+            const size_t max_ram_MB,
+            const cpp_bool use_dense_output,
+            const double* t_eval,
+            const size_t len_t_eval
         )
+        
         shared_ptr[CySolverResult] storage_ptr
         int status
+        int integration_method
         unsigned int num_y
         size_t len_t
         double t_now
@@ -148,6 +187,9 @@ cdef extern from "rk.cpp" nogil:
             const double* args_ptr,
             const size_t max_num_steps,
             const size_t max_ram_MB,
+            const cpp_bool use_dense_output,
+            const double* t_eval,
+            const size_t len_t_eval,
             const double rtol,
             const double atol,
             const double* rtols_ptr,
@@ -175,6 +217,9 @@ cdef extern from "rk.cpp" nogil:
             const double* args_ptr,
             const size_t max_num_steps,
             const size_t max_ram_MB,
+            const cpp_bool use_dense_output,
+            const double* t_eval,
+            const size_t len_t_eval,
             const double rtol,
             const double atol,
             const double* rtols_ptr,
@@ -198,6 +243,9 @@ cdef extern from "rk.cpp" nogil:
             const double* args_ptr,
             const size_t max_num_steps,
             const size_t max_ram_MB,
+            const cpp_bool use_dense_output,
+            const double* t_eval,
+            const size_t len_t_eval,
             const double rtol,
             const double atol,
             const double* rtols_ptr,
@@ -221,6 +269,9 @@ cdef extern from "rk.cpp" nogil:
             const double* args_ptr,
             const size_t max_num_steps,
             const size_t max_ram_MB,
+            const cpp_bool use_dense_output,
+            const double* t_eval,
+            const size_t len_t_eval,
             const double rtol,
             const double atol,
             const double* rtols_ptr,
@@ -247,6 +298,9 @@ cdef extern from "cysolve.cpp" nogil:
             const double* args_ptr,
             const size_t max_num_steps,
             const size_t max_ram_MB,
+            const cpp_bool dense_output,
+            const double* t_eval,
+            const size_t len_t_eval,
             const double rtol,
             const double atol,
             const double* rtols_ptr,
@@ -276,6 +330,9 @@ cdef extern from "cysolve.cpp" nogil:
             const double* args_ptr,
             const size_t max_num_steps,
             const size_t max_ram_MB,
+            const cpp_bool dense_output,
+            const double* t_eval,
+            const size_t len_t_eval,
             const double rtol,
             const double atol,
             const double* rtols_ptr,
@@ -291,9 +348,9 @@ cdef extern from "cysolve.cpp" nogil:
 # =====================================================================================================================
 cdef CySolveOutput cysolve_ivp(
     DiffeqFuncType diffeq_ptr,
-    double* t_span_ptr,
-    double* y0_ptr,
-    unsigned int num_y,
+    const double* t_span_ptr,
+    const double* y0_ptr,
+    const unsigned int num_y,
     unsigned int method = *,
     double rtol = *,
     double atol = *,
@@ -301,6 +358,9 @@ cdef CySolveOutput cysolve_ivp(
     unsigned int num_extra = *,
     size_t max_num_steps = *,
     size_t max_ram_MB = *,
+    bint dense_output = *,
+    double* t_eval = *,
+    size_t len_t_eval = *,
     double* rtols_ptr = *,
     double* atols_ptr = *,
     double max_step = *,
@@ -310,9 +370,9 @@ cdef CySolveOutput cysolve_ivp(
 
 cdef CySolveOutput cysolve_ivp_gil(
     DiffeqFuncType diffeq_ptr,
-    double* t_span_ptr,
-    double* y0_ptr,
-    unsigned int num_y,
+    const double* t_span_ptr,
+    const double* y0_ptr,
+    const unsigned int num_y,
     unsigned int method = *,
     double rtol = *,
     double atol = *,
@@ -320,6 +380,9 @@ cdef CySolveOutput cysolve_ivp_gil(
     unsigned int num_extra = *,
     size_t max_num_steps = *,
     size_t max_ram_MB = *,
+    bint dense_output = *,
+    double* t_eval = *,
+    size_t len_t_eval = *,
     double* rtols_ptr = *,
     double* atols_ptr = *,
     double max_step = *,

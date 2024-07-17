@@ -2,7 +2,7 @@
 
 ## 2024
 
-#### v0.10.0 (2024-06-17)
+#### v0.10.0 (2024-07-17)
 
 C++ Backend:
 * This version of CyRK introduces a major rework of the backend integrator which is now written in pure C++.
@@ -13,6 +13,13 @@ C++ Backend:
   * Access this function by using `from CyRK import pysolve_ivp`.
   * This is designed as a drop-in-place replacement for SciPy's `solve_ivp`.
   * The plan is to replace CyRK's older `cyrk_ode` with this function.
+
+Implemented Dense Output and Improved `t_eval` for new C++ backend:
+* Both `pysolve_ivp` and `cysolve_ivp` now utilize a much more accurate interpolator when `t_eval` is provided.
+* Users can now also request the interpolators be saved with the data, enabling Dense Output functional calls.
+* This closes [#45](https://github.com/jrenaud90/CyRK/issues/45).
+  * Note that these improvement was not made for `nbsolve_ivp`, `cyrk_ode`, or `CySolver` methods. See below to learn about these methods' deprecation.
+* Added tests, documentation, and demos describing these features.
 
 Deprecating Older CyRK Methods:
 * The new C++ backend is more flexible, faster, and allows for easy additions of new features. It is common across the cython-only, python, and njit-safe numba solvers. Therefore making a change to it propagates to all three solvers - allowing for easier maintenance and new features. For these reasons, the older `cyrk_ode`, `CySolver`, and `nbrk_ode` are now marked as deprecated. No new features will be implemented for those functions and they will be removed in the next major release of CyRK.
@@ -53,6 +60,9 @@ Bug Fixes:
 
 Other Changes:
 * Moved from GCC to Clang on MacOS builds. There was a new problem that appeared with GCC's linker and could not find a working solution. The original move away from clang was done to support openMP multiprocessing. CyRK does not currently use that so the switch back should be okay.
+
+Known Issues:
+* There is an occasional bug with backwards integration on pysolve_ivp and cysolve_ivp. See [Github Issue #56](https://github.com/jrenaud90/CyRK/issues/56).
 
 ### v0.9.0 (2024-05-22)
 

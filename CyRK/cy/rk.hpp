@@ -4,16 +4,20 @@
 #include "common.hpp"
 #include "cysolver.hpp"
 
+// ########################################################################################################################
+// RK Integrators
+// ########################################################################################################################
 
 // #####################################################################################################################
 // Runge - Kutta 2(3)
 // #####################################################################################################################
-const unsigned int RK23_METHOD_INT = 0;
-const unsigned int RK23_order = 3;
-const unsigned int RK23_n_stages = 3;
-const unsigned int RK23_len_Arows = 3;
-const unsigned int RK23_len_Acols = 3;
-const unsigned int RK23_len_C = 3;
+const unsigned int RK23_METHOD_INT            = 0;
+const unsigned int RK23_order                 = 3;
+const unsigned int RK23_n_stages              = 3;
+const unsigned int RK23_len_Arows             = 3;
+const unsigned int RK23_len_Acols             = 3;
+const unsigned int RK23_len_C                 = 3;
+const unsigned int RK23_len_Pcols             = 3;
 const unsigned int RK23_error_estimator_order = 2;
 const double RK23_error_exponent = 1.0 / (2.0 + 1.0);  // Defined as 1 / (error_order + 1)
 
@@ -55,15 +59,38 @@ const double RK23_E[4] = {
 };
 const double* const RK23_E_ptr = &RK23_E[0];
 
+// P is the transpose of the one scipy uses.
+const double RK23_P[12] = {
+    // Column 1
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+
+    // Column 2
+    -4.0 / 3.0,
+    1.0,
+    4.0 / 3.0,
+    -1.0,
+
+    // Column 3
+    5.0 / 9.0,
+    -2.0 / 3.0,
+    -8.0 / 9.0,
+    1.0
+};
+const double* const RK23_P_ptr = &RK23_P[0];
+
 // #####################################################################################################################
 // Runge - Kutta 4(5)
 // #####################################################################################################################
-const unsigned int RK45_METHOD_INT = 1;
-const unsigned int RK45_order = 5;
-const unsigned int RK45_n_stages = 6;
-const unsigned int RK45_len_Arows = 6;
-const unsigned int RK45_len_Acols = 5;
-const unsigned int RK45_len_C = 6;
+const unsigned int RK45_METHOD_INT            = 1;
+const unsigned int RK45_order                 = 5;
+const unsigned int RK45_n_stages              = 6;
+const unsigned int RK45_len_Arows             = 6;
+const unsigned int RK45_len_Acols             = 5;
+const unsigned int RK45_len_C                 = 6;
+const unsigned int RK45_len_Pcols             = 4;
 const unsigned int RK45_error_estimator_order = 4;
 const double RK45_error_exponent = 1.0 / (4.0 + 1.0);  // Defined as 1 / (error_order + 1)
 
@@ -139,17 +166,63 @@ const double RK45_E[7] = {
 const double* const RK45_E_ptr = &RK45_E[0];
 
 
+// P is the transpose of the one scipy uses.
+const double RK45_P[28] = {
+    // Column 1
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+
+    // Column 2
+    -8048581381.0 / 2820520608.0,
+    0.0,
+    131558114200.0 / 32700410799.0,
+    -1754552775.0 / 470086768.0,
+    127303824393.0 / 49829197408.0,
+    -282668133.0 / 205662961.0,
+    40617522.0 / 29380423.0,
+
+    // Column 3
+    8663915743.0 / 2820520608.0,
+    0.0,
+    -68118460800.0 / 10900136933.0,
+    14199869525.0 / 1410260304.0,
+    -318862633887.0 / 49829197408.0,
+    2019193451.0 / 616988883.0,
+    -110615467.0 / 29380423.0,
+
+    // Column 4
+    -12715105075.0 / 11282082432.0,
+    0.0,
+    87487479700.0 / 32700410799.0,
+    -10690763975.0 / 1880347072.0,
+    701980252875.0 / 199316789632.0,
+    -1453857185.0 / 822651844.0,
+    69997945.0 / 29380423.0
+};
+const double* const RK45_P_ptr = &RK45_P[0];
+
+
 // #####################################################################################################################
 // Runge - Kutta DOP 8(5; 3)
 // #####################################################################################################################
-const unsigned int DOP853_METHOD_INT = 2;
-const unsigned int DOP853_order = 8;
-const unsigned int DOP853_n_stages = 12;
-const unsigned int DOP853_A_rows = 12;
-const unsigned int DOP853_A_cols = 12;
-const unsigned int DOP853_len_C = 12;
+const unsigned int DOP853_METHOD_INT            = 2;
+const unsigned int DOP853_order                 = 8;
+const unsigned int DOP853_n_stages              = 12;
+const unsigned int DOP853_nEXTRA_stages         = 16;
+const unsigned int DOP853_A_rows                = 12;
+const unsigned int DOP853_A_cols                = 12;
+const unsigned int DOP853_AEXTRA_rows           = 3;
+const unsigned int DOP853_AEXTRA_cols           = 16;
+const unsigned int DOP853_len_C                 = 12;
+const unsigned int DOP853_len_CEXTRA            = 3;
+const unsigned int DOP853_INTERPOLATOR_POWER    = 7;
 const unsigned int DOP853_error_estimator_order = 7;
-const double DOP853_error_exponent = 1.0 / (7.0 + 1.0);  // Defined as 1 / (error_order + 1)
+const double DOP853_error_exponent              = 1.0 / (7.0 + 1.0);  // Defined as 1 / (error_order + 1)
 
 // Note both A and C are the _reduced_ versions.The full A and C are not shown.
 const double DOP853_A[144] = {
@@ -228,7 +301,7 @@ const double DOP853_A[144] = {
     0.0,
     0.0,
     0.0,
-    0.0, // Nice
+    0.0,
     0.0,
     0.0,
     // A - Row 6
@@ -311,6 +384,194 @@ const double DOP853_A[144] = {
     0.0
 };
 const double* const DOP853_A_ptr = &DOP853_A[0];
+
+// A Extra is the tranpose of SciPy's AExtra
+const double DOP853_AEXTRA[48] = {  // Shape = (3, 16).T
+    // Column 1
+    5.61675022830479523392909219681e-2,
+    3.18346481635021405060768473261e-2,
+    -4.28896301583791923408573538692e-1,
+
+    // Column 2
+    0.0,
+    0.0,
+    0.0,
+
+    // Column 3
+    0.0,
+    0.0,
+    0.0,
+
+    // Column 4
+    0.0,
+    0.0,
+    0.0,
+
+    // Column 5
+    0.0,
+    0.0,
+    0.0,
+
+    // Column 6
+    0.0,
+    2.83009096723667755288322961402e-2,
+    -4.69762141536116384314449447206,
+
+    // Column 7
+    2.53500210216624811088794765333e-1,
+    5.35419883074385676223797384372e-2,
+    7.68342119606259904184240953878,
+
+    // Column 8
+    -2.46239037470802489917441475441e-1,
+    -5.49237485713909884646569340306e-2,
+    4.06898981839711007970213554331,
+
+    // Column 9
+    -1.24191423263816360469010140626e-1,
+    0.0,
+    3.56727187455281109270669543021e-1,
+
+    // Column 10
+    1.5329179827876569731206322685e-1,
+    0.0,
+    0.0,
+
+    // Column 11
+    8.20105229563468988491666602057e-3,
+    -1.08347328697249322858509316994e-4,
+    0.0,
+
+    // Column 12
+    7.56789766054569976138603589584e-3,
+    3.82571090835658412954920192323e-4,
+    0.0,
+
+    // Column 13
+    -8.298e-3,
+    -3.40465008687404560802977114492e-4,
+    -1.39902416515901462129418009734e-3,
+
+    // Column 14
+    0.0,
+    1.41312443674632500278074618366e-1,
+    2.9475147891527723389556272149,
+
+    // Column 15
+    0.0,
+    0.0,
+    -9.15095847217987001081870187138,
+
+    // Column 16
+    0.0,
+    0.0,
+    0.0
+};
+const double* const DOP853_AEXTRA_ptr = &DOP853_AEXTRA[0];
+
+const double DOP853_CEXTRA[3] = { 0.1, 0.2, 0.777777777777777777777777777778 };
+const double* const DOP853_CEXTRA_ptr = &DOP853_CEXTRA[0];
+
+// this is stored as the tranpose of the one scipy provides
+const double DOP853_D[64] = {  // shape = (interpolator power - 3 = 4, n_stages_extended = 16).T
+    // Column 1
+    -0.84289382761090128651353491142e+1,
+    0.10427508642579134603413151009e+2,
+    0.19985053242002433820987653617e+2,
+    -0.25693933462703749003312586129e+2,
+
+    // Column 2
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+
+    // Column 3
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+
+    // Column 4
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+
+    // Column 5
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+
+    // Column 6
+    0.56671495351937776962531783590,
+    0.24228349177525818288430175319e+3,
+    -0.38703730874935176555105901742e+3,
+    -0.15418974869023643374053993627e+3,
+
+    // Column 7
+    -0.30689499459498916912797304727e+1,
+    0.16520045171727028198505394887e+3,
+    -0.18917813819516756882830838328e+3,
+    -0.23152937917604549567536039109e+3,
+
+    // Column 8
+    0.23846676565120698287728149680e+1,
+    -0.37454675472269020279518312152e+3,
+    0.52780815920542364900561016686e+3,
+    0.35763911791061412378285349910e+3,
+
+    // Column 9
+    0.21170345824450282767155149946e+1,
+    -0.22113666853125306036270938578e+2,
+    -0.11573902539959630126141871134e+2,
+    0.93405324183624310003907691704e+2,
+
+    // Column 10
+    -0.87139158377797299206789907490,
+    0.77334326684722638389603898808e+1,
+    0.68812326946963000169666922661e+1,
+    -0.37458323136451633156875139351e+2,
+
+    // Column 11
+    0.22404374302607882758541771650e+1,
+    -0.30674084731089398182061213626e+2,
+    -0.10006050966910838403183860980e+1,
+    0.10409964950896230045147246184e+3,
+
+    // Column 12
+    0.63157877876946881815570249290,
+    -0.93321305264302278729567221706e+1,
+    0.77771377980534432092869265740,
+    0.29840293426660503123344363579e+2,
+
+    // Column 13
+    -0.88990336451333310820698117400e-1,
+    0.15697238121770843886131091075e+2,
+    -0.27782057523535084065932004339e+1,
+    -0.43533456590011143754432175058e+2,
+
+    // Column 14
+    0.18148505520854727256656404962e+2,
+    -0.31139403219565177677282850411e+2,
+    -0.60196695231264120758267380846e+2,
+    0.96324553959188282948394950600e+2,
+
+    // Column 15
+    -0.91946323924783554000451984436e+1,
+    -0.93529243588444783865713862664e+1,
+    0.84320405506677161018159903784e+2,
+    -0.39177261675615439165231486172e+2,
+
+    // Column 16
+    -0.44360363875948939664310572000e+1,
+    0.35816841486394083752465898540e+2,
+    0.11992291136182789328035130030e+2,
+    -0.14972683625798562581422125276e+3
+};
+
+const double* const DOP853_D_ptr = &DOP853_D[0];
 
 // Note: B is equal to the 13th row of the expanded version of A(which we do not define above)
 const double DOP853_B[12] = {
@@ -401,8 +662,9 @@ protected:
     unsigned int n_stages_p1  = 0;
     unsigned int len_Acols    = 0;
     unsigned int len_C        = 0;
+    unsigned int len_Pcols    = 0;
     unsigned int nstages_numy = 0;
-    double error_exponent = 0.0;
+    double error_exponent     = 0.0;
 
     // Pointers to RK constant arrays
     const double* C_ptr  = nullptr;
@@ -422,15 +684,16 @@ protected:
     // For the same reason num_y is limited, the total number of tolerances are limited.
     double rtols[Y_LIMIT] = { std::nan("") };
     double atols[Y_LIMIT] = { std::nan("") };
-    double* rtols_ptr = &rtols[0];
-    double* atols_ptr = &atols[0];
-    bool use_array_rtols = false;
-    bool use_array_atols = false;
+    double* rtols_ptr     = &rtols[0];
+    double* atols_ptr     = &atols[0];
+    bool use_array_rtols  = false;
+    bool use_array_atols  = false;
 
     // Step size parameters
     double user_provided_first_step_size = 0.0;
     double step          = 0.0;
     double step_size     = 0.0;
+    double step_size_old = 0.0;
     double max_step_size = 0.0;
 
     // Error estimate
@@ -441,6 +704,9 @@ protected:
 protected:
     virtual void p_estimate_error() override;
     virtual void p_step_implementation() override;
+    virtual CySolverDense* p_dense_output_heap() override;
+    virtual void p_dense_output_stack(CySolverDense& dense_output_ptr) override;
+    virtual void p_update_Q(double* Q_ptr);
 
 public:
     RKSolver();
@@ -457,6 +723,9 @@ public:
         const double* args_ptr = nullptr,
         const size_t max_num_steps = 0,
         const size_t max_ram_MB = 2000,
+        const bool use_dense_output = false,
+        const double* t_eval = nullptr,
+        const size_t len_t_eval = 0,
         // RKSolver input arguments
         const double rtol = 1.0e-3,
         const double atol = 1.0e-6,

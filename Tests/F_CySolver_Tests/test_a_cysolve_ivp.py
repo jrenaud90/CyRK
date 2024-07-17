@@ -26,7 +26,7 @@ atols = np.asarray((1.0e-8, 1.0e-9), dtype=np.float64, order='C')
 @pytest.mark.parametrize('use_atol_array', (True, False))
 @pytest.mark.parametrize('use_large_timespan', (True, False))
 @pytest.mark.parametrize('use_args', (True, False))
-def test_pysolve_ivp(use_args,
+def test_cysolve_ivp(use_args,
                      use_large_timespan, use_atol_array, use_rtol_array, use_different_tols, integration_method,
                      first_step, max_step, capture_extra):
     """Check that the pysolve_ivp function is able to run with various changes to its arguments. """
@@ -103,7 +103,9 @@ def test_pysolve_ivp(use_args,
 
 
 @pytest.mark.parametrize('integration_method', (0, 1, 2))
-def test_pysolve_ivp_accuracy(integration_method):
+@pytest.mark.parametrize('t_eval_end', (None, 0.5, 1.0))
+@pytest.mark.parametrize('test_dense_output', (False, True))
+def test_cysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output):
     #Check that the cython function solver is able to reproduce a known functions integral with reasonable accuracy
 
     # TODO: This is only checking one equation. Add other types of diffeqs to provide better coverage.
@@ -124,20 +126,48 @@ def test_pysolve_ivp_accuracy(integration_method):
     y0 = np.asarray((0., 1.), dtype=np.float64, order='C')
     time_span_ = (0., 10.)
 
+    # Check if we should test t_eval
+    if t_eval_end is None:
+        t_eval = None
+    else:
+        t_eval = np.linspace(0.0, t_eval_end, 50)
+
     result = \
         cytester(1, time_span_, y0,
-                 method=integration_method,
-                 rtol=1.0e-8, atol=1.0e-9)
+                 method=integration_method, dense_output=test_dense_output, t_eval=t_eval,
+                 rtol=1.0e-8, atol=1.0e-9,)
     
     # Use the integrator's time domain to build a correct solution
     real_answer = correct_answer(result.t, c1, c2)
 
-    if integration_method == 0:
-        assert np.allclose(result.y, real_answer, rtol=1.0e-3, atol=1.0e-6)
-    elif integration_method == 1:
-        assert np.allclose(result.y, real_answer, rtol=1.0e-4, atol=1.0e-7)
+    if integration_method == "RK23":
+        check_rtol = 1.0e-3
+        check_atol = 1.0e-6
+    elif integration_method == "DOP853":
+        check_rtol = 1.0e-5
+        check_atol = 1.0e-8
     else:
-        assert np.allclose(result.y, real_answer, rtol=1.0e-5, atol=1.0e-8)
+        check_rtol = 1.0e-4
+        check_atol = 1.0e-7
+    
+    assert np.allclose(result.y, real_answer, rtol=check_rtol, atol=check_atol)
+
+    if test_dense_output:
+        # Check that dense output is working and that it gives decent results
+        # Check with a float
+        y_array = result(0.5)
+        assert type(y_array) == np.ndarray
+        assert y_array.shape == (2, 1)
+
+        # Check with array
+        t_array = np.linspace(0.1, 0.4, 10)
+        y_array = result(t_array)
+        assert type(y_array) == np.ndarray
+        assert y_array.shape == (2, 10)
+
+        # Check accuracy
+        y_array_real = correct_answer(t_array, c1, c2)
+        assert np.allclose(y_array, y_array_real, rtol=check_rtol, atol=check_atol)
 
     # Check the accuracy of the results
     # import matplotlib.pyplot as plt

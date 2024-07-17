@@ -188,11 +188,11 @@ def pysolve_ivp(
         tuple time_span,             # Python tuple of floats defining the start and stop points for integration
         double[::1] y0,              # Numpy array defining initial y0 conditions.
         str method = 'RK45',         # Integration method. Current options are: RK23, RK45, DOP853
-        double[::1] t_eval = None,   # Placeholder: Not Supported Yet
-        bint dense_output = False,   # Placeholder: Not Supported Yet
+        double[::1] t_eval = None,   # Array of time steps at which to save data. If not provided then all adaptive time steps will be saved. There is a slight performance hit using this feature.
+        bint dense_output = False,   # If True, then dense interpolators will be saved to the solution. This allows a user to call solution as if a function (in time).
         tuple args = None,           # Python Tuple of additional args passed to the differential equation. These can be any python object.
-        size_t expected_size = 0,    # Expected size of the solution. There is a slight performance improvement if you provide a decent guess.
-        unsigned int num_extra = 0,  # Number of extra outputs you want to capture during integration.
+        size_t expected_size = 0,    # Expected size of the solution. There is a slight performance improvement if selecting the the exact or slightly more time steps than the adaptive stepper will require (if you happen to know this ahead of time).
+        unsigned int num_extra = 0,  # Number of extra outputs you want to capture during integration. There is a performance hit if this is used in conjunction with t_eval or dense_output.
         double first_step = 0.0,     # Initial step size. If set to 0.0 then CyRK will guess a good step size.
         double max_step = INF,       # Maximum allowed step size.
         rtol = 1.0e-3,               # Relative tolerance used to control integration error. This can be provided as a numpy array if you'd like a different rtol for each y.
@@ -324,17 +324,19 @@ cdef shared_ptr[CySolverResult] cysolve_ivp(
     double rtol = 1.0e-3,         # Relative tolerance used to control integration error.
     double atol = 1.0e-6,         # Absolute tolerance (near 0) used to control integration error.
     double* args_ptr = NULL,      # Pointer to array of additional arguments passed to the diffeq. Currently cysolve_ivp only supports doubles as additional arguments.
-    unsigned int num_extra = 0,   # Number of extra outputs you want to capture during integration.
+    unsigned int num_extra = 0,   # Number of extra outputs you want to capture during integration. There is a performance hit if this is used in conjunction with t_eval or dense_output.
     size_t max_num_steps = 0,     # Maximum number of steps allowed. If exceeded then integration will fail. 0 (the default) turns this off.
     size_t max_ram_MB = 2000,     # Maximum amount of system memory the integrator is allowed to use. If this is exceeded then integration will fail.
+    bint dense_output = False,    # If True, then dense interpolators will be saved to the solution. This allows a user to call solution as if a function (in time).
+    double* t_eval = NULL,        # Pointer to an array of time steps at which to save data. If not provided then all adaptive time steps will be saved. There is a slight performance hit using this feature.
+    size_t len_t_eval = 0,        # Size of t_eval.
     double* rtols_ptr = NULL,     # Overrides rtol if provided. Pointer to array of floats of rtols if you'd like a different rtol for each y.
     double* atols_ptr = NULL,     # Overrides atol if provided. Pointer to array of floats of atols if you'd like a different atol for each y.
     double max_step = MAX_STEP,   # Maximum allowed step size.
     double first_step = 0.0       # Initial step size. If set to 0.0 then CyRK will guess a good step size.
-    size_t expected_size = 0,     # Expected size of the solution. There is a slight performance improvement if you provide a decent guess.
+    size_t expected_size = 0,     # Expected size of the solution. There is a slight performance improvement if selecting the the exact or slightly more time steps than the adaptive stepper will require (if you happen to know this ahead of time).
     )
 ```
-
 
 ## Limitations and Known Issues
 

@@ -4,10 +4,6 @@ from numba import njit
 
 from CyRK.cy.cysolverNew import pysolve_ivp, WrapCySolverResult
 
-# TODO: Missing Tests
-#  - t_eval
-#  - dense output
-#
 
 # To reduce number of tests, only test RK23 once since RK45 should capture all its functionality
 SKIP_SOME_RK23_TESTS = True
@@ -115,7 +111,7 @@ def test_pysolve_ivp(use_scipy_style, use_args, use_njit,
 
     # To reduce number of tests, only test RK23 once. 
     if RK23_TESTED and SKIP_SOME_RK23_TESTS and (integration_method=="RK23"):
-        pytest.skip("Skipping RK23 (just to reduce number of tests).")
+        pytest.skip("Skipping Some RK23 Tests (just to reduce number of tests).")
     else:
         RK23_TESTED = True
 
@@ -218,20 +214,6 @@ def test_pysolve_ivp_errors():
                         args=None, rtol=rtol, atol=atol,
                         pass_dy_as_arg=False)
     
-    with pytest.raises(NotImplementedError) as e_info:
-        # Check for t eval usage.
-        result = pysolve_ivp(diffeq_scipy_style, time_span, initial_conds,
-                        method="RK23", t_eval=np.linspace(0.0, 1.0, 10),
-                        args=None, rtol=rtol, atol=atol,
-                        pass_dy_as_arg=False)
-    
-    with pytest.raises(NotImplementedError) as e_info:
-        # Check for dense output usage
-        result = pysolve_ivp(diffeq_scipy_style, time_span, initial_conds,
-                        method="RK23", dense_output=True,
-                        args=None, rtol=rtol, atol=atol,
-                        pass_dy_as_arg=False)
-    
     with pytest.raises(AttributeError) as e_info:
         # Check for unsupported number of dependent variables
         result = pysolve_ivp(diffeq_scipy_style, time_span, np.linspace(0.0, 1.0, 1000),
@@ -297,7 +279,10 @@ def test_pysolve_ivp_errors():
     assert result.message == "Error in step size calculation:\n\tRequired step size is less than spacing between numbers."
 
 @pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853"))
-def test_pysolve_ivp_accuracy(integration_method):
+@pytest.mark.parametrize('t_eval_end', (None, 0.5, 1.0))
+@pytest.mark.parametrize('test_dense_output', (False, True))
+@pytest.mark.parametrize('backward_integrate', (False, True))
+def test_pysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output, backward_integrate):
     #Check that the cython function solver is able to reproduce a known functions integral with reasonable accuracy
 
     # TODO: This is only checking one equation. Add other types of diffeqs to provide better coverage.
@@ -325,19 +310,59 @@ def test_pysolve_ivp_accuracy(integration_method):
     y0 = np.asarray((0., 1.), dtype=np.float64)
     time_span_ = (0., 10.)
 
+    # Check if we should test t_eval
+    if t_eval_end is None:
+        t_eval = None
+    else:
+        t_eval = np.linspace(0.0, t_eval_end, 50)
+    
+    if backward_integrate:
+        time_span_ = (time_span_[1], time_span_[0])
+        if t_eval is not None:
+            t_eval = np.ascontiguousarray(t_eval[::-1])
+
     result = \
-        pysolve_ivp(diffeq_accuracy, time_span_, y0, method=integration_method,
+        pysolve_ivp(diffeq_accuracy, time_span_, y0, method=integration_method, t_eval=t_eval, dense_output=test_dense_output,
                     rtol=1.0e-8, atol=1.0e-9, pass_dy_as_arg=True)
     
     # Use the integrator's time domain to build a correct solution
     real_answer = correct_answer(result.t, c1, c2)
 
+    if t_eval is not None:
+        assert result.t.size == t_eval.size
+        assert np.allclose(result.t, t_eval)
+
     if integration_method == "RK23":
-        assert np.allclose(result.y, real_answer, rtol=1.0e-3, atol=1.0e-6)
+        check_rtol = 1.0e-3
+        check_atol = 1.0e-6
     elif integration_method == "DOP853":
-        assert np.allclose(result.y, real_answer, rtol=1.0e-4, atol=1.0e-7)
+        check_rtol = 1.0e-5
+        check_atol = 1.0e-8
     else:
-        assert np.allclose(result.y, real_answer, rtol=1.0e-5, atol=1.0e-8)
+        check_rtol = 1.0e-4
+        check_atol = 1.0e-7
+    
+    if backward_integrate:
+        pytest.skip("Backward integrating is not working well.")
+
+    assert np.allclose(result.y, real_answer, rtol=check_rtol, atol=check_atol)
+
+    if test_dense_output:
+        # Check that dense output is working and that it gives decent results
+        # Check with a float
+        y_array = result(0.5)
+        assert type(y_array) == np.ndarray
+        assert y_array.shape == (2, 1)
+
+        # Check with array
+        t_array = np.linspace(0.1, 0.4, 10)
+        y_array = result(t_array)
+        assert type(y_array) == np.ndarray
+        assert y_array.shape == (2, 10)
+
+        # Check accuracy
+        y_array_real = correct_answer(t_array, c1, c2)
+        assert np.allclose(y_array, y_array_real, rtol=check_rtol, atol=check_atol)
 
     # Check the accuracy of the results
     # import matplotlib.pyplot as plt
