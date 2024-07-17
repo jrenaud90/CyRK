@@ -1,5 +1,5 @@
 cdef extern from "interp_common.c":
-    Py_ssize_t binary_search_with_guess(
+    Py_ssize_t c_binary_search_with_guess(
             double key,
             double* array,
             Py_ssize_t length,

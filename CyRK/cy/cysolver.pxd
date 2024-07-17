@@ -1,7 +1,20 @@
+
+from CyRK.utils.utils cimport LinkedList
+
 cdef class CySolver:
 
     # Class attributes
     # -- Solution variables
+    cdef LinkedList[100] solution_linkedlists_y
+    cdef LinkedList* stack_linkedlists_y_ptr
+    cdef LinkedList* current_linkedlist_y_ptr
+    cdef LinkedList[100] solution_linkedlists_t
+    cdef LinkedList* stack_linkedlists_t_ptr
+    cdef LinkedList* current_linkedlist_t_ptr
+    cdef LinkedList[100] solution_linkedlists_extra
+    cdef LinkedList* stack_linkedlists_extra_ptr
+    cdef LinkedList* current_linkedlist_extra_ptr
+
     cdef double* solution_y_ptr
     cdef double* solution_t_ptr
     cdef double* solution_extra_ptr
@@ -9,6 +22,7 @@ cdef class CySolver:
     # -- Dependent (y0) variable information
     cdef size_t y_size
     cdef double y_size_dbl, y_size_sqrt
+    cdef double[10] y0_array
     cdef double* y0_ptr
 
     # -- Time information
@@ -25,16 +39,18 @@ cdef class CySolver:
     cdef size_t num_extra
 
     # -- Integration information
+    cdef char[256] _message
+    cdef char* _message_ptr
     cdef readonly char status
-    cdef readonly char* _message
     cdef public bint success
-    cdef double* tol_ptrs
+    cdef double[50] rtols_array
     cdef double* rtols_ptr
+    cdef double[50] atols_array
     cdef double* atols_ptr
     cdef double first_step, max_step
     cdef bint user_provided_max_num_steps
     cdef size_t max_num_steps
-    cdef size_t expected_size, current_size, num_concats
+    cdef size_t last_expansion_size, expected_size, current_size, num_expansions
     cdef bint recalc_first_step
     cdef bint force_fail
 
@@ -56,24 +72,30 @@ cdef class CySolver:
     cdef double* E3_ptr
     cdef double* E5_ptr
     # K is not constant. It is a temp storage variable used in RK calculations
+    # Its size is based on the largest supported y (100) * largest RK n-stage (+1) of 13
+    cdef double[650] K_array
     cdef double* K_ptr
 
     # -- Live variables
     cdef double t_now, t_old, step_size
     cdef size_t len_t, len_t_touse
-    cdef double* temporary_y_ptrs
+    cdef double[50] y_array
     cdef double* y_ptr
+    cdef double[50] y_old_array
     cdef double* y_old_ptr
+    cdef double[50] dy_array
     cdef double* dy_ptr
+    cdef double[50] dy_old_array
     cdef double* dy_old_ptr
-    cdef double* extra_output_ptrs
+    cdef double[50] extra_output_init_array
     cdef double* extra_output_init_ptr
+    cdef double[50] extra_output_array
     cdef double* extra_output_ptr
-
-    # -- Pointers used during solve method
-    cdef double* _solve_time_domain_array_ptr
-    cdef double* _solve_y_results_array_ptr
-    cdef double* _solve_extra_array_ptr
+    
+    # -- Pointers used during solve
+    cdef double* _contiguous_t_ptr
+    cdef double* _contiguous_y_ptr
+    cdef double* _contiguous_extra_ptr
 
     # -- Pointers used during interpolation
     cdef double* _interpolate_solution_t_ptr
@@ -83,6 +105,11 @@ cdef class CySolver:
     # Class functions
     cdef void _reset_state(
             self
+            ) noexcept nogil
+
+    cdef void expand_storage(
+            self,
+            bint initial_expansion
             ) noexcept nogil
 
     cdef double calc_first_step(
@@ -179,6 +206,11 @@ cdef class CySolver:
     cdef void diffeq(
             self
             ) noexcept nogil
+
+    cdef void free_linked_lists(
+            self
+            ) noexcept nogil
+
 
 ctypedef void (*DiffeqType)(CySolver)
 

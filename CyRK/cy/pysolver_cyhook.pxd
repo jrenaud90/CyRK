@@ -1,0 +1,1 @@
+ctypedef public api void (*DiffeqMethod)(object py_instance) noexcept

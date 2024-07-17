@@ -1,7 +1,7 @@
 import numpy as np
 from numba import njit
 
-from CyRK import nbrk_ode
+from CyRK import nbsolve_ivp
 
 
 @njit
@@ -23,26 +23,25 @@ atol = 1.0e-8
 def test_extra_output_integration():
     """Check that the numba solver is able to run and capture additional outputs """
 
-    time_domain, all_output, success, message = \
-        nbrk_ode(diffeq_extra_outputs, time_span, initial_conds, capture_extra=True)
+    nbrk_result = \
+        nbsolve_ivp(diffeq_extra_outputs, time_span, initial_conds, capture_extra=True)
 
     # Check that the ndarrays make sense
-    assert type(time_domain) == np.ndarray
-    assert time_domain.dtype == np.float64
-    assert all_output.dtype == np.complex128
-    assert time_domain.size > 1
-    assert time_domain.size == all_output[0].size
-    assert len(all_output.shape) == 2
-    assert all_output.shape[0] == 4
-    assert all_output[0].size == all_output[1].size
-    assert all_output[0].size == all_output[2].size
-    assert all_output[0].size == all_output[3].size
+    assert type(nbrk_result.t) == np.ndarray
+    assert nbrk_result.t.dtype == np.float64
+    assert nbrk_result.y.dtype == np.complex128
+    assert nbrk_result.t.size > 1
+    assert nbrk_result.t.size == nbrk_result.y[0].size
+    assert len(nbrk_result.y.shape) == 2
+    assert nbrk_result.y.shape[0] == 4
+    assert nbrk_result.y[0].size == nbrk_result.y[1].size
+    assert nbrk_result.y[0].size == nbrk_result.y[2].size
+    assert nbrk_result.y[0].size == nbrk_result.y[3].size
 
     # Check that the other output makes sense
-    assert type(success) == bool
-    assert success
-    assert type(message) == str
-
+    assert type(nbrk_result.success) == bool
+    assert nbrk_result.success
+    assert type(nbrk_result.message) == str
 
 def test_extra_output_integration_teval_no_extra_interpolation():
     """Check that the numba solver is able to run and capture additional outputs.
@@ -51,27 +50,27 @@ def test_extra_output_integration_teval_no_extra_interpolation():
 
     t_eval = np.linspace(time_span[0], time_span[1], 5)
 
-    time_domain, all_output, success, message = \
-        nbrk_ode(
+    nbrk_result = \
+        nbsolve_ivp(
             diffeq_extra_outputs, time_span, initial_conds, t_eval=t_eval,
             capture_extra=True, interpolate_extra=False)
 
     # Check that the ndarrays make sense
-    assert type(time_domain) == np.ndarray
-    assert time_domain.dtype == np.float64
-    assert all_output.dtype == np.complex128
-    assert time_domain.size == t_eval.size
-    assert time_domain.size == all_output[0].size
-    assert len(all_output.shape) == 2
-    assert all_output.shape[0] == 4
-    assert all_output[0].size == all_output[1].size
-    assert all_output[0].size == all_output[2].size
-    assert all_output[0].size == all_output[3].size
+    assert type(nbrk_result.t) == np.ndarray
+    assert nbrk_result.t.dtype == np.float64
+    assert nbrk_result.y.dtype == np.complex128
+    assert nbrk_result.t.size > 1
+    assert nbrk_result.t.size == nbrk_result.y[0].size
+    assert len(nbrk_result.y.shape) == 2
+    assert nbrk_result.y.shape[0] == 4
+    assert nbrk_result.y[0].size == nbrk_result.y[1].size
+    assert nbrk_result.y[0].size == nbrk_result.y[2].size
+    assert nbrk_result.y[0].size == nbrk_result.y[3].size
 
     # Check that the other output makes sense
-    assert type(success) == bool
-    assert success
-    assert type(message) == str
+    assert type(nbrk_result.success) == bool
+    assert nbrk_result.success
+    assert type(nbrk_result.message) == str
 
 
 def test_extra_output_integration_teval_with_extra_interpolation():
@@ -81,24 +80,24 @@ def test_extra_output_integration_teval_with_extra_interpolation():
 
     t_eval = np.linspace(time_span[0], time_span[1], 5)
 
-    time_domain, all_output, success, message = \
-        nbrk_ode(
+    nbrk_result = \
+        nbsolve_ivp(
                 diffeq_extra_outputs, time_span, initial_conds, t_eval=t_eval,
                 capture_extra=True, interpolate_extra=True)
 
     # Check that the ndarrays make sense
-    assert type(time_domain) == np.ndarray
-    assert time_domain.dtype == np.float64
-    assert all_output.dtype == np.complex128
-    assert time_domain.size == t_eval.size
-    assert time_domain.size == all_output[0].size
-    assert len(all_output.shape) == 2
-    assert all_output.shape[0] == 4
-    assert all_output[0].size == all_output[1].size
-    assert all_output[0].size == all_output[2].size
-    assert all_output[0].size == all_output[3].size
+    assert type(nbrk_result.t) == np.ndarray
+    assert nbrk_result.t.dtype == np.float64
+    assert nbrk_result.y.dtype == np.complex128
+    assert nbrk_result.t.size > 1
+    assert nbrk_result.t.size == nbrk_result.y[0].size
+    assert len(nbrk_result.y.shape) == 2
+    assert nbrk_result.y.shape[0] == 4
+    assert nbrk_result.y[0].size == nbrk_result.y[1].size
+    assert nbrk_result.y[0].size == nbrk_result.y[2].size
+    assert nbrk_result.y[0].size == nbrk_result.y[3].size
 
     # Check that the other output makes sense
-    assert type(success) == bool
-    assert success
-    assert type(message) == str
+    assert type(nbrk_result.success) == bool
+    assert nbrk_result.success
+    assert type(nbrk_result.message) == str
