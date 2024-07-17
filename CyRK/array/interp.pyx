@@ -64,11 +64,11 @@ cdef double interp_ptr(
     # Perform binary search with guess
     if provided_j == -2:
         # No j provided; search for it instead.
-        j = binary_search_with_guess(desired_x, x_domain, len_x, j)
+        j = c_binary_search_with_guess(desired_x, x_domain, len_x, j)
     elif provided_j < -2:
         # Error
         # TODO: How to handle exception handling in a cdef function... For now just repeat the search.
-        j = binary_search_with_guess(desired_x, x_domain, len_x, j)
+        j = c_binary_search_with_guess(desired_x, x_domain, len_x, j)
     else:
         j = provided_j
 
@@ -158,11 +158,11 @@ cdef double complex interp_complex_ptr(
     # Perform binary search with guess
     if provided_j == -2:
         # No j provided; search for it instead.
-        j = binary_search_with_guess(desired_x, x_domain, len_x, j)
+        j = c_binary_search_with_guess(desired_x, x_domain, len_x, j)
     elif provided_j < -2:
         # Error
         # TODO: How to handle exception handling in a cdef function... For now just repeat the search.
-        j = binary_search_with_guess(desired_x, x_domain, len_x, j)
+        j = c_binary_search_with_guess(desired_x, x_domain, len_x, j)
     else:
         j = provided_j
 
@@ -320,7 +320,7 @@ cdef (double, Py_ssize_t) interpj_ptr(
     result : float
         Desired value of `dependent_values`.
     j_out : int
-        The index that was found during binary_search_with_guess which can be used by other interpolation functions 
+        The index that was found during c_binary_search_with_guess which can be used by other interpolation functions 
         to improve performance.
 
     """
@@ -331,11 +331,11 @@ cdef (double, Py_ssize_t) interpj_ptr(
     # Perform binary search with guess
     if provided_j == -2:
         # No j provided; search for it instead.
-        j_out = binary_search_with_guess(desired_x, x_domain, len_x, j_out)
+        j_out = c_binary_search_with_guess(desired_x, x_domain, len_x, j_out)
     elif provided_j < -2:
         # Error
         # TODO: How to handle exception handling in a cdef function... For now just repeat the search.
-        j_out = binary_search_with_guess(desired_x, x_domain, len_x, j_out)
+        j_out = c_binary_search_with_guess(desired_x, x_domain, len_x, j_out)
     else:
         j_out = provided_j
 
@@ -372,7 +372,7 @@ cpdef (double, Py_ssize_t) interpj(
     result : float
         Desired value of `dependent_values`.
     j_out : int
-        The index that was found during binary_search_with_guess which can be used by other interpolation functions 
+        The index that was found during c_binary_search_with_guess which can be used by other interpolation functions 
         to improve performance.
 
     """
@@ -413,7 +413,7 @@ cdef (double complex, Py_ssize_t) interp_complexj_ptr(
     result : complex
         Desired value of `dependent_values`.
     j_out : int
-        The index that was found during binary_search_with_guess which can be used by other interpolation functions 
+        The index that was found during c_binary_search_with_guess which can be used by other interpolation functions 
         to improve performance.
 
     """
@@ -424,11 +424,11 @@ cdef (double complex, Py_ssize_t) interp_complexj_ptr(
     # Perform binary search with guess
     if provided_j == -2:
         # No j provided; search for it instead.
-        j_out = binary_search_with_guess(desired_x, x_domain, len_x, j_out)
+        j_out = c_binary_search_with_guess(desired_x, x_domain, len_x, j_out)
     elif provided_j < -2:
         # Error
         # TODO: How to handle exception handling in a cdef function... For now just repeat the search.
-        j_out = binary_search_with_guess(desired_x, x_domain, len_x, j_out)
+        j_out = c_binary_search_with_guess(desired_x, x_domain, len_x, j_out)
     else:
         j_out = provided_j
 
@@ -465,7 +465,7 @@ cpdef (double complex, Py_ssize_t) interp_complexj(
     result : complex
         Desired value of `dependent_values`.
     j_out : int
-        The index that was found during binary_search_with_guess which can be used by other interpolation functions 
+        The index that was found during c_binary_search_with_guess which can be used by other interpolation functions 
         to improve performance.
 
     """
@@ -507,7 +507,7 @@ cdef void interp_array_ptr(
 
         # Perform binary search with guess
         guess = <Py_ssize_t>x_slope * index
-        j = binary_search_with_guess(desired_x, x_domain, len_x, guess)
+        j = c_binary_search_with_guess(desired_x, x_domain, len_x, guess)
 
         # Run interpolation
         result = interp_ptr(desired_x, x_domain, dependent_values, len_x, provided_j=j)
@@ -562,7 +562,7 @@ cdef void interp_complex_array_ptr(
 
         # Perform binary search with guess
         guess = <Py_ssize_t>x_slope * index
-        j = binary_search_with_guess(desired_x, x_domain, len_x, guess)
+        j = c_binary_search_with_guess(desired_x, x_domain, len_x, guess)
 
         # Run interpolation
         result = interp_complex_ptr(desired_x, x_domain, dependent_values, len_x, provided_j=j)
@@ -584,3 +584,9 @@ cpdef void interp_complex_array(
 
     interp_complex_array_ptr(&desired_x_array[0], &x_domain[0], &dependent_values[0], &desired_dependent_array[0],
                              len_x, desired_len)
+
+
+def binary_search_with_guess(double key, double[::1] array, ssize_t length, ssize_t guess):
+
+    cdef double* array_ptr = &array[0]
+    return c_binary_search_with_guess(key, array_ptr, length, guess)

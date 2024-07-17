@@ -95,7 +95,7 @@ def run_performance(integration_method_name):
     int_method = integration_methods[integration_method_name]
     performance_filename = f'cyrk_performance-{integration_method_name}.csv'
 
-    from CyRK import __version__, cyrk_ode, nbrk_ode
+    from CyRK import __version__, cyrk_ode, nbsolve_ivp
     print(f'Running Performance for CyRK v{__version__} and {integration_method_name}.')
     now = datetime.now()
     dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
@@ -118,7 +118,7 @@ def run_performance(integration_method_name):
                     lambda: cyrk_ode(cy_diffeq, time_span, y0, args=args_, rtol=RTOL, atol=ATOL, rk_method=int_method,
                                      capture_extra=True, num_extra=3))
                 nb_timer = timeit.Timer(
-                    lambda: nbrk_ode(nb_diffeq, time_span, y0, args=args_, rtol=RTOL, atol=ATOL, rk_method=int_method,
+                    lambda: nbsolve_ivp(nb_diffeq, time_span, y0, args=args_, rtol=RTOL, atol=ATOL, rk_method=int_method,
                                      capture_extra=True))
                 cysolver_timer = timeit.Timer(
                     lambda: CySolverClass(time_span, y0, args=args_, rtol=RTOL, atol=ATOL, rk_method=int_method,
@@ -126,14 +126,14 @@ def run_performance(integration_method_name):
             else:
                 cy_timer = timeit.Timer(lambda: cyrk_ode(cy_diffeq, time_span, y0, args=args_, rtol=RTOL, atol=ATOL,
                                                          rk_method=int_method))
-                nb_timer = timeit.Timer(lambda: nbrk_ode(nb_diffeq, time_span, y0, args=args_, rtol=RTOL, atol=ATOL,
+                nb_timer = timeit.Timer(lambda: nbsolve_ivp(nb_diffeq, time_span, y0, args=args_, rtol=RTOL, atol=ATOL,
                                                          rk_method=int_method))
                 cysolver_timer = timeit.Timer(lambda: CySolverClass(time_span, y0, args=args_, rtol=RTOL, atol=ATOL,
                                                                     rk_method=int_method, auto_solve=True))
 
             # Run the numba function once to make sure everything is compiled.
             print('\t\tPrecompiling numba')
-            _ = nbrk_ode(nb_diffeq, time_span, y0, args_, rtol=RTOL, atol=ATOL, rk_method=int_method)
+            _ = nbsolve_ivp(nb_diffeq, time_span, y0, args_, rtol=RTOL, atol=ATOL, rk_method=int_method)
 
             # Cython
             print('\t\t\tWorking on cyrk_ode.', end='')
@@ -166,7 +166,7 @@ def run_performance(integration_method_name):
             performance_csv_line += f', {cysolver_avg:0.4f}, {cysolver_std:0.4f}'
 
             # Numba
-            print('\t\t\tWorking on nbrk_ode.', end='')
+            print('\t\t\tWorking on nbsolve_ivp.', end='')
             numba_times = list()
             time_0 = time.time()
             for i in range(REPEATS):

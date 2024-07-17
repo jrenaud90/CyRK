@@ -4,42 +4,88 @@
     "sources": [["CyRK", "utils", "utils.pyx"]],
     "include_dirs": [["CyRK", "utils"]],
     "compile_args": [],
-    "link_args": []
+    "link_args": [],
+    "is_cpp": false
+  },
+  "vector": {
+    "name": "CyRK.utils.vector",
+    "sources": [["CyRK", "utils", "vector.pyx"]],
+    "include_dirs": [["CyRK", "utils"]],
+    "compile_args": [],
+    "link_args": [],
+    "is_cpp": false
+  },
+  "memory": {
+    "name": "CyRK.utils.memory",
+    "sources": [["CyRK", "utils", "memory.pyx"]],
+    "include_dirs": [["CyRK", "utils"]],
+    "compile_args": [],
+    "link_args": [],
+    "is_cpp": false
   },
   "interp": {
     "name": "CyRK.array.interp",
     "sources": [["CyRK", "array", "interp.pyx"]],
     "include_dirs": [["CyRK", "array"]],
     "compile_args": [],
-    "link_args": []
+    "link_args": [],
+    "is_cpp": false
   },
   "rk_constants": {
     "name": "CyRK.rk.rk_constants",
     "sources": [["CyRK", "rk", "rk_constants.pyx"]],
     "include_dirs": [["CyRK", "rk"]],
     "compile_args": [],
-    "link_args": []
+    "link_args": [],
+    "is_cpp": false
   },
   "rk": {
     "name": "CyRK.rk.rk",
     "sources": [["CyRK", "rk", "rk.pyx"]],
     "include_dirs": [["CyRK", "rk"]],
     "compile_args": [],
-    "link_args": []
+    "link_args": [],
+    "is_cpp": false
   },
   "common": {
     "name": "CyRK.cy.common",
     "sources": [["CyRK", "cy", "common.pyx"]],
     "include_dirs": [["CyRK", "cy"]],
     "compile_args": [],
-    "link_args": []
+    "link_args": [],
+    "is_cpp": false
+  },
+  "pysolver_cyhook": {
+    "name": "CyRK.cy.pysolver_cyhook",
+    "sources": [["CyRK", "cy", "pysolver_cyhook.pyx"]],
+    "include_dirs": [["CyRK", "cy"]],
+    "compile_args": [],
+    "link_args": [],
+    "is_cpp": true
+  },
+  "cysolverNew": {
+    "name": "CyRK.cy.cysolverNew",
+    "sources": [["CyRK", "cy", "cysolverNew.pyx"]],
+    "include_dirs": [["CyRK", "cy"]],
+    "compile_args": [],
+    "link_args": [],
+    "is_cpp": true
+  },
+  "cysolverNew_test": {
+    "name": "CyRK.cy.cysolverNew_test",
+    "sources": [["CyRK", "cy", "cysolverNew_test.pyx"]],
+    "include_dirs": [["CyRK", "cy"]],
+    "compile_args": [],
+    "link_args": [],
+    "is_cpp": true
   },
   "cyrk_ode": {
     "name": "CyRK.cy.cyrk",
     "sources": [["CyRK", "cy", "cyrk.pyx"]],
     "include_dirs": [["CyRK", "cy"]],
     "compile_args": [],
-    "link_args": []
+    "link_args": [],
+    "is_cpp": false
   },
   "cysolver": {
     "name": "CyRK.cy.cysolver",
@@ -48,13 +94,15 @@
     ],
     "include_dirs": [["CyRK", "cy"]],
     "compile_args": [],
-    "link_args": []
+    "link_args": [],
+    "is_cpp": false
   },
   "cysolver_test": {
     "name": "CyRK.cy.cysolvertest",
     "sources": [["CyRK", "cy", "cysolvertest.pyx"]],
     "include_dirs": [["CyRK", "cy"]],
     "compile_args": [],
-    "link_args": []
+    "link_args": [],
+    "is_cpp": false
   }
 }

@@ -8,6 +8,8 @@ from CyRK.nb.dop_coefficients import (
     N_STAGES as N_STAGES_DOP, N_STAGES_EXTENDED as N_STAGES_EXTENDED_DOP, ORDER as ORDER_DOP,
     ERROR_ESTIMATOR_ORDER as ERROR_ESTIMATOR_ORDER_DOP)
 
+from CyRK.nb.nb_storage import WrapNBRKResult
+
 # Optimizations
 EMPTY_ARR = np.empty(0, dtype=np.float64)
 EPS = np.finfo(np.float64).eps
@@ -84,7 +86,7 @@ def _norm(x):
 
 
 @njit(cache=False, fastmath=False)
-def nbrk_ode(
+def nbsolve_ivp(
         diffeq: callable,
         t_span: Tuple[float, float],
         y0: np.ndarray,
@@ -695,4 +697,7 @@ def nbrk_ode(
 
         status = old_status
 
-    return time_domain, y_results, success, message
+    # Install result into solution named tuple
+    nbrk_result = WrapNBRKResult(success, message, time_domain.size, total_size, y0.size, status, y_results, time_domain)
+
+    return nbrk_result

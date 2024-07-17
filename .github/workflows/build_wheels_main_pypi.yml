@@ -52,17 +52,11 @@ jobs:
         shell: bash -el {0}
         run: conda info
 
-      - name: install gcc-13  # openMP does not play nice with clang on MacOS; also some versions of macos use older gcc so there is a need to install latest.
-        shell: bash -el {0}
-        run: |
-          brew install gcc@13
-
       - name: Install package
         shell: bash -el {0}
         run: |
           conda install pytest matplotlib numba numpy scipy cython
           python -m pip install --upgrade build
-          export CC='gcc-13'
           export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
           python -m build --wheel --outdir ./wheelhouse/
 
@@ -111,7 +105,6 @@ jobs:
           conda install nomkl
           conda install pytest matplotlib numba numpy scipy cython
           python -m pip install --upgrade build
-          export CC='gcc-13'
           export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
           python -m build --wheel --outdir ./wheelhouse/
 
@@ -129,6 +122,7 @@ jobs:
         platform:
           #              - macos-12  ## macos is not playing nice with cibuildwheel with openmp from cython.
           - windows-2022
+          - windows-latest
           - ubuntu-20.04
 
     steps:
@@ -137,7 +131,7 @@ jobs:
           fetch-depth: 0
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.16.5
+        uses: pypa/cibuildwheel@v2.19.2
 
       - uses: actions/upload-artifact@v4
         with:
@@ -166,7 +160,7 @@ jobs:
           merge-multiple: true
           path: dist
 
-      - uses: pypa/gh-action-pypi-publish@v1.8.11
+      - uses: pypa/gh-action-pypi-publish@v1.9.0
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}

@@ -4,3 +4,21 @@
 global-include *.pxd
 global-include *.pyx
 include cython_extensions.json
+
+# Include required hpp and cpp files
+include CyRK/cy/common.cpp
+include CyRK/cy/common.hpp
+include CyRK/cy/cysolver.cpp
+include CyRK/cy/cysolver.hpp
+include CyRK/cy/rk.cpp
+include CyRK/cy/rk.hpp
+include CyRK/cy/cysolve.cpp
+include CyRK/cy/cysolve.hpp
+include CyRK/cy/cy_array.cpp
+include CyRK/cy/cy_array.hpp
+include CyRK/cy/dense.cpp
+include CyRK/cy/dense.hpp
+include CyRK/cy/cysolution.cpp
+include CyRK/cy/cysolution.hpp
+include CyRK/cy/pysolver_cyhook_api.h
+include CyRK/cy/pysolver_cyhook.h

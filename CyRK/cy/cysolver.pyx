@@ -3,7 +3,9 @@
 
 from libc.math cimport sqrt, fabs, nextafter, fmax, fmin, isnan, NAN, floor
 
-from libc.stdlib cimport free
+from libc.stdlib cimport exit, EXIT_FAILURE
+from libc.stdio cimport printf
+from libc.string cimport strcpy
 
 import numpy as np
 cimport numpy as np
@@ -12,6 +14,8 @@ from CyRK.utils.utils cimport allocate_mem, reallocate_mem, free_mem
 from CyRK.rk.rk cimport find_rk_properties
 from CyRK.cy.common cimport interpolate, SAFETY, MIN_FACTOR, MAX_FACTOR, MAX_STEP, INF, EPS_100, \
     find_expected_size, find_max_num_steps
+
+import warnings
 
 cdef (double, double) EMPTY_T_SPAN = (NAN, NAN)
 
@@ -79,8 +83,10 @@ cdef class CySolver:
     status : char; public
         Numerical flag to indicate status of integrator.
         See "Status and Error Codes.md" in the documentation for more information.
-    _message : str; public
+    _message : char[256]
         Verbal _message to accompany `self.status` explaining the state (and potential errors) of the integrator.
+    _message_ptr : char*
+        Pointer to `_message`.
     success : bint; public
         Flag indicating if the integration was successful or not.
     rtols_ptr : double*
@@ -96,7 +102,7 @@ cdef class CySolver:
     expected_size : size_t
         Anticipated size of integration range, i.e., how many steps will be required.
         Used to build temporary storage arrays for the solution results.
-    num_concats : size_t
+    num_expansions : size_t
         Number of concatenations that were required during integration.
         If `expected_size` is too small then it will be expanded as needed. This variable tracks how many expansions
         were required.
@@ -235,7 +241,8 @@ cdef class CySolver:
             size_t max_ram_MB = 2000,
             bint call_first_reset = True,
             bint auto_solve = True,
-            bint force_fail = False):
+            bint force_fail = False,
+            bint raise_warnings = True):
         """
         Initialize new CySolver instance.
 
@@ -308,8 +315,14 @@ cdef class CySolver:
             to perform integration.
         """
 
+        if raise_warnings:
+            warnings.warn(
+                "CySolver method is now deprecated it will be removed in the next major update of CyRK. "
+                "Please see the documentation on the new `cysolve_ivp` function which acts as its replacement.",
+                DeprecationWarning
+                )
+
         # Initialize all class pointers to null
-        self.tol_ptrs = NULL
         self.rtols_ptr = NULL
         self.atols_ptr = NULL
         self.solution_y_ptr = NULL
@@ -325,37 +338,56 @@ cdef class CySolver:
         self.E3_ptr = NULL
         self.E5_ptr = NULL
         self.K_ptr = NULL
-        self.temporary_y_ptrs = NULL
         self.y_ptr = NULL
         self.y_old_ptr = NULL
         self.dy_ptr = NULL
         self.dy_old_ptr = NULL
-        self.extra_output_ptrs = NULL
         self.extra_output_init_ptr = NULL
         self.extra_output_ptr = NULL
-        self._solve_time_domain_array_ptr = NULL
-        self._solve_y_results_array_ptr = NULL
-        self._solve_extra_array_ptr = NULL
+        self._contiguous_t_ptr = NULL
+        self._contiguous_y_ptr = NULL
+        self._contiguous_extra_ptr = NULL
         self._interpolate_solution_t_ptr = NULL
         self._interpolate_solution_y_ptr = NULL 
         self._interpolate_solution_extra_ptr = NULL
+        self.stack_linkedlists_y_ptr = NULL
+        self.stack_linkedlists_t_ptr = NULL
+        self.stack_linkedlists_extra_ptr = NULL
 
         # Loop variables
         cdef size_t i
 
         # Set integration information
         self.status  = -4  # Status code to indicate that integration has not started.
-        self._message = 'Integration has not started.'
+        self._message_ptr = &self._message[0]
+        strcpy(self._message_ptr, 'CySolverInstance:: Integration has not started.\n')
         self.success = False
         self.recalc_first_step = False
         self.force_fail = force_fail
 
+        # Setup pointers
+        self.y_ptr                       = &self.y_array[0]
+        self.y_old_ptr                   = &self.y_old_array[0]
+        self.dy_ptr                      = &self.dy_array[0]
+        self.dy_old_ptr                  = &self.dy_old_array[0]
+        self.extra_output_init_ptr       = &self.extra_output_init_array[0]
+        self.extra_output_ptr            = &self.extra_output_array[0]
+        self.y0_ptr                      = &self.y0_array[0]
+        self.rtols_ptr                   = &self.rtols_array[0]
+        self.atols_ptr                   = &self.atols_array[0]
+        self.stack_linkedlists_y_ptr     = &self.solution_linkedlists_y[0]
+        self.stack_linkedlists_t_ptr     = &self.solution_linkedlists_t[0]
+        self.stack_linkedlists_extra_ptr = &self.solution_linkedlists_extra[0]
+
         # Store y0 values and determine y-size information
         self.y_size = y0.size
+        if self.y_size > 100:
+            strcpy(self._message_ptr, 'CySolverInstance:: Attribute Error: CySolver only supports up to 100 dependent variables (y-values).\n')
+            raise AttributeError(self.message)
         self.y_size_dbl = <double> self.y_size
         self.y_size_sqrt = sqrt(self.y_size_dbl)
 
-        self.y0_ptr = <double *> allocate_mem(self.y_size * sizeof(double), 'y0_ptr (init)')
+        # Make a copy of the y0 values.
         for i in range(self.y_size):
             self.y0_ptr[i] = y0[i]
 
@@ -375,16 +407,14 @@ cdef class CySolver:
             self.t_delta_abs    = -self.t_delta
 
         # Determine integration tolerances
-        self.tol_ptrs  = <double *> allocate_mem(2 * self.y_size * sizeof(double), 'tol_ptrs (init)')
-        self.rtols_ptr = &self.tol_ptrs[0]
-        self.atols_ptr = &self.tol_ptrs[self.y_size]
         cdef double rtol_tmp, rtol_min
         rtol_min = INF
 
         if rtols is not None:
             # User provided an arrayed version of rtol.
             if len(rtols) != self.y_size:
-                raise AttributeError('rtol array must be the same size as y0.')
+                strcpy(self._message_ptr, 'CySolverInstance:: Attribute Error: rtol array must be the same size as y0.\n')
+                raise AttributeError(self.message)
             for i in range(self.y_size):
                 rtol_tmp = rtols[i]
                 # Check that the tolerances are not too small.
@@ -404,7 +434,8 @@ cdef class CySolver:
         if atols is not None:
             # User provided an arrayed version of atol.
             if len(atols) != self.y_size:
-                raise AttributeError('atol array must be the same size as y0.')
+                strcpy(self._message_ptr, 'CySolverInstance:: Attribute Error: atol array must be the same size as y0.\n')
+                raise AttributeError(self.message)
             for i in range(self.y_size):
                 self.atols_ptr[i] = atols[i]
         else:
@@ -419,7 +450,12 @@ cdef class CySolver:
         if self.capture_extra:
             if num_extra <= 0:
                 self.status = -8
-                raise AttributeError('Capture extra set to True, but number of extra set to 0 (or negative).')
+                strcpy(self._message_ptr, 'CySolverInstance:: Attribute Error: Capture extra set to True, but number of extra set to 0 (or negative).\n')
+                raise AttributeError(self.message)
+            elif num_extra > 100:
+                strcpy(self._message_ptr, 'CySolverInstance:: Attribute Error: CySolver only supports up to 100 extra outputs.\n')
+                raise AttributeError(self.message)
+
             self.num_extra = num_extra
         else:
             # Even though we are not capturing extra, we still want num_extra to be equal to 1 so that nan arrays
@@ -455,7 +491,7 @@ cdef class CySolver:
 
         # This variable tracks how many times the storage arrays have been appended.
         # It starts at 1 since there is at least one storage array present.
-        self.num_concats = 1
+        self.num_expansions = 1
 
         # Determine optional arguments
         if args is None:
@@ -473,32 +509,9 @@ cdef class CySolver:
                 self.args_ptr[i] = NAN
 
         # Initialize live variable arrays
-        self.temporary_y_ptrs = <double *> allocate_mem(4 * self.y_size * sizeof(double), 'temporary_y_ptrs (init)')
-        self.y_ptr      = &self.temporary_y_ptrs[0 * self.y_size]
-        self.y_old_ptr  = &self.temporary_y_ptrs[1 * self.y_size]
-        self.dy_ptr     = &self.temporary_y_ptrs[2 * self.y_size]
-        self.dy_old_ptr = &self.temporary_y_ptrs[3 * self.y_size]
-
-        self.extra_output_ptrs = <double *> allocate_mem(2 * self.num_extra * sizeof(double), 'extra_output_ptrs (init)')
-
-        self.extra_output_init_ptr = &self.extra_output_ptrs[0 * self.num_extra]
-        self.extra_output_ptr      = &self.extra_output_ptrs[1 * self.num_extra]
-       
         for i in range(self.num_extra):
             self.extra_output_init_ptr[i] = NAN
             self.extra_output_ptr[i]      = NAN
-
-        # Initialize storage variables
-        self.solution_t_ptr = <double *> allocate_mem(sizeof(double), 'solution_t_ptr (init)')
-        self.solution_t_ptr[0] = NAN
-
-        self.solution_y_ptr = <double *> allocate_mem(self.y_size * sizeof(double), 'solution_y_ptr (init)')
-        for i in range(self.y_size):
-            self.solution_y_ptr[i] = NAN
-
-        self.solution_extra_ptr = <double *> allocate_mem(self.num_extra * sizeof(double), 'solution_extra_ptr (init)')
-        for i in range(self.num_extra):
-            self.solution_extra_ptr[i] = NAN
 
         # Determine interpolation information
         if t_eval is None:
@@ -543,7 +556,10 @@ cdef class CySolver:
         self.error_expo        = 1. / (<double>self.error_order + 1.)
 
         # Initialize other RK-related Arrays
-        self.K_ptr = <double *> allocate_mem(self.rk_n_stages_plus1 * self.y_size * sizeof(double), 'K_ptr (init)')
+        # The size of K is rk_n_stages_plus1 * y_size. We assume that the max number of supported y's is 100
+        # Currently the biggest that rk_n_stages_plus1 can be is for DOP853 at 13.
+        # So let K be stack allocated with a size of 1,300
+        self.K_ptr = &self.K_array[0]
 
         # Store user provided step information
         self.first_step = first_step
@@ -604,32 +620,109 @@ cdef class CySolver:
         else:
             if self.first_step <= 0.:
                 self.status = -8
-                self._message = "Attribute error."
-                raise AttributeError('Error in user-provided step size: Step size must be a positive number.')
+                strcpy(self._message_ptr, "CySolverInstance._reset_state:: Error in user-provided step size: Step size must be a positive number.")
+                printf(self._message_ptr)
+                exit(EXIT_FAILURE)
             elif self.first_step > self.t_delta_abs:
                 self.status = -8
-                self._message = "Attribute error."
-                raise AttributeError('Error in user-provided step size: Step size can not exceed bounds.')
+                strcpy(self._message_ptr, "CySolverInstance._reset_state:: Error in user-provided step size: Step size can not exceed bounds.")
+                printf(self._message_ptr)
+                exit(EXIT_FAILURE)
             self.step_size = self.first_step
 
         # Reset output storage
+        self.free_linked_lists()
         self.current_size = self.expected_size
-        self.num_concats = 1
 
-        # Reset storage variables to clear any old solutions and to avoid access violations if solve() is not called.
-        self.solution_t_ptr[0] = NAN
-        for i in range(self.y_size):
-            self.solution_y_ptr[i] = NAN
-        for i in range(self.num_extra):
-            self.solution_extra_ptr[i] = NAN
+        # Perform initial expansion (num_expansions starts off at 0 here because it is incremented in the method call)
+        self.num_expansions = 0
+        self.expand_storage(True)
 
         # Other integration flags and _messages
         self.success = False
         self.status = -5  # status == -5 means that reset has been called but solve has not yet been called.
-        self._message = "CySolver has been reset."
+        strcpy(self._message_ptr, "CySolverInstance._reset_state:: CySolver instance has been reset.")
     
     def reset_state(self):
         self._reset_state()
+    
+    cdef void expand_storage(self, bint initial_expansion) noexcept nogil:
+
+        # Set pointers to new arrays
+        self.num_expansions += 1
+
+        cdef size_t expansion_amount
+        if initial_expansion:
+            expansion_amount = self.expected_size
+            self.current_size = expansion_amount
+        else:
+            # Grow the array by 150% its last expansion amount
+            expansion_amount = <size_t> floor(<double>self.last_expansion_size * (1.5))
+            self.current_size += expansion_amount
+        self.last_expansion_size = expansion_amount
+        
+        # Update storages
+        cdef LinkedList* current_linkedlist_ptr
+        cdef LinkedList* new_linkedlist_ptr
+        cdef size_t j, max_j, data_size
+        if self.capture_extra:
+            max_j = 3
+        else:
+            max_j = 2
+        
+        if initial_expansion:
+            self.current_linkedlist_t_ptr = &self.stack_linkedlists_t_ptr[0]
+            self.current_linkedlist_y_ptr = &self.stack_linkedlists_y_ptr[0]
+            self.current_linkedlist_extra_ptr = &self.stack_linkedlists_extra_ptr[0]
+
+        for j in range(max_j):
+            if j == 0:
+                # Time data
+                current_linkedlist_ptr = self.current_linkedlist_t_ptr
+                data_size = expansion_amount
+            elif j == 1:
+                # y data
+                current_linkedlist_ptr = self.current_linkedlist_y_ptr
+                data_size = expansion_amount * self.y_size
+            elif j == 2:
+                # Extra data
+                current_linkedlist_ptr = self.current_linkedlist_extra_ptr
+                data_size = expansion_amount * self.num_extra
+            if initial_expansion:
+                new_linkedlist_ptr = current_linkedlist_ptr
+            else:
+                if self.num_expansions < 100:
+                    # We are still using stack allocated linked lists
+                    new_linkedlist_ptr = current_linkedlist_ptr + 1
+                else:
+                    # We are now using heap allocated linked lists. Need to allocate a new linked list.
+                    new_linkedlist_ptr = <LinkedList *>allocate_mem(
+                        sizeof(LinkedList),
+                        "New Linked List (expand_storage)")
+                current_linkedlist_ptr[0].next = new_linkedlist_ptr
+            
+            # Create data array which is always heap allocated
+            new_linkedlist_ptr[0].size = expansion_amount
+            new_linkedlist_ptr[0].array_ptr = <double *>allocate_mem(
+                sizeof(double) * data_size,
+                "Linked List Data Array (expand_storage)")
+            
+            # Clear any values stored in the next pointer
+            new_linkedlist_ptr[0].next = NULL
+
+            # Now need to update state pointers
+            if j == 0:
+                # Time data
+                self.current_linkedlist_t_ptr = new_linkedlist_ptr
+                self.solution_t_ptr = new_linkedlist_ptr[0].array_ptr
+            elif j == 1:
+                # y data
+                self.current_linkedlist_y_ptr = new_linkedlist_ptr
+                self.solution_y_ptr = new_linkedlist_ptr[0].array_ptr
+            elif j == 2:
+                # Extra data
+                self.current_linkedlist_extra_ptr = new_linkedlist_ptr
+                self.solution_extra_ptr = new_linkedlist_ptr[0].array_ptr
 
     cdef double calc_first_step(self) noexcept nogil:
         """
@@ -729,50 +822,30 @@ cdef class CySolver:
             self._reset_state()
 
         # Setup loop variables
-        cdef size_t i
+        cdef size_t i, j, k, shifted_index
         cdef int rk_step_output
 
-        # Setup storage arrays
-        # These arrays are built to fit a number of points equal to `self.expected_size`
-        # If the integration needs more than that then a new array will be concatenated (with performance costs) to these.        
-        if self._solve_time_domain_array_ptr is NULL:
-            self._solve_time_domain_array_ptr = <double *> allocate_mem(
-                self.current_size * sizeof(double),
-                '_solve_time_domain_array_ptr (_solve)')
-        else:
-            self._solve_time_domain_array_ptr = <double *> reallocate_mem(
-                self._solve_time_domain_array_ptr,
-                self.current_size * sizeof(double),
-                '_solve_time_domain_array_ptr (_solve)')
+        # Index shift records what the t_eval was during the before the previous expansion
+        cdef size_t index_shift = 0
+        cdef size_t running_count = 0
+        cdef size_t last_index
 
-        if self._solve_y_results_array_ptr is NULL:
-            self._solve_y_results_array_ptr = <double *> allocate_mem(
-                self.y_size * self.current_size * sizeof(double),
-                '_solve_y_results_array_ptr (_solve)')
-        else:
-            self._solve_y_results_array_ptr = <double *> reallocate_mem(
-                self._solve_y_results_array_ptr,
-                self.y_size * self.current_size * sizeof(double),
-                '_solve_y_results_array_ptr (_solve)')
-        
-        if self.capture_extra:
-            if self._solve_extra_array_ptr is NULL:
-                self._solve_extra_array_ptr = <double *> allocate_mem(
-                    self.num_extra * self.current_size * sizeof(double),
-                    '_solve_extra_array_ptr (_solve)')
-            else:
-                self._solve_extra_array_ptr = <double *> reallocate_mem(
-                    self._solve_extra_array_ptr,
-                    self.num_extra * self.current_size * sizeof(double),
-                    '_solve_extra_array_ptr (_solve)')
+        # Setup final storage variables
+        cdef size_t linked_list_size
+        cdef double* contiguous_t_ptr
+        cdef double* contiguous_y_ptr
+        cdef double* contiguous_extra_ptr
+        cdef LinkedList* current_t_linked_list_ptr
+        cdef LinkedList* current_y_linked_list_ptr
+        cdef LinkedList* current_extra_linked_list_ptr
 
         # Load initial conditions into storage arrays
-        self._solve_time_domain_array_ptr[0] = self.t_start
+        self.solution_t_ptr[0] = self.t_start
         for i in range(self.y_size):
-            self._solve_y_results_array_ptr[i] = self.y0_ptr[i]
+            self.solution_y_ptr[i] = self.y0_ptr[i]
         if self.capture_extra:
             for i in range(self.num_extra):
-                self._solve_extra_array_ptr[i] = self.extra_output_init_ptr[i]
+                self.solution_extra_ptr[i] = self.extra_output_init_ptr[i]
 
         # # Main integration loop
         self.status = 0
@@ -842,37 +915,20 @@ cdef class CySolver:
             # Store data
             if self.len_t >= self.current_size:
                 # There is more data then we have room in our arrays.
-                # Build new arrays with more space.
-                # OPT: Note this is an expensive operation.
-                self.num_concats += 1
-
-                # Grow the array by 50% its current value
-                self.current_size = <size_t> floor(<double>self.current_size * (1.5))
-
-                self._solve_time_domain_array_ptr = <double *> reallocate_mem(
-                    self._solve_time_domain_array_ptr,
-                    self.current_size * sizeof(double),
-                    'self._solve_time_domain_array_ptr (_solve; growth stage)')
-
-                self._solve_y_results_array_ptr = <double *> reallocate_mem(
-                    self._solve_y_results_array_ptr,
-                    self.y_size * self.current_size * sizeof(double),
-                    'self._solve_y_results_array_ptr (_solve; growth stage)')
-
-                if self.capture_extra:
-                    self._solve_extra_array_ptr = <double *> reallocate_mem(
-                        self._solve_extra_array_ptr,
-                        self.num_extra * self.current_size * sizeof(double),
-                        'self._solve_extra_array_ptr (_solve; growth stage)')
+                # Expand the storage (and increase the memory usage) to allow for new data to be stored.
+                self.expand_storage(False)
+                index_shift = self.len_t
 
             # Add this step's results to our storage arrays.
-            self._solve_time_domain_array_ptr[self.len_t] = self.t_now
+            shifted_index = self.len_t - index_shift
+
+            self.solution_t_ptr[shifted_index] = self.t_now
             for i in range(self.y_size):
-                self._solve_y_results_array_ptr[self.len_t * self.y_size + i] = self.y_ptr[i]
+                self.solution_y_ptr[shifted_index * self.y_size + i] = self.y_ptr[i]
 
             if self.capture_extra:
                 for i in range(self.num_extra):
-                    self._solve_extra_array_ptr[self.len_t * self.num_extra + i] = self.extra_output_ptr[i]
+                    self.solution_extra_ptr[shifted_index * self.num_extra + i] = self.extra_output_ptr[i]
 
             # Increase number of independent variable points.
             self.len_t += 1
@@ -885,76 +941,127 @@ cdef class CySolver:
 
         if self.success:
             # Solution was successful.
-            # Free any data stored in solution arrays so that we can repopulate them with the new solution
-            if not (self.solution_t_ptr is NULL):
-                free(self.solution_t_ptr)
-                self.solution_t_ptr = NULL
-            if not (self.solution_y_ptr is NULL):
-                free(self.solution_y_ptr)
-                self.solution_y_ptr = NULL
-            if self.capture_extra:
-                if not (self.solution_extra_ptr is NULL):
-                    free(self.solution_extra_ptr)
-                    self.solution_extra_ptr = NULL
+            
+            # Combine all storage linked lists into a contiguous array
+            if self.num_expansions == 1:
+                # If num_expansions == 1, then no expansions were needed and the solution pointers simply need to be resized.
+                self.solution_t_ptr = <double *>reallocate_mem(
+                    self.solution_t_ptr,
+                    sizeof(double) * self.len_t,
+                    "solution_t_ptr (realloc; CySolver._solve)"
+                )
+                self.solution_y_ptr = <double *>reallocate_mem(
+                    self.solution_y_ptr,
+                    sizeof(double) * self.len_t * self.y_size,
+                    "solution_y_ptr (realloc; CySolver._solve)"
+                )
+                if self.capture_extra:
+                    self.solution_extra_ptr = <double *>reallocate_mem(
+                        self.solution_extra_ptr,
+                        sizeof(double) * self.len_t * self.num_extra,
+                        "solution_extra_ptr (realloc; CySolver._solve)"
+                    )
 
-            # Load values into solution arrays.
-            # The arrays built during integration likely have a bunch of unused junk at the end due to overbuilding their size.
-            # This process will remove that junk and leave only the valid data.
-            # These arrays will always be the same length or less (self.len_t <= self.current_size) than the ones they are
-            # built off of, so it is safe to use Realloc.
-            self.solution_t_ptr = <double *> reallocate_mem(
-                self._solve_time_domain_array_ptr,
-                self.len_t * sizeof(double),
-                'solution_t_ptr (_solve; success stage)')
-            self._solve_time_domain_array_ptr = NULL
+                # Set old reference to the newly allocated arrays to null
+                self.stack_linkedlists_t_ptr[0].array_ptr = NULL
+                self.stack_linkedlists_y_ptr[0].array_ptr = NULL
+                self.stack_linkedlists_extra_ptr[0].array_ptr = NULL
+            else:
+                # Allocate contiguous memory
+                self._contiguous_t_ptr = <double *>allocate_mem(
+                    sizeof(double) * self.len_t,
+                    "_contiguous_t_ptr (CySolver._solve)")
+                self._contiguous_y_ptr = <double *>allocate_mem(
+                    sizeof(double) * self.len_t * self.y_size,
+                    "_contiguous_y_ptr (CySolver._solve)")
+                if self.capture_extra:
+                    self._contiguous_extra_ptr = <double *>allocate_mem(
+                        sizeof(double) * self.len_t * self.num_extra,
+                        "_contiguous_extra_ptr (CySolver._solve)")
+                
+                # Loop through linked lists
+                current_t_linked_list_ptr = &self.stack_linkedlists_t_ptr[0]
+                current_y_linked_list_ptr = &self.stack_linkedlists_y_ptr[0]
+                if self.capture_extra:
+                    current_extra_linked_list_ptr = &self.stack_linkedlists_extra_ptr[0]
 
-            self.solution_y_ptr = <double *> reallocate_mem(
-                self._solve_y_results_array_ptr,
-                self.y_size * self.len_t * sizeof(double),
-                'solution_y_ptr (_solve; success stage)')
-            self._solve_y_results_array_ptr = NULL
+                for i in range(self.num_expansions):
+                    self.solution_t_ptr = current_t_linked_list_ptr[0].array_ptr
+                    self.solution_y_ptr = current_y_linked_list_ptr[0].array_ptr
+                    if self.capture_extra:
+                        self.solution_extra_ptr = current_extra_linked_list_ptr[0].array_ptr
 
-            if self.capture_extra:
-                self.solution_extra_ptr = <double *> reallocate_mem(
-                    self._solve_extra_array_ptr,
-                    self.num_extra * self.len_t * sizeof(double),
-                    'solution_extra_ptr (_solve; success stage)')
-                self._solve_extra_array_ptr = NULL
+                    # All the types of the linked lists should be the same length
+                    linked_list_size = current_t_linked_list_ptr[0].size
+                    if i == (self.num_expansions - 1):
+                        # In the last expansion we need to be careful because not all of the storage is utilized.
+                        last_index = self.len_t - running_count
+                    else:
+                        last_index = linked_list_size
+
+                    # Loop through the arrays and store the results
+                    for j in range(last_index):
+                        shifted_index = running_count + j
+                        self._contiguous_t_ptr[shifted_index] = self.solution_t_ptr[j]
+
+                        for k in range(self.y_size):
+                            self._contiguous_y_ptr[shifted_index * self.y_size + k] = self.solution_y_ptr[j * self.y_size + k]
+                        
+                        if self.capture_extra:
+                            for k in range(self.num_extra):
+                                self._contiguous_extra_ptr[shifted_index * self.num_extra + k] = self.solution_extra_ptr[j * self.num_extra + k]
+
+                    # Prepare for next loop
+                    running_count += last_index
+                    current_t_linked_list_ptr = current_t_linked_list_ptr[0].next
+                    current_y_linked_list_ptr = current_y_linked_list_ptr[0].next
+                    if self.capture_extra:
+                        current_extra_linked_list_ptr = current_extra_linked_list_ptr[0].next
+                    
+                # Finally, reassign the solution pointers to the new contiguous array pointers
+                self.solution_t_ptr = self._contiguous_t_ptr
+                self.solution_y_ptr = self._contiguous_y_ptr
+                self.solution_extra_ptr = self._contiguous_extra_ptr
+
+                # Set old pointers to null
+                self.current_linkedlist_t_ptr = NULL
+                self.current_linkedlist_y_ptr = NULL
+                self.current_linkedlist_extra_ptr = NULL
+                self._contiguous_t_ptr = NULL
+                self._contiguous_y_ptr = NULL
+                self._contiguous_extra_ptr = NULL
+                current_t_linked_list_ptr = NULL
+                current_y_linked_list_ptr = NULL
+                current_extra_linked_list_ptr = NULL
+
+                # Free linked list memory
+                self.free_linked_lists()
+
         else:
-            # Integration was not successful. Make solution pointers length 1 nan arrays.
-            # Clear the storage arrays used during the step loop
-            if not (self._solve_time_domain_array_ptr is NULL):
-                free(self._solve_time_domain_array_ptr)
-                self._solve_time_domain_array_ptr = NULL
-            if not (self._solve_y_results_array_ptr is NULL):
-                free(self._solve_y_results_array_ptr)
-                self._solve_y_results_array_ptr = NULL
-            if self.capture_extra:
-                if not (self._solve_extra_array_ptr is NULL):
-                    free(self._solve_extra_array_ptr)
-                    self._solve_extra_array_ptr = NULL
+            # Integration was not successful.
 
-            # We still need to build solution arrays so that accessing the solution will not cause access violations.
-            # Build size-1 arrays. Since the solution was not successful, set all arrays to NANs
-            self.solution_t_ptr = <double *> reallocate_mem(
-                self.solution_t_ptr,
-                sizeof(double),
-                'solution_t_ptr (_solve; fail stage)')
+            # Free linked list memory
+            self.free_linked_lists()
+            
+            # Make solution pointers length 1 nan arrays.
+            # Use the first linked list to create these arrays
+            self.expected_size = 1
+            self.expand_storage(True)
+            self.solution_t_ptr = self.stack_linkedlists_t_ptr[0].array_ptr
+            self.solution_y_ptr = self.stack_linkedlists_y_ptr[0].array_ptr
+            self.solution_extra_ptr = self.stack_linkedlists_extra_ptr[0].array_ptr
+
+            # Set old reference to the newly allocated arrays to null
+            self.stack_linkedlists_t_ptr[0].array_ptr = NULL
+            self.stack_linkedlists_y_ptr[0].array_ptr = NULL
+            self.stack_linkedlists_extra_ptr[0].array_ptr = NULL
+
             self.solution_t_ptr[0] = NAN
-
-            self.solution_y_ptr = <double *> reallocate_mem(
-                self.solution_y_ptr,
-                self.y_size * sizeof(double),
-                'solution_y_ptr (_solve; fail stage)')
             for i in range(self.y_size):
                 self.solution_y_ptr[i] = NAN
-
-            self.solution_extra_ptr = <double *> reallocate_mem(
-                self.solution_extra_ptr,
-                self.num_extra * sizeof(double),
-                'solution_extra_ptr (_solve; fail stage)')
-            for i in range(self.num_extra):
-                self.solution_extra_ptr[i] = NAN
+            if self.capture_extra:
+                for i in range(self.num_extra):
+                    self.solution_extra_ptr[i] = NAN
 
         # Integration is complete. Check if interpolation was requested.
         if self.success:
@@ -970,30 +1077,19 @@ cdef class CySolver:
 
         # Update integration _message
         if self.status == 1:
-            self._message = "Integration completed without issue."
+            strcpy(self._message_ptr, "Integration completed without issue.\n")
         elif self.status == 0:
-            self._message = "Integration is/was ongoing (perhaps it was interrupted?)."
+            strcpy(self._message_ptr, "Integration is/was ongoing (perhaps it was interrupted?).\n")
         elif self.status == -1:
-            self._message = "Error in step size calculation:\n\tRequired step size is less than spacing between numbers."
+            strcpy(self._message_ptr, "Error in step size calculation:\n\tRequired step size is less than spacing between numbers.\n")
         elif self.status == -2:
-            self._message = "Maximum number of steps (set by user) exceeded during integration."
+            strcpy(self._message_ptr, "Maximum number of steps (set by user) exceeded during integration.\n")
         elif self.status == -3:
-            self._message = "Maximum number of steps (set by system architecture) exceeded during integration."
+            strcpy(self._message_ptr, "Maximum number of steps (set by system architecture) exceeded during integration.\n")
         elif self.status == -6:
-            self._message = "Integration never started: y-size is zero."
+            strcpy(self._message_ptr, "Integration never started: y-size is zero.\n")
         elif self.status == -7:
-            self._message = "Error in step size calculation:\n\tError in step size acceptance."
-
-        # Release any memory that may still be alive due to exceptions being raised.
-        if not (self._solve_time_domain_array_ptr is NULL):
-            free(self._solve_time_domain_array_ptr)
-            self._solve_time_domain_array_ptr = NULL
-        if not (self._solve_y_results_array_ptr is NULL):
-            free(self._solve_y_results_array_ptr)
-            self._solve_y_results_array_ptr = NULL
-        if not (self._solve_extra_array_ptr is NULL):
-            free(self._solve_extra_array_ptr)
-            self._solve_extra_array_ptr = NULL
+            strcpy(self._message_ptr, "Error in step size calculation:\n\tError in step size acceptance.\n")
 
     cdef void interpolate(self) noexcept nogil:
         """ Interpolate the results of a successful integration over the user provided time domain, `t_eval`. """
@@ -1080,32 +1176,32 @@ cdef class CySolver:
 
             # Replace old pointers with new interpolated pointers and release the memory for the old stuff
             if not (self.solution_extra_ptr is NULL):
-                free(self.solution_extra_ptr)
+                free_mem(self.solution_extra_ptr)
             self.solution_extra_ptr = self._interpolate_solution_extra_ptr
             self._interpolate_solution_extra_ptr = NULL
 
         # Replace old pointers with new interpolated pointers and release the memory for the old stuff
         if not (self.solution_t_ptr is NULL):
-            free(self.solution_t_ptr)
+            free_mem(self.solution_t_ptr)
         self.solution_t_ptr = self._interpolate_solution_t_ptr
         self._interpolate_solution_t_ptr = NULL
         if not (self.solution_y_ptr is NULL):
-            free(self.solution_y_ptr)
+            free_mem(self.solution_y_ptr)
         self.solution_y_ptr = self._interpolate_solution_y_ptr
         self._interpolate_solution_y_ptr = NULL
 
         # Interpolation is done.
         self.status = old_status
 
-        # Free any memory that may still be alive if exceptions were raised.
+        # free_mem any memory that may still be alive if exceptions were raised.
         if not (self._interpolate_solution_t_ptr is NULL):
-            free(self._interpolate_solution_t_ptr)
+            free_mem(self._interpolate_solution_t_ptr)
             self._interpolate_solution_t_ptr = NULL
         if not (self._interpolate_solution_y_ptr is NULL):
-            free(self._interpolate_solution_y_ptr)
+            free_mem(self._interpolate_solution_y_ptr)
             self._interpolate_solution_y_ptr = NULL
         if not (self._interpolate_solution_extra_ptr is NULL):
-            free(self._interpolate_solution_extra_ptr)
+            free_mem(self._interpolate_solution_extra_ptr)
             self._interpolate_solution_extra_ptr = NULL
 
     cpdef void change_t_span(
@@ -1155,7 +1251,7 @@ cdef class CySolver:
 
         Parameters
         ----------
-        y0 : double[::1]
+        y0 : const double[::1]
             New dependent variable initial conditions.
             Must be the same size as the original y0.
         auto_reset_state : bint, default=False
@@ -1169,9 +1265,8 @@ cdef class CySolver:
         if self.y_size != y_size_new:
             # So many things need to update if ysize changes that the user should just create a new class instance.
             self.status = -8
-            self._message = "Attribute error."
-            raise AttributeError('New y0 must be the same size as the original y0 used to create CySolver class.'
-                                 'Create new CySolver instance instead.')
+            strcpy(self._message_ptr, "CySolverInstance.change_y0:: Attribute Error. New y0 must be the same size as the original y0 used to create CySolver class. Create new CySolver instance instead.\n")
+            raise AttributeError(self.message)
 
         # Store y0 values for later
         for i in range(self.y_size):
@@ -1195,7 +1290,7 @@ cdef class CySolver:
 
             Parameters
             ----------
-            y0 : double*
+            y0_ptr : double*
                 New pointer to dependent variable initial conditions.
                 Must be the same size as the original y0.
             auto_reset_state : bint, default=False
@@ -1307,7 +1402,8 @@ cdef class CySolver:
             if rtols is not None:
                 # Using arrayed rtol
                 if len(rtols) != self.y_size:
-                    raise AttributeError('rtols must be the same size as y0.')
+                    strcpy(self._message_ptr, "CySolverInstance.change_tols:: Attribute Error. rtols must be the same size as y0.\n")
+                    raise AttributeError(self.message)
                 for i in range(self.y_size):
                     rtol_tmp = rtols[i]
                     if rtol_tmp < EPS_100:
@@ -1328,7 +1424,8 @@ cdef class CySolver:
             if atols is not None:
                 # Using arrayed atol
                 if len(atols) != self.y_size:
-                    raise AttributeError('atols must be the same size as y0.')
+                    strcpy(self._message_ptr, "CySolverInstance.change_tols:: Attribute Error. atols must be the same size as y0.\n")
+                    raise AttributeError(self.message)
                 for i in range(self.y_size):
                     self.atols_ptr[i] = atols[i]
             elif not isnan(atol):
@@ -1385,12 +1482,12 @@ cdef class CySolver:
         else:
             if self.first_step <= 0.:
                 self.status = -8
-                self._message = "Attribute error."
-                raise AttributeError('Error in user-provided step size: Step size must be a positive number.')
+                strcpy(self._message_ptr, "CySolverInstance.change_tols:: Attribute Error. Error in user-provided step size: Step size must be a positive number.\n")
+                raise AttributeError(self.message)
             elif self.first_step > self.t_delta_abs:
                 self.status = -8
-                self._message = "Attribute error."
-                raise AttributeError('Error in user-provided step size: Step size can not exceed bounds.')
+                strcpy(self._message_ptr, "CySolverInstance.change_tols:: Attribute Error. Error in user-provided step size: Step size can not exceed bounds.\n")
+                raise AttributeError(self.message)
             self.step_size = self.first_step
 
         # If first step has already been reset then no need to call it again later.
@@ -1651,7 +1748,7 @@ cdef class CySolver:
     # Public accessed properties
     @property
     def message(self):
-        return str(self._message, 'UTF-8')
+        return str(self._message_ptr, 'UTF-8')
 
     @property
     def solution_t_view(self):
@@ -1691,67 +1788,84 @@ cdef class CySolver:
     @property
     def growths(self):
         # How many times the output arrays had to grow during integration
-        return self.num_concats - 1
+        return self.num_expansions - 1
 
+    cdef void free_linked_lists(self) noexcept nogil:
+        # Go through each storage linkedlist and free any heap allocated memory
+        cdef size_t i, ii, j, max_j
+        cdef LinkedList* linked_list_ptr
+        cdef (LinkedList *)[3] next_linked_list_ptr
+
+        if self.capture_extra:
+            max_j = 3
+        else:
+            max_j = 2
+        # Make a list of all three stroage types first pointer location
+        next_linked_list_ptr[0] = &self.stack_linkedlists_t_ptr[0]
+        next_linked_list_ptr[1] = &self.stack_linkedlists_y_ptr[0]
+        next_linked_list_ptr[2] = &self.stack_linkedlists_extra_ptr[0]
+
+        for i in range(self.num_expansions):
+            for j in range(max_j):
+                linked_list_ptr = next_linked_list_ptr[j]
+                if linked_list_ptr is NULL:
+                    continue
+
+                if not (linked_list_ptr[0].array_ptr is NULL):
+                    free_mem(linked_list_ptr[0].array_ptr)
+                    linked_list_ptr[0].array_ptr = NULL
+                linked_list_ptr[0].size = 0
+
+                # Update pointer list for next loop.
+                next_linked_list_ptr[j] = linked_list_ptr[0].next
+                linked_list_ptr.next = NULL
+                if i >= 100:
+                    # We are into heap allocated linked lists. We need to free both the underlying array as well as the
+                    # linked list structure
+                    free_mem(linked_list_ptr)
 
     # Special methods
     def __dealloc__(self):
         # Free pointers made from user inputs
-        if not (self.y0_ptr is NULL):
-            free(self.y0_ptr)
-            self.y0_ptr = NULL
-        if not (self.tol_ptrs is NULL):
-            free(self.tol_ptrs)
-            self.tol_ptrs = NULL
         if not (self.args_ptr is NULL):
-            free(self.args_ptr)
+            free_mem(self.args_ptr)
             self.args_ptr = NULL
         if not (self.t_eval_ptr is NULL):
-            free(self.t_eval_ptr)
+            free_mem(self.t_eval_ptr)
             self.t_eval_ptr = NULL
 
-        # Free pointers used to track y, dydt, and any extra outputs
-        if not (self.temporary_y_ptrs is NULL):
-            free(self.temporary_y_ptrs)
-            self.temporary_y_ptrs = NULL
-        if not (self.extra_output_ptrs is NULL):
-            free(self.extra_output_ptrs)
-            self.extra_output_ptrs = NULL
-
         # Free final solution pointers
-        if not (self.solution_t_ptr is NULL):
-            free(self.solution_t_ptr)
-            self.solution_t_ptr = NULL
-        if not (self.solution_y_ptr is NULL):
-            free(self.solution_y_ptr)
-            self.solution_y_ptr = NULL
-        if not (self.solution_extra_ptr is NULL):
-            free(self.solution_extra_ptr)
-            self.solution_extra_ptr = NULL
-        
-        # Free pointers used during the solve method
-        if not (self._solve_time_domain_array_ptr is NULL):
-            free(self._solve_time_domain_array_ptr)
-            self._solve_time_domain_array_ptr = NULL
-        if not (self._solve_y_results_array_ptr is NULL):
-            free(self._solve_y_results_array_ptr)
-            self._solve_y_results_array_ptr = NULL
-        if not (self._solve_extra_array_ptr is NULL):
-            free(self._solve_extra_array_ptr)
-            self._solve_extra_array_ptr = NULL
-        
+        self.free_linked_lists()
+
+        # Free pointers used during solve
+        if not (self._contiguous_t_ptr is NULL):
+            free_mem(self._contiguous_t_ptr)
+            self._contiguous_t_ptr = NULL
+        if not (self._contiguous_y_ptr is NULL):
+            free_mem(self._contiguous_y_ptr)
+            self._contiguous_y_ptr = NULL
+        if not (self._contiguous_extra_ptr is NULL):
+            free_mem(self._contiguous_extra_ptr)
+            self._contiguous_extra_ptr = NULL
+
         # Free pointers used during interpolation
         if not (self._interpolate_solution_t_ptr is NULL):
-            free(self._interpolate_solution_t_ptr)
+            free_mem(self._interpolate_solution_t_ptr)
             self._interpolate_solution_t_ptr = NULL
         if not (self._interpolate_solution_y_ptr is NULL):
-            free(self._interpolate_solution_y_ptr)
+            free_mem(self._interpolate_solution_y_ptr)
             self._interpolate_solution_y_ptr = NULL
         if not (self._interpolate_solution_extra_ptr is NULL):
-            free(self._interpolate_solution_extra_ptr)
+            free_mem(self._interpolate_solution_extra_ptr)
             self._interpolate_solution_extra_ptr = NULL
 
-        # Free RK Temp Storage Array
-        if not (self.K_ptr is NULL):
-            free(self.K_ptr)
-            self.K_ptr = NULL
+        # Free other storage pointers that may have been set
+        if not (self.solution_t_ptr is NULL):
+            free_mem(self.solution_t_ptr)
+            self.solution_t_ptr = NULL
+        if not (self.solution_y_ptr is NULL):
+            free_mem(self.solution_y_ptr)
+            self.solution_y_ptr = NULL
+        if not (self.solution_extra_ptr is NULL):
+            free_mem(self.solution_extra_ptr)
+            self.solution_extra_ptr = NULL
