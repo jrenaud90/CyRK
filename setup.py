@@ -32,9 +32,9 @@ for cython_ext, ext_data in cython_ext_dict.items():
 
     if ext_data['is_cpp']:
         if install_platform.lower() == 'windows':
-            specific_compile_args = extra_compile_args + ext_data['compile_args'] + ["/std:c++20"]
+            specific_compile_args = extra_compile_args + ext_data['compile_args'] + ["/std:c++11"]
         else:
-            specific_compile_args = extra_compile_args + ext_data['compile_args'] + ["-std=c++20"]
+            specific_compile_args = extra_compile_args + ext_data['compile_args'] + ["-std=c++11"]
     else:
         specific_compile_args = extra_compile_args + ext_data['compile_args']
 
