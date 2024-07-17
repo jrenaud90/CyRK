@@ -89,5 +89,5 @@ build = "*"
 # Disable building PyPy wheels on all platforms. Also having issue with musllinux.
 skip = ["pp*", "*musllinux*"]
 # Having issues with SciPy install during wheel build on 32-bit systems.
-# archs = ["auto64"]
+archs = ["auto64"]
 
