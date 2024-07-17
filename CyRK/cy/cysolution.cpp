@@ -35,20 +35,7 @@ CySolverResult::CySolverResult(
     this->num_dy_dbl    = (double)this->num_dy;
 
     // Initialize other parameters
-    if (direction_flag)
-    {
-        // Forward integration
-        this->update_message("CySolverResult Initialized.");
-    }
-    else
-    {
-        // TODO: Backward integration is not yet supported for dense outputs
-        if (capture_dense_output || t_eval_provided)
-        {
-            this->error_code = -70;
-            this->update_message("CySolverResult does not currently support backwards integration when dense output or t_eval is requestd.");
-        }
-    }
+    this->update_message("CySolverResult Initialized.");
 }
 
 
@@ -308,6 +295,35 @@ void CySolverResult::finalize()
         }
     }
 
+    // Create a sorted time domain
+    if (direction_flag)
+    {
+        // Forward integration. We are already sorted.
+        if (this->t_eval_provided)
+        {
+            this->time_domain_sorted_ptr = this->interp_time.data();
+        }
+        else
+        {
+            this->time_domain_sorted_ptr = this->time_domain.data();
+        }
+    }
+    else
+    {
+        // Not sorted. Reverse time domain into new storage.
+        if (this->t_eval_provided)
+        {
+            this->time_domain_sorted.resize(this->interp_time.size());
+            std::reverse_copy(this->interp_time.begin(), this->interp_time.end(), this->time_domain_sorted.begin());
+        }
+        else
+        {
+            this->time_domain_sorted.resize(this->time_domain.size());
+            std::reverse_copy(this->time_domain.begin(), this->time_domain.end(), this->time_domain_sorted.begin());
+        }
+        this->time_domain_sorted_ptr = this->time_domain_sorted.data();
+    }
+
     // Check if the integrator finished
     if (this->error_code == 1)
     {
@@ -329,16 +345,13 @@ void CySolverResult::call(const double t, double* y_interp)
     }
     else
     {
-        double* interp_time_touse_ptr = nullptr;
         size_t interp_time_len_touse = 0;
         if (this->t_eval_provided)
         {
-            interp_time_touse_ptr = &this->interp_time[0];
             interp_time_len_touse = this->num_interpolates;
         }
         else
         {
-            interp_time_touse_ptr = &this->time_domain[0];
             interp_time_len_touse = this->size;
         }
         // SciPy uses np.searchedsorted which as far as I can tell works the same as bibnary search with guess
@@ -346,13 +359,47 @@ void CySolverResult::call(const double t, double* y_interp)
         // This may only hold if the integration is in the forward direction.
         // TODO: See if this holds for backwards integration and update if needed.
         // Get a guess for binary search
-        size_t closest_index = (size_t)std::floor((double)interp_time_len_touse * t / this->last_t);
+        size_t closest_index;
 
-        // For some reason I only get right results when adding "2+" instead of "1+" to this index...
-        closest_index = 2 + binary_search_with_guess(t, interp_time_touse_ptr, interp_time_len_touse, closest_index);
+        // Check if there are any t_eval steps between this new index and the last index.
+        // Get lowest and highest indices
+        auto lower_i = std::lower_bound(
+            this->time_domain_sorted_ptr,
+            this->time_domain_sorted_ptr + interp_time_len_touse,
+            t) - this->time_domain_sorted_ptr;
     
+        auto upper_i  = std::upper_bound(
+            this->time_domain_sorted_ptr,
+            this->time_domain_sorted_ptr + interp_time_len_touse,
+            t) - this->time_domain_sorted_ptr;
+        
+        int t_eval_index_new;
+        if (lower_i == upper_i)
+        {
+            // Only 1 index came back wrapping the value. See if it is different from before.
+            closest_index = lower_i;  // Doesn't matter which one we choose
+        }
+        else if (this->direction_flag)
+        {
+            // Two different indicies returned. Since we are working our way from low to high values we want the upper one.
+            closest_index = upper_i;
+        }
+        else
+        {
+            // Two different indicies returned. Since we are working our way from high to low values we want the lower one.
+            closest_index = lower_i;
+        }
+
         // Clean up closest index
-        closest_index = std::min<size_t>(std::max<size_t>(closest_index - 1, 0), interp_time_len_touse - 1);
+        if (this->direction_flag)
+        {
+            closest_index = std::min<size_t>(std::max<size_t>(closest_index, 0), interp_time_len_touse - 1);
+        }
+        else
+        {
+            closest_index = interp_time_len_touse - closest_index - 1;
+            closest_index = std::min<size_t>(std::max<size_t>(closest_index, 1), interp_time_len_touse - 1);
+        }
 
         // Call interpolant to update y
         this->dense_vector[closest_index]->call(t, y_interp);

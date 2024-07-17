@@ -2,6 +2,7 @@
 
 #include <cstring>
 
+#include <algorithm>
 #include <functional>
 #include <memory>
 
@@ -102,6 +103,13 @@ protected:
     // Differential equation information
     const double* args_ptr    = nullptr;
     DiffeqFuncType diffeq_ptr = nullptr;
+    
+    // t_eval information
+    std::vector<double> t_eval_vec = std::vector<double>(0);
+    double* t_eval_ptr       = t_eval_vec.data();
+    size_t t_eval_index_old  = 0;
+    size_t len_t_eval        = 0;
+    bool use_t_eval          = false;
 
     // Information on capturing extra information during integration.
     int num_extra = 0;
@@ -111,12 +119,6 @@ protected:
     bool reset_called   = false;
     bool capture_extra  = false;
     bool user_provided_max_num_steps = false;
-    
-    // t_eval information
-    size_t t_eval_index_old  = 0;
-    const double* t_eval_ptr = nullptr;
-    size_t len_t_eval        = 0;
-    bool use_t_eval          = false;
 
     // Dense (Interpolation) Attributes
     bool use_dense_output = false;

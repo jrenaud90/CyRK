@@ -3,51 +3,52 @@
 // !!!
 // Uncomment these dummy methods if working outside of CyRK and you just want the program to compile and run for testing/developing the C++ only code.
 
-// bool import_CyRK__cy__pysolver_cyhook()
-// {
-//     return true;
-// }
+/*
+bool import_CyRK__cy__pysolver_cyhook()
+{
+    return true;
+}
 
-// int call_diffeq_from_cython(PyObject* x, DiffeqMethod y)
-// {
-//     return 1;
-// }
+int call_diffeq_from_cython(PyObject* x, DiffeqMethod y)
+{
+    return 1;
+}
 
-// void Py_XINCREF(PyObject* x)
-// {
-// }
+void Py_XINCREF(PyObject* x)
+{
+}
 
-// void Py_XDECREF(PyObject* x)
-// {
-// }
+void Py_XDECREF(PyObject* x)
+{
+}
+*/
 
 // Constructors
 CySolverBase::CySolverBase() {}
 CySolverBase::CySolverBase(
-    DiffeqFuncType diffeq_ptr,
-    std::shared_ptr<CySolverResult> storage_ptr,
-    const double t_start,
-    const double t_end,
-    const double* const y0_ptr,
-    const unsigned int num_y,
-    const unsigned int num_extra,
-    const double* const args_ptr,
-    const size_t max_num_steps,
-    const size_t max_ram_MB,
-    const bool use_dense_output,
-    const double* t_eval,
-    const size_t len_t_eval) :
-    status(0),
-    num_y(num_y),
-    num_extra(num_extra),
-    t_start(t_start),
-    t_end(t_end),
-    storage_ptr(storage_ptr),
-    diffeq_ptr(diffeq_ptr),
-    args_ptr(args_ptr),
-    use_dense_output(use_dense_output),
-    t_eval_ptr(t_eval),
-    len_t_eval(len_t_eval)
+        DiffeqFuncType diffeq_ptr,
+        std::shared_ptr<CySolverResult> storage_ptr,
+        const double t_start,
+        const double t_end,
+        const double* const y0_ptr,
+        const unsigned int num_y,
+        const unsigned int num_extra,
+        const double* const args_ptr,
+        const size_t max_num_steps,
+        const size_t max_ram_MB,
+        const bool use_dense_output,
+        const double* t_eval,
+        const size_t len_t_eval) :
+            status(0),
+            num_y(num_y),
+            num_extra(num_extra),
+            t_start(t_start),
+            t_end(t_end),
+            storage_ptr(storage_ptr),
+            diffeq_ptr(diffeq_ptr),
+            args_ptr(args_ptr),
+            use_dense_output(use_dense_output),
+            len_t_eval(len_t_eval)
 {
     // Parse inputs
     this->capture_extra = num_extra > 0;
@@ -82,6 +83,16 @@ CySolverBase::CySolverBase(
     this->num_dy     = this->num_y + this->num_extra;
     // Make a copy of y0
     std::memcpy(this->y0_ptr, y0_ptr, sizeof(double) * this->num_y);
+    
+    // Parse t_eval
+    if ((t_eval) && (this->len_t_eval > 0))
+    {
+        this->use_t_eval = true;
+    }
+    else
+    {
+        this->use_t_eval = false;
+    }
 
     // Parse time information
     this->t_delta = t_end - t_start;
@@ -91,11 +102,28 @@ CySolverBase::CySolverBase(
         // Forward integration
         this->direction_flag = true;
         this->direction_inf = INF;
+
+        if (this->use_t_eval)
+        {
+            // We do not need to copy the values since the integration is forward.
+            this->t_eval_vec.resize(len_t_eval);
+            this->t_eval_ptr = this->t_eval_vec.data();
+            std::memcpy(this->t_eval_ptr, t_eval, sizeof(double) * len_t_eval);
+        }
     }
     else {
         // Backward integration
         this->direction_flag = false;
         this->direction_inf = -INF;
+
+        if (this->use_t_eval)
+        {
+            // We need to make sure that t_eval is properly sorted or the search algorithm will fail.
+            // Need to make a copy because we do not want to change the array that was passed in by the user.
+            this->t_eval_vec.resize(len_t_eval);
+            this->t_eval_ptr = this->t_eval_vec.data();
+            std::reverse_copy(t_eval, t_eval + len_t_eval, this->t_eval_ptr);
+        }
     }
 
     // Parse maximum number of steps
@@ -110,19 +138,6 @@ CySolverBase::CySolverBase(
 
     // Bind diffeq to C++ version
     this->diffeq = &CySolverBase::cy_diffeq;
-
-    // Parse t_eval
-    if (this->t_eval_ptr && this->len_t_eval > 0)
-    {
-        this->use_t_eval = true;
-        if (!this->direction_flag)
-        {
-            // TODO: add in support for backwards integration when t_eval is provided.
-            this->status = -70;
-            this->storage_ptr->error_code = -70;
-            this->storage_ptr->update_message("Not Implemented Error: Can only do forward integration when t_eval is provided.");
-        }
-    }
 }
 
 
@@ -222,13 +237,21 @@ void CySolverBase::reset()
     }
 
     // Prep for t_eval
-    this->t_eval_index_old = 0;
+    if (this->direction_flag)
+    {
+        this->t_eval_index_old = 0;
+    }
+    else
+    {
+        this->t_eval_index_old = this->len_t_eval;
+    }
 
     // Done with reset
     this->reset_called = true;
 }
 
 #include <cstdio>
+#include <iostream>
 
 void CySolverBase::take_step()
 {    
@@ -298,19 +321,49 @@ void CySolverBase::take_step()
 
                 // Need to step through t_eval and call dense to determine correct data at each t_eval step.
                 // Find the first index in t_eval that is close to current time.
-                size_t t_eval_index_new = 1 + binary_search_with_guess(this->t_now_ptr[0], this->t_eval_ptr, this->len_t_eval, this->t_eval_index_old);
-                if (t_eval_index_new >= this->len_t_eval)
-                {
-                    t_eval_index_new = this->len_t_eval;
-                    // We are done with t_eval. Skip it from now on. 
-                    skip_t_eval = true;
-                }                
-                
+
                 // Check if there are any t_eval steps between this new index and the last index.
-                int t_eval_index_delta = (int)t_eval_index_new - (int)this->t_eval_index_old;
+                // Get lowest and highest indices
+                auto lower_i = std::lower_bound(this->t_eval_vec.begin(), this->t_eval_vec.end(), this->t_now_ptr[0]) - this->t_eval_vec.begin();
+                auto upper_i  = std::upper_bound(this->t_eval_vec.begin(), this->t_eval_vec.end(), this->t_now_ptr[0]) - this->t_eval_vec.begin();
+                
+                int t_eval_index_new;
+                if (lower_i == upper_i)
+                {
+                    // Only 1 index came back wrapping the value. See if it is different from before.
+                    t_eval_index_new = lower_i;  // Doesn't matter which one we choose
+                }
+                else if (this->direction_flag)
+                {
+                    // Two different indicies returned. Since we are working our way from low to high values we want the upper one.
+                    t_eval_index_new = upper_i;
+                    if (t_eval_index_new == this->len_t_eval)
+                    {
+                        skip_t_eval = true;
+                    }
+                }
+                else
+                {
+                    // Two different indicies returned. Since we are working our way from high to low values we want the lower one.
+                    t_eval_index_new = lower_i;
+                    if (t_eval_index_new == 0)
+                    {
+                        skip_t_eval = true;
+                    }
+                }
+
+                int t_eval_index_delta;
+                if (this->direction_flag)
+                {
+                    t_eval_index_delta = t_eval_index_new - (int)this->t_eval_index_old;
+                }
+                else
+                {
+                    t_eval_index_delta = (int)this->t_eval_index_old - t_eval_index_new;
+                }
+                
                 // If t_eval_index_delta == 0 then there are no new interpolations required between the last integration step and now.
                 // ^ In this case do not save any data, we are done with this step.
-
                 if (t_eval_index_delta > 0)
                 {
                     // There are steps we need to interpolate over.
@@ -337,7 +390,15 @@ void CySolverBase::take_step()
 
                     for (size_t i = 0; i < t_eval_index_delta; i++)
                     {
-                        double t_interp = this->t_eval_ptr[this->t_eval_index_old + i];
+                        double t_interp;
+                        if (this->direction_flag)
+                        {
+                            t_interp = this->t_eval_ptr[this->t_eval_index_old + i];
+                        }
+                        else
+                        {
+                            t_interp = this->t_eval_ptr[this->t_eval_index_old - i - 1];
+                        }
 
                         // Call the interpolator using this new time value.
                         dense_output.call(t_interp, y_interp_ptr);

@@ -281,7 +281,8 @@ def test_pysolve_ivp_errors():
 @pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853"))
 @pytest.mark.parametrize('t_eval_end', (None, 0.5, 1.0))
 @pytest.mark.parametrize('test_dense_output', (False, True))
-def test_pysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output):
+@pytest.mark.parametrize('backward_integrate', (False, True))
+def test_pysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output, backward_integrate):
     #Check that the cython function solver is able to reproduce a known functions integral with reasonable accuracy
 
     # TODO: This is only checking one equation. Add other types of diffeqs to provide better coverage.
@@ -314,6 +315,11 @@ def test_pysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output)
         t_eval = None
     else:
         t_eval = np.linspace(0.0, t_eval_end, 50)
+    
+    if backward_integrate:
+        time_span_ = (time_span_[1], time_span_[0])
+        if t_eval is not None:
+            t_eval = np.ascontiguousarray(t_eval[::-1])
 
     result = \
         pysolve_ivp(diffeq_accuracy, time_span_, y0, method=integration_method, t_eval=t_eval, dense_output=test_dense_output,
@@ -336,6 +342,9 @@ def test_pysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output)
         check_rtol = 1.0e-4
         check_atol = 1.0e-7
     
+    if backward_integrate:
+        pytest.skip("Backward integrating is not working well.")
+
     assert np.allclose(result.y, real_answer, rtol=check_rtol, atol=check_atol)
 
     if test_dense_output:

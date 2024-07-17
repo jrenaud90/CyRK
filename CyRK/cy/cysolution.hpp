@@ -68,8 +68,10 @@ public:
     size_t num_interpolates = 0;
 
     // Pointer to storage arrays
-    std::vector<double> time_domain = std::vector<double>(0);
-    std::vector<double> solution    = std::vector<double>(0);
+    std::vector<double> time_domain        = std::vector<double>(0);
+    std::vector<double> time_domain_sorted = std::vector<double>(0);
+    std::vector<double> solution           = std::vector<double>(0);
+    double* time_domain_sorted_ptr         = time_domain.data();
 
     // Dense output array
     std::vector<CySolverDense*> dense_vector = std::vector<CySolverDense*>(0);

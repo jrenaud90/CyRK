@@ -18,10 +18,11 @@ cdef class WrapCySolverResult:
         self.num_dy         = self.cyresult_ptr[0].num_dy
 
         # Convert solution to pointers and views
-        self.time_ptr  = &self.cyresult_ptr[0].time_domain[0]
-        self.y_ptr     = &self.cyresult_ptr[0].solution[0]
-        self.time_view = <double[:self.size]>self.time_ptr
-        self.y_view    = <double[:self.size * self.num_dy]>self.y_ptr
+        if self.cyresult_ptr.size > 0:
+            self.time_ptr  = &self.cyresult_ptr.time_domain[0]
+            self.y_ptr     = &self.cyresult_ptr.solution[0]
+            self.time_view = <double[:self.size]>self.time_ptr
+            self.y_view    = <double[:self.size * self.num_dy]>self.y_ptr
     
     def call(self, double t):
         """ Call the dense output interpolater and return y """
@@ -299,7 +300,7 @@ def pysolve_ivp(
     # Parse time_span
     cdef double t_start = time_span[0]
     cdef double t_end   = time_span[1]
-    cdef cpp_bool direction_flag = t_end > t_start
+    cdef cpp_bool direction_flag = (t_end - t_start) >= 0
 
     # Parse y0
     cdef unsigned int num_y   = len(y0)
@@ -317,14 +318,6 @@ def pysolve_ivp(
         t_eval_provided = True
         len_t_eval = len(t_eval)
         t_eval_ptr = &t_eval[0]
-
-        if not direction_flag:
-            raise NotImplementedError("Currently, t_eval is not supported during backward integration.")
-    
-    # Parse dense output
-    if dense_output:
-        if not direction_flag:
-            raise NotImplementedError("Currently, dense_output is not supported during backward integration.")
     
     # Parse num_extra
     if num_extra > (DY_LIMIT - Y_LIMIT):
