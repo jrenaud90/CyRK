@@ -111,7 +111,7 @@ def test_pysolve_ivp(use_scipy_style, use_args, use_njit,
 
     # To reduce number of tests, only test RK23 once. 
     if RK23_TESTED and SKIP_SOME_RK23_TESTS and (integration_method=="RK23"):
-        pytest.skip("Skipping RK23 (just to reduce number of tests).")
+        pytest.skip("Skipping Some RK23 Tests (just to reduce number of tests).")
     else:
         RK23_TESTED = True
 
