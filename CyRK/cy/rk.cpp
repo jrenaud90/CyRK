@@ -17,6 +17,9 @@ RKSolver::RKSolver(
     const double* args_ptr,
     const size_t max_num_steps,
     const size_t max_ram_MB,
+    const bool use_dense_output,
+    const double* t_eval,
+    const size_t len_t_eval,
     // RKSolver input arguments
     const double rtol,
     const double atol,
@@ -24,20 +27,33 @@ RKSolver::RKSolver(
     const double* atols_ptr,
     const double max_step_size,
     const double first_step_size) :
-        CySolverBase(diffeq_ptr, storage_ptr, t_start, t_end, y0_ptr, num_y, num_extra, args_ptr, max_num_steps, max_ram_MB),
+        CySolverBase(
+            diffeq_ptr,
+            storage_ptr,
+            t_start,
+            t_end,
+            y0_ptr,
+            num_y,
+            num_extra,
+            args_ptr,
+            max_num_steps,
+            max_ram_MB,
+            use_dense_output,
+            t_eval,
+            len_t_eval),
         max_step_size(max_step_size),
         user_provided_first_step_size(first_step_size)
         
 {
     // Check for errors
-    if (this->user_provided_first_step_size != 0.0)
+    if (this->user_provided_first_step_size != 0.0) [[unlikely]]
     {
-        if (this->user_provided_first_step_size < 0.0)
+        if (this->user_provided_first_step_size < 0.0) [[unlikely]]
         {
             this->storage_ptr->error_code = -1;
             this->storage_ptr->update_message("User-provided initial step size must be a positive number.");
         }
-        else if (first_step_size > (this->t_delta_abs * 0.5))
+        else if (first_step_size > (this->t_delta_abs * 0.5)) [[unlikely]]
         {
             this->storage_ptr->error_code = -1;
             this->storage_ptr->update_message("User-provided initial step size must be smaller than 50 % of the time span size.");
@@ -55,7 +71,7 @@ RKSolver::RKSolver(
         for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
         {
             double temp_double = rtols_ptr[y_i];
-            if (temp_double < EPS_100)
+            if (temp_double < EPS_100) [[unlikely]]
             {
                 temp_double = EPS_100;
             }
@@ -65,7 +81,7 @@ RKSolver::RKSolver(
     else {
         // only one rtol
         double temp_double = rtol;
-        if (temp_double < EPS_100)
+        if (temp_double < EPS_100) [[unlikely]]
         {
             temp_double = EPS_100;
         }
@@ -140,7 +156,7 @@ void RKSolver::p_estimate_error()
             error_dot += this->E_ptr[6] * this->K_ptr[stride_K + 6];
 
             break;
-        default:
+        [[unlikely]] default:
             // Resort to unrolled loops
             // Initialize
             error_dot = 0.0;
@@ -171,14 +187,14 @@ void RKSolver::p_step_implementation()
     // Run RK integration step
     
     // Create local variables instead of calling class attributes for pointer objects.
-    double* l_K_ptr       = this->K_ptr;
-    const double* l_A_ptr = this->A_ptr;
-    const double* l_B_ptr = this->B_ptr;
-    const double* l_C_ptr = this->C_ptr;
-    double* l_y_now_ptr   = this->y_now_ptr;
-    double* l_y_old_ptr   = this->y_old_ptr;
-    double* l_dy_now_ptr  = this->dy_now_ptr;
-    double* l_dy_old_ptr  = this->dy_old_ptr;
+    double* const l_K_ptr       = this->K_ptr;
+    const double* const l_A_ptr = this->A_ptr;
+    const double* const l_B_ptr = this->B_ptr;
+    const double* const l_C_ptr = this->C_ptr;
+    double* const l_y_now_ptr   = this->y_now_ptr;
+    double* const l_y_old_ptr   = this->y_old_ptr;
+    double* const l_dy_now_ptr  = this->dy_now_ptr;
+    double* const l_dy_old_ptr  = this->dy_old_ptr;
 
     // Other local variables
     double l_t_old     = this->t_old;
@@ -206,7 +222,7 @@ void RKSolver::p_step_implementation()
 
         // Check if step size is too small
         // This will cause integration to fail: step size smaller than spacing between numbers
-        if (l_step_size < min_step_size) {
+        if (l_step_size < min_step_size) [[unlikely]] {
             step_error = true;
             this->status = -1;
             break;
@@ -215,14 +231,14 @@ void RKSolver::p_step_implementation()
         // Move time forward for this particular step size
         double t_delta_check;
         if (this->direction_flag) {
-            l_step    = l_step_size;
-            this->t_now_ptr[0]   = l_t_old + l_step;
-            t_delta_check = this->t_now_ptr[0] - this->t_end;
+            l_step             = l_step_size;
+            this->t_now_ptr[0] = l_t_old + l_step;
+            t_delta_check      = this->t_now_ptr[0] - this->t_end;
         }
         else {
-            l_step    = -l_step_size;
-            this->t_now_ptr[0]   = l_t_old + l_step;
-            t_delta_check = this->t_end - this->t_now_ptr[0];
+            l_step             = -l_step_size;
+            this->t_now_ptr[0] = l_t_old + l_step;
+            t_delta_check      = this->t_end - this->t_now_ptr[0];
         }
 
         // Check that we are not at the end of integration with that move
@@ -424,7 +440,7 @@ void RKSolver::p_step_implementation()
                     // j = 10
                     temp_double += l_A_ptr[stride_A + 10] * l_K_ptr[stride_K + 10];
                     break;
-                default:
+                [[unlikely]] default:
                     // Resort to regular rolled loops
                     // Initialize
                     temp_double = 0.0;
@@ -490,7 +506,7 @@ void RKSolver::p_step_implementation()
                 temp_double += l_B_ptr[10] * l_K_ptr[stride_K + 10];
                 temp_double += l_B_ptr[11] * l_K_ptr[stride_K + 11];
                 break;
-            default:
+            [[unlikely]] default:
                 // Resort to rolled loops
                 // Initialize
                 temp_double = 0.0;
@@ -550,11 +566,13 @@ void RKSolver::p_step_implementation()
     }
 
     // Update status depending if there were any errors.
-    if (step_error) {
+    if (step_error) [[unlikely]]
+    {
         // Issue with step convergence
         this->status = -1;
     }
-    else if (!step_accepted) {
+    else if (!step_accepted) [[unlikely]]
+    {
         // Issue with step convergence
         this->status = -7;
     }
@@ -563,25 +581,24 @@ void RKSolver::p_step_implementation()
     // Update state variables
     this->step_size = l_step_size;
     this->step      = l_step;
-
-    // Update "old" pointers
-    this->t_old = this->t_now_ptr[0];
-    std::memcpy(l_y_old_ptr, l_y_now_ptr, sizeof(double) * this->num_y);
-    std::memcpy(l_dy_old_ptr, l_dy_now_ptr, sizeof(double) * this->num_dy);
 }
 
 
 // Public methods
 void RKSolver::reset()
 {
-    // Call base class reset.
-    CySolverBase::reset();
     // Update stride information
     this->nstages_numy = this->n_stages * this->num_y;
     this->n_stages_p1  = this->n_stages + 1;
 
+    // It is important to initialize the K variable with zeros
+    std::fill(this->K_ptr, this->K_ptr + (this->num_y * this->n_stages_p1), 0.0);
+
+    // Call base class reset after K is established but before first step size is calculated.
+    CySolverBase::reset();
+
     // Update initial step size
-    if (this->user_provided_first_step_size == 0.0)
+    if (this->user_provided_first_step_size == 0.0) [[likely]]
     {
         // User did not provide a step size. Try to find a good guess.
         this->calc_first_step_size();
@@ -589,9 +606,6 @@ void RKSolver::reset()
     else {
         this->step_size = this->user_provided_first_step_size;
     }
-
-    // It is important to initialize the K variable with zeros
-    std::fill(this->K_ptr, this->K_ptr + (this->num_y * this->n_stages_p1), 0.0);
 }
 
 void RKSolver::calc_first_step_size()
@@ -602,7 +616,7 @@ void RKSolver::calc_first_step_size()
             Equations I: Nonstiff Problems", Sec. II.4.
     */
 
-    if (this->num_y == 0)
+    if (this->num_y == 0) [[unlikely]]
     {
         this->step_size = INF;
     }
@@ -690,6 +704,338 @@ void RKSolver::calc_first_step_size()
     }
 }
 
+/* Dense Output Methods */
+
+void RKSolver::p_update_Q(double* Q_ptr)
+{
+    // Q's definition depends on the integrators implementation. 
+    // For default RK, it is defined by Q = K.T.dot(self.P)  K has shape of (n_stages + 1, num_y) so K.T has shape of (num_y, n_stages + 1)
+    // P has shape of (4, 3) for RK23; (7, 4) for RK45.. So (n_stages + 1, Q_order)
+    // So Q has shape of (num_y, num_Pcols)
+
+    switch (this->integration_method)
+    {
+
+    case(0):
+        // RK23
+        for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+        {
+            const unsigned int stride_Q = y_i * this->len_Pcols;
+            const unsigned int stride_K = y_i * this->n_stages_p1;
+            // len_Pcols == 3; n_stages + 1 == 4
+
+            // P = 0
+            double temp_double = this->K_ptr[stride_K] * this->P_ptr[0];
+            temp_double += this->K_ptr[stride_K + 1] * this->P_ptr[1];
+            temp_double += this->K_ptr[stride_K + 2] * this->P_ptr[2];
+            temp_double += this->K_ptr[stride_K + 3] * this->P_ptr[3];
+            Q_ptr[stride_Q] = temp_double;
+
+            // P = 1
+            unsigned int stride_P = this->n_stages_p1;
+            temp_double = this->K_ptr[stride_K] * this->P_ptr[stride_P];
+            temp_double += this->K_ptr[stride_K + 1] * this->P_ptr[stride_P + 1];
+            temp_double += this->K_ptr[stride_K + 2] * this->P_ptr[stride_P + 2];
+            temp_double += this->K_ptr[stride_K + 3] * this->P_ptr[stride_P + 3];
+            Q_ptr[stride_Q + 1] = temp_double;
+
+            // P = 2
+            stride_P += this->n_stages_p1;
+            temp_double = this->K_ptr[stride_K] * this->P_ptr[stride_P];
+            temp_double += this->K_ptr[stride_K + 1] * this->P_ptr[stride_P + 1];
+            temp_double += this->K_ptr[stride_K + 2] * this->P_ptr[stride_P + 2];
+            temp_double += this->K_ptr[stride_K + 3] * this->P_ptr[stride_P + 3];
+            Q_ptr[stride_Q + 2] = temp_double;
+        }
+        break;
+
+    case(1):
+        // RK45
+        for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+        {
+            const unsigned int stride_Q = y_i * this->len_Pcols;
+            const unsigned int stride_K = y_i * this->n_stages_p1;
+
+            // len_Pcols == 4; n_stages + 1 == 7
+            // P = 0
+            double temp_double = this->K_ptr[stride_K] * this->P_ptr[0];
+            temp_double += this->K_ptr[stride_K + 1] * this->P_ptr[1];
+            temp_double += this->K_ptr[stride_K + 2] * this->P_ptr[2];
+            temp_double += this->K_ptr[stride_K + 3] * this->P_ptr[3];
+            temp_double += this->K_ptr[stride_K + 4] * this->P_ptr[4];
+            temp_double += this->K_ptr[stride_K + 5] * this->P_ptr[5];
+            temp_double += this->K_ptr[stride_K + 6] * this->P_ptr[6];
+            Q_ptr[stride_Q] = temp_double;
+
+            // P = 1
+            unsigned int stride_P = this->n_stages_p1;
+            temp_double  = this->K_ptr[stride_K]     * this->P_ptr[stride_P];
+            temp_double += this->K_ptr[stride_K + 1] * this->P_ptr[stride_P + 1];
+            temp_double += this->K_ptr[stride_K + 2] * this->P_ptr[stride_P + 2];
+            temp_double += this->K_ptr[stride_K + 3] * this->P_ptr[stride_P + 3];
+            temp_double += this->K_ptr[stride_K + 4] * this->P_ptr[stride_P + 4];
+            temp_double += this->K_ptr[stride_K + 5] * this->P_ptr[stride_P + 5];
+            temp_double += this->K_ptr[stride_K + 6] * this->P_ptr[stride_P + 6];
+            Q_ptr[stride_Q + 1] = temp_double;
+
+            // P = 2
+            stride_P += this->n_stages_p1;
+            temp_double  = this->K_ptr[stride_K]     * this->P_ptr[stride_P];
+            temp_double += this->K_ptr[stride_K + 1] * this->P_ptr[stride_P + 1];
+            temp_double += this->K_ptr[stride_K + 2] * this->P_ptr[stride_P + 2];
+            temp_double += this->K_ptr[stride_K + 3] * this->P_ptr[stride_P + 3];
+            temp_double += this->K_ptr[stride_K + 4] * this->P_ptr[stride_P + 4];
+            temp_double += this->K_ptr[stride_K + 5] * this->P_ptr[stride_P + 5];
+            temp_double += this->K_ptr[stride_K + 6] * this->P_ptr[stride_P + 6];
+            Q_ptr[stride_Q + 2] = temp_double;
+
+            // P = 3
+            stride_P += this->n_stages_p1;
+            temp_double  = this->K_ptr[stride_K]     * this->P_ptr[stride_P];
+            temp_double += this->K_ptr[stride_K + 1] * this->P_ptr[stride_P + 1];
+            temp_double += this->K_ptr[stride_K + 2] * this->P_ptr[stride_P + 2];
+            temp_double += this->K_ptr[stride_K + 3] * this->P_ptr[stride_P + 3];
+            temp_double += this->K_ptr[stride_K + 4] * this->P_ptr[stride_P + 4];
+            temp_double += this->K_ptr[stride_K + 5] * this->P_ptr[stride_P + 5];
+            temp_double += this->K_ptr[stride_K + 6] * this->P_ptr[stride_P + 6];
+            Q_ptr[stride_Q + 3] = temp_double;
+        }
+
+        break;
+
+    case(2):
+        {
+        // DOP853
+        // This method uses the current values stored in K and expands upon them by 3 more values determined by calls to the diffeq.
+
+        // We need to save a copy of the current state because we will overwrite the values shortly
+        double dy_now_storage[DY_LIMIT] = { };
+        double* dy_now_storage_ptr = &dy_now_storage[0];
+        std::memcpy(dy_now_storage_ptr, this->dy_now_ptr, sizeof(double) * this->num_dy);
+
+        double y_now_storage[Y_LIMIT] = { };
+        double* y_now_storage_ptr = &y_now_storage[0];
+        std::memcpy(y_now_storage, this->y_now_ptr, sizeof(double) * this->num_y);
+
+        double time_storage = this->t_now_ptr[0];
+
+        // We also need to store dy_dt so that they can be used in dot products
+        double K_extended[Y_LIMIT * 3] = { };
+        double* K_extended_ptr = &K_extended[0];
+
+        // S (row) == 13
+        // Solve for dy used to call diffeq
+        double temp_double_arr[Y_LIMIT * 2] = { };
+        double temp_double;
+        double temp_double_2;
+        double temp_double_3;
+        double temp_double_4;
+        double K_ni;
+        unsigned int stride_K;
+
+        for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+        {
+            // Dot Product (K.T dot a) * h
+            stride_K = this->n_stages_p1 * y_i;
+            // Go up to a max of Row 13
+            temp_double   = 0.0;
+            temp_double_arr[y_i * 2]     = 0.0;
+            temp_double_arr[y_i * 2 + 1] = 0.0;
+            for (unsigned int n_i = 0; n_i < this->n_stages_p1; n_i++)
+            {
+                K_ni = K_ptr[stride_K + n_i];
+                temp_double                  += K_ni * DOP853_AEXTRA_ptr[3 * n_i];
+                temp_double_arr[y_i * 2]     += K_ni * DOP853_AEXTRA_ptr[3 * n_i + 1];
+                temp_double_arr[y_i * 2 + 1] += K_ni * DOP853_AEXTRA_ptr[3 * n_i + 2];
+            }
+
+            // Update y for diffeq call using the temp_double dot product.
+            this->y_now_ptr[y_i] = this->y_old_ptr[y_i] + temp_double * this->step;
+        }
+        // Update time and call the diffeq.
+        this->t_now_ptr[0] = this->t_old + (this->step * DOP853_CEXTRA_ptr[0]);
+        this->diffeq(this);
+
+        // S (row) == 14
+        for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+        {
+            // Store dy from the last call.
+            K_ni = this->dy_now_ptr[y_i];
+            K_extended_ptr[y_i * 3] = K_ni;
+
+            // Dot Product (K.T dot a) * h
+            // Add row 14 to the remaining dot product trackers
+            temp_double_arr[y_i * 2]     += K_ni * DOP853_AEXTRA_ptr[3 * 13 + 1];
+            temp_double_arr[y_i * 2 + 1] += K_ni * DOP853_AEXTRA_ptr[3 * 13 + 2];
+
+            // Update y for diffeq call
+            this->y_now_ptr[y_i] = this->y_old_ptr[y_i] + temp_double_arr[y_i * 2] * this->step;
+        }
+        // Update time and call the diffeq.
+        this->t_now_ptr[0] = this->t_old + (this->step * DOP853_CEXTRA_ptr[1]);
+        this->diffeq(this);
+
+        // S (row) == 15
+        for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+        {
+            // Store dy from the last call.
+            K_ni = this->dy_now_ptr[y_i];
+            K_extended_ptr[y_i * 3 + 1] = K_ni;
+
+            // Dot Product (K.T dot a) * h            
+            // Add row 15 to the remaining dot product trackers
+            temp_double_arr[y_i * 2 + 1] += K_ni * DOP853_AEXTRA_ptr[3 * 14 + 2];
+
+            // Update y for diffeq call
+            this->y_now_ptr[y_i] = this->y_old_ptr[y_i] + temp_double_arr[y_i * 2 + 1] * this->step;
+        }
+        // Update time and call the diffeq.
+        this->t_now_ptr[0] = this->t_old + (this->step * DOP853_CEXTRA_ptr[2]);
+        this->diffeq(this);
+
+
+        // Done with diffeq calls. Now build up Q matrix.
+        for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+        {
+            // Store dy from the last call.
+            K_extended_ptr[y_i * 3 + 2] = this->dy_now_ptr[y_i];
+
+            // SciPy builds up a "F" matrix. Then in the dense interpolator this is reversed.
+            // To keep consistency we will build F pre-reversed into Q. 
+            // F (and Q) have the shape of (Interpolator Power, y_len); Interpolator power is 7
+            const unsigned int stride_Q = y_i * this->len_Pcols;
+            // F in normal direction is:
+            // F[0] = delta_y
+            // F[1] = h * f_old - delta_y
+            // F[2] = 2 * delta_y - h * (self.f + f_old)
+            // F[3:] = h * np.dot(self.D, K)
+            // Reversed it would be
+            // F[0:4] = reversed(h * np.dot(self.D, K))
+            // F[4] = 2 * delta_y - h * (self.f + f_old)
+            // F[5] = h * f_old - delta_y
+            // F[6] = delta_y
+
+            // Work on dot product between D and K
+            stride_K = this->n_stages_p1 * y_i;
+            // D Row 4
+            temp_double   = 0.0;
+            temp_double_2 = 0.0;
+            temp_double_3 = 0.0;
+            temp_double_4 = 0.0;
+
+            // First add up normal K
+            for (unsigned int n_i = 0; n_i < this->n_stages_p1; n_i++)
+            {
+                K_ni = this->K_ptr[stride_K + n_i];
+                // Row 1
+                temp_double   += K_ni * DOP853_D_ptr[4 * n_i];
+                // Row 2
+                temp_double_2 += K_ni * DOP853_D_ptr[4 * n_i + 1];
+                // Row 3
+                temp_double_3 += K_ni * DOP853_D_ptr[4 * n_i + 2];
+                // Row 4
+                temp_double_4 += K_ni * DOP853_D_ptr[4 * n_i + 3];
+            }
+            // Now add the extra 3 rows from extended
+            // Row 1
+            temp_double   += K_extended_ptr[y_i * 3]     * DOP853_D_ptr[4 * 13];
+            temp_double_2 += K_extended_ptr[y_i * 3]     * DOP853_D_ptr[4 * 13 + 1];
+            temp_double_3 += K_extended_ptr[y_i * 3]     * DOP853_D_ptr[4 * 13 + 2];
+            temp_double_4 += K_extended_ptr[y_i * 3]     * DOP853_D_ptr[4 * 13 + 3];
+            // Row 2
+            temp_double   += K_extended_ptr[y_i * 3 + 1] * DOP853_D_ptr[4 * 14];
+            temp_double_2 += K_extended_ptr[y_i * 3 + 1] * DOP853_D_ptr[4 * 14 + 1];
+            temp_double_3 += K_extended_ptr[y_i * 3 + 1] * DOP853_D_ptr[4 * 14 + 2];
+            temp_double_4 += K_extended_ptr[y_i * 3 + 1] * DOP853_D_ptr[4 * 14 + 3];
+            // Row 3
+            temp_double   += K_extended_ptr[y_i * 3 + 2] * DOP853_D_ptr[4 * 15];
+            temp_double_2 += K_extended_ptr[y_i * 3 + 2] * DOP853_D_ptr[4 * 15 + 1];
+            temp_double_3 += K_extended_ptr[y_i * 3 + 2] * DOP853_D_ptr[4 * 15 + 2];
+            temp_double_4 += K_extended_ptr[y_i * 3 + 2] * DOP853_D_ptr[4 * 15 + 3];
+
+
+            // Store these in reversed order
+            Q_ptr[stride_Q]     = this->step * temp_double_4;
+            Q_ptr[stride_Q + 1] = this->step * temp_double_3;
+            Q_ptr[stride_Q + 2] = this->step * temp_double_2;
+            Q_ptr[stride_Q + 3] = this->step * temp_double;
+
+            // Non dot product values
+            // F[4] = 2 * delta_y - h * (self.f + f_old)
+            // f_old = K[0]
+            // delta_y requires the current y and last y, but the current y was just overwritten to find
+            // K_extended. So we need to pull from the values we saved in temporary variables. Same thing with dy
+            const double delta_y = y_now_storage[y_i] - this->y_old_ptr[y_i];
+            const double sum_dy  = dy_now_storage_ptr[y_i] + this->K_ptr[stride_K];
+            Q_ptr[stride_Q + 4] = 2.0 * delta_y - this->step * sum_dy;
+
+            // F[5] = h * f_old - delta_y
+            Q_ptr[stride_Q + 5] = this->step * this->K_ptr[stride_K] - delta_y;
+
+            // F[6] = delta_y
+            Q_ptr[stride_Q + 6] = delta_y;
+
+        }
+
+        // Return values that were saved in temp variables back to state variables.
+        std::memcpy(this->dy_now_ptr, dy_now_storage_ptr, sizeof(double) * this->num_dy);
+        std::memcpy(this->y_now_ptr, y_now_storage, sizeof(double) * this->num_y);
+        this->t_now_ptr[0] = time_storage;
+        }
+        break;
+
+    [[unlikely]] default:
+        for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+        {
+            const unsigned int stride_K = this->n_stages_p1 * y_i;
+            const unsigned int stride_Q = y_i * this->len_Pcols;
+
+            for (unsigned int P_i = 0; P_i < this->len_Pcols; P_i++)
+            {
+                const unsigned int stride_P = P_i * this->n_stages_p1;
+                // Initialize dot product
+                double temp_double = 0.0;
+
+
+                for (unsigned int n_i = 0; n_i < this->n_stages_p1; n_i++)
+                {
+                    temp_double += this->K_ptr[stride_K + n_i] * this->P_ptr[stride_P + n_i];
+                }
+
+                // Set equal to Q
+                Q_ptr[stride_Q + P_i] = temp_double;
+            }
+        }
+        break;
+    }
+}
+
+CySolverDense* RKSolver::p_dense_output_heap()
+{
+    // Build dense output object instance
+    CySolverDense* dense_output = new CySolverDense(
+        this->integration_method,
+        this->t_old,
+        this->t_now_ptr[0],
+        this->y_old_ptr,
+        this->num_y,
+        this->len_Pcols);
+
+    // Update Q
+    this->p_update_Q(dense_output->Q_ptr);
+
+    return dense_output;
+}
+
+void RKSolver::p_dense_output_stack(CySolverDense& dense_output_ptr)
+{
+    // Update integration method specific items
+    dense_output_ptr.Q_order = this->len_Pcols;
+    
+    // Update Q
+    this->p_update_Q(dense_output_ptr.Q_ptr);
+}
+
 
 // ########################################################################################################################
 // Explicit Runge - Kutta 2(3)
@@ -703,15 +1049,17 @@ void RK23::reset()
     this->E_ptr     = RK23_E_ptr;
     this->E3_ptr    = nullptr;       // Not used for RK23
     this->E5_ptr    = nullptr;       // Not used for RK23
-    this->P_ptr     = nullptr;       // TODO: Not implemented
-    this->D_ptr     = nullptr;       // TODO: Not implemented
+    this->P_ptr     = RK23_P_ptr;       
+    this->D_ptr     = nullptr;       // Not used for RK23
     this->K_ptr     = &this->K[0];
     this->order     = RK23_order;
     this->n_stages  = RK23_n_stages;
     this->len_Acols = RK23_len_Acols;
     this->len_C     = RK23_len_C;
+    this->len_Pcols = RK23_len_Pcols;
     this->error_estimator_order = RK23_error_estimator_order;
     this->error_exponent = RK23_error_exponent;
+    this->integration_method = RK23_METHOD_INT;
 
     RKSolver::reset();
 }
@@ -727,17 +1075,19 @@ void RK45::reset()
     this->A_ptr     = RK45_A_ptr;
     this->B_ptr     = RK45_B_ptr;
     this->E_ptr     = RK45_E_ptr;
-    this->E3_ptr    = nullptr;       // Not used for RK23
-    this->E5_ptr    = nullptr;       // Not used for RK23
-    this->P_ptr     = nullptr;       // TODO: Not implemented
-    this->D_ptr     = nullptr;       // TODO: Not implemented
+    this->E3_ptr    = nullptr;       // Not used for RK45
+    this->E5_ptr    = nullptr;       // Not used for RK45
+    this->P_ptr     = RK45_P_ptr;
+    this->D_ptr     = nullptr;       // Not used for RK45
     this->K_ptr     = &this->K[0];
     this->order     = RK45_order;
     this->n_stages  = RK45_n_stages;
     this->len_Acols = RK45_len_Acols;
     this->len_C     = RK45_len_C;
+    this->len_Pcols = RK45_len_Pcols;
     this->error_estimator_order = RK45_error_estimator_order;
     this->error_exponent = RK45_error_exponent;
+    this->integration_method = RK45_METHOD_INT;
 
     RKSolver::reset();
 }
@@ -762,8 +1112,10 @@ void DOP853::reset()
     this->n_stages  = DOP853_n_stages;
     this->len_Acols = DOP853_A_cols;
     this->len_C     = DOP853_len_C;
+    this->len_Pcols = DOP853_INTERPOLATOR_POWER; // Used by DOP853 dense output.
     this->error_estimator_order = DOP853_error_estimator_order;
     this->error_exponent = DOP853_error_exponent;
+    this->integration_method = DOP853_METHOD_INT;
 
     RKSolver::reset();
 }
@@ -882,3 +1234,8 @@ void DOP853::p_estimate_error()
         this->error_norm = this->step_size * error_norm5 / std::sqrt(error_denom * this->num_y_dbl);
     }
 }
+
+
+// ########################################################################################################################
+// Dense Output Implementations
+// ########################################################################################################################

@@ -15,6 +15,10 @@
 !CyRK/cy/cysolve.hpp
 !CyRK/cy/cysolver.cpp
 !CyRK/cy/cysolver.hpp
+!CyRK/cy/dense.cpp
+!CyRK/cy/dense.hpp
+!CyRK/cy/cy_array.cpp
+!CyRK/cy/cy_array.hpp
 !CyRK/cy/rk.cpp
 !CyRK/cy/rk.hpp
 

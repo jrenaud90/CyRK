@@ -133,12 +133,14 @@ cdef void pendulum_diffeq(double* dy_ptr, double t, double* y_ptr, const double*
 def cytester(
         int diffeq_number,
         tuple t_span,
-        double[::1] y0,
+        const double[::1] y0,
         double[::1] args = None,
         int method = 1,
         size_t expected_size = 0,
         size_t max_num_steps = 0,
-        size_t max_ram_MB = 2000,
+        size_t max_ram_MB = 2000,    
+        bint dense_output = False,
+        double[::1] t_eval = None,
         double rtol = 1.0e-3, 
         double atol = 1.0e-6,
         double[::1] rtol_array = None,
@@ -152,8 +154,14 @@ def cytester(
     t_span_ptr[0] = t_span[0]
     t_span_ptr[1] = t_span[1]
 
-    cdef unsigned int num_y = len(y0)
-    cdef double* y0_ptr     = &y0[0]
+    cdef double* t_eval_ptr = NULL
+    cdef size_t len_t_eval = 0
+    if t_eval is not None:
+        len_t_eval = len(t_eval)
+        t_eval_ptr = &t_eval[0]
+
+    cdef unsigned int num_y   = len(y0)
+    cdef const double* y0_ptr = &y0[0]
 
     cdef int num_extra = 0
     cdef DiffeqFuncType diffeq
@@ -202,6 +210,9 @@ def cytester(
         num_extra = num_extra,
         max_num_steps = max_num_steps,
         max_ram_MB = max_ram_MB,
+        dense_output = dense_output,
+        t_eval = t_eval_ptr,
+        len_t_eval = len_t_eval,
         rtols_ptr = rtols_ptr,
         atols_ptr = atols_ptr,
         max_step = max_step,

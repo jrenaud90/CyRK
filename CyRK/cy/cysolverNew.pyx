@@ -22,6 +22,35 @@ cdef class WrapCySolverResult:
         self.y_ptr     = &self.cyresult_ptr[0].solution[0]
         self.time_view = <double[:self.size]>self.time_ptr
         self.y_view    = <double[:self.size * self.num_dy]>self.y_ptr
+    
+    def call(self, double t):
+        """ Call the dense output interpolater and return y """
+
+        if not self.cyresult_ptr.capture_dense_output:
+            raise AttributeError("Can not call WrapCySolverResult when dense_output set to False.")
+
+        y_interp_array = np.empty(self.cyresult_ptr.num_y, dtype=np.float64, order='C')
+        cdef double[::1] y_interp_view = y_interp_array
+        cdef double* y_interp_ptr      = &y_interp_view[0]
+
+        self.cyresult_ptr.call(t, y_interp_ptr)
+        return y_interp_array
+    
+    def call_vectorize(self, double[::1] t_view):
+        """ Call the dense output interpolater and return y """
+
+        if not self.cyresult_ptr.capture_dense_output:
+            raise AttributeError("Can not call WrapCySolverResult when dense_output set to False.")
+
+        cdef size_t len_t = len(t_view)
+
+        y_interp_array = np.empty(self.cyresult_ptr.num_y * len_t, dtype=np.float64, order='C')
+        cdef double[::1] y_interp_view = y_interp_array
+        cdef double* y_interp_ptr = &y_interp_view[0]
+        cdef double* t_array_ptr  = &t_view[0]
+
+        self.cyresult_ptr.call_vectorize(t_array_ptr, len_t, y_interp_ptr)
+        return y_interp_array.reshape(len_t, self.cyresult_ptr.num_y).T
 
     @property
     def success(self):
@@ -46,6 +75,13 @@ cdef class WrapCySolverResult:
     @property
     def error_code(self):
         return self.cyresult_ptr.error_code
+    
+    def __call__(self, t):
+        t_array = np.asarray(t, dtype=np.float64)
+        if t_array.size == 1:
+            return self.call(t_array[0])
+        else:
+            return self.call_vectorize(t_array)
 
 # =====================================================================================================================
 # Create Wrapped cysolve_ivp (has various defaults)
@@ -53,9 +89,9 @@ cdef class WrapCySolverResult:
 
 cdef CySolveOutput cysolve_ivp(
             DiffeqFuncType diffeq_ptr,
-            double* t_span_ptr,
-            double* y0_ptr,
-            unsigned int num_y,
+            const double* t_span_ptr,
+            const double* y0_ptr,
+            const unsigned int num_y,
             unsigned int method = 1,
             double rtol = 1.0e-3,
             double atol = 1.0e-6,
@@ -63,6 +99,9 @@ cdef CySolveOutput cysolve_ivp(
             unsigned int num_extra = 0,
             size_t max_num_steps = 0,
             size_t max_ram_MB = 2000,
+            bint dense_output = False,
+            double* t_eval = NULL,
+            size_t len_t_eval = 0,
             double* rtols_ptr = NULL,
             double* atols_ptr = NULL,
             double max_step = MAX_STEP,
@@ -81,6 +120,9 @@ cdef CySolveOutput cysolve_ivp(
         args_ptr,
         max_num_steps,
         max_ram_MB,
+        dense_output,
+        t_eval,
+        len_t_eval,
         rtol,
         atol,
         rtols_ptr,
@@ -93,9 +135,9 @@ cdef CySolveOutput cysolve_ivp(
 
 cdef CySolveOutput cysolve_ivp_gil(
             DiffeqFuncType diffeq_ptr,
-            double* t_span_ptr,
-            double* y0_ptr,
-            unsigned int num_y,
+            const double* t_span_ptr,
+            const double* y0_ptr,
+            const unsigned int num_y,
             unsigned int method = 1,
             double rtol = 1.0e-3,
             double atol = 1.0e-6,
@@ -103,6 +145,9 @@ cdef CySolveOutput cysolve_ivp_gil(
             unsigned int num_extra = 0,
             size_t max_num_steps = 0,
             size_t max_ram_MB = 2000,
+            bint dense_output = False,
+            double* t_eval = NULL,
+            size_t len_t_eval = 0,
             double* rtols_ptr = NULL,
             double* atols_ptr = NULL,
             double max_step = MAX_STEP,
@@ -121,6 +166,9 @@ cdef CySolveOutput cysolve_ivp_gil(
         args_ptr,
         max_num_steps,
         max_ram_MB,
+        dense_output,
+        t_eval,
+        len_t_eval,
         rtol,
         atol,
         rtols_ptr,
@@ -251,6 +299,7 @@ def pysolve_ivp(
     # Parse time_span
     cdef double t_start = time_span[0]
     cdef double t_end   = time_span[1]
+    cdef cpp_bool direction_flag = t_end > t_start
 
     # Parse y0
     cdef unsigned int num_y   = len(y0)
@@ -261,12 +310,21 @@ def pysolve_ivp(
             )
     
     # Parse t_eval
+    cdef const double* t_eval_ptr = NULL
+    cdef cpp_bool t_eval_provided = False
+    cdef size_t len_t_eval = 0
     if t_eval is not None:
-        raise NotImplementedError('t_eval not implemented.')
+        t_eval_provided = True
+        len_t_eval = len(t_eval)
+        t_eval_ptr = &t_eval[0]
+
+        if not direction_flag:
+            raise NotImplementedError("Currently, t_eval is not supported during backward integration.")
     
     # Parse dense output
     if dense_output:
-        raise NotImplementedError('Dense outputs not yet supported.')
+        if not direction_flag:
+            raise NotImplementedError("Currently, dense_output is not supported during backward integration.")
     
     # Parse num_extra
     if num_extra > (DY_LIMIT - Y_LIMIT):
@@ -326,7 +384,14 @@ def pysolve_ivp(
         raise AttributeError("Maximum step size must be a postive float.")
 
     # Build solution storage
-    cdef shared_ptr[CySolverResult] result_ptr = make_shared[CySolverResult](num_y, num_extra, expected_size)
+    cdef shared_ptr[CySolverResult] result_ptr = make_shared[CySolverResult](
+        num_y,
+        num_extra,
+        expected_size,
+        t_end,
+        direction_flag,
+        dense_output,
+        t_eval_provided)
 
     # Build diffeq wrapper
     cdef WrapPyDiffeq diffeq_wrap = WrapPyDiffeq(py_diffeq, args, num_y, num_dy, pass_dy_as_arg=pass_dy_as_arg)
@@ -354,6 +419,9 @@ def pysolve_ivp(
             args_ptr,
             max_num_steps,
             max_ram_MB,
+            dense_output,
+            t_eval_ptr,
+            len_t_eval,
             rtol_float,
             atol_float,
             rtols_ptr,
