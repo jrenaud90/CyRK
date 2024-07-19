@@ -12,7 +12,7 @@ from CyRK.utils.memory cimport shared_ptr
 import numpy as np
 
 
-cdef void baseline_diffeq(double* dy_ptr, double t, double* y_ptr, const double* args_ptr) noexcept nogil:
+cdef void baseline_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr) noexcept nogil:
     # Unpack y
     cdef double y0, y1
     y0 = y_ptr[0]
@@ -22,7 +22,7 @@ cdef void baseline_diffeq(double* dy_ptr, double t, double* y_ptr, const double*
     dy_ptr[1] = (0.02 * y0 - 1.) * y1
 
 
-cdef void accuracy_test_diffeq(double* dy_ptr, double t, double* y_ptr, const double* args_ptr) noexcept nogil:
+cdef void accuracy_test_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr) noexcept nogil:
     # Unpack y
     cdef double y0, y1
     y0 = y_ptr[0]
@@ -32,7 +32,7 @@ cdef void accuracy_test_diffeq(double* dy_ptr, double t, double* y_ptr, const do
     dy_ptr[1] = cos(t) + y0
 
 
-cdef void extraoutput_test_diffeq(double* dy_ptr, double t, double* y_ptr, const double* args_ptr) noexcept nogil:
+cdef void extraoutput_test_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr) noexcept nogil:
     # Unpack y
     cdef double y0, y1, extra_0, extra_1
     y0 = y_ptr[0]
@@ -50,11 +50,12 @@ cdef void extraoutput_test_diffeq(double* dy_ptr, double t, double* y_ptr, const
     dy_ptr[3] = extra_1
 
 
-cdef void lorenz_diffeq(double* dy_ptr, double t, double* y_ptr, const double* args_ptr) noexcept nogil:
+cdef void lorenz_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr) noexcept nogil:
     # Unpack args
-    cdef double a = args_ptr[0]
-    cdef double b = args_ptr[1]
-    cdef double c = args_ptr[2]
+    cdef double* args_dbl_ptr = <double*>args_ptr
+    cdef double a = args_dbl_ptr[0]
+    cdef double b = args_dbl_ptr[1]
+    cdef double c = args_dbl_ptr[2]
 
     # Unpack y
     cdef double y0, y1, y2
@@ -67,11 +68,12 @@ cdef void lorenz_diffeq(double* dy_ptr, double t, double* y_ptr, const double* a
     dy_ptr[2] = y0 * y1 - c * y2
 
 
-cdef void lorenz_extraoutput_diffeq(double* dy_ptr, double t, double* y_ptr, const double* args_ptr) noexcept nogil:
+cdef void lorenz_extraoutput_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr) noexcept nogil:
     # Unpack args
-    cdef double a = args_ptr[0]
-    cdef double b = args_ptr[1]
-    cdef double c = args_ptr[2]
+    cdef double* args_dbl_ptr = <double*>args_ptr
+    cdef double a = args_dbl_ptr[0]
+    cdef double b = args_dbl_ptr[1]
+    cdef double c = args_dbl_ptr[2]
 
     # Unpack y
     cdef double y0, y1, y2
@@ -92,12 +94,13 @@ cdef void lorenz_extraoutput_diffeq(double* dy_ptr, double t, double* y_ptr, con
     dy_ptr[5] = e_3
 
 
-cdef void lotkavolterra_diffeq(double* dy_ptr, double t, double* y_ptr, const double* args_ptr) noexcept nogil:
+cdef void lotkavolterra_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr) noexcept nogil:
     # Unpack args
-    cdef double a = args_ptr[0]
-    cdef double b = args_ptr[1]
-    cdef double c = args_ptr[2]
-    cdef double d = args_ptr[3]
+    cdef double* args_dbl_ptr = <double*>args_ptr
+    cdef double a = args_dbl_ptr[0]
+    cdef double b = args_dbl_ptr[1]
+    cdef double c = args_dbl_ptr[2]
+    cdef double d = args_dbl_ptr[3]
 
     # Unpack y
     cdef double y0, y1
@@ -109,11 +112,12 @@ cdef void lotkavolterra_diffeq(double* dy_ptr, double t, double* y_ptr, const do
 
 
 
-cdef void pendulum_diffeq(double* dy_ptr, double t, double* y_ptr, const double* args_ptr) noexcept nogil:
+cdef void pendulum_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr) noexcept nogil:
     # Unpack args
-    cdef double l = args_ptr[0]
-    cdef double m = args_ptr[1]
-    cdef double g = args_ptr[2]
+    cdef double* args_dbl_ptr = <double*>args_ptr
+    cdef double l = args_dbl_ptr[0]
+    cdef double m = args_dbl_ptr[1]
+    cdef double g = args_dbl_ptr[2]
 
     cdef double coeff_1 = (-3. * g / (2. * l))
     cdef double coeff_2 = (3. / (m * l**2))
@@ -184,9 +188,9 @@ def cytester(
     else:
         raise NotImplementedError
 
-    cdef double* args_ptr = NULL
+    cdef void* args_ptr = NULL
     if args is not None:
-        args_ptr = &args[0]
+        args_ptr = <void*>&args[0]
 
     # Parse rtol
     cdef double* rtols_ptr = NULL

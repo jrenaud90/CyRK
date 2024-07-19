@@ -16,7 +16,7 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
     // General optional arguments
     const size_t expected_size = 0,
     const unsigned int num_extra = 0,
-    const double* args_ptr = nullptr,
+    const void* args_ptr = nullptr,
     const size_t max_num_steps = 0,
     const size_t max_ram_MB = 2000,
     const bool dense_output = false,
@@ -74,7 +74,7 @@ public:
         const unsigned int num_y,
         // General optional arguments
         const unsigned int num_extra,
-        const double* args_ptr,
+        const void* args_ptr,
         const size_t max_num_steps,
         const size_t max_ram_MB,
         const bool dense_output,

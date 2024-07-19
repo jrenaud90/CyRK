@@ -47,7 +47,7 @@ public:
         const double* const y0_ptr,
         const unsigned int num_y,
         const unsigned int num_extra = 0,
-        const double* const args_ptr = nullptr,
+        const void* const args_ptr = nullptr,
         const size_t max_num_steps = 0,
         const size_t max_ram_MB = 2000,
         const bool use_dense_output = false,
@@ -101,7 +101,7 @@ protected:
     size_t max_num_steps = 0;
 
     // Differential equation information
-    const double* args_ptr    = nullptr;
+    const void* args_ptr    = nullptr;
     DiffeqFuncType diffeq_ptr = nullptr;
     
     // t_eval information

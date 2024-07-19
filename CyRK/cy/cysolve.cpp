@@ -10,7 +10,7 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
     // General optional arguments
     const size_t expected_size,
     const unsigned int num_extra,
-    const double* args_ptr,
+    const void* args_ptr,
     const size_t max_num_steps,
     const size_t max_ram_MB,
     const bool dense_output,
@@ -158,7 +158,7 @@ PySolver::PySolver(
     const unsigned int num_y,
     // General optional arguments
     const unsigned int num_extra,
-    const double* args_ptr,
+    const void* args_ptr,
     const size_t max_num_steps,
     const size_t max_ram_MB,
     const bool dense_output,

@@ -33,7 +33,7 @@ CySolverBase::CySolverBase(
         const double* const y0_ptr,
         const unsigned int num_y,
         const unsigned int num_extra,
-        const double* const args_ptr,
+        const void* const args_ptr,
         const size_t max_num_steps,
         const size_t max_ram_MB,
         const bool use_dense_output,
