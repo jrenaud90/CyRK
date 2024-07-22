@@ -52,7 +52,8 @@ public:
         const size_t max_ram_MB = 2000,
         const bool use_dense_output = false,
         const double* t_eval = nullptr,
-        const size_t len_t_eval = 0
+        const size_t len_t_eval = 0,
+        PreEvalFunc pre_eval_func = nullptr
     );
 
     void change_storage(std::shared_ptr<CySolverResult> new_storage_ptr, bool auto_reset = true);
@@ -113,6 +114,9 @@ protected:
 
     // Information on capturing extra information during integration.
     int num_extra = 0;
+
+    // Function to send to diffeq which is called before dy is calculated
+    PreEvalFunc pre_eval_func = nullptr;
 
     // Keep bools together to reduce size
     bool direction_flag = false;

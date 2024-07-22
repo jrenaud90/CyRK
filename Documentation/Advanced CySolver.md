@@ -180,3 +180,11 @@ result_drag = run()
 print("\n\nIntegration success =", result_drag.success, "\n\tNumber of adaptive time steps required:", result_drag.size)
 print("Integration message:", result_drag.message)
 ```
+
+# Pre-Evaluation Function
+
+It is occasionally advantageous for users to define differential equation functions that utilize a "pre-evaluation" function that take in the current state and provide parameters which are then used to find dydt. This allows different models to be defined as modified versions of this pre-eval function without changing the rest of the differential equation.
+
+Consider the example of a pendulum that is experiencing drag and one that is not. The equations of motion for the pendulum are only slightly modified between the two cases. Rather than writing a different differential equation we can instead write one diffeq and two different pre-evaluation functions. 
+
+# TODO: Left off: change demo example to have two pre-eval funcs that match the above description. finish this section. 

@@ -20,6 +20,7 @@ RKSolver::RKSolver(
     const bool use_dense_output,
     const double* t_eval,
     const size_t len_t_eval,
+    PreEvalFunc pre_eval_func,
     // RKSolver input arguments
     const double rtol,
     const double atol,
@@ -40,7 +41,8 @@ RKSolver::RKSolver(
             max_ram_MB,
             use_dense_output,
             t_eval,
-            len_t_eval),
+            len_t_eval,
+            pre_eval_func),
         max_step_size(max_step_size),
         user_provided_first_step_size(first_step_size)
         

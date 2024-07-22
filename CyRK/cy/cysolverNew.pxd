@@ -20,7 +20,8 @@ cdef extern from "common.cpp" nogil:
     const unsigned int DY_LIMIT
     const double MAX_STEP
 
-    ctypedef void (*DiffeqFuncType)(double*, double, double*, const void*)
+    ctypedef void (*PreEvalFunc)(void*, double, double*, const void*)
+    ctypedef void (*DiffeqFuncType)(double*, double, double*, const void*, PreEvalFunc)
 
     cdef size_t find_expected_size(        
         int num_y,
@@ -121,7 +122,8 @@ cdef extern from "cysolver.cpp" nogil:
             const size_t max_ram_MB,
             const cpp_bool use_dense_output,
             const double* t_eval,
-            const size_t len_t_eval
+            const size_t len_t_eval,
+            PreEvalFunc pre_eval_func
         )
         
         shared_ptr[CySolverResult] storage_ptr
@@ -190,6 +192,7 @@ cdef extern from "rk.cpp" nogil:
             const cpp_bool use_dense_output,
             const double* t_eval,
             const size_t len_t_eval,
+            PreEvalFunc pre_eval_func,
             const double rtol,
             const double atol,
             const double* rtols_ptr,
@@ -220,6 +223,7 @@ cdef extern from "rk.cpp" nogil:
             const cpp_bool use_dense_output,
             const double* t_eval,
             const size_t len_t_eval,
+            PreEvalFunc pre_eval_func,
             const double rtol,
             const double atol,
             const double* rtols_ptr,
@@ -246,6 +250,7 @@ cdef extern from "rk.cpp" nogil:
             const cpp_bool use_dense_output,
             const double* t_eval,
             const size_t len_t_eval,
+            PreEvalFunc pre_eval_func,
             const double rtol,
             const double atol,
             const double* rtols_ptr,
@@ -272,6 +277,7 @@ cdef extern from "rk.cpp" nogil:
             const cpp_bool use_dense_output,
             const double* t_eval,
             const size_t len_t_eval,
+            PreEvalFunc pre_eval_func,
             const double rtol,
             const double atol,
             const double* rtols_ptr,
@@ -301,6 +307,7 @@ cdef extern from "cysolve.cpp" nogil:
             const cpp_bool dense_output,
             const double* t_eval,
             const size_t len_t_eval,
+            PreEvalFunc pre_eval_func,
             const double rtol,
             const double atol,
             const double* rtols_ptr,
@@ -361,6 +368,7 @@ cdef CySolveOutput cysolve_ivp(
     bint dense_output = *,
     double* t_eval = *,
     size_t len_t_eval = *,
+    PreEvalFunc pre_eval_func = *,
     double* rtols_ptr = *,
     double* atols_ptr = *,
     double max_step = *,
@@ -383,6 +391,7 @@ cdef CySolveOutput cysolve_ivp_gil(
     bint dense_output = *,
     double* t_eval = *,
     size_t len_t_eval = *,
+    PreEvalFunc pre_eval_func = *,
     double* rtols_ptr = *,
     double* atols_ptr = *,
     double max_step = *,

@@ -726,6 +726,7 @@ public:
         const bool use_dense_output = false,
         const double* t_eval = nullptr,
         const size_t len_t_eval = 0,
+        PreEvalFunc pre_eval_func = nullptr,
         // RKSolver input arguments
         const double rtol = 1.0e-3,
         const double atol = 1.0e-6,

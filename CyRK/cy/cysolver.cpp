@@ -38,7 +38,8 @@ CySolverBase::CySolverBase(
         const size_t max_ram_MB,
         const bool use_dense_output,
         const double* t_eval,
-        const size_t len_t_eval) :
+        const size_t len_t_eval,
+        PreEvalFunc pre_eval_func) :
             status(0),
             num_y(num_y),
             num_extra(num_extra),
@@ -48,7 +49,8 @@ CySolverBase::CySolverBase(
             diffeq_ptr(diffeq_ptr),
             args_ptr(args_ptr),
             use_dense_output(use_dense_output),
-            len_t_eval(len_t_eval)
+            len_t_eval(len_t_eval),
+            pre_eval_func(pre_eval_func)
 {
     // Parse inputs
     this->capture_extra = num_extra > 0;
@@ -194,7 +196,7 @@ bool CySolverBase::check_status() const
 void CySolverBase::cy_diffeq() noexcept
 {
     // Call c function
-    this->diffeq_ptr(this->dy_now_ptr, this->t_now_ptr[0], this->y_now_ptr, this->args_ptr);
+    this->diffeq_ptr(this->dy_now_ptr, this->t_now_ptr[0], this->y_now_ptr, this->args_ptr, this->pre_eval_func);
 }
 
 void CySolverBase::reset()

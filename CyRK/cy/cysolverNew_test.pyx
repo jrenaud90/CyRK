@@ -1,18 +1,10 @@
 # distutils: language = c++
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 
-from libc.math cimport sin, cos, fabs, fmin, fmax
-
-from CyRK.cy.cysolverNew cimport (
-    cysolve_ivp, find_expected_size, WrapCySolverResult, DiffeqFuncType,MAX_STEP, EPS_100, INF,
-    CySolverResult, CySolveOutput
-    )
-from CyRK.utils.memory cimport shared_ptr
-
 import numpy as np
 
 
-cdef void baseline_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr) noexcept nogil:
+cdef void baseline_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
     # Unpack y
     cdef double y0, y1
     y0 = y_ptr[0]
@@ -22,7 +14,7 @@ cdef void baseline_diffeq(double* dy_ptr, double t, double* y_ptr, const void* a
     dy_ptr[1] = (0.02 * y0 - 1.) * y1
 
 
-cdef void accuracy_test_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr) noexcept nogil:
+cdef void accuracy_test_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
     # Unpack y
     cdef double y0, y1
     y0 = y_ptr[0]
@@ -32,7 +24,7 @@ cdef void accuracy_test_diffeq(double* dy_ptr, double t, double* y_ptr, const vo
     dy_ptr[1] = cos(t) + y0
 
 
-cdef void extraoutput_test_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr) noexcept nogil:
+cdef void extraoutput_test_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
     # Unpack y
     cdef double y0, y1, extra_0, extra_1
     y0 = y_ptr[0]
@@ -50,7 +42,7 @@ cdef void extraoutput_test_diffeq(double* dy_ptr, double t, double* y_ptr, const
     dy_ptr[3] = extra_1
 
 
-cdef void lorenz_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr) noexcept nogil:
+cdef void lorenz_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
     # Unpack args
     cdef double* args_dbl_ptr = <double*>args_ptr
     cdef double a = args_dbl_ptr[0]
@@ -68,7 +60,7 @@ cdef void lorenz_diffeq(double* dy_ptr, double t, double* y_ptr, const void* arg
     dy_ptr[2] = y0 * y1 - c * y2
 
 
-cdef void lorenz_extraoutput_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr) noexcept nogil:
+cdef void lorenz_extraoutput_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
     # Unpack args
     cdef double* args_dbl_ptr = <double*>args_ptr
     cdef double a = args_dbl_ptr[0]
@@ -94,7 +86,7 @@ cdef void lorenz_extraoutput_diffeq(double* dy_ptr, double t, double* y_ptr, con
     dy_ptr[5] = e_3
 
 
-cdef void lotkavolterra_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr) noexcept nogil:
+cdef void lotkavolterra_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
     # Unpack args
     cdef double* args_dbl_ptr = <double*>args_ptr
     cdef double a = args_dbl_ptr[0]
@@ -112,7 +104,7 @@ cdef void lotkavolterra_diffeq(double* dy_ptr, double t, double* y_ptr, const vo
 
 
 
-cdef void pendulum_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr) noexcept nogil:
+cdef void pendulum_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
     # Unpack args
     cdef double* args_dbl_ptr = <double*>args_ptr
     cdef double l = args_dbl_ptr[0]
@@ -141,17 +133,13 @@ cdef struct ArbitraryArgStruct:
     double m
     double g
 
-from libc.stdio cimport printf
-
-cdef void arbitrary_arg_test(double* dy_ptr, double t, double* y_ptr, const void* args_ptr) noexcept nogil:
+cdef void arbitrary_arg_test(double* dy_ptr, double t, double* y_ptr, const void* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
     # Unpack args
     cdef ArbitraryArgStruct* arb_args_ptr = <ArbitraryArgStruct*>args_ptr
     cdef double l = arb_args_ptr.l
     cdef double m = arb_args_ptr.m
     cdef double g = arb_args_ptr.g
     cdef cpp_bool cause_fail = arb_args_ptr.cause_fail
-
-    printf("\tDEBUG: (INSIDE DIFF) l=%e, m=%e, g=%e, fail=%d, address = %p\n", l, m, g, cause_fail, arb_args_ptr)
 
     cdef double coeff_1 = (-3. * g / (2. * l))
     cdef double coeff_2 = (3. / (m * l**2))
@@ -171,6 +159,50 @@ cdef void arbitrary_arg_test(double* dy_ptr, double t, double* y_ptr, const void
     else:
         dy_ptr[0] = y1
         dy_ptr[1] = coeff_1 * sin(y0) + coeff_2 * torque
+
+
+
+cdef void pendulum_preeval_func(void* output_ptr, double time, double* y_ptr, const void* args_ptr) noexcept nogil:
+
+    # Unpack args
+    cdef double* args_dbl_ptr = <double*>args_ptr
+    cdef double l = args_dbl_ptr[0]
+    cdef double m = args_dbl_ptr[1]
+    cdef double g = args_dbl_ptr[2]
+
+    cdef double coeff_1 = (-3. * g / (2. * l))
+    cdef double coeff_2 = (3. / (m * l**2))
+
+    # Unpack y
+    cdef double torque
+
+    # External torque
+    torque = 0.1 * sin(time)
+
+    # Convert output pointer to double pointer so we can store data
+    cdef double* output_dbl_ptr = <double*>output_ptr
+    output_dbl_ptr[0] = torque
+    output_dbl_ptr[1] = coeff_1
+    output_dbl_ptr[2] = coeff_2
+
+
+cdef void pendulum_preeval_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
+    
+    # Make stack allocated storage for pre eval output
+    cdef double[3] pre_eval_storage
+    cdef double* pre_eval_storage_ptr = &pre_eval_storage[0]
+
+    # Cast storage to void so we can call function
+    cdef void* pre_eval_storage_void_ptr = <void*>pre_eval_storage_ptr
+
+    # Call Pre-Eval Function
+    pre_eval_func(pre_eval_storage_void_ptr, t, y_ptr, args_ptr)
+
+    cdef double y0 = y_ptr[0]
+    cdef double y1 = y_ptr[1]
+
+    dy_ptr[0] = y1
+    dy_ptr[1] = pre_eval_storage_ptr[1] * sin(y0) + pre_eval_storage_ptr[2] * pre_eval_storage_ptr[0]
 
 def cytester(
         int diffeq_number,
@@ -206,7 +238,8 @@ def cytester(
     cdef double* t_span_ptr = &t_span_arr[0]
 
     cdef int num_extra = 0
-    cdef DiffeqFuncType diffeq
+    cdef DiffeqFuncType diffeq = NULL
+    cdef PreEvalFunc pre_eval_func = NULL
     if diffeq_number == 0:
         diffeq = baseline_diffeq
     elif diffeq_number == 1:
@@ -225,6 +258,9 @@ def cytester(
         diffeq = pendulum_diffeq
     elif diffeq_number == 7:
         diffeq = arbitrary_arg_test
+    elif diffeq_number == 8:
+        diffeq = pendulum_preeval_diffeq
+        pre_eval_func = pendulum_preeval_func
     else:
         raise NotImplementedError
 
@@ -316,7 +352,17 @@ def cytester(
             # Set args pointer to our arb args struct variable's address and cast it to a void pointer
             args_ptr = <void*>&arb_arg_struct
             cast_arg_dbl = False
-            printf("DEBUG: address = %p\n", args_ptr)
+        
+        elif diffeq_number == 8:
+            num_y = 2
+            y0_ptr[0] = 0.01
+            y0_ptr[1] = 0.0
+            t_span_ptr[0] = 0.0
+            t_span_ptr[1] = 10.0
+            args_ptr_dbl[0] = 1.0
+            args_ptr_dbl[1] = 1.0
+            args_ptr_dbl[2] = 9.81
+            cast_arg_dbl = True
 
         else:
             raise NotImplementedError
@@ -360,6 +406,7 @@ def cytester(
         dense_output = dense_output,
         t_eval = t_eval_ptr,
         len_t_eval = len_t_eval,
+        pre_eval_func = pre_eval_func,
         rtols_ptr = rtols_ptr,
         atols_ptr = atols_ptr,
         max_step = max_step,
