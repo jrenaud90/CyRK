@@ -134,10 +134,48 @@ cdef void pendulum_diffeq(double* dy_ptr, double t, double* y_ptr, const void* a
     dy_ptr[1] = coeff_1 * sin(y0) + coeff_2 * torque
 
 
+cdef struct ArbitraryArgStruct:
+    double l
+    # Let's make sure it has something in the middle that is not a double for size checks.
+    cpp_bool cause_fail
+    double m
+    double g
+
+from libc.stdio cimport printf
+
+cdef void arbitrary_arg_test(double* dy_ptr, double t, double* y_ptr, const void* args_ptr) noexcept nogil:
+    # Unpack args
+    cdef ArbitraryArgStruct* arb_args_ptr = <ArbitraryArgStruct*>args_ptr
+    cdef double l = arb_args_ptr.l
+    cdef double m = arb_args_ptr.m
+    cdef double g = arb_args_ptr.g
+    cdef cpp_bool cause_fail = arb_args_ptr.cause_fail
+
+    printf("\tDEBUG: (INSIDE DIFF) l=%e, m=%e, g=%e, fail=%d, address = %p\n", l, m, g, cause_fail, arb_args_ptr)
+
+    cdef double coeff_1 = (-3. * g / (2. * l))
+    cdef double coeff_2 = (3. / (m * l**2))
+
+    # Unpack y
+    cdef double y0, y1, torque
+    y0 = y_ptr[0]
+    y1 = y_ptr[1]
+
+    # External torque
+    torque = 0.1 * sin(t)
+
+    if cause_fail:
+        # Put something crazy that will cause problems
+        dy_ptr[0] = (100 * t)**(1000)
+        dy_ptr[1] = (-100 * t)**(1000)
+    else:
+        dy_ptr[0] = y1
+        dy_ptr[1] = coeff_1 * sin(y0) + coeff_2 * torque
+
 def cytester(
         int diffeq_number,
-        tuple t_span,
-        const double[::1] y0,
+        tuple t_span = None,
+        const double[::1] y0 = None,
         double[::1] args = None,
         int method = 1,
         size_t expected_size = 0,
@@ -153,19 +191,19 @@ def cytester(
         double first_step = 0.0
         ):
     
-    cdef double[2] t_span_arr
-    cdef double* t_span_ptr = &t_span_arr[0]
-    t_span_ptr[0] = t_span[0]
-    t_span_ptr[1] = t_span[1]
-
+    cdef size_t i
     cdef double* t_eval_ptr = NULL
     cdef size_t len_t_eval = 0
     if t_eval is not None:
         len_t_eval = len(t_eval)
         t_eval_ptr = &t_eval[0]
 
-    cdef unsigned int num_y   = len(y0)
-    cdef const double* y0_ptr = &y0[0]
+    cdef unsigned int num_y
+    cdef double[10] y0_arr
+    cdef double* y0_ptr = &y0_arr[0]
+
+    cdef double[2] t_span_arr
+    cdef double* t_span_ptr = &t_span_arr[0]
 
     cdef int num_extra = 0
     cdef DiffeqFuncType diffeq
@@ -185,12 +223,117 @@ def cytester(
         diffeq = lotkavolterra_diffeq
     elif diffeq_number == 6:
         diffeq = pendulum_diffeq
+    elif diffeq_number == 7:
+        diffeq = arbitrary_arg_test
     else:
         raise NotImplementedError
 
+    # Set up additional argument information
+    cdef bint cast_arg_dbl = False
+    cdef double[10] args_arr
     cdef void* args_ptr = NULL
-    if args is not None:
-        args_ptr = <void*>&args[0]
+    cdef double* args_ptr_dbl = &args_arr[0]
+    # Abitrary arg test requires a ArbitraryArgStruct class instance to be passed in
+    cdef ArbitraryArgStruct arb_arg_struct = ArbitraryArgStruct(1.0, False, 1.0, 9.81)
+    
+    # Check if generic testing was requested.
+    if y0 is None:
+        # Generic Testing Requested
+        if diffeq_number == 0:
+            num_y = 2
+            y0_ptr[0] = 20.0
+            y0_ptr[1] = 20.0
+            t_span_ptr[0] = 0.0
+            t_span_ptr[1] = 20.0
+
+        elif diffeq_number == 1:
+            num_y = 2
+            y0_ptr[0] = 0.0
+            y0_ptr[1] = 1.0
+            t_span_ptr[0] = 0.0
+            t_span_ptr[1] = 10.0
+
+        elif diffeq_number == 2:
+            num_y = 2
+            y0_ptr[0] = 20.0
+            y0_ptr[1] = 20.0
+            t_span_ptr[0] = 0.0
+            t_span_ptr[1] = 20.0
+
+        elif diffeq_number == 3:
+            num_y = 3
+            y0_ptr[0] = 1.0
+            y0_ptr[1] = 0.0
+            y0_ptr[2] = 0.0
+            t_span_ptr[0] = 0.0
+            t_span_ptr[1] = 10.0
+            args_ptr_dbl[0] = 10.0
+            args_ptr_dbl[1] = 28.0
+            args_ptr_dbl[2] = 8.0 / 3.0
+            cast_arg_dbl = True
+            
+        elif diffeq_number == 4:
+            num_y = 3
+            y0_ptr[0] = 1.0
+            y0_ptr[1] = 0.0
+            y0_ptr[2] = 0.0
+            t_span_ptr[0] = 0.0
+            t_span_ptr[1] = 10.0
+            args_ptr_dbl[0] = 10.0
+            args_ptr_dbl[1] = 28.0
+            args_ptr_dbl[2] = 8.0 / 3.0
+            cast_arg_dbl = True
+
+        elif diffeq_number == 5:
+            num_y = 2
+            y0_ptr[0] = 10.0
+            y0_ptr[1] = 5.0
+            t_span_ptr[0] = 0.0
+            t_span_ptr[0] = 15.0
+            args_ptr_dbl[0] = 1.5
+            args_ptr_dbl[1] = 1.0
+            args_ptr_dbl[2] = 3.0
+            args_ptr_dbl[3] = 1.0
+            cast_arg_dbl = True
+
+        elif diffeq_number == 6:
+            num_y = 2
+            y0_ptr[0] = 0.01
+            y0_ptr[1] = 0.0
+            t_span_ptr[0] = 0.0
+            t_span_ptr[1] = 10.0
+            args_ptr_dbl[0] = 1.0
+            args_ptr_dbl[1] = 1.0
+            args_ptr_dbl[2] = 9.81
+            cast_arg_dbl = True
+
+        elif diffeq_number == 7:
+            num_y = 2
+            y0_ptr[0] = 0.01
+            y0_ptr[1] = 0.0
+            t_span_ptr[0] = 0.0
+            t_span_ptr[1] = 10.0
+            # Set args pointer to our arb args struct variable's address and cast it to a void pointer
+            args_ptr = <void*>&arb_arg_struct
+            cast_arg_dbl = False
+            printf("DEBUG: address = %p\n", args_ptr)
+
+        else:
+            raise NotImplementedError
+    else:
+        # Regular testing requested.
+        num_y = len(y0)
+        for i in range(num_y):
+            y0_ptr[i] = y0[i]
+        t_span_ptr[0] = t_span[0]
+        t_span_ptr[1] = t_span[1]
+        if args is not None:
+            args_ptr = <void*>&args[0]
+        else:
+            args_ptr = NULL
+
+    if cast_arg_dbl:
+        args_ptr = <void*>args_ptr_dbl
 
     # Parse rtol
     cdef double* rtols_ptr = NULL
@@ -228,3 +371,4 @@ def cytester(
     pysafe_result.set_cyresult_pointer(result)
 
     return pysafe_result
+

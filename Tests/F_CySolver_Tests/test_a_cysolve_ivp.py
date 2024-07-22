@@ -16,6 +16,7 @@ rtols = np.asarray((1.0e-7, 1.0e-8), dtype=np.float64, order='C')
 atols = np.asarray((1.0e-8, 1.0e-9), dtype=np.float64, order='C')
 
 
+
 @pytest.mark.filterwarnings("error")  # Some exceptions get propagated via cython as warnings; we want to make sure the lead to crashes.
 @pytest.mark.parametrize('capture_extra', (True, False))
 @pytest.mark.parametrize('max_step', (1.0, 100_000.0))
@@ -102,6 +103,7 @@ def test_cysolve_ivp(use_args,
     assert type(result.message) == str
 
 
+@pytest.mark.filterwarnings("error")  # Some exceptions get propagated via cython as warnings; we want to make sure the lead to crashes.
 @pytest.mark.parametrize('integration_method', (0, 1, 2))
 @pytest.mark.parametrize('t_eval_end', (None, 0.5, 1.0))
 @pytest.mark.parametrize('test_dense_output', (False, True))
@@ -177,3 +179,19 @@ def test_cysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output)
     # ax.plot(result.t, real_answer[0], 'b', label='Analytic')
     # ax.plot(result.t, real_answer[1], 'b:')
     # plt.show()
+
+
+@pytest.mark.filterwarnings("error")  # Some exceptions get propagated via cython as warnings; we want to make sure the lead to crashes.
+@pytest.mark.parametrize('cysolve_test_func', (0, 1, 2, 3, 4, 5, 6, 7))
+def test_cysolve_ivp_all_diffeqs(cysolve_test_func):
+    """ Check all of the currently implemented test diffeqs for cysolve_ivp"""
+
+    result = \
+        cytester(cysolve_test_func)
+    
+    assert result.success
+    assert result.t.size > 0
+    assert result.y.size > 0
+    assert result.y.shape[0] > 0
+    assert np.all(~np.isnan(result.t))
+    assert np.all(~np.isnan(result.y))

@@ -74,7 +74,7 @@ If you intend to work on CyRK's code base you will want to install the following
 
 **The following code can be found in a Jupyter Notebook called "Getting Started.ipynb" in the "Demos" folder.**
 
-*Note: some older CyRK functions like `cyrk_ode` and `CySolver` class-based method have been deprecated. Read more in "Documentation/Deprecated Methods.md".*
+*Note: some older CyRK functions like `cyrk_ode` and `CySolver` class-based method have been deprecated. Read more in "Documentation/Deprecations.md".*
 CyRK's API is similar to SciPy's solve_ivp function. A differential equation can be defined in python such as:
 
 ```python
