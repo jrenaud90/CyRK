@@ -43,8 +43,8 @@ RKSolver::RKSolver(
             t_eval,
             len_t_eval,
             pre_eval_func),
+        user_provided_first_step_size(first_step_size),
         max_step_size(max_step_size),
-        user_provided_first_step_size(first_step_size)
         
 {
     // Check for errors
@@ -583,10 +583,7 @@ void RKSolver::p_step_implementation()
         this->status = -7;
     }
 
-    // End of RK step. 
-    // Update state variables
-    this->step_size = this->step_size;
-    this->step      = this->step;
+    // End of RK step.
 }
 
 
@@ -821,7 +818,7 @@ void RKSolver::p_update_Q(double* Q_ptr)
 
         double y_now_storage[Y_LIMIT] = { };
         double* y_now_storage_ptr = &y_now_storage[0];
-        std::memcpy(y_now_storage, this->y_now_ptr, sizeof(double) * this->num_y);
+        std::memcpy(y_now_storage_ptr, this->y_now_ptr, sizeof(double) * this->num_y);
 
         double time_storage = this->t_now_ptr[0];
 
@@ -971,7 +968,7 @@ void RKSolver::p_update_Q(double* Q_ptr)
             // f_old = K[0]
             // delta_y requires the current y and last y, but the current y was just overwritten to find
             // K_extended. So we need to pull from the values we saved in temporary variables. Same thing with dy
-            const double delta_y = y_now_storage[y_i] - this->y_old_ptr[y_i];
+            const double delta_y = y_now_storage_ptr[y_i] - this->y_old_ptr[y_i];
             const double sum_dy  = dy_now_storage_ptr[y_i] + this->K_ptr[stride_K];
             Q_ptr[stride_Q + 4] = 2.0 * delta_y - this->step * sum_dy;
 
@@ -985,7 +982,7 @@ void RKSolver::p_update_Q(double* Q_ptr)
 
         // Return values that were saved in temp variables back to state variables.
         std::memcpy(this->dy_now_ptr, dy_now_storage_ptr, sizeof(double) * this->num_dy);
-        std::memcpy(this->y_now_ptr, y_now_storage, sizeof(double) * this->num_y);
+        std::memcpy(this->y_now_ptr, y_now_storage_ptr, sizeof(double) * this->num_y);
         this->t_now_ptr[0] = time_storage;
         }
         break;

@@ -17,13 +17,13 @@ CySolverResult::CySolverResult(
         const bool direction_flag,
         const bool capture_dense_output,
         const bool t_eval_provided) :
-        num_y(num_y),
-        num_extra(num_extra),
-        last_t(last_t),
-        error_code(0),
-        direction_flag(direction_flag),
-        capture_dense_output(capture_dense_output),
-        t_eval_provided(t_eval_provided)
+            last_t(last_t),
+            capture_dense_output(capture_dense_output),
+            t_eval_provided(t_eval_provided),
+            num_extra(num_extra),
+            direction_flag(direction_flag),
+            error_code(0),
+            num_y(num_y)
 {
     // Round expected size and store it.
     this->original_expected_size = expected_size;

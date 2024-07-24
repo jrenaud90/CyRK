@@ -102,7 +102,7 @@ protected:
     size_t max_num_steps = 0;
 
     // Differential equation information
-    const void* args_ptr    = nullptr;
+    const void* args_ptr      = nullptr;
     DiffeqFuncType diffeq_ptr = nullptr;
     
     // t_eval information

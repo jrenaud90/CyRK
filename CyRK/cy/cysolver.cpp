@@ -40,17 +40,17 @@ CySolverBase::CySolverBase(
         const double* t_eval,
         const size_t len_t_eval,
         PreEvalFunc pre_eval_func) :
-            status(0),
-            num_y(num_y),
-            num_extra(num_extra),
             t_start(t_start),
             t_end(t_end),
-            storage_ptr(storage_ptr),
-            diffeq_ptr(diffeq_ptr),
             args_ptr(args_ptr),
-            use_dense_output(use_dense_output),
+            diffeq_ptr(diffeq_ptr),
             len_t_eval(len_t_eval),
-            pre_eval_func(pre_eval_func)
+            use_dense_output(use_dense_output),
+            num_extra(num_extra),
+            pre_eval_func(pre_eval_func),
+            status(0),
+            num_y(num_y),
+            storage_ptr(storage_ptr)
 {
     // Parse inputs
     this->capture_extra = num_extra > 0;
@@ -329,7 +329,7 @@ void CySolverBase::take_step()
                 auto lower_i = std::lower_bound(this->t_eval_vec.begin(), this->t_eval_vec.end(), this->t_now_ptr[0]) - this->t_eval_vec.begin();
                 auto upper_i  = std::upper_bound(this->t_eval_vec.begin(), this->t_eval_vec.end(), this->t_now_ptr[0]) - this->t_eval_vec.begin();
                 
-                int t_eval_index_new;
+                size_t t_eval_index_new;
                 if (lower_i == upper_i)
                 {
                     // Only 1 index came back wrapping the value. See if it is different from before.
@@ -357,11 +357,11 @@ void CySolverBase::take_step()
                 int t_eval_index_delta;
                 if (this->direction_flag)
                 {
-                    t_eval_index_delta = t_eval_index_new - (int)this->t_eval_index_old;
+                    t_eval_index_delta = (int)t_eval_index_new - (int)this->t_eval_index_old;
                 }
                 else
                 {
-                    t_eval_index_delta = (int)this->t_eval_index_old - t_eval_index_new;
+                    t_eval_index_delta = (int)this->t_eval_index_old - (int)t_eval_index_new;
                 }
                 
                 // If t_eval_index_delta == 0 then there are no new interpolations required between the last integration step and now.
@@ -390,7 +390,7 @@ void CySolverBase::take_step()
                         prepare_for_next_step = false;
                     }
 
-                    for (size_t i = 0; i < t_eval_index_delta; i++)
+                    for (int i = 0; i < t_eval_index_delta; i++)
                     {
                         double t_interp;
                         if (this->direction_flag)

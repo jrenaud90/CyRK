@@ -26,9 +26,6 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
     const double first_step_size
 )
 {
-    // State parameters
-    bool error = false;
-
     // Parse input
     const double t_start       = t_span_ptr[0];
     const double t_end         = t_span_ptr[1];
@@ -112,7 +109,6 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
         );
         break;
     [[unlikely]] default:
-        error = true;
         solution_ptr->success = false;
         solution_ptr->error_code = -3;
         solution_ptr->update_message("Model Error: Not implemented or unknown CySolver model requested.\n");
