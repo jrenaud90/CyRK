@@ -44,8 +44,7 @@ RKSolver::RKSolver(
             len_t_eval,
             pre_eval_func),
         user_provided_first_step_size(first_step_size),
-        max_step_size(max_step_size),
-        
+        max_step_size(max_step_size)        
 {
     // Check for errors
     if (this->user_provided_first_step_size != 0.0) [[unlikely]]

@@ -18,9 +18,9 @@ CySolverResult::CySolverResult(
         const bool capture_dense_output,
         const bool t_eval_provided) :
             last_t(last_t),
+            num_extra(num_extra),
             capture_dense_output(capture_dense_output),
             t_eval_provided(t_eval_provided),
-            num_extra(num_extra),
             direction_flag(direction_flag),
             error_code(0),
             num_y(num_y)
