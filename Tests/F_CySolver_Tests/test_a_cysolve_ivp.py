@@ -16,7 +16,6 @@ rtols = np.asarray((1.0e-7, 1.0e-8), dtype=np.float64, order='C')
 atols = np.asarray((1.0e-8, 1.0e-9), dtype=np.float64, order='C')
 
 
-@pytest.mark.skip("TEMP")
 @pytest.mark.filterwarnings("error")  # Some exceptions get propagated via cython as warnings; we want to make sure the lead to crashes.
 @pytest.mark.parametrize('capture_extra', (True, False))
 @pytest.mark.parametrize('max_step', (1.0, 100_000.0))
@@ -103,7 +102,6 @@ def test_cysolve_ivp(use_args,
     assert type(result.message) == str
 
 
-@pytest.mark.skip("TEMP")
 @pytest.mark.filterwarnings("error")  # Some exceptions get propagated via cython as warnings; we want to make sure the lead to crashes.
 @pytest.mark.parametrize('integration_method', (0, 1, 2))
 @pytest.mark.parametrize('t_eval_end', (None, 0.5, 1.0))
