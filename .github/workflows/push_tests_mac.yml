@@ -44,6 +44,8 @@ jobs:
         shell: bash -el {0}
         run: |
           conda install pytest matplotlib numba numpy scipy cython
+          export CC=gcc
+          export CXX=gcc
           export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
           python -m pip install -v .
         
@@ -84,6 +86,8 @@ jobs:
         run: |
           conda install nomkl
           conda install pytest matplotlib numba numpy scipy cython
+          export CC=gcc
+          export CXX=gcc
           export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
           python -m pip install -v .
         
