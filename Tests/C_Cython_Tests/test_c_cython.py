@@ -565,13 +565,6 @@ def test_accuracy_CySolverTester(rk_method):
     # ax.plot(CySolverAccuracyTestInst.t, real_answer[1], 'b:')
     # plt.show()
 
-import platform
-if platform.system().lower() == 'darwin':
-    # TODO: For some reason the accuracy test is failing on macos after the switch from GCC. 
-    # Since this is a deprecated function there is not a strong incentive to investigate since the new backend passes.
-    # But something to keep in mind if we ever revive it.
-    pytest.mark.skip("For some reason the accuracy test is failing on macos after the switch from GCC. Since this is a deprecated function there is not a strong incentive to investigate since the new backend passes. But something to keep in mind if we ever revive it.")(test_accuracy_CySolverTester)
-
 @pytest.mark.parametrize('complex_valued', (True, False))
 @pytest.mark.parametrize('rk_method', (0, 1, 2))
 def test_max_num_steps(rk_method, complex_valued):
