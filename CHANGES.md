@@ -15,6 +15,9 @@ C++ Backend:
 * Added tests to check new void arg feature.
 * Added tests to check new pre-eval function feature.
 
+MacOS:
+* Going back to GCC for C and C++ compile instead of clang (ran into inconsistent test failures with clang).
+
 ### v0.10.0 (2024-07-17)
 
 C++ Backend:
