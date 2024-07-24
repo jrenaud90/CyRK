@@ -275,6 +275,12 @@ def cytester(
     # Check if generic testing was requested.
     if y0 is None:
         # Generic Testing Requested
+        
+        # Use a higher tolerance for testing
+        rtol = 1.0e-6
+        atol = 1.0e-8
+
+        # Get inputs for requested functions
         if diffeq_number == 0:
             num_y = 2
             y0_ptr[0] = 20.0
