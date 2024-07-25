@@ -2,7 +2,23 @@
 
 ## 2024
 
-#### v0.10.0 (2024-07-17)
+#### v0.10.1 (2024-07-TBD)
+
+C++ Backend:
+* Changed optional args from double pointer to void pointers to allow for arbitrary objects to be passed in.
+  * Added description of this feature to "Documentation/Advanced CySolver.md" documentation and "Demos/Advanced CySolver Examples.ipynb" jupyter notebook.
+* Allow users to specify a "Pre-Eval" function that can be passed to the differential equation. This function should take in time, y, and args and update an output pointer which can then be used by the diffeq to solve for dydt.
+
+`cysolve_ivp`:
+* Change call signature to accept new `pre_eval_func` function.
+* Added more differential equations to tests.
+* Added tests to check new void arg feature.
+* Added tests to check new pre-eval function feature.
+
+MacOS:
+* Going back to GCC for C and C++ compile instead of clang (ran into inconsistent test failures with clang).
+
+### v0.10.0 (2024-07-17)
 
 C++ Backend:
 * This version of CyRK introduces a major rework of the backend integrator which is now written in pure C++.

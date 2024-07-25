@@ -96,13 +96,14 @@ cdef CySolveOutput cysolve_ivp(
             unsigned int method = 1,
             double rtol = 1.0e-3,
             double atol = 1.0e-6,
-            double* args_ptr = NULL,
+            void* args_ptr = NULL,
             unsigned int num_extra = 0,
             size_t max_num_steps = 0,
             size_t max_ram_MB = 2000,
             bint dense_output = False,
             double* t_eval = NULL,
             size_t len_t_eval = 0,
+            PreEvalFunc pre_eval_func = NULL,
             double* rtols_ptr = NULL,
             double* atols_ptr = NULL,
             double max_step = MAX_STEP,
@@ -124,6 +125,7 @@ cdef CySolveOutput cysolve_ivp(
         dense_output,
         t_eval,
         len_t_eval,
+        pre_eval_func,
         rtol,
         atol,
         rtols_ptr,
@@ -142,13 +144,14 @@ cdef CySolveOutput cysolve_ivp_gil(
             unsigned int method = 1,
             double rtol = 1.0e-3,
             double atol = 1.0e-6,
-            double* args_ptr = NULL,
+            void* args_ptr = NULL,
             unsigned int num_extra = 0,
             size_t max_num_steps = 0,
             size_t max_ram_MB = 2000,
             bint dense_output = False,
             double* t_eval = NULL,
             size_t len_t_eval = 0,
+            PreEvalFunc pre_eval_func = NULL,
             double* rtols_ptr = NULL,
             double* atols_ptr = NULL,
             double max_step = MAX_STEP,
@@ -170,6 +173,7 @@ cdef CySolveOutput cysolve_ivp_gil(
         dense_output,
         t_eval,
         len_t_eval,
+        pre_eval_func,
         rtol,
         atol,
         rtols_ptr,
@@ -395,7 +399,7 @@ def pysolve_ivp(
     # because we need to tie in the python-based diffeq function (via its wrapper)
     
     # Build null pointers to unused arguments
-    cdef double* args_ptr = NULL
+    cdef void* args_ptr = NULL
 
     # We need to heap allocate the PySolver class instance otherwise it can get garbage collected while the solver
     # is running.

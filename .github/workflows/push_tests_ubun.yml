@@ -24,13 +24,13 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest
+          python -m pip install pytest pytest-xdist
       - name: Install package
         run: |
           python -m pip install . -v
 
       - name: Run pytest
-        run: pytest -v Tests/
+        run: pytest -n auto -v Tests/
 
   test-39-with-coverage:
     name: Test Python 3.9 and Upload Coverage Report
@@ -44,13 +44,13 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest pytest-cov cython
+          python -m pip install pytest pytest-cov cython pytest-xdist
       - name: Install package
         run: |
           python -m pip install . -v
 
       - name: Run pytest
-        run: pytest --capture=sys -v --cov=CyRK Tests/
+        run: pytest -n auto --capture=sys -v --cov=CyRK Tests/
         env:
           # Disable numba so that njited functions can have their coverage checked.
           NUMBA_DISABLE_JIT: 1

@@ -9,9 +9,9 @@ CySolverDense::CySolverDense(
         unsigned int num_y,
         unsigned int Q_order) :
             integrator_int(integrator_int),
+            num_y(num_y),
             t_old(t_old),
             t_now(t_now),
-            num_y(num_y),
             Q_order(Q_order)
 {
     // Make a copy of the y_in pointer in this Dense interpolator's storage

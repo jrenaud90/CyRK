@@ -21,7 +21,7 @@ if install_platform.lower() == 'windows':
 elif install_platform.lower() == 'darwin':
     # OpenMP is installed via llvm. See https://stackoverflow.com/questions/60005176/how-to-deal-with-clang-error-unsupported-option-fopenmp-on-travis
     #os.environ["CXX"] = "g++"
-    extra_compile_args = ['-O3']
+    extra_compile_args = ['-O3', '-Wno-error=incompatible-function-pointer-types']
     extra_link_args = []
 else:
     extra_compile_args = ['-fopenmp', '-O3']
@@ -39,9 +39,9 @@ for cython_ext, ext_data in cython_ext_dict.items():
 
     if ext_data['is_cpp']:
         if install_platform.lower() == 'windows':
-            specific_compile_args = extra_compile_args + ext_data['compile_args'] + ["/std:c++11"]
+            specific_compile_args = extra_compile_args + ext_data['compile_args'] + ["/std:c++20"]
         else:
-            specific_compile_args = extra_compile_args + ext_data['compile_args'] + ["-std=c++11"]
+            specific_compile_args = extra_compile_args + ext_data['compile_args'] + ["-std=c++14"]
     else:
         specific_compile_args = extra_compile_args + ext_data['compile_args']
 

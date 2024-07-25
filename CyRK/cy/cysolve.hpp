@@ -16,12 +16,13 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
     // General optional arguments
     const size_t expected_size = 0,
     const unsigned int num_extra = 0,
-    const double* args_ptr = nullptr,
+    const void* args_ptr = nullptr,
     const size_t max_num_steps = 0,
     const size_t max_ram_MB = 2000,
     const bool dense_output = false,
     const double* t_eval = nullptr,
     const size_t len_t_eval = 0,
+    PreEvalFunc pre_eval_func = nullptr,
     // rk optional arguments
     const double rtol = 1.0e-3,
     const double atol = 1.0e-6,
@@ -74,7 +75,7 @@ public:
         const unsigned int num_y,
         // General optional arguments
         const unsigned int num_extra,
-        const double* args_ptr,
+        const void* args_ptr,
         const size_t max_num_steps,
         const size_t max_ram_MB,
         const bool dense_output,

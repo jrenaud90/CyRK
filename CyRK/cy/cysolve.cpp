@@ -10,12 +10,13 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
     // General optional arguments
     const size_t expected_size,
     const unsigned int num_extra,
-    const double* args_ptr,
+    const void* args_ptr,
     const size_t max_num_steps,
     const size_t max_ram_MB,
     const bool dense_output,
     const double* t_eval,
     const size_t len_t_eval,
+    PreEvalFunc pre_eval_func,
     // rk optional arguments
     const double rtol,
     const double atol,
@@ -25,9 +26,6 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
     const double first_step_size
 )
 {
-    // State parameters
-    bool error = false;
-
     // Parse input
     const double t_start       = t_span_ptr[0];
     const double t_end         = t_span_ptr[1];
@@ -85,7 +83,7 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
         solver = new RK23(
             // Common Inputs
             diffeq_ptr, solution_ptr, t_start, t_end, y0_ptr, num_y, num_extra, args_ptr, max_num_steps, max_ram_MB,
-            dense_output, t_eval, len_t_eval,
+            dense_output, t_eval, len_t_eval, pre_eval_func,
             // RK Inputs
             rtol, atol, rtols_ptr, atols_ptr, max_step_size, first_step_size
         );
@@ -95,7 +93,7 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
         solver = new RK45(
             // Common Inputs
             diffeq_ptr, solution_ptr, t_start, t_end, y0_ptr, num_y, num_extra, args_ptr, max_num_steps, max_ram_MB,
-            dense_output, t_eval, len_t_eval,
+            dense_output, t_eval, len_t_eval, pre_eval_func,
             // RK Inputs
             rtol, atol, rtols_ptr, atols_ptr, max_step_size, first_step_size
         );
@@ -105,13 +103,12 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
         solver = new DOP853(
             // Common Inputs
             diffeq_ptr, solution_ptr, t_start, t_end, y0_ptr, num_y, num_extra, args_ptr, max_num_steps, max_ram_MB,
-            dense_output, t_eval, len_t_eval,
+            dense_output, t_eval, len_t_eval, pre_eval_func,
             // RK Inputs
             rtol, atol, rtols_ptr, atols_ptr, max_step_size, first_step_size
         );
         break;
     [[unlikely]] default:
-        error = true;
         solution_ptr->success = false;
         solution_ptr->error_code = -3;
         solution_ptr->update_message("Model Error: Not implemented or unknown CySolver model requested.\n");
@@ -158,7 +155,7 @@ PySolver::PySolver(
     const unsigned int num_y,
     // General optional arguments
     const unsigned int num_extra,
-    const double* args_ptr,
+    const void* args_ptr,
     const size_t max_num_steps,
     const size_t max_ram_MB,
     const bool dense_output,
@@ -181,6 +178,9 @@ PySolver::PySolver(
     // We need to pass a fake diffeq pointer (diffeq ptr is unused in python-based solver)
     DiffeqFuncType diffeq_ptr = nullptr;
 
+    // We also need to pass a fake pre-eval function
+    PreEvalFunc pre_eval_func = nullptr;
+
     // Build the solver class. This must be heap allocated to take advantage of polymorphism.
     switch (this->integration_method)
     {
@@ -201,6 +201,7 @@ PySolver::PySolver(
             dense_output,
             t_eval,
             len_t_eval,
+            pre_eval_func,
             // rk optional arguments
             rtol,
             atol,
@@ -226,6 +227,7 @@ PySolver::PySolver(
             dense_output,
             t_eval,
             len_t_eval,
+            pre_eval_func,
             // rk optional arguments
             rtol,
             atol,
@@ -251,6 +253,7 @@ PySolver::PySolver(
             dense_output,
             t_eval,
             len_t_eval,
+            pre_eval_func,
             // rk optional arguments
             rtol,
             atol,

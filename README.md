@@ -11,7 +11,7 @@
 
 ---
 
-<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.10.0 Alpha-orange" alt="CyRK Version 0.10.0 Alpha" /></a>
+<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.10.1 Alpha-orange" alt="CyRK Version 0.10.1 Alpha" /></a>
 
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
@@ -28,7 +28,7 @@ The [cython-based](https://cython.org/) `cysolver_ivp` function that works with 
 An additional benefit of the two cython implementations is that they are pre-compiled. This avoids most of the start-up performance hit experienced by just-in-time compilers like numba.
 
 
-<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_predprey_v0-10-0.png" alt="CyRK Performance Graphic" />
+<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_predprey_v0-10-1.png" alt="CyRK Performance Graphic" />
 
 ## Installation
 
@@ -74,7 +74,7 @@ If you intend to work on CyRK's code base you will want to install the following
 
 **The following code can be found in a Jupyter Notebook called "Getting Started.ipynb" in the "Demos" folder.**
 
-*Note: some older CyRK functions like `cyrk_ode` and `CySolver` class-based method have been deprecated. Read more in "Documentation/Deprecated Methods.md".*
+*Note: some older CyRK functions like `cyrk_ode` and `CySolver` class-based method have been deprecated. Read more in "Documentation/Deprecations.md".*
 CyRK's API is similar to SciPy's solve_ivp function. A differential equation can be defined in python such as:
 
 ```python
@@ -225,11 +225,20 @@ np.import_array()
 # Currently, CyRK only allows additional arguments to be passed in as a double array pointer (they all must be of type double). Mixed type args will be explored in the future if there is demand for it (make a GitHub issue if you'd like to see this feature!).
 # The "noexcept nogil" tells cython that the Python Global Interpretor Lock is not required, and that no exceptions should be raised by the code within this function (both improve performance).
 # If you do need the gil for your differential equation then you must use the `cysolve_ivp_gil` function instead of `cysolve_ivp`
-cdef void cython_diffeq(double* dy, double t, double* y, const double* args) noexcept nogil:
+
+# Import the required functions from CyRK
+from CyRK cimport cysolve_ivp, DiffeqFuncType, WrapCySolverResult, CySolveOutput, PreEvalFunc
+
+# Note that currently you must provide the "const void* args, PreEvalFunc pre_eval_func" as inputs even if they are unused.
+# See "Advanced CySolver.md" in the documentation for information about these parameters.
+cdef void cython_diffeq(double* dy, double t, double* y, const void* args, PreEvalFunc pre_eval_func) noexcept nogil:
     
     # Unpack args
-    cdef double a = args[0]
-    cdef double b = args[1]
+    # CySolver assumes an arbitrary data type for additional arguments. So we must cast them to the array of 
+    # doubles that we want to use for this equation
+    cdef double* args_as_dbls = <double*>args
+    cdef double a = args_as_dbls[0]
+    cdef double b = args_as_dbls[1]
     
     # Build Coeffs
     cdef double coeff_1 = (1. - a * y[1])
@@ -263,7 +272,9 @@ def run_cysolver(tuple t_span, double[::1] y0):
 
     # Assume constant args
     cdef double[2] args   = [0.01, 0.02]
-    cdef double* args_ptr = &args[0]
+    cdef double* args_dbl_ptr = &args[0]
+    # Need to cast the arg double pointer to void
+    cdef void* args_ptr = <void*>args_dbl_ptr
 
     # Run the integrator!
     cdef CySolveOutput result = cysolve_ivp(
@@ -316,25 +327,26 @@ There is a lot more you can do to interface with CyRK's C++ backend and fully op
 
 ```cython
 cdef shared_ptr[CySolverResult] cysolve_ivp(
-    DiffeqFuncType diffeq_ptr,    # Differential equation defined as a cython function
-    double* t_span_ptr,           # Pointer to array (size 2) of floats defining the start and stop points for integration
-    double* y0_ptr,               # Pointer to array defining initial y0 conditions.
-    unsigned int num_y,           # Size of y0_ptr array.
-    unsigned int method = 1,      # Integration method. Current options: 0 == RK23, 1 == RK45, 2 == DOP853
-    double rtol = 1.0e-3,         # Relative tolerance used to control integration error.
-    double atol = 1.0e-6,         # Absolute tolerance (near 0) used to control integration error.
-    double* args_ptr = NULL,      # Pointer to array of additional arguments passed to the diffeq. Currently cysolve_ivp only supports doubles as additional arguments.
-    unsigned int num_extra = 0,   # Number of extra outputs you want to capture during integration. There is a performance hit if this is used in conjunction with t_eval or dense_output.
-    size_t max_num_steps = 0,     # Maximum number of steps allowed. If exceeded then integration will fail. 0 (the default) turns this off.
-    size_t max_ram_MB = 2000,     # Maximum amount of system memory the integrator is allowed to use. If this is exceeded then integration will fail.
-    bint dense_output = False,    # If True, then dense interpolators will be saved to the solution. This allows a user to call solution as if a function (in time).
-    double* t_eval = NULL,        # Pointer to an array of time steps at which to save data. If not provided then all adaptive time steps will be saved. There is a slight performance hit using this feature.
-    size_t len_t_eval = 0,        # Size of t_eval.
-    double* rtols_ptr = NULL,     # Overrides rtol if provided. Pointer to array of floats of rtols if you'd like a different rtol for each y.
-    double* atols_ptr = NULL,     # Overrides atol if provided. Pointer to array of floats of atols if you'd like a different atol for each y.
-    double max_step = MAX_STEP,   # Maximum allowed step size.
-    double first_step = 0.0       # Initial step size. If set to 0.0 then CyRK will guess a good step size.
-    size_t expected_size = 0,     # Expected size of the solution. There is a slight performance improvement if selecting the the exact or slightly more time steps than the adaptive stepper will require (if you happen to know this ahead of time).
+    DiffeqFuncType diffeq_ptr,        # Differential equation defined as a cython function
+    double* t_span_ptr,               # Pointer to array (size 2) of floats defining the start and stop points for integration
+    double* y0_ptr,                   # Pointer to array defining initial y0 conditions.
+    unsigned int num_y,               # Size of y0_ptr array.
+    unsigned int method = 1,          # Integration method. Current options: 0 == RK23, 1 == RK45, 2 == DOP853
+    double rtol = 1.0e-3,             # Relative tolerance used to control integration error.
+    double atol = 1.0e-6,             # Absolute tolerance (near 0) used to control integration error.
+    void* args_ptr = NULL,            # Pointer to array of additional arguments passed to the diffeq. See "Advanced CySolver.md" for more details.
+    unsigned int num_extra = 0,       # Number of extra outputs you want to capture during integration. There is a performance hit if this is used in conjunction with t_eval or dense_output.
+    size_t max_num_steps = 0,         # Maximum number of steps allowed. If exceeded then integration will fail. 0 (the default) turns this off.
+    size_t max_ram_MB = 2000,         # Maximum amount of system memory the integrator is allowed to use. If this is exceeded then integration will fail.
+    bint dense_output = False,        # If True, then dense interpolators will be saved to the solution. This allows a user to call solution as if a function (in time).
+    double* t_eval = NULL,            # Pointer to an array of time steps at which to save data. If not provided then all adaptive time steps will be saved. There is a slight performance hit using this feature.
+    size_t len_t_eval = 0,            # Size of t_eval.
+    PreEvalFunc pre_eval_func = NULL  # Optional additional function that is called within `diffeq_ptr` using current `t` and `y`. See "Advanced CySolver.md" for more details.
+    double* rtols_ptr = NULL,         # Overrides rtol if provided. Pointer to array of floats of rtols if you'd like a different rtol for each y.
+    double* atols_ptr = NULL,         # Overrides atol if provided. Pointer to array of floats of atols if you'd like a different atol for each y.
+    double max_step = MAX_STEP,       # Maximum allowed step size.
+    double first_step = 0.0           # Initial step size. If set to 0.0 then CyRK will guess a good step size.
+    size_t expected_size = 0,         # Expected size of the solution. There is a slight performance improvement if selecting the the exact or slightly more time steps than the adaptive stepper will require (if you happen to know this ahead of time).
     )
 ```
 

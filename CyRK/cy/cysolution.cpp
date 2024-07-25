@@ -17,13 +17,13 @@ CySolverResult::CySolverResult(
         const bool direction_flag,
         const bool capture_dense_output,
         const bool t_eval_provided) :
-        num_y(num_y),
-        num_extra(num_extra),
-        last_t(last_t),
-        error_code(0),
-        direction_flag(direction_flag),
-        capture_dense_output(capture_dense_output),
-        t_eval_provided(t_eval_provided)
+            last_t(last_t),
+            num_extra(num_extra),
+            capture_dense_output(capture_dense_output),
+            t_eval_provided(t_eval_provided),
+            direction_flag(direction_flag),
+            error_code(0),
+            num_y(num_y)
 {
     // Round expected size and store it.
     this->original_expected_size = expected_size;
@@ -373,7 +373,6 @@ void CySolverResult::call(const double t, double* y_interp)
             this->time_domain_sorted_ptr + interp_time_len_touse,
             t) - this->time_domain_sorted_ptr;
         
-        int t_eval_index_new;
         if (lower_i == upper_i)
         {
             // Only 1 index came back wrapping the value. See if it is different from before.

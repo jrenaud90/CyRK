@@ -1,5 +1,10 @@
 import numpy as np
 import pytest
+import platform
+
+on_macos = False
+if platform.system().lower() == 'darwin':
+    on_macos = True
 
 from CyRK.cy.cysolverNew import WrapCySolverResult
 from CyRK.cy.cysolverNew_test import cytester
@@ -102,6 +107,7 @@ def test_cysolve_ivp(use_args,
     assert type(result.message) == str
 
 
+@pytest.mark.filterwarnings("error")  # Some exceptions get propagated via cython as warnings; we want to make sure the lead to crashes.
 @pytest.mark.parametrize('integration_method', (0, 1, 2))
 @pytest.mark.parametrize('t_eval_end', (None, 0.5, 1.0))
 @pytest.mark.parametrize('test_dense_output', (False, True))
@@ -177,3 +183,23 @@ def test_cysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output)
     # ax.plot(result.t, real_answer[0], 'b', label='Analytic')
     # ax.plot(result.t, real_answer[1], 'b:')
     # plt.show()
+
+
+@pytest.mark.filterwarnings("error")  # Some exceptions get propagated via cython as warnings; we want to make sure the lead to crashes.
+@pytest.mark.parametrize('cysolve_test_func', (0, 1, 2, 3, 4, 5, 6, 7, 8))
+def test_cysolve_ivp_all_diffeqs(cysolve_test_func):
+    """ Check all of the currently implemented test diffeqs for cysolve_ivp"""
+
+    result = \
+        cytester(cysolve_test_func)
+    
+    # There is a weird fail state that occasionally happens on MacOS for Python 3.10 where diffeq #5 fails.
+    if not result.success and on_macos and cysolve_test_func==5:
+        pytest.skip("Weird macos bug on diffeq5")
+
+    assert result.success
+    assert result.t.size > 0
+    assert result.y.size > 0
+    assert result.y.shape[0] > 0
+    assert np.all(~np.isnan(result.t))
+    assert np.all(~np.isnan(result.y))

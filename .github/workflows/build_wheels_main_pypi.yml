@@ -43,7 +43,7 @@ jobs:
       - name: Install Anaconda
         uses: conda-incubator/setup-miniconda@v3
         with:
-          activate-environment: cyrk_test
+          activate-environment: cyrk_macos_latest_wheels
           auto-update-conda: true
           python-version: ${{ matrix.python }}
           auto-activate-base: false
@@ -57,6 +57,8 @@ jobs:
         run: |
           conda install pytest matplotlib numba numpy scipy cython
           python -m pip install --upgrade build
+          export CC=gcc
+          export CXX=gcc
           export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
           python -m build --wheel --outdir ./wheelhouse/
 
@@ -85,7 +87,7 @@ jobs:
       - name: Install Anaconda
         uses: conda-incubator/setup-miniconda@v3
         with:
-          activate-environment: cyrk_test
+          activate-environment: cyrk_macos_13_wheels
           auto-update-conda: true
           python-version: ${{ matrix.python }}
           auto-activate-base: false
@@ -105,6 +107,8 @@ jobs:
           conda install nomkl
           conda install pytest matplotlib numba numpy scipy cython
           python -m pip install --upgrade build
+          export CC=gcc
+          export CXX=gcc
           export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
           python -m build --wheel --outdir ./wheelhouse/
 

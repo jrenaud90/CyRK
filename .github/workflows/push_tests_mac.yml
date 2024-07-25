@@ -43,13 +43,15 @@ jobs:
       - name: Install package
         shell: bash -el {0}
         run: |
-          conda install pytest matplotlib numba numpy scipy cython
+          conda install pytest matplotlib numba numpy scipy cython pytest-xdist
+          export CC=gcc
+          export CXX=gcc
           export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
           python -m pip install -v .
         
       - name: Run pytest
         shell: bash -el {0}
-        run: pytest --capture=sys -v Tests/
+        run: pytest -n auto --capture=sys -v Tests/
   
   test-macos-13:
     defaults:
@@ -83,10 +85,12 @@ jobs:
         shell: bash -el {0}
         run: |
           conda install nomkl
-          conda install pytest matplotlib numba numpy scipy cython
+          conda install pytest matplotlib numba numpy scipy cython pytest-xdist
+          export CC=gcc
+          export CXX=gcc
           export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
           python -m pip install -v .
         
       - name: Run pytest
         shell: bash -el {0}
-        run: pytest --capture=sys -v Tests/
+        run: pytest -n auto --capture=sys -v Tests/

@@ -33,22 +33,24 @@ CySolverBase::CySolverBase(
         const double* const y0_ptr,
         const unsigned int num_y,
         const unsigned int num_extra,
-        const double* const args_ptr,
+        const void* const args_ptr,
         const size_t max_num_steps,
         const size_t max_ram_MB,
         const bool use_dense_output,
         const double* t_eval,
-        const size_t len_t_eval) :
-            status(0),
-            num_y(num_y),
-            num_extra(num_extra),
+        const size_t len_t_eval,
+        PreEvalFunc pre_eval_func) :
             t_start(t_start),
             t_end(t_end),
-            storage_ptr(storage_ptr),
-            diffeq_ptr(diffeq_ptr),
             args_ptr(args_ptr),
+            diffeq_ptr(diffeq_ptr),
+            len_t_eval(len_t_eval),
+            num_extra(num_extra),
             use_dense_output(use_dense_output),
-            len_t_eval(len_t_eval)
+            pre_eval_func(pre_eval_func),
+            status(0),
+            num_y(num_y),
+            storage_ptr(storage_ptr)
 {
     // Parse inputs
     this->capture_extra = num_extra > 0;
@@ -194,7 +196,7 @@ bool CySolverBase::check_status() const
 void CySolverBase::cy_diffeq() noexcept
 {
     // Call c function
-    this->diffeq_ptr(this->dy_now_ptr, this->t_now_ptr[0], this->y_now_ptr, this->args_ptr);
+    this->diffeq_ptr(this->dy_now_ptr, this->t_now_ptr[0], this->y_now_ptr, this->args_ptr, this->pre_eval_func);
 }
 
 void CySolverBase::reset()
@@ -327,7 +329,7 @@ void CySolverBase::take_step()
                 auto lower_i = std::lower_bound(this->t_eval_vec.begin(), this->t_eval_vec.end(), this->t_now_ptr[0]) - this->t_eval_vec.begin();
                 auto upper_i  = std::upper_bound(this->t_eval_vec.begin(), this->t_eval_vec.end(), this->t_now_ptr[0]) - this->t_eval_vec.begin();
                 
-                int t_eval_index_new;
+                size_t t_eval_index_new;
                 if (lower_i == upper_i)
                 {
                     // Only 1 index came back wrapping the value. See if it is different from before.
@@ -355,11 +357,11 @@ void CySolverBase::take_step()
                 int t_eval_index_delta;
                 if (this->direction_flag)
                 {
-                    t_eval_index_delta = t_eval_index_new - (int)this->t_eval_index_old;
+                    t_eval_index_delta = (int)t_eval_index_new - (int)this->t_eval_index_old;
                 }
                 else
                 {
-                    t_eval_index_delta = (int)this->t_eval_index_old - t_eval_index_new;
+                    t_eval_index_delta = (int)this->t_eval_index_old - (int)t_eval_index_new;
                 }
                 
                 // If t_eval_index_delta == 0 then there are no new interpolations required between the last integration step and now.
@@ -388,7 +390,7 @@ void CySolverBase::take_step()
                         prepare_for_next_step = false;
                     }
 
-                    for (size_t i = 0; i < t_eval_index_delta; i++)
+                    for (int i = 0; i < t_eval_index_delta; i++)
                     {
                         double t_interp;
                         if (this->direction_flag)
