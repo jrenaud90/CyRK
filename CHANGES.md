@@ -2,7 +2,7 @@
 
 ## 2024
 
-#### v0.10.1 (2024-07-TBD)
+#### v0.10.1 (2024-07-25)
 
 C++ Backend:
 * Changed optional args from double pointer to void pointers to allow for arbitrary objects to be passed in.
