@@ -11,7 +11,7 @@
 
 ---
 
-<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.10.0 Alpha-orange" alt="CyRK Version 0.10.0 Alpha" /></a>
+<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.10.1 Alpha-orange" alt="CyRK Version 0.10.1 Alpha" /></a>
 
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
@@ -28,7 +28,7 @@ The [cython-based](https://cython.org/) `cysolver_ivp` function that works with 
 An additional benefit of the two cython implementations is that they are pre-compiled. This avoids most of the start-up performance hit experienced by just-in-time compilers like numba.
 
 
-<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_predprey_v0-10-0.png" alt="CyRK Performance Graphic" />
+<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_predprey_v0-10-1.png" alt="CyRK Performance Graphic" />
 
 ## Installation
 
@@ -225,11 +225,20 @@ np.import_array()
 # Currently, CyRK only allows additional arguments to be passed in as a double array pointer (they all must be of type double). Mixed type args will be explored in the future if there is demand for it (make a GitHub issue if you'd like to see this feature!).
 # The "noexcept nogil" tells cython that the Python Global Interpretor Lock is not required, and that no exceptions should be raised by the code within this function (both improve performance).
 # If you do need the gil for your differential equation then you must use the `cysolve_ivp_gil` function instead of `cysolve_ivp`
-cdef void cython_diffeq(double* dy, double t, double* y, const double* args) noexcept nogil:
+
+# Import the required functions from CyRK
+from CyRK cimport cysolve_ivp, DiffeqFuncType, WrapCySolverResult, CySolveOutput, PreEvalFunc
+
+# Note that currently you must provide the "const void* args, PreEvalFunc pre_eval_func" as inputs even if they are unused.
+# See "Advanced CySolver.md" in the documentation for information about these parameters.
+cdef void cython_diffeq(double* dy, double t, double* y, const void* args, PreEvalFunc pre_eval_func) noexcept nogil:
     
     # Unpack args
-    cdef double a = args[0]
-    cdef double b = args[1]
+    # CySolver assumes an arbitrary data type for additional arguments. So we must cast them to the array of 
+    # doubles that we want to use for this equation
+    cdef double* args_as_dbls = <double*>args
+    cdef double a = args_as_dbls[0]
+    cdef double b = args_as_dbls[1]
     
     # Build Coeffs
     cdef double coeff_1 = (1. - a * y[1])
@@ -263,7 +272,9 @@ def run_cysolver(tuple t_span, double[::1] y0):
 
     # Assume constant args
     cdef double[2] args   = [0.01, 0.02]
-    cdef double* args_ptr = &args[0]
+    cdef double* args_dbl_ptr = &args[0]
+    # Need to cast the arg double pointer to void
+    cdef void* args_ptr = <void*>args_dbl_ptr
 
     # Run the integrator!
     cdef CySolveOutput result = cysolve_ivp(
