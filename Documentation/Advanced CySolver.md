@@ -1,4 +1,4 @@
-# TODO: This document needs expansion. There are currently many ways to interface with CyRK's C++ backend as well as other features and gotchas. This document will be expanded in the future to highlight all of these. In the mean time, please feel free to post questions as GitHub Issues.
+_TODO: This document needs expansion. There are currently many ways to interface with CyRK's C++ backend as well as other features and gotchas. This document will be expanded in the future to highlight all of these. In the mean time, please feel free to post questions as GitHub Issues._
 
 _Many of the examples below can be found in the interactive "Demos/Advanced CySolver Examples.ipynb" jupyter notebook._
 
