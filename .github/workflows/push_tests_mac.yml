@@ -45,7 +45,7 @@ jobs:
         run: |
           conda install pytest matplotlib numba numpy scipy cython pytest-xdist
           export CC=/usr/local/opt/llvm/bin/clang
-          export CC=/usr/local/opt/llvm/bin/clang++
+          export CXX=/usr/local/opt/llvm/bin/clang++
           export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
           python -m pip install -v .
         
@@ -92,7 +92,7 @@ jobs:
           conda install nomkl
           conda install pytest matplotlib numba numpy scipy cython pytest-xdist
           export CC=/usr/local/opt/llvm/bin/clang
-          export CC=/usr/local/opt/llvm/bin/clang++
+          export CXX=/usr/local/opt/llvm/bin/clang++
           export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
           python -m pip install -v .
         
