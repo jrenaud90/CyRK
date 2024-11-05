@@ -5,3 +5,27 @@ def test_package():
 
     assert type(version) == str
     assert version == __version__
+
+def test_testers_nbrk():
+
+    from CyRK import test_nbrk
+
+    test_nbrk()
+
+    assert True
+
+def test_testers_cysolver():
+
+    from CyRK import test_cysolver
+
+    test_cysolver()
+
+    assert True
+
+def test_testers_pysolver():
+
+    from CyRK import test_pysolver
+
+    test_pysolver()
+
+    assert True

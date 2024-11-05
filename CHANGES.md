@@ -2,6 +2,14 @@
 
 ## 2024
 
+#### v0.10.2 (2024-11-05)
+
+Bugs:
+* Fixed issue where `CyRK.test_cysolver()` use incorrect arguments.
+
+Tests:
+* Added tests to check all built in testers.
+
 #### v0.10.1 (2024-07-25)
 
 C++ Backend:
