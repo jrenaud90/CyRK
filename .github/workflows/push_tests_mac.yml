@@ -38,7 +38,7 @@ jobs:
       - name: install llvm # openMP does not play nice with clang on MacOS; also some versions of macos use older gcc so there is a need to install latest.
         shell: bash -el {0}
         run: |
-          brew install llvm libomp
+          brew install llvm libomp clang-omp
 
       - name: Install package
         shell: bash -el {0}
@@ -84,7 +84,7 @@ jobs:
       - name: install llvm # openMP does not play nice with clang on MacOS; also some versions of macos use older gcc so there is a need to install latest.
         shell: bash -el {0}
         run: |
-          brew install llvm libomp
+          brew install llvm libomp clang-omp
 
       - name: Install package
         shell: bash -el {0}
