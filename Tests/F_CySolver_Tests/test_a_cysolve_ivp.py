@@ -6,6 +6,9 @@ on_macos = False
 if platform.system().lower() == 'darwin':
     on_macos = True
 
+# Test if this is still needed
+on_macos = False
+
 from CyRK.cy.cysolverNew import WrapCySolverResult
 from CyRK.cy.cysolverNew_test import cytester
 
