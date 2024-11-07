@@ -6,6 +6,7 @@
 
 Bugs:
 * Fixed issue where `CyRK.test_cysolver()` used incorrect kind and order of arguments.
+* Fixed MacOS compile issues when using OpenMP (for both x86-64 and arm64 macos).
 
 Tests:
 * Added tests to check all built in testers.

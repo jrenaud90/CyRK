@@ -49,8 +49,8 @@ jobs:
           export CPPFLAGS="-I/opt/homebrew/opt/llvm/include"
           export LDFLAGS="-L/opt/homebrew/opt/libomp/lib"
           export CPPFLAGS="-I/opt/homebrew/opt/libomp/include"
-          export CC=/opt/homebrew/local/opt/llvm/bin/clang
-          export CXX=/opt/homebrew/local/opt/llvm/bin/clang++
+          export CC=/opt/homebrew/opt/llvm/bin/clang
+          export CXX=/opt/homebrew/opt/llvm/bin/clang++
           python -m pip install -v .
         
       - name: Run pytest
