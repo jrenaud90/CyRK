@@ -56,7 +56,16 @@ def test_cysolver():
 
     from CyRK.cy.cysolverNew_test import cytester
 
-    result = cytester(0, time_span, initial_conds_float, None, 1, 0, 0, 2000, rtol, atol)
+    result = cytester(0,
+                      time_span,
+                      initial_conds_float,
+                      args=None,
+                      method=1,
+                      expected_size=0,
+                      max_num_steps=0,
+                      max_ram_MB=2000,
+                      rtol=rtol,
+                      atol=atol)
 
     assert result.success
     assert type(result.t) == np.ndarray

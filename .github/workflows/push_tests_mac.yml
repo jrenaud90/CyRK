@@ -38,15 +38,15 @@ jobs:
       - name: install llvm # openMP does not play nice with clang on MacOS; also some versions of macos use older gcc so there is a need to install latest.
         shell: bash -el {0}
         run: |
-          brew install llvm libomp clang-omp
+          brew install llvm libomp
 
       - name: Install package
         shell: bash -el {0}
+        # export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
         run: |
           conda install pytest matplotlib numba numpy scipy cython pytest-xdist
           export CC=/usr/local/opt/llvm/bin/clang
           export CXX=/usr/local/opt/llvm/bin/clang++
-          export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
           python -m pip install -v .
         
       - name: Run pytest
@@ -84,16 +84,16 @@ jobs:
       - name: install llvm # openMP does not play nice with clang on MacOS; also some versions of macos use older gcc so there is a need to install latest.
         shell: bash -el {0}
         run: |
-          brew install llvm libomp clang-omp
+          brew install llvm libomp
 
       - name: Install package
         shell: bash -el {0}
+        # export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
         run: |
           conda install nomkl
           conda install pytest matplotlib numba numpy scipy cython pytest-xdist
           export CC=/usr/local/opt/llvm/bin/clang
           export CXX=/usr/local/opt/llvm/bin/clang++
-          export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
           python -m pip install -v .
         
       - name: Run pytest

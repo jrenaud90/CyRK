@@ -5,7 +5,7 @@
 #### v0.10.2 (2024-11-05)
 
 Bugs:
-* Fixed issue where `CyRK.test_cysolver()` use incorrect arguments.
+* Fixed issue where `CyRK.test_cysolver()` used incorrect kind and order of arguments.
 
 Tests:
 * Added tests to check all built in testers.
