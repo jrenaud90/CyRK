@@ -35,18 +35,22 @@ jobs:
         shell: bash -el {0}
         run: conda info
         
-      - name: install gcc-13 # openMP does not play nice with clang on MacOS; also some versions of macos use older gcc so there is a need to install latest.
+      - name: install llvm # openMP does not play nice with clang on MacOS; also some versions of macos use older gcc so there is a need to install latest.
         shell: bash -el {0}
         run: |
-          brew install gcc@13
+          brew install llvm libomp
 
       - name: Install package
         shell: bash -el {0}
+        # export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
         run: |
           conda install pytest matplotlib numba numpy scipy cython pytest-xdist
-          export CC=gcc
-          export CXX=gcc
-          export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
+          export LDFLAGS="-L/opt/homebrew/opt/llvm/lib"
+          export CPPFLAGS="-I/opt/homebrew/opt/llvm/include"
+          export LDFLAGS="-L/opt/homebrew/opt/libomp/lib"
+          export CPPFLAGS="-I/opt/homebrew/opt/libomp/include"
+          export CC=/opt/homebrew/opt/llvm/bin/clang
+          export CXX=/opt/homebrew/opt/llvm/bin/clang++
           python -m pip install -v .
         
       - name: Run pytest
@@ -80,15 +84,24 @@ jobs:
       - name: Conda info
         shell: bash -el {0}
         run: conda info
+      
+      - name: install llvm # openMP does not play nice with clang on MacOS; also some versions of macos use older gcc so there is a need to install latest.
+        shell: bash -el {0}
+        run: |
+          brew install llvm libomp
 
       - name: Install package
         shell: bash -el {0}
+        # export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
         run: |
           conda install nomkl
           conda install pytest matplotlib numba numpy scipy cython pytest-xdist
-          export CC=gcc
-          export CXX=gcc
-          export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
+          export LDFLAGS="-L/usr/local/opt/llvm/lib"
+          export CPPFLAGS="-I/usr/local/opt/llvm/include"
+          export LDFLAGS="-L/usr/local/opt/libomp/lib"
+          export CPPFLAGS="-I/usr/local/opt/libomp/include"
+          export CC=/usr/local/opt/llvm/bin/clang
+          export CXX=/usr/local/opt/llvm/bin/clang++
           python -m pip install -v .
         
       - name: Run pytest

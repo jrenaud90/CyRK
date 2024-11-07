@@ -104,5 +104,13 @@
     "compile_args": [],
     "link_args": [],
     "is_cpp": false
+  },
+  "cysolver_helpers": {
+    "name": "CyRK.cy.helpers",
+    "sources": [["CyRK", "cy", "helpers.pyx"]],
+    "include_dirs": [["CyRK", "cy"]],
+    "compile_args": [],
+    "link_args": [],
+    "is_cpp": true
   }
 }

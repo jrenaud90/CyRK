@@ -2,6 +2,20 @@
 
 ## 2024
 
+#### v0.10.2 (2024-11-05)
+
+New:
+* Added new `interpolate_from_solution_list` function to help interpolate between multiple solutions across a domain.
+
+Bugs:
+* Fixed issue where `CyRK.test_cysolver()` used incorrect kind and order of arguments.
+* Fixed MacOS compile issues when using OpenMP (for both x86-64 and arm64 macos).
+* Fixed issue where MacOS was failing certain tests.
+* Building new wheels to fix Github issue [#62](https://github.com/jrenaud90/CyRK/issues/62).
+
+Tests:
+* Added tests to check all built in testers.
+
 #### v0.10.1 (2024-07-25)
 
 C++ Backend:

@@ -1,10 +1,5 @@
 import numpy as np
 import pytest
-import platform
-
-on_macos = False
-if platform.system().lower() == 'darwin':
-    on_macos = True
 
 from CyRK.cy.cysolverNew import WrapCySolverResult
 from CyRK.cy.cysolverNew_test import cytester
@@ -190,13 +185,8 @@ def test_cysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output)
 def test_cysolve_ivp_all_diffeqs(cysolve_test_func):
     """ Check all of the currently implemented test diffeqs for cysolve_ivp"""
 
-    result = \
-        cytester(cysolve_test_func)
+    result = cytester(cysolve_test_func)
     
-    # There is a weird fail state that occasionally happens on MacOS for Python 3.10 where diffeq #5 fails.
-    if not result.success and on_macos and cysolve_test_func==5:
-        pytest.skip("Weird macos bug on diffeq5")
-
     assert result.success
     assert result.t.size > 0
     assert result.y.size > 0
