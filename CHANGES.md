@@ -2,6 +2,15 @@
 
 ## 2024
 
+#### v0.10.2 (2024-11-05)
+
+Bugs:
+* Fixed issue where `CyRK.test_cysolver()` used incorrect kind and order of arguments.
+* Fixed MacOS compile issues when using OpenMP (for both x86-64 and arm64 macos).
+
+Tests:
+* Added tests to check all built in testers.
+
 #### v0.10.1 (2024-07-25)
 
 C++ Backend:
