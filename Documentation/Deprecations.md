@@ -1,6 +1,7 @@
 # CyRK's Deprecated Methods
-The functions discussed in this document are still packaged with CyRK but are not currently receiving any new updates as they have been replaced with the new (as of CyRK v0.10.0) C++ backend.
-Users are strongly encouraged to use CyRK's new functions. The below information is for reference.
+The functions discussed in this document were packaged in previous version of CyRK (pre v0.11.0) but are no longer available (as of CyRK v0.11.0).
+
+Documentation is retained for comparison purposes to the new methods. This documentation will be removed in a future version of CyRK.
 
 ### Cython-based `cyrk_ode`
 **Deprecation Warning:** cyrk_ode was a previous version of CyRK's cython solver that could take in python functions. It is no longer supported and will be removed in a future version of CyRK.

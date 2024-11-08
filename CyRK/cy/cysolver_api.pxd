@@ -1,14 +1,12 @@
-from libc.string cimport memcpy
-from libcpp cimport nullptr
 from libcpp cimport bool as cpp_bool
-from libcpp.cmath cimport fmin, fabs
 
 cimport cpython.ref as cpy_ref
 from CyRK.utils.vector cimport vector
-from CyRK.utils.memory cimport shared_ptr, make_shared
+from CyRK.utils.memory cimport shared_ptr
 from CyRK.cy.pysolver_cyhook cimport DiffeqMethod
 
 cimport numpy as np
+
 
 # =====================================================================================================================
 # Import common functions and constants
@@ -49,7 +47,6 @@ cdef extern from "dense.cpp" nogil:
         double t_old
         double t_now
         void call(double t_interp, double* y_interped)
-
 
 
 # =====================================================================================================================
@@ -97,9 +94,6 @@ cdef class WrapCySolverResult:
     cdef double[::1] time_view
     cdef double[::1] y_view
 
-    cdef size_t size
-    cdef size_t num_dy
-
     cdef void set_cyresult_pointer(self, shared_ptr[CySolverResult] cyresult_shptr)
 
 
@@ -143,34 +137,6 @@ cdef extern from "cysolver.cpp" nogil:
         void set_cython_extension_instance(cpy_ref.PyObject* cython_extension_class_instance)
         void py_diffeq()
 
-
-cdef class WrapPyDiffeq:
-
-    cdef object diffeq_func
-    cdef tuple args
-    cdef cpp_bool use_args
-    cdef cpp_bool pass_dy_as_arg
-
-    cdef unsigned int num_y
-    cdef unsigned int num_dy
-
-    cdef np.ndarray y_now_arr
-    cdef double[::1] y_now_view
-    cdef np.ndarray dy_now_arr
-    cdef double[::1] dy_now_view
-
-    # State attributes
-    cdef double* y_now_ptr
-    cdef double* t_now_ptr
-    cdef double* dy_now_ptr
-
-    cdef void set_state(self,
-        double* dy_ptr,
-        double* t_ptr,
-        double* y_ptr
-        ) noexcept
-    
-    cdef void diffeq(self) noexcept
 
 # =====================================================================================================================
 # Import CySolver Runge-Kutta Integrators
@@ -315,39 +281,6 @@ cdef extern from "cysolve.cpp" nogil:
             const double max_step_size,
             const double first_step_size
             )
-
-    # Python-hook implementation
-    struct PySolverStatePointers:
-        double* dy_now_ptr
-        double* t_now_ptr
-        double* y_now_ptr
-
-    cdef cppclass PySolver:
-        PySolver()
-        PySolver(
-            unsigned int integration_method,
-            cpy_ref.PyObject* cython_extension_class_instance,
-            DiffeqMethod cython_extension_class_diffeq_method,
-            shared_ptr[CySolverResult] solution_ptr,
-            const double t_start,
-            const double t_end,
-            const double* y0_ptr,
-            const unsigned int num_y,
-            const unsigned int num_extra,
-            const void* args_ptr,
-            const size_t max_num_steps,
-            const size_t max_ram_MB,
-            const cpp_bool dense_output,
-            const double* t_eval,
-            const size_t len_t_eval,
-            const double rtol,
-            const double atol,
-            const double* rtols_ptr,
-            const double* atols_ptr,
-            const double max_step_size,
-            const double first_step_size)
-        PySolverStatePointers get_state_pointers()
-        void solve()
 
 
 # =====================================================================================================================
