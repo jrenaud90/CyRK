@@ -3,7 +3,6 @@
 
 import numpy as np
 
-
 cdef void baseline_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
     # Unpack y
     cdef double y0, y1

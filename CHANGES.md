@@ -2,6 +2,25 @@
 
 ## 2024
 
+#### v0.11.0 (2024-NNN)
+
+Removed:
+* Removed previous `cyrk_ode` and older version of the `CySolver` class-based solver.
+  * The functionality of `cyrk_ode` is now handled by the new (as of v0.10.0) `pysolve_ivp` function.
+  * The functionality of `CySolver` is partly handled by the new (as of v0.10.0) `cysolve_ivp` function.
+
+Refactors:
+* Refactored the new cysolver and pysolver files to remove "New". This will break imports based on previous versions.
+* Broke up cysolver and pysolver into different files to isolate each other's code.
+
+Other:
+* Changed the default ordering for diffeq function inputs to follow the scheme dydt(dy, t, y); previously it was dydt(t, y, dy). This affects the `cy2nb` and `nb2cy` helper functions.
+* Updated performance module to use new methods over old.
+
+Tests:
+* Updated tests to use pysolver where cyrk_ode was used.
+
+
 #### v0.10.2 (2024-11-05)
 
 New:

@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from numba import njit
 
-from CyRK.cy.cysolverNew import pysolve_ivp, WrapCySolverResult
+from CyRK import pysolve_ivp, WrapCySolverResult
 
 
 # To reduce number of tests, only test RK23 once since RK45 should capture all its functionality

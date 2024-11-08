@@ -1,5 +1,5 @@
 from CyRK.utils.vector cimport vector
-from CyRK.cy.cysolverNew cimport CySolveOutput, CySolverResult
+from CyRK.cy.cysolver cimport CySolveOutput, CySolverResult
 
 cdef void interpolate_from_solution_list(
     double* y_result_ptr,

@@ -31,7 +31,7 @@ def nb2cy(diffeq: callable, use_njit: bool = True, cache_njit: bool = False) -> 
             return func
 
     @njit_
-    def diffeq_cyrk(t, y, dy, *args):
+    def diffeq_cyrk(dy, t, y, *args):
         # Cython integrator requires the arguments to be passed as input args
         dy_ = diffeq(t, y, *args)
 
@@ -73,7 +73,7 @@ def cy2nb(diffeq: callable, use_njit: bool = True, cache_njit: bool = False) -> 
     def diffeq_nbrk(t, y, *args):
         # Cython integrator requires the arguments to be passed as input args
         dy = np.empty_like(y)
-        diffeq(t, y, dy, *args)
+        diffeq(dy, t, y, *args)
 
         return dy
 

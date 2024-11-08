@@ -54,7 +54,7 @@ def test_pysolver():
 
 def test_cysolver():
 
-    from CyRK.cy.cysolverNew_test import cytester
+    from CyRK.cy.cysolver_test import cytester
 
     result = cytester(0,
                       time_span,
