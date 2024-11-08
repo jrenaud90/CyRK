@@ -78,11 +78,11 @@ args = (0.01, 0.02)
 initial_conds = np.asarray((20., 20.), dtype=np.float64, order='C')
 time_span = (0., 10.)
 time_span_large = (0., 1000.)
-rtol = 1.0e-7
-atol = 1.0e-8
+rtol = 1.0e-4
+atol = 1.0e-7
 
-rtols = np.asarray((1.0e-7, 1.0e-8), dtype=np.float64, order='C')
-atols = np.asarray((1.0e-8, 1.0e-9), dtype=np.float64, order='C')
+rtols = np.asarray((1.0e-4, 1.0e-5), dtype=np.float64, order='C')
+atols = np.asarray((1.0e-6, 1.0e-7), dtype=np.float64, order='C')
 
 
 def test_pysolve_ivp_test():
@@ -91,23 +91,31 @@ def test_pysolve_ivp_test():
     from CyRK import test_pysolver
     test_pysolver()
 
+# njit is slow during testing so only do it once for each diffeq
+njit_rk23_tested = False
+njit_rk45_tested = False
+njit_DOP853_tested = False
+
 @pytest.mark.filterwarnings("error")  # Some exceptions get propagated via cython as warnings; we want to make sure the lead to crashes.
 @pytest.mark.parametrize('capture_extra', (True, False))
 @pytest.mark.parametrize('max_step', (1.0, 100_000.0))
-@pytest.mark.parametrize('first_step', (0.0, 0.01))
+@pytest.mark.parametrize('first_step', (0.0, 0.00001))
 @pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853"))
 @pytest.mark.parametrize('use_different_tols', (True, False))
 @pytest.mark.parametrize('use_rtol_array', (True, False))
 @pytest.mark.parametrize('use_atol_array', (True, False))
 @pytest.mark.parametrize('use_large_timespan', (True, False))
-@pytest.mark.parametrize('use_njit', (True, False))
+@pytest.mark.parametrize('use_njit_always', (False,))
 @pytest.mark.parametrize('use_args', (True, False))
 @pytest.mark.parametrize('use_scipy_style', (True, False))
-def test_pysolve_ivp(use_scipy_style, use_args, use_njit,
+def test_pysolve_ivp(use_scipy_style, use_args, use_njit_always,
                      use_large_timespan, use_atol_array, use_rtol_array, use_different_tols, integration_method,
                      first_step, max_step, capture_extra):
     """Check that the pysolve_ivp function is able to run with various changes to its arguments. """
     global RK23_TESTED
+    global njit_rk23_tested
+    global njit_rk45_tested
+    global njit_DOP853_tested
 
     # To reduce number of tests, only test RK23 once. 
     if RK23_TESTED and SKIP_SOME_RK23_TESTS and (integration_method=="RK23"):
@@ -138,8 +146,18 @@ def test_pysolve_ivp(use_scipy_style, use_args, use_njit,
             else:
                 diffeq_to_use = diffeq
 
-    if use_njit:
+    if use_njit_always:
         diffeq_to_use = njit(diffeq_to_use)
+    else:
+        if (not njit_rk23_tested) and (integration_method=="RK23"):
+            diffeq_to_use = njit(diffeq_to_use)
+            njit_rk23_tested = True
+        elif (not njit_rk45_tested) and (integration_method=="RK45"):
+            diffeq_to_use = njit(diffeq_to_use)
+            njit_rk45_tested = True
+        elif (not njit_DOP853_tested) and (integration_method=="DOP853"):
+            diffeq_to_use = njit(diffeq_to_use)
+            njit_DOP853_tested = True
 
     if use_atol_array:
         atols_use = atols

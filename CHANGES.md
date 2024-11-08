@@ -19,7 +19,11 @@ Other:
 
 Tests:
 * Updated tests to use pysolver where cyrk_ode was used.
+* Changed tolerances and other inputs to try to make some tests faster.
 
+Dependencies:
+* Tested that CyRK works with numpy v2.X; removed upper version restriction.
+* Tested that CyRK can not work with Python 3.13 yet due to numba dependence. See issue 
 
 #### v0.10.2 (2024-11-05)
 
