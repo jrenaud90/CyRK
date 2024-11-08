@@ -94,9 +94,6 @@ cdef class WrapCySolverResult:
     cdef double[::1] time_view
     cdef double[::1] y_view
 
-    cdef size_t size
-    cdef size_t num_dy
-
     cdef void set_cyresult_pointer(self, shared_ptr[CySolverResult] cyresult_shptr)
 
 

@@ -4,10 +4,14 @@
 
 #### v0.11.0 (2024-NNN)
 
+New:
+* `WrapCySolverResult` result class now provides user access to attribute `num_y`.
+
 Removed:
 * Removed previous `cyrk_ode` and older version of the `CySolver` class-based solver.
   * The functionality of `cyrk_ode` is now handled by the new (as of v0.10.0) `pysolve_ivp` function.
   * The functionality of `CySolver` is partly handled by the new (as of v0.10.0) `cysolve_ivp` function.
+    * Note that the new cysolve_ivp is a functional approach. A class based approach like the older CySolver class supported is no longer available but could be easy to implement. If there is interest please create a Github issue for it.
 
 Refactors:
 * Refactored the new cysolver and pysolver files to remove "New". This will break imports based on previous versions.
@@ -17,12 +21,16 @@ Other:
 * Changed the default ordering for diffeq function inputs to follow the scheme dydt(dy, t, y); previously it was dydt(t, y, dy). This affects the `cy2nb` and `nb2cy` helper functions.
 * Updated performance module to use new methods over old.
 
+Demos:
+* Fixed typo in the type of the mixed-type args container.
+* Updated to work with new refactoring.
+
 Tests:
 * Updated tests to use pysolver where cyrk_ode was used.
 * Changed tolerances and other inputs to try to make some tests faster.
 
 Dependencies:
-* Tested that CyRK works with numpy v2.X; removed upper version restriction.
+* Tested that CyRK works with numpy v2.X; but a lot of other packages don't right now. So setting it as upper limit.
 * Tested that CyRK can not work with Python 3.13 yet due to numba dependence. See issue 
 
 #### v0.10.2 (2024-11-05)

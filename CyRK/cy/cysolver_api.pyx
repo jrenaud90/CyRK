@@ -13,8 +13,6 @@ cdef class WrapCySolverResult:
         # Store c++ based result and pull out key information
         self.cyresult_shptr = cyresult_shptr
         self.cyresult_ptr   = cyresult_shptr.get()
-        self.size           = self.cyresult_ptr[0].size
-        self.num_dy         = self.cyresult_ptr[0].num_dy
 
         # Convert solution to pointers and views
         if self.cyresult_ptr.size > 0:
@@ -71,6 +69,14 @@ cdef class WrapCySolverResult:
     @property
     def size(self):
         return self.cyresult_ptr.size
+    
+    @property
+    def num_y(self):
+        return self.cyresult_ptr.num_y
+    
+    @property
+    def num_dy(self):
+        return self.cyresult_ptr.num_dy
     
     @property
     def error_code(self):
