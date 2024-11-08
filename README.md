@@ -11,7 +11,7 @@
 
 ---
 
-<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.10.2 Alpha-orange" alt="CyRK Version 0.10.2 Alpha" /></a>
+<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.11.0 Alpha-orange" alt="CyRK Version 0.11.0 Alpha" /></a>
 
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
@@ -28,7 +28,7 @@ The [cython-based](https://cython.org/) `cysolver_ivp` function that works with 
 An additional benefit of the two cython implementations is that they are pre-compiled. This avoids most of the start-up performance hit experienced by just-in-time compilers like numba.
 
 
-<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_predprey_v0-10-1.png" alt="CyRK Performance Graphic" />
+<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_predprey_v0-11-0.png" alt="CyRK Performance Graphic" />
 
 ## Installation
 
@@ -74,7 +74,7 @@ If you intend to work on CyRK's code base you will want to install the following
 
 **The following code can be found in a Jupyter Notebook called "Getting Started.ipynb" in the "Demos" folder.**
 
-*Note: some older CyRK functions like `cyrk_ode` and `CySolver` class-based method have been deprecated. Read more in "Documentation/Deprecations.md".*
+*Note: some older CyRK functions like `cyrk_ode` and `CySolver` class-based method have been deprecated and removed. Read more in "Documentation/Deprecations.md".*
 CyRK's API is similar to SciPy's solve_ivp function. A differential equation can be defined in python such as:
 
 ```python
@@ -199,7 +199,7 @@ def pysolve_ivp(
         atol = 1.0e-6,               # Absolute tolerance (near 0) used to control integration error. This can be provided as a numpy array if you'd like a different atol for each y.
         size_t max_num_steps = 0,    # Maximum number of steps allowed. If exceeded then integration will fail. 0 (the default) turns this off.
         size_t max_ram_MB = 2000,    # Maximum amount of system memory the integrator is allowed to use. If this is exceeded then integration will fail.
-        bint pass_dy_as_arg = False  # Flag if differential equation returns dy (False) or is passed dy as the first argument (True).
+        bint pass_dy_as_arg = False  # Flag if differential equation returns dy (False) or is passed dy as the _first_ argument (True).
         ):
 ```
 
