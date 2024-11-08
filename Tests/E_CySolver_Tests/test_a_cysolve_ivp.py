@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from CyRK.cy.cysolver import WrapCySolverResult
+from CyRK.cy.cysolver_api import WrapCySolverResult
 from CyRK.cy.cysolver_test import cytester
 
 args = (0.01, 0.02)
