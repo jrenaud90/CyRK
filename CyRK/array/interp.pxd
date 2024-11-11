@@ -1,7 +1,7 @@
 cdef extern from "interp_common.c":
     Py_ssize_t c_binary_search_with_guess(
             double key,
-            double* array,
+            const double* array,
             Py_ssize_t length,
             Py_ssize_t guess
             ) noexcept nogil
