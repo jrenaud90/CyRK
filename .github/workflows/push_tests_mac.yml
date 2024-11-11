@@ -55,7 +55,7 @@ jobs:
         
       - name: Run pytest
         shell: bash -el {0}
-        run: pytest -n auto --capture=sys -v Tests/
+        run: pytest -s -n auto --capture=sys -v Tests/
   
   test-macos-13:
     defaults:
@@ -106,4 +106,4 @@ jobs:
         
       - name: Run pytest
         shell: bash -el {0}
-        run: pytest -n auto --capture=sys -v Tests/
+        run: pytest -s -n auto --capture=sys -v Tests/
