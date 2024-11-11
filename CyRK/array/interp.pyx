@@ -478,9 +478,9 @@ cpdef (double complex, Py_ssize_t) interp_complexj(
 
 
 cdef void interp_array_ptr(
-        double* desired_x_array,
-        double* x_domain,
-        double* dependent_values,
+        const double* desired_x_array,
+        const double* x_domain,
+        const double* dependent_values,
         double* desired_dependent_array,
         Py_ssize_t len_x,
         Py_ssize_t desired_len
@@ -538,9 +538,9 @@ cpdef void interp_array(
 
 
 cdef void interp_complex_array_ptr(
-        double* desired_x_array,
-        double* x_domain,
-        double complex* dependent_values,
+        const double* desired_x_array,
+        const double* x_domain,
+        const  double complex* dependent_values,
         double complex* desired_dependent_array,
         Py_ssize_t len_x,
         Py_ssize_t desired_len
