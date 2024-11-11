@@ -76,10 +76,10 @@ cdef void interp_array_ptr(
         ) noexcept nogil
 
 cpdef void interp_array(
-        double[:] desired_x_array,
-        double[:] x_domain,
-        double[:] dependent_values,
-        double[:] desired_dependent_array
+        const double[::1] desired_x_array,
+        const double[::1] x_domain,
+        const double[::1] dependent_values,
+        double[::1] desired_dependent_array
         ) noexcept nogil
 
 cdef void interp_complex_array_ptr(
@@ -92,8 +92,8 @@ cdef void interp_complex_array_ptr(
         ) noexcept nogil
 
 cpdef void interp_complex_array(
-        double[:] desired_x_array,
-        double[:] x_domain,
-        double complex[:] dependent_values,
-        double complex[:] desired_dependent_array
+        const double[::1] desired_x_array,
+        const double[::1] x_domain,
+        const double complex[::1] dependent_values,
+        double complex[::1] desired_dependent_array
         ) noexcept nogil
