@@ -6,6 +6,8 @@ import numpy as np
 
 from libc.math cimport isnan, floor
 
+from libc.stdio cimport printf
+
 # Get machine precision.
 cdef double EPS
 EPS = np.finfo(dtype=np.float64).eps
@@ -502,14 +504,17 @@ cdef void interp_array_ptr(
         x_slope = 1.
 
     cdef double desired_x
+    printf("\n\n!!!DEBUG:: WORKING ON PRANGE\n")
     for index in prange(desired_len, nogil=True):
         desired_x = desired_x_array[index]
 
         # Perform binary search with guess
         guess = <Py_ssize_t>floor(x_slope * <double>index)
+        printf("\n\n!!!DEBUG:: INDEX = %d; desired_x=%f; guess = %d; len_x = %d\n", index, desired_x, guess, len_x)
         j = c_binary_search_with_guess(desired_x, x_domain, len_x, guess)
 
         # Run interpolation
+        printf("\n\n!!!DEBUG:: j= %d\n", j)
         result = interp_ptr(desired_x, x_domain, dependent_values, len_x, provided_j=j)
 
         # Store result
@@ -517,10 +522,10 @@ cdef void interp_array_ptr(
 
 
 cpdef void interp_array(
-        double[:] desired_x_array,
-        double[:] x_domain,
-        double[:] dependent_values,
-        double[:] desired_dependent_array
+        const double[::1] desired_x_array,
+        const double[::1] x_domain,
+        const double[::1] dependent_values,
+        double[::1] desired_dependent_array
         ) noexcept nogil:
 
     # Array variables
@@ -572,10 +577,10 @@ cdef void interp_complex_array_ptr(
 
 
 cpdef void interp_complex_array(
-        double[:] desired_x_array,
-        double[:] x_domain,
-        double complex[:] dependent_values,
-        double complex[:] desired_dependent_array
+        const double[::1] desired_x_array,
+        const double[::1] x_domain,
+        const double complex[::1] dependent_values,
+        double complex[::1] desired_dependent_array
         ) noexcept nogil:
 
     cdef Py_ssize_t len_x, desired_len
