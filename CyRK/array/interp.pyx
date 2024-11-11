@@ -4,7 +4,7 @@ from cython.parallel import prange
 
 import numpy as np
 
-from libc.math cimport isnan
+from libc.math cimport isnan, floor
 
 # Get machine precision.
 cdef double EPS
@@ -506,7 +506,7 @@ cdef void interp_array_ptr(
         desired_x = desired_x_array[index]
 
         # Perform binary search with guess
-        guess = <Py_ssize_t>x_slope * index
+        guess = <Py_ssize_t>floor(x_slope * <double>index)
         j = c_binary_search_with_guess(desired_x, x_domain, len_x, guess)
 
         # Run interpolation
@@ -561,7 +561,7 @@ cdef void interp_complex_array_ptr(
         desired_x = desired_x_array[index]
 
         # Perform binary search with guess
-        guess = <Py_ssize_t>x_slope * index
+        guess = <Py_ssize_t>floor(x_slope * <double>index)
         j = c_binary_search_with_guess(desired_x, x_domain, len_x, guess)
 
         # Run interpolation
