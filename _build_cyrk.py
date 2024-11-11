@@ -20,7 +20,7 @@ if install_platform.lower() == 'windows':
     extra_link_args = []
 elif install_platform.lower() == 'darwin':
     # OpenMP is installed via llvm. See https://stackoverflow.com/questions/60005176/how-to-deal-with-clang-error-unsupported-option-fopenmp-on-travis
-    extra_compile_args = ['-O3', '-Wno-error=incompatible-function-pointer-types', '-fopenmp']
+    extra_compile_args = ['-O3', '-fopenmp']
     extra_link_args = ['-lomp']
 else:
     extra_compile_args = ['-fopenmp', '-O3']
