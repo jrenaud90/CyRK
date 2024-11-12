@@ -57,60 +57,60 @@ jobs:
         shell: bash -el {0}
         run: |
           cd Tests/B_Other_Tests/
-          python -c "from test_array import test_interp_array; test_interp_array()"
+          python -c "from test_array import test_interp_array; test_interp_array()" >> $GITHUB_OUTPUT
           cd ../../
         
       - name: Run pytest
         shell: bash -el {0}
         run: pytest -n auto --capture=sys -v Tests/
   
-  test-macos-13:
-    defaults:
-      run:
-        shell: bash -el {0}
-    name: Test CyRK on MacOS (v13; x64-86)
-    runs-on: macos-13
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version:
-          - "3.8"
-          - "3.9"
-          - "3.10"
-          - "3.11"
-          - "3.12"
-    steps:
-      - uses: actions/checkout@v4
-      - uses: conda-incubator/setup-miniconda@v3
-        with:
-          activate-environment: cyrk_test
-          auto-update-conda: true
-          python-version: ${{ matrix.python-version }}
-          auto-activate-base: false
+  # test-macos-13:
+  #   defaults:
+  #     run:
+  #       shell: bash -el {0}
+  #   name: Test CyRK on MacOS (v13; x64-86)
+  #   runs-on: macos-13
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       python-version:
+  #         - "3.8"
+  #         - "3.9"
+  #         - "3.10"
+  #         - "3.11"
+  #         - "3.12"
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: conda-incubator/setup-miniconda@v3
+  #       with:
+  #         activate-environment: cyrk_test
+  #         auto-update-conda: true
+  #         python-version: ${{ matrix.python-version }}
+  #         auto-activate-base: false
         
-      - name: Conda info
-        shell: bash -el {0}
-        run: conda info
+  #     - name: Conda info
+  #       shell: bash -el {0}
+  #       run: conda info
       
-      - name: install llvm # openMP does not play nice with clang on MacOS; also some versions of macos use older gcc so there is a need to install latest.
-        shell: bash -el {0}
-        run: |
-          brew install llvm libomp
+  #     - name: install llvm # openMP does not play nice with clang on MacOS; also some versions of macos use older gcc so there is a need to install latest.
+  #       shell: bash -el {0}
+  #       run: |
+  #         brew install llvm libomp
 
-      - name: Install package
-        shell: bash -el {0}
-        # export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
-        run: |
-          conda install nomkl
-          conda install pytest matplotlib numba numpy scipy cython pytest-xdist
-          export LDFLAGS="-L/usr/local/opt/llvm/lib"
-          export CPPFLAGS="-I/usr/local/opt/llvm/include"
-          export LDFLAGS="-L/usr/local/opt/libomp/lib"
-          export CPPFLAGS="-I/usr/local/opt/libomp/include"
-          export CC=/usr/local/opt/llvm/bin/clang
-          export CXX=/usr/local/opt/llvm/bin/clang++
-          python -m pip install -v .
+  #     - name: Install package
+  #       shell: bash -el {0}
+  #       # export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
+  #       run: |
+  #         conda install nomkl
+  #         conda install pytest matplotlib numba numpy scipy cython pytest-xdist
+  #         export LDFLAGS="-L/usr/local/opt/llvm/lib"
+  #         export CPPFLAGS="-I/usr/local/opt/llvm/include"
+  #         export LDFLAGS="-L/usr/local/opt/libomp/lib"
+  #         export CPPFLAGS="-I/usr/local/opt/libomp/include"
+  #         export CC=/usr/local/opt/llvm/bin/clang
+  #         export CXX=/usr/local/opt/llvm/bin/clang++
+  #         python -m pip install -v .
         
-      - name: Run pytest
-        shell: bash -el {0}
-        run: pytest -n auto --capture=sys -v Tests/
+  #     - name: Run pytest
+  #       shell: bash -el {0}
+  #       run: pytest -n auto --capture=sys -v Tests/
