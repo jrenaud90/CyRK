@@ -57,8 +57,9 @@ jobs:
         shell: bash -el {0}
         run: |
           cd Tests/B_Other_Tests/
-          python -c "from test_array import test_interp_array; test_interp_array()" >> $GITHUB_OUTPUT
-          cd ../../
+          python -c "from test_array import test_interp_array; test_interp_array()" | tee conda.txt
+      - name: print file
+        run: cat conda.txt
         
       - name: Run pytest
         shell: bash -el {0}
