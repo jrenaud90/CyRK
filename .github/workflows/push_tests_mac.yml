@@ -57,11 +57,15 @@ jobs:
         shell: bash -el {0}
         run: |
           cd Tests/B_Other_Tests/
-          python -c "from test_array import test_interp_array; test_interp_array()" | tee conda.txt
-          run: cat conda.txt
+          echo "Try 1"
           python -c "from test_array import test_interp_array; test_interp_array()"
+          echo "Try 2"
           python -c "from test_array import test_interp_array; test_interp_array()"
+          echo "Try 3"
           python -c "from test_array import test_interp_array; test_interp_array()"
+          echo "Try 4"
+          python -c "from test_array import test_interp_array; test_interp_array()"
+          echo "Try 5"
           python -c "from test_array import test_interp_array; test_interp_array()"
         
       # - name: Run pytest
