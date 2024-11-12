@@ -2,7 +2,15 @@
 
 ## 2024
 
-#### v0.11.0 (2024-NNN)
+#### v0.11.1 (2024-11-11)
+
+Fixes:
+* MacOS was not correctly installing openmp version of the cython object files. Fixed this but...
+
+Issues:
+* Cython `prange` was failing (for the array interps) only on MacOS on some versions of Python. Couldn't figure it out so removing prange for now.
+
+#### v0.11.0 (2024-11-09)
 
 New:
 * `WrapCySolverResult` result class now provides user access to attribute `num_y`.
