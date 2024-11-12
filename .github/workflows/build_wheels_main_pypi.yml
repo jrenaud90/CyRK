@@ -136,7 +136,6 @@ jobs:
       matrix:
         platform:
           #              - macos-12  ## macos is not playing nice with cibuildwheel with openmp from cython.
-          - windows-2022
           - windows-latest
           - ubuntu-20.04
 
