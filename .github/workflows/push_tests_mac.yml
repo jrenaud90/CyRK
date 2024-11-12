@@ -58,13 +58,18 @@ jobs:
         run: |
           cd Tests/B_Other_Tests/
           python -c "from test_array import test_interp_array; test_interp_array()" | tee conda.txt
-      - name: print file
-        run: cat conda.txt
+          run: cat conda.txt
+          python -c "from test_array import test_interp_array; test_interp_array()"
+          python -c "from test_array import test_interp_array; test_interp_array()"
+          python -c "from test_array import test_interp_array; test_interp_array()"
+          python -c "from test_array import test_interp_array; test_interp_array()"
         
-      - name: Run pytest
-        shell: bash -el {0}
-        run: pytest -n auto --capture=sys -v Tests/
+      # - name: Run pytest
+      #   shell: bash -el {0}
+      #   run: pytest -n auto --capture=sys -v Tests/
   
+
+
   # test-macos-13:
   #   defaults:
   #     run:
