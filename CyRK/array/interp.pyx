@@ -505,16 +505,16 @@ cdef void interp_array_ptr(
 
     cdef double desired_x
     printf("\n\n!!!DEBUG:: WORKING ON PRANGE\n")
-    for index in prange(desired_len, nogil=True):
+    for index in range(desired_len):
         desired_x = desired_x_array[index]
 
         # Perform binary search with guess
         guess = <Py_ssize_t>floor(x_slope * <double>index)
-        printf("\n\n!!!DEBUG:: INDEX = %d; desired_x=%f; guess = %d; len_x = %d\n", index, desired_x, guess, len_x)
+        printf("!!!DEBUG:: INDEX = %d; desired_x=%f; guess = %d; len_x = %d\n", index, desired_x, guess, len_x)
         j = c_binary_search_with_guess(desired_x, x_domain, len_x, guess)
 
         # Run interpolation
-        printf("\n\n!!!DEBUG:: j= %d\n", j)
+        printf("!!!DEBUG:: j= %d\n", j)
         result = interp_ptr(desired_x, x_domain, dependent_values, len_x, provided_j=j)
 
         # Store result
@@ -562,7 +562,7 @@ cdef void interp_complex_array_ptr(
 
     cdef double desired_x
     cdef double complex result
-    for index in prange(desired_len, nogil=True):
+    for index in range(desired_len):
         desired_x = desired_x_array[index]
 
         # Perform binary search with guess
