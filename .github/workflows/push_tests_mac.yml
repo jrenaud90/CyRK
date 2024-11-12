@@ -53,6 +53,13 @@ jobs:
           export CXX=/opt/homebrew/opt/llvm/bin/clang++
           python -m pip install -v .
         
+      - name: Specific test
+        shell: bash -el {0}
+        run: |
+          cd Tests/B_Other_Tests/
+          python -c "from test_array import test_interp_array; test_interp_array()"
+          cd ../../
+        
       - name: Run pytest
         shell: bash -el {0}
         run: pytest -n auto --capture=sys -v Tests/
