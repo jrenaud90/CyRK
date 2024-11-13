@@ -26,6 +26,12 @@ Notes:
 - The dense outputs are relatively large and must be heap allocated at each time step. Therefore it is rather computationally expensive to store them. Leave `dense_output=False` unless required to improve performance.
     - This performance hit is much less noticeable if only `t_eval` is provided because in that case we can utilize a single stack allocation. 
 
+## Interpolating Extra Outputs with Dense Output
+
+As discussed in the "Extra Output.md" documentation, CyRK can capture additional outputs from the differential equation process. These are non-dependent variables (non-y values) that are not used during integration error calculations but may be useful data for the user.
+This is triggered when `num_extra` is set to > 0 in either `pysolve_ivp` or `cysolve_ivp`. If `dense_output` is also set to True, then the final solution interpolators will also interpolate these extra outputs. This is done by making additional calls to the differential equation to determine what the values of the extra outputs are at each interpolated time step. 
+More details can be found in "Extra Output.md"
+
 ### Using Dense Outputs
 
 Example:
@@ -33,6 +39,10 @@ Example:
 def cy_diffeq(dy, t, y):
     dy[0] = (1. - 0.01 * y[1]) * y[0]
     dy[1] = (0.02 * y[0] - 1.) * y[1]
+
+    # If using extra output: set `num_extra=2`
+    # dy[2] = (1. - 0.01 * y[1])
+    # dy[3] = (0.02 * y[0] - 1.) 
 
 import numpy as np
 from CyRK import pysolve_ivp
