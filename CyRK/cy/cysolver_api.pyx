@@ -88,7 +88,7 @@ cdef class WrapCySolverResult:
         if type(t) == np.ndarray:
             return self.call_vectorize(t)
         else:
-            return self.call(t).reshape(self.cyresult_ptr.num_y, 1)
+            return self.call(t).reshape(self.cyresult_ptr.num_dy, 1)
 
 
 # =====================================================================================================================

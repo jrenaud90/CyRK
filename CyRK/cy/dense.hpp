@@ -7,6 +7,7 @@
 #include <functional>
 #include <cstring>
 
+#include "Python.h"
 #include "common.hpp"
 
 // We need a pointer to the CySolverBase class. But that file includes this one. So we need to do a forward declaration
@@ -39,6 +40,7 @@ public:
     double* cysolver_t_now_ptr  = nullptr;
     double* cysolver_y_now_ptr  = nullptr;
     double* cysolver_dy_now_ptr = nullptr;
+    PyObject* cython_extension_class_instance = nullptr;
 
     // Time step info
     double step = 0.0;
@@ -69,6 +71,7 @@ public:
         unsigned int Q_order,
         CySolverBase* cysolver_instance_ptr,
         std::function<void (CySolverBase *)> cysolver_diffeq_ptr,
+        PyObject* cython_extension_class_instance,
         double* cysolver_t_now_ptr,
         double* cysolver_y_now_ptr,
         double* cysolver_dy_now_ptr

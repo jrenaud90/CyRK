@@ -1025,6 +1025,7 @@ CySolverDense* RKSolver::p_dense_output_heap()
         this->len_Pcols,
         this,
         this->diffeq,
+        this->cython_extension_class_instance,
         this->t_now_ptr,
         this->y_now_ptr,
         this->dy_now_ptr);

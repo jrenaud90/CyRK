@@ -1,6 +1,7 @@
 # distutils: language = c++
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 
+from libc.stdio cimport printf
 
 cdef public api void call_diffeq_from_cython(object py_instance, DiffeqMethod diffeq):
     """Callback function used by the C++ model.
@@ -9,4 +10,5 @@ cdef public api void call_diffeq_from_cython(object py_instance, DiffeqMethod di
     """
 
     # Call the python diffeq.
+    printf("DEBUG!!! \t\t Calling python diffeq from api'd func.\n")
     diffeq(py_instance)
