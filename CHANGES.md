@@ -6,6 +6,7 @@
 
 New:
 * Using extra output (via `num_extra`) with `cysolve_ivp` and `pysolve_ivp` now works when `dense_output` is set to true. CySolverSolution will now make additional calls to the differential equation to determine correct values for extra outputs which are provided alongside the interpolated y values.
+  * Added relevant tests.
 
 Other:
 * Refactored some misspellings in the cysolver c++ backend.

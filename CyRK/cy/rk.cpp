@@ -1025,7 +1025,7 @@ CySolverDense* RKSolver::p_dense_output_heap()
             this->y_old_ptr,
             this->num_y,
             this->num_extra,
-            0, // Fake Q order just for consistent constructor call
+            this->len_Pcols,
             this,
             this->diffeq,
             this->cython_extension_class_instance,
@@ -1042,7 +1042,7 @@ CySolverDense* RKSolver::p_dense_output_heap()
             this->y_old_ptr,
             this->num_y,
             this->num_extra,
-            0 // Fake Q order just for consistent constructor call
+            this->len_Pcols
             );
     }
 

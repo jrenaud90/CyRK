@@ -38,15 +38,15 @@ def test_pysolve_extra_output_with_dense():
 
     # Call dense output with a float
     dense_out_float = result(0.3)
-    expected_float = np.asarray([[4.52627329], [1.72100751], [0.25      ], [0.15      ]], dtype=np.float64)
+    expected_float = np.asarray([[4.52627329], [2.13093483], [0.25      ], [0.15      ]], dtype=np.float64)
     assert dense_out_float.shape == (4, 1)
     assert np.allclose(dense_out_float, expected_float)
 
     # Call dense output with an array
     dense_out_array = result(np.asarray([0.3, 4.0, 8., 9.10, 9.9]))
-    expected_array = np.asarray([[ 4.52627329,  1.87160845,  0.13355624,  1.57871591, -1.01590877,],
-                                 [ 1.72100751, 20.36300083, 10.72886877, 32.38228201, 56.82358743,],
-                                 [ 0.25,        0.25,        0.25,        0.25,        0.25,      ],
-                                 [ 0.15,        2.,          4.,          4.55,        4.95,      ]], dtype=np.float64)
+    expected_array = np.asarray([[ 4.52627329,  1.87160845,  0.13355624,  1.57871591, -1.01590877],
+                                 [ 2.13093483, 21.05384256, 10.31201731, 48.55169176, 57.06848508],
+                                 [ 0.25,        0.25,        0.25,        0.25,        0.25      ],
+                                 [ 0.15,        2.,          4.,          4.55,        4.95      ]], dtype=np.float64)
     assert dense_out_array.shape == (4, 5)
     assert np.allclose(dense_out_array, expected_array)
