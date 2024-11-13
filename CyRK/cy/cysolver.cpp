@@ -147,7 +147,7 @@ CySolverBase::CySolverBase(
 CySolverBase::~CySolverBase()
 {
     this->storage_ptr = nullptr;
-    if (this->use_pysolver)
+    if (this->deconstruct_python)
     {
         // Decrease reference count on the cython extension class instance
         Py_XDECREF(this->cython_extension_class_instance);
@@ -252,9 +252,6 @@ void CySolverBase::reset()
     this->reset_called = true;
 }
 
-#include <cstdio>
-#include <iostream>
-
 void CySolverBase::take_step()
 {    
     if (!this->reset_called) [[unlikely]]
@@ -316,8 +313,16 @@ void CySolverBase::take_step()
                     this->t_now_ptr[0],
                     this->y_old_ptr,
                     this->num_y,
-                    0 // Fake Q order just for consistent constructor call
+                    this->num_extra,
+                    0, // Fake Q order just for consistent constructor call
+                    this,
+                    this->diffeq,
+                    this->cython_extension_class_instance,
+                    this->t_now_ptr,
+                    this->y_now_ptr,
+                    this->dy_now_ptr
                     );
+
                 // Update the dense output class with integrator-specific data
                 this->p_dense_output_stack(dense_output);
 
@@ -327,7 +332,7 @@ void CySolverBase::take_step()
                 // Check if there are any t_eval steps between this new index and the last index.
                 // Get lowest and highest indices
                 auto lower_i = std::lower_bound(this->t_eval_vec.begin(), this->t_eval_vec.end(), this->t_now_ptr[0]) - this->t_eval_vec.begin();
-                auto upper_i  = std::upper_bound(this->t_eval_vec.begin(), this->t_eval_vec.end(), this->t_now_ptr[0]) - this->t_eval_vec.begin();
+                auto upper_i = std::upper_bound(this->t_eval_vec.begin(), this->t_eval_vec.end(), this->t_now_ptr[0]) - this->t_eval_vec.begin();
                 
                 size_t t_eval_index_new;
                 if (lower_i == upper_i)
@@ -518,7 +523,14 @@ CySolverDense* CySolverBase::p_dense_output_heap()
         this->t_now_ptr[0],
         this->y_old_ptr,
         this->num_y,
-        0 // Fake Q order just for consistent constructor call
+        this->num_extra,
+        0, // Fake Q order just for consistent constructor call
+        this,
+        this->diffeq,
+        this->cython_extension_class_instance,
+        this->t_now_ptr,
+        this->y_now_ptr,
+        this->dy_now_ptr
         );
 }
 
@@ -551,8 +563,8 @@ void CySolverBase::set_cython_extension_instance(PyObject* cython_extension_clas
         }
         else
         {
-            // TODO: Do we need to decref this at some point? During CySolver's deconstruction?
             Py_XINCREF(this->cython_extension_class_instance);
+            this->deconstruct_python = true;
         }
     }
 }
