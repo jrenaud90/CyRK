@@ -147,7 +147,7 @@ CySolverBase::CySolverBase(
 CySolverBase::~CySolverBase()
 {
     this->storage_ptr = nullptr;
-    if (this->use_pysolver)
+    if (this->deconstruct_python)
     {
         // Decrease reference count on the cython extension class instance
         Py_XDECREF(this->cython_extension_class_instance);
@@ -592,8 +592,8 @@ void CySolverBase::set_cython_extension_instance(PyObject* cython_extension_clas
         }
         else
         {
-            // TODO: Do we need to decref this at some point? During CySolver's deconstruction?
             Py_XINCREF(this->cython_extension_class_instance);
+            this->deconstruct_python = true;
         }
     }
 }

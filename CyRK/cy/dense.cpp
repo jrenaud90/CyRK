@@ -1,7 +1,7 @@
 
 #include "dense.hpp"
 
-
+// Constructors
 CySolverDense::CySolverDense(
         int integrator_int,
         double t_old,
@@ -60,10 +60,20 @@ CySolverDense::CySolverDense(
     // Make a strong reference to the python class (if this dense output was built using the python hooks).
     if (cython_extension_class_instance)
     {
-        // TODO: Do we need to decref this at some point? During CySolver's deconstruction?
         Py_XINCREF(this->cython_extension_class_instance);
+        this->deconstruct_python = true;
     }
     
+}
+
+// Destructors
+CySolverDense::~CySolverDense()
+{
+    if (this->deconstruct_python)
+    {
+        // Decrease reference count on the cython extension class instance
+        Py_XDECREF(this->cython_extension_class_instance);
+    }
 }
 
 void CySolverDense::call(double t_interp, double* y_interp_ptr)

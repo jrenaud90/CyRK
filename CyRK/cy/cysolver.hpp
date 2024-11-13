@@ -123,6 +123,7 @@ protected:
     bool reset_called   = false;
     bool capture_extra  = false;
     bool user_provided_max_num_steps = false;
+    bool deconstruct_python = false;
 
     // Dense (Interpolation) Attributes
     bool use_dense_output = false;

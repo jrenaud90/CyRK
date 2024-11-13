@@ -41,6 +41,7 @@ public:
     double* cysolver_y_now_ptr  = nullptr;
     double* cysolver_dy_now_ptr = nullptr;
     PyObject* cython_extension_class_instance = nullptr;
+    bool deconstruct_python = false;
 
     // Time step info
     double step = 0.0;
@@ -59,7 +60,7 @@ public:
 protected:
 
 public:
-    virtual ~CySolverDense() { };
+    virtual ~CySolverDense();
     CySolverDense() {};
     CySolverDense(
         int integrator_int,
