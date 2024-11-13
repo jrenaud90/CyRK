@@ -9,28 +9,6 @@ CySolverDense::CySolverDense(
         double* y_in_ptr,
         unsigned int num_y,
         unsigned int num_extra,
-        unsigned int Q_order
-        ) :
-            integrator_int(integrator_int),
-            num_y(num_y),
-            num_extra(num_extra),
-            t_old(t_old),
-            t_now(t_now),
-            Q_order(Q_order)
-{
-    // Make a copy of the y_in pointer in this Dense interpolator's storage
-    std::memcpy(this->y_stored_ptr, y_in_ptr, sizeof(double) * this->num_y);
-    // Calculate step
-    this->step = this->t_now - this->t_old;
-}
-
-CySolverDense::CySolverDense(
-        int integrator_int,
-        double t_old,
-        double t_now,
-        double* y_in_ptr,
-        unsigned int num_y,
-        unsigned int num_extra,
         unsigned int Q_order,
         CySolverBase* cysolver_instance_ptr,
         std::function<void (CySolverBase *)> cysolver_diffeq_ptr,
