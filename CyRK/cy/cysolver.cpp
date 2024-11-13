@@ -307,21 +307,36 @@ void CySolverBase::take_step()
 
                 // We are not saving interpolators to storage but we still need one to work on t_eval. 
                 // We will only ever need 1 interpolator per step. So let's just stack allocate that one.
-                CySolverDense dense_output(
-                    this->integration_method,
-                    this->t_old,
-                    this->t_now_ptr[0],
-                    this->y_old_ptr,
-                    this->num_y,
-                    this->num_extra,
-                    0, // Fake Q order just for consistent constructor call
-                    this,
-                    this->diffeq,
-                    this->cython_extension_class_instance,
-                    this->t_now_ptr,
-                    this->y_now_ptr,
-                    this->dy_now_ptr
-                    );
+                CySolverDense dense_output;
+                if (this->num_extra > 0)
+                {
+                    dense_output = CySolverDense(
+                        this->integration_method,
+                        this->t_old,
+                        this->t_now_ptr[0],
+                        this->y_old_ptr,
+                        this->num_y,
+                        this->num_extra,
+                        0, // Fake Q order just for consistent constructor call
+                        this,
+                        this->diffeq,
+                        this->cython_extension_class_instance,
+                        this->t_now_ptr,
+                        this->y_now_ptr,
+                        this->dy_now_ptr
+                        );
+                }
+                else {
+                    dense_output = CySolverDense(
+                        this->integration_method,
+                        this->t_old,
+                        this->t_now_ptr[0],
+                        this->y_old_ptr,
+                        this->num_y,
+                        this->num_extra,
+                        0 // Fake Q order just for consistent constructor call
+                        );
+                }
 
                 // Update the dense output class with integrator-specific data
                 this->p_dense_output_stack(dense_output);
@@ -332,7 +347,7 @@ void CySolverBase::take_step()
                 // Check if there are any t_eval steps between this new index and the last index.
                 // Get lowest and highest indices
                 auto lower_i = std::lower_bound(this->t_eval_vec.begin(), this->t_eval_vec.end(), this->t_now_ptr[0]) - this->t_eval_vec.begin();
-                auto upper_i  = std::upper_bound(this->t_eval_vec.begin(), this->t_eval_vec.end(), this->t_now_ptr[0]) - this->t_eval_vec.begin();
+                auto upper_i = std::upper_bound(this->t_eval_vec.begin(), this->t_eval_vec.end(), this->t_now_ptr[0]) - this->t_eval_vec.begin();
                 
                 size_t t_eval_index_new;
                 if (lower_i == upper_i)
@@ -517,21 +532,35 @@ void CySolverBase::solve()
 /* Dense Output Methods */
 CySolverDense* CySolverBase::p_dense_output_heap()
 {
-    return new CySolverDense(
-        this->integration_method,
-        this->t_old,
-        this->t_now_ptr[0],
-        this->y_old_ptr,
-        this->num_y,
-        this->num_extra,
-        0, // Fake Q order just for consistent constructor call
-        this,
-        this->diffeq,
-        this->cython_extension_class_instance,
-        this->t_now_ptr,
-        this->y_now_ptr,
-        this->dy_now_ptr
-        );
+    if (this->num_extra > 0)
+    {
+        return new CySolverDense(
+            this->integration_method,
+            this->t_old,
+            this->t_now_ptr[0],
+            this->y_old_ptr,
+            this->num_y,
+            this->num_extra,
+            0, // Fake Q order just for consistent constructor call
+            this,
+            this->diffeq,
+            this->cython_extension_class_instance,
+            this->t_now_ptr,
+            this->y_now_ptr,
+            this->dy_now_ptr
+            );
+    }
+    else {
+        return new CySolverDense(
+            this->integration_method,
+            this->t_old,
+            this->t_now_ptr[0],
+            this->y_old_ptr,
+            this->num_y,
+            this->num_extra,
+            0 // Fake Q order just for consistent constructor call
+            );
+    }
 }
 
 void CySolverBase::p_dense_output_stack(CySolverDense& dense_output_ptr)

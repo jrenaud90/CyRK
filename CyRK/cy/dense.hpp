@@ -68,6 +68,14 @@ public:
         double* y_in_ptr,
         unsigned int num_y,
         unsigned int num_extra,
+        unsigned int Q_order);
+    CySolverDense(
+        int integrator_int,
+        double t_old,
+        double t_now,
+        double* y_in_ptr,
+        unsigned int num_y,
+        unsigned int num_extra,
         unsigned int Q_order,
         CySolverBase* cysolver_instance_ptr,
         std::function<void (CySolverBase *)> cysolver_diffeq_ptr,

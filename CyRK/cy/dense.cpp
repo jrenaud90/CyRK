@@ -1,7 +1,28 @@
 
 #include "dense.hpp"
 
-#include <cstdio>
+
+CySolverDense::CySolverDense(
+        int integrator_int,
+        double t_old,
+        double t_now,
+        double* y_in_ptr,
+        unsigned int num_y,
+        unsigned int num_extra,
+        unsigned int Q_order
+        ) :
+            integrator_int(integrator_int),
+            num_y(num_y),
+            num_extra(num_extra),
+            t_old(t_old),
+            t_now(t_now),
+            Q_order(Q_order)
+{
+    // Make a copy of the y_in pointer in this Dense interpolator's storage
+    std::memcpy(this->y_stored_ptr, y_in_ptr, sizeof(double) * this->num_y);
+    // Calculate step
+    this->step = this->t_now - this->t_old;
+}
 
 CySolverDense::CySolverDense(
         int integrator_int,
@@ -174,9 +195,7 @@ void CySolverDense::call(double t_interp, double* y_interp_ptr)
         cysolver_t_now_ptr[0] = t_interp;
         
         // Call diffeq to update dy_now pointer
-        printf("DEBUG!! About to call diffeq from dense...\n");
         this->cysolver_diffeq_ptr(this->cysolver_instance_ptr);
-        printf("DEBUG!! After diffeq call\n");
 
         // Capture extra output and add to the y_interp_ptr array
         // We already have y interpolated from above so start at num_y

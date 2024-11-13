@@ -1015,20 +1015,36 @@ void RKSolver::p_update_Q(double* Q_ptr)
 CySolverDense* RKSolver::p_dense_output_heap()
 {
     // Build dense output object instance
-    CySolverDense* dense_output = new CySolverDense(
-        this->integration_method,
-        this->t_old,
-        this->t_now_ptr[0],
-        this->y_old_ptr,
-        this->num_y,
-        this->num_extra,
-        this->len_Pcols,
-        this,
-        this->diffeq,
-        this->cython_extension_class_instance,
-        this->t_now_ptr,
-        this->y_now_ptr,
-        this->dy_now_ptr);
+    CySolverDense* dense_output;
+    if (this->num_extra > 0)
+    {
+        dense_output = new CySolverDense(
+            this->integration_method,
+            this->t_old,
+            this->t_now_ptr[0],
+            this->y_old_ptr,
+            this->num_y,
+            this->num_extra,
+            0, // Fake Q order just for consistent constructor call
+            this,
+            this->diffeq,
+            this->cython_extension_class_instance,
+            this->t_now_ptr,
+            this->y_now_ptr,
+            this->dy_now_ptr
+            );
+    }
+    else {
+        dense_output = new CySolverDense(
+            this->integration_method,
+            this->t_old,
+            this->t_now_ptr[0],
+            this->y_old_ptr,
+            this->num_y,
+            this->num_extra,
+            0 // Fake Q order just for consistent constructor call
+            );
+    }
 
     // Update Q
     this->p_update_Q(dense_output->Q_ptr);
