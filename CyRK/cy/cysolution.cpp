@@ -368,7 +368,7 @@ void CySolverResult::call(const double t, double* y_interp)
             this->time_domain_sorted_ptr + interp_time_len_touse,
             t) - this->time_domain_sorted_ptr;
     
-        auto upper_i  = std::upper_bound(
+        auto upper_i = std::upper_bound(
             this->time_domain_sorted_ptr,
             this->time_domain_sorted_ptr + interp_time_len_touse,
             t) - this->time_domain_sorted_ptr;
