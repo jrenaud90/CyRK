@@ -336,7 +336,7 @@ void CySolverResult::update_message(const char* const new_message_ptr)
     std::strcpy(this->message_ptr, new_message_ptr);
 }
 
-void CySolverResult::call(const double t, double* y_interp)
+void CySolverResult::call(const double t, double* y_interp_ptr)
 {
     if (!this->capture_dense_output) [[unlikely]]
     {
@@ -401,18 +401,18 @@ void CySolverResult::call(const double t, double* y_interp)
         }
 
         // Call interpolant to update y
-        this->dense_vector[closest_index]->call(t, y_interp);
+        this->dense_vector[closest_index]->call(t, y_interp_ptr);
     }
 }
 
-void CySolverResult::call_vectorize(const double* t_array_ptr, size_t len_t, double* y_interp)
+void CySolverResult::call_vectorize(const double* t_array_ptr, size_t len_t, double* y_interp_ptr)
 {
     double* y_sub_ptr;
 
     for (size_t i = 0; i < len_t; i++)
     {
         // Assume y is passed as a y0_0, y1_0, y2_0, ... y0_1, y1_1, y2_1, ...
-        y_sub_ptr = &y_interp[this->num_y * i];
+        y_sub_ptr = &y_interp_ptr[this->num_dy * i];
 
         this->call(t_array_ptr[i], y_sub_ptr);
     }

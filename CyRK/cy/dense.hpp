@@ -4,9 +4,14 @@
 * S o by avoiding calls to New we greatly improve performance.
 */
 
+#include <functional>
 #include <cstring>
 
 #include "common.hpp"
+
+// We need a pointer to the CySolverBase class. But that file includes this one. So we need to do a forward declaration
+class CySolverBase;
+
 
 class CySolverDense
 {
@@ -26,6 +31,14 @@ public:
 
     // y and t state info
     unsigned int num_y = 0;
+    unsigned int num_extra = 0;
+
+    // Pointer to the CySolverBase class
+    CySolverBase* cysolver_instance_ptr = nullptr;
+    std::function<void (CySolverBase *)> cysolver_diffeq_ptr = nullptr;
+    double* cysolver_t_now_ptr  = nullptr;
+    double* cysolver_y_now_ptr  = nullptr;
+    double* cysolver_dy_now_ptr = nullptr;
 
     // Time step info
     double step = 0.0;
@@ -52,7 +65,14 @@ public:
         double t_now,
         double* y_in_ptr,
         unsigned int num_y,
-        unsigned int Q_order);
+        unsigned int num_extra,
+        unsigned int Q_order,
+        CySolverBase* cysolver_instance_ptr,
+        std::function<void (CySolverBase *)> cysolver_diffeq_ptr,
+        double* cysolver_t_now_ptr,
+        double* cysolver_y_now_ptr,
+        double* cysolver_dy_now_ptr
+        );
 
-    virtual void call(double t_interp, double* y_intepret);
+    virtual void call(double t_interp, double* y_interp_ptr);
 };

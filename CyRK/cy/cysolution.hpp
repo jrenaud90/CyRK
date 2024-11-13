@@ -110,6 +110,6 @@ public:
     void finalize();
     void reset();
     void update_message(const char* const new_message_ptr);
-    void call(const double t, double* y_interp);
-    void call_vectorize(const double* t_array_ptr, size_t len_t, double* y_interp);
+    void call(const double t, double* y_interp_ptr);
+    void call_vectorize(const double* t_array_ptr, size_t len_t, double* y_interp_ptr);
 };

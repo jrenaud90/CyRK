@@ -28,7 +28,7 @@ cdef class WrapCySolverResult:
         if not self.cyresult_ptr.capture_dense_output:
             raise AttributeError("Can not call WrapCySolverResult when dense_output set to False.")
 
-        y_interp_array = np.empty(self.cyresult_ptr.num_y, dtype=np.float64, order='C')
+        y_interp_array = np.empty(self.cyresult_ptr.num_dy, dtype=np.float64, order='C')
         cdef double[::1] y_interp_view = y_interp_array
         cdef double* y_interp_ptr      = &y_interp_view[0]
 
@@ -43,13 +43,13 @@ cdef class WrapCySolverResult:
 
         cdef size_t len_t = len(t_view)
 
-        y_interp_array = np.empty(self.cyresult_ptr.num_y * len_t, dtype=np.float64, order='C')
+        y_interp_array = np.empty(self.cyresult_ptr.num_dy * len_t, dtype=np.float64, order='C')
         cdef double[::1] y_interp_view = y_interp_array
         cdef double* y_interp_ptr = &y_interp_view[0]
         cdef double* t_array_ptr  = &t_view[0]
 
         self.cyresult_ptr.call_vectorize(t_array_ptr, len_t, y_interp_ptr)
-        return y_interp_array.reshape(len_t, self.cyresult_ptr.num_y).T
+        return y_interp_array.reshape(len_t, self.cyresult_ptr.num_dy).T
 
     @property
     def success(self):

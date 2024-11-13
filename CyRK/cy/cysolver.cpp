@@ -252,9 +252,6 @@ void CySolverBase::reset()
     this->reset_called = true;
 }
 
-#include <cstdio>
-#include <iostream>
-
 void CySolverBase::take_step()
 {    
     if (!this->reset_called) [[unlikely]]
@@ -316,8 +313,15 @@ void CySolverBase::take_step()
                     this->t_now_ptr[0],
                     this->y_old_ptr,
                     this->num_y,
-                    0 // Fake Q order just for consistent constructor call
+                    this->num_extra,
+                    0, // Fake Q order just for consistent constructor call
+                    this,
+                    this->diffeq,
+                    this->t_now_ptr,
+                    this->y_now_ptr,
+                    this->dy_now_ptr
                     );
+
                 // Update the dense output class with integrator-specific data
                 this->p_dense_output_stack(dense_output);
 
@@ -518,7 +522,13 @@ CySolverDense* CySolverBase::p_dense_output_heap()
         this->t_now_ptr[0],
         this->y_old_ptr,
         this->num_y,
-        0 // Fake Q order just for consistent constructor call
+        this->num_extra,
+        0, // Fake Q order just for consistent constructor call
+        this,
+        this->diffeq,
+        this->t_now_ptr,
+        this->y_now_ptr,
+        this->dy_now_ptr
         );
 }
 

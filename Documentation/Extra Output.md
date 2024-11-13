@@ -32,8 +32,7 @@ The values of these extra parameters are not analyzed by the solver when determi
 
 Current limitations of this feature as of v0.4.0:
 - Only numerical parameters can be used as extra outputs (no strings or booleans).
-- All extra outputs must have the same _type_ as the input `y`s. This means if you are using `y`s which are floats, but you need to capture a complex number, 
-then you will either need to change the `y`s to complex-valued (with a zero imaginary portion) or, a better option, return the real and imaginary portions of the extra parameter separately.
+- All extra outputs must have the same _type_ as the input `y`s. (for `pysolve_ivp` and `cysolve_ivp` extra outputs can only be doubles).
 
 ## How to use with `CyRK.nbsolve_ivp` (Numba-based)
 
@@ -127,12 +126,18 @@ extra_parameter_0 = result.y[2, :]
 extra_parameter_1 = result.y[3, :]
 ```
 
+# Interpolating extra outputs
 
-## Additional Considerations When Using `t_eval` (for numba-based method)
+## Interpolating for cython-based `cysolve_ivp` and `pysolve_ivp`
 
-_This is applicable to either the numba- or cython-based solver._
+When using either `dense_output` or `t_eval` then interpolations must be performed. For the dependent y variables, CyRK will utilize the user-specified differential equation method's approach to interpolation. However, this only works for _dependent_ variables.
+If you are capturing extra output they will not be included in this interpolation. Instead, both `cysolve_ivp` and `pysolve_ivp` will perform said dependent-variable interpolation and then use the results to make additional calls (one per interpolation, i.e., once per value in t_eval) to the differential equation to find the values of the extra outputs at the requested time steps.
 
-By setting the `t_eval` argument for either the `nbsolve_ivp` or `cyrk_ode` solver, an interpolation will occur at the end of integration.
+This approach is similar to "option 1" discussed in the next section for the numba-based solver.
+
+## Interpolating for numba-based `nbsolve_ivp`
+
+By setting the `t_eval` argument for either the `nbsolve_ivp` solver, an interpolation will occur at the end of integration.
 This uses the solved `y`s and `time_domain` to find a new reduced `y_reduced` at `t_eval` intervals using a method similar to `numpy.interp` function. 
 Since we are potentially storing extra parameters during integration, we need to tell the solvers how to handle any potential interpolation on these new parameters.
 
