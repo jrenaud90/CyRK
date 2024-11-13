@@ -11,7 +11,7 @@ from setuptools.command.build_ext import build_ext as _build_ext
 import numpy as np
 
 num_procs = os.cpu_count()
-num_threads = int(math.floor(num_procs * 0.75))
+num_threads = max(1, num_procs - 1)
 
 install_platform = platform.system()
 

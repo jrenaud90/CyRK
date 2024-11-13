@@ -7,8 +7,6 @@ from libcpp.cmath cimport fmin, fabs
 from CyRK.utils.memory cimport make_shared
 from CyRK.cy.cysolver_api cimport find_expected_size, WrapCySolverResult, INF, EPS_100, Y_LIMIT, DY_LIMIT
 
-cimport numpy as np
-
 import numpy as np
 np.import_array()
 

@@ -1021,7 +1021,14 @@ CySolverDense* RKSolver::p_dense_output_heap()
         this->t_now_ptr[0],
         this->y_old_ptr,
         this->num_y,
-        this->len_Pcols);
+        this->num_extra,
+        this->len_Pcols,
+        this,
+        this->diffeq,
+        this->cython_extension_class_instance,
+        this->t_now_ptr,
+        this->y_now_ptr,
+        this->dy_now_ptr);
 
     // Update Q
     this->p_update_Q(dense_output->Q_ptr);
