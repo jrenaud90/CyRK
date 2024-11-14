@@ -2,6 +2,11 @@
 
 ## 2024
 
+#### v0.11.3 (NNN)
+
+New:
+* Added helper function to allow users to include CyRK headers during installation. `CyRK.get_include()` this returns a list which must be appended to your include list in "setup.py".
+
 #### v0.11.2 (2024-11-12)
 
 New:
