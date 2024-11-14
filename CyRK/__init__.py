@@ -24,10 +24,10 @@ def get_include():
 
     cyrk_dirs = list()
     cyrk_dirs.append(
-        os.path.join(os.path.join(cyrk_dir, 'cy'))  # CySolver headers
+        os.path.join(cyrk_dir, 'cy')  # CySolver headers
     )
     cyrk_dirs.append(
-        os.path.join(os.path.join(cyrk_dir, 'array'))  # Array headers
+        os.path.join(cyrk_dir, 'array')  # Array headers
     )
 
     return cyrk_dirs
