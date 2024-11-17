@@ -1,30 +1,30 @@
 #include "cysolve.hpp"
-
+#include <exception>
 
 std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
-    DiffeqFuncType diffeq_ptr,
-    const double* t_span_ptr,
-    const double* y0_ptr,
-    const unsigned int num_y,
-    const unsigned int method,
-    // General optional arguments
-    const size_t expected_size,
-    const unsigned int num_extra,
-    const void* args_ptr,
-    const size_t max_num_steps,
-    const size_t max_ram_MB,
-    const bool dense_output,
-    const double* t_eval,
-    const size_t len_t_eval,
-    PreEvalFunc pre_eval_func,
-    // rk optional arguments
-    const double rtol,
-    const double atol,
-    const double* rtols_ptr,
-    const double* atols_ptr,
-    const double max_step_size,
-    const double first_step_size
-)
+        DiffeqFuncType diffeq_ptr,
+        const double* t_span_ptr,
+        const double* y0_ptr,
+        const unsigned int num_y,
+        const unsigned int method,
+        // General optional arguments
+        const size_t expected_size,
+        const unsigned int num_extra,
+        const void* args_ptr,
+        const size_t max_num_steps,
+        const size_t max_ram_MB,
+        const bool dense_output,
+        const double* t_eval,
+        const size_t len_t_eval,
+        PreEvalFunc pre_eval_func,
+        // rk optional arguments
+        const double rtol,
+        const double atol,
+        const double* rtols_ptr,
+        const double* atols_ptr,
+        const double max_step_size,
+        const double first_step_size
+    )
 {
     // Parse input
     const double t_start       = t_span_ptr[0];
@@ -63,7 +63,7 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
     }
 
     // Build storage class
-    std::shared_ptr<CySolverResult> solution_ptr =
+    std::shared_ptr<CySolverResult> solution_sptr =
         std::make_shared<CySolverResult>(
             num_y,
             num_extra,
@@ -73,108 +73,83 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
             dense_output,
             t_eval_provided);
 
-    // Build solver class
-    CySolverBase* solver;
-
-    switch (method)
-    {
-    case 0:
-        // RK23
-        solver = new RK23(
-            // Common Inputs
-            diffeq_ptr, solution_ptr, t_start, t_end, y0_ptr, num_y, num_extra, args_ptr, max_num_steps, max_ram_MB,
-            dense_output, t_eval, len_t_eval, pre_eval_func,
-            // RK Inputs
-            rtol, atol, rtols_ptr, atols_ptr, max_step_size, first_step_size
-        );
-        break;
-    case 1:
-        // RK45
-        solver = new RK45(
-            // Common Inputs
-            diffeq_ptr, solution_ptr, t_start, t_end, y0_ptr, num_y, num_extra, args_ptr, max_num_steps, max_ram_MB,
-            dense_output, t_eval, len_t_eval, pre_eval_func,
-            // RK Inputs
-            rtol, atol, rtols_ptr, atols_ptr, max_step_size, first_step_size
-        );
-        break;
-    case 2:
-        // DOP853
-        solver = new DOP853(
-            // Common Inputs
-            diffeq_ptr, solution_ptr, t_start, t_end, y0_ptr, num_y, num_extra, args_ptr, max_num_steps, max_ram_MB,
-            dense_output, t_eval, len_t_eval, pre_eval_func,
-            // RK Inputs
-            rtol, atol, rtols_ptr, atols_ptr, max_step_size, first_step_size
-        );
-        break;
-    [[unlikely]] default:
-        solution_ptr->success = false;
-        solution_ptr->error_code = -3;
-        solution_ptr->update_message("Model Error: Not implemented or unknown CySolver model requested.\n");
-        return solution_ptr;
-        break;
-    }
-
-    // Call reset on solver
-    solver->reset();
-
+    // Setup solver class
+    solution_sptr->build_solver(
+        diffeq_ptr,
+        t_start,
+        t_end,
+        y0_ptr,
+        method,
+        // General optional arguments
+        expected_size,
+        args_ptr,
+        max_num_steps,
+        max_ram_MB,
+        dense_output,
+        t_eval,
+        len_t_eval,
+        pre_eval_func,
+        // rk optional arguments
+        rtol,
+        atol,
+        rtols_ptr,
+        atols_ptr,
+        max_step_size,
+        first_step_size
+    );
     // Run integrator
-    solver->solve();
+    solution_sptr->solve();
 
-    // Finalize solution storage
-    solution_ptr->finalize();
-
-    // Delete solver instance
-    delete solver;
 
     // Return the results
-    return solution_ptr;
+    return solution_sptr;
 }
 
 
 /* Pure Python hook solvers and helpers */
-PySolver::PySolver() { }
+PySolver::PySolver()
+{
+
+}
+
 PySolver::~PySolver()
 {
-    if (this->solver)
-    {
-        delete this->solver;
-    }
+
 }
+
+
 PySolver::PySolver(
-    unsigned int integration_method,
-    // Cython class instance used for pyhook
-    PyObject* cython_extension_class_instance,
-    DiffeqMethod cython_extension_class_diffeq_method,
-    // Regular integrator inputs
-    std::shared_ptr<CySolverResult> solution_ptr,
-    const double t_start,
-    const double t_end,
-    const double* y0_ptr,
-    const unsigned int num_y,
-    // General optional arguments
-    const unsigned int num_extra,
-    const void* args_ptr,
-    const size_t max_num_steps,
-    const size_t max_ram_MB,
-    const bool dense_output,
-    const double* t_eval,
-    const size_t len_t_eval,
-    // rk optional arguments
-    const double rtol,
-    const double atol,
-    const double* rtols_ptr,
-    const double* atols_ptr,
-    const double max_step_size,
-    const double first_step_size) :
-        status(0),
-        integration_method(integration_method)
+        unsigned int integration_method,
+        // Cython class instance used for pyhook
+        PyObject* cython_extension_class_instance,
+        DiffeqMethod cython_extension_class_diffeq_method,
+        // Regular integrator inputs
+        std::shared_ptr<CySolverResult> solution_sptr,
+        const double t_start,
+        const double t_end,
+        const double* y0_ptr,
+        const unsigned int num_y,
+        // General optional arguments
+        const size_t expected_size,
+        const unsigned int num_extra,
+        const void* args_ptr,
+        const size_t max_num_steps,
+        const size_t max_ram_MB,
+        const bool dense_output,
+        const double* t_eval,
+        const size_t len_t_eval,
+        // rk optional arguments
+        const double rtol,
+        const double atol,
+        const double* rtols_ptr,
+        const double* atols_ptr,
+        const double max_step_size,
+        const double first_step_size) :
+            status(0),
+            integration_method(integration_method),
+            solution_sptr(solution_sptr)
 
-{   
-    // Save reference to solution pointer
-    this->solution_ptr = solution_ptr;
-
+{ 
     // We need to pass a fake diffeq pointer (diffeq ptr is unused in python-based solver)
     DiffeqFuncType diffeq_ptr = nullptr;
 
@@ -182,19 +157,17 @@ PySolver::PySolver(
     PreEvalFunc pre_eval_func = nullptr;
 
     // Build the solver class. This must be heap allocated to take advantage of polymorphism.
-    switch (this->integration_method)
+    // Setup solver class
+    if (this->solution_sptr) [[likely]]
     {
-    case 0:
-        // RK23
-        this->solver = new RK23(
+        this->solution_sptr->build_solver(
             diffeq_ptr,
-            solution_ptr,
             t_start,
             t_end,
             y0_ptr,
-            num_y,
+            integration_method,
             // General optional arguments
-            num_extra,
+            expected_size,
             args_ptr,
             max_num_steps,
             max_ram_MB,
@@ -208,97 +181,29 @@ PySolver::PySolver(
             rtols_ptr,
             atols_ptr,
             max_step_size,
-            first_step_size);
-        break;
-    case 1:
-        // RK45
-        this->solver = new RK45(
-            diffeq_ptr,
-            solution_ptr,
-            t_start,
-            t_end,
-            y0_ptr,
-            num_y,
-            // General optional arguments
-            num_extra,
-            args_ptr,
-            max_num_steps,
-            max_ram_MB,
-            dense_output,
-            t_eval,
-            len_t_eval,
-            pre_eval_func,
-            // rk optional arguments
-            rtol,
-            atol,
-            rtols_ptr,
-            atols_ptr,
-            max_step_size,
-            first_step_size);
-        break;
-    case 2:
-        // DOP853
-        this->solver = new DOP853(
-            diffeq_ptr,
-            solution_ptr,
-            t_start,
-            t_end,
-            y0_ptr,
-            num_y,
-            // General optional arguments
-            num_extra,
-            args_ptr,
-            max_num_steps,
-            max_ram_MB,
-            dense_output,
-            t_eval,
-            len_t_eval,
-            pre_eval_func,
-            // rk optional arguments
-            rtol,
-            atol,
-            rtols_ptr,
-            atols_ptr,
-            max_step_size,
-            first_step_size);
-        break;
-    [[unlikely]] default:
-        this->status = -1;
-        break;
-    }
+            first_step_size
+        );
 
-    if (this->solver) [[likely]]
-    {
         // Add in python hooks
-        this->solver->set_cython_extension_instance(cython_extension_class_instance, cython_extension_class_diffeq_method);
-
-        // Install solver's state pointers
-        this->state_pointers = PySolverStatePointers(
-            this->solver->dy_now_ptr,
-            this->solver->t_now_ptr,
-            this->solver->y_now_ptr);
+        this->solution_sptr->solver_sptr->set_cython_extension_instance(cython_extension_class_instance, cython_extension_class_diffeq_method);
+    }
+    else
+    {
+        throw std::exception("Solution storage not created. Perhaps memory issue or bad alloc.");
     }
 };
-
-
-PySolverStatePointers PySolver::get_state_pointers() const
-{
-    /*
-    The differential equation is called from the python side but it must use and update state pointers in the
-    CySolver class instance. This function returns all required pointers so Python can properly use and update them.
-    */
-    return this->state_pointers;
-}
 
 
 void PySolver::solve()
 {
     // Run integrator
-    if (this->solver) [[likely]]
+    if (this->solution_sptr)
     {
-        this->solver->solve();
+        // Reset solver to t0
+        this->solution_sptr->solve();
     }
-
-    // Finalize solution storage
-    this->solution_ptr->finalize();
+    else
+    {
+        throw std::exception("Solution storage pointer no longer valid.");
+    }
 }

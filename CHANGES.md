@@ -6,6 +6,16 @@
 
 New:
 * Added helper function to allow users to include CyRK headers during installation. `CyRK.get_include()` this returns a list which must be appended to your include list in "setup.py".
+* Some minor performance improvements when using dense output or t_eval.
+
+C++ Changes:
+* Major rework of the C++ Solver backend
+  * The `CySolverResult` storage structure is now the owner of: the solution data, the dense outputs, _and_ the solver itself (before the solver was stand alone). This ensures that the solver is alive for the dense outputs which, depending on settings, may need to make calls to the solver even after the integration is complete. 
+  * Removed many pointers in favor of direct access of variables. This was due to some variables moving and hanging pointers causing crashes.
+
+Fixes:
+* Fixed issue where if t_eval was less than t_end it could cause an access violation
+* Fixed issue where dense output was sometimes being created twice when t_eval was provided.
 
 #### v0.11.2 (2024-11-12)
 

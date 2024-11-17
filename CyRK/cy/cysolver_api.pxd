@@ -1,11 +1,12 @@
 from libcpp cimport bool as cpp_bool
+from libcpp.vector cimport vector
+from libcpp.memory cimport shared_ptr
 
 cimport cpython.ref as cpy_ref
-from CyRK.utils.vector cimport vector
-from CyRK.utils.memory cimport shared_ptr
 from CyRK.cy.pysolver_cyhook cimport DiffeqMethod
 
-cimport numpy as np
+cimport numpy as cnp
+cnp.import_array()
 
 
 # =====================================================================================================================
@@ -37,15 +38,19 @@ cdef extern from "dense.cpp" nogil:
         CySolverDense()
         CySolverDense(
             int integrator_int,
-            double t_old,
-            double t_now,
-            double* y_in_ptr,
-            unsigned int num_y,
-            unsigned int Q_order)
+            shared_ptr[CySolverBase] solver_sptr,
+            cpp_bool set_state)
+
         int integrator_int
         unsigned int num_y
+        unsigned int num_extra
+        shared_ptr[CySolverBase] solver_sptr
         double t_old
         double t_now
+        double step
+        unsigned int Q_order
+
+        void set_state()
         void call(double t_interp, double* y_interped)
 
 
@@ -63,21 +68,56 @@ cdef extern from "cysolution.cpp" nogil:
                 const cpp_bool direction_flag,
                 const cpp_bool capture_dense_output,
                 const cpp_bool t_eval_provided)
-            cpp_bool success
-            cpp_bool reset_called
-            char* message_ptr
-            int error_code
-            size_t size
-            size_t num_y
-            size_t num_dy
+            
             cpp_bool capture_extra
+            cpp_bool retain_solver
             cpp_bool capture_dense_output
             cpp_bool t_eval_provided
-            vector[double] time_domain
+            cpp_bool success
+            cpp_bool reset_called
+            cpp_bool direction_flag
+            int error_code
+            unsigned int integrator_method
+            unsigned int num_y
+            unsigned int num_extra
+            unsigned int num_dy
+            char* message_ptr
+            size_t size
+            size_t num_interpolates
+            vector[double] time_domain_vec
+            vector[double] time_domain_vec_sorted
             vector[double] solution
+            double* time_domain_vec_sorted_ptr
+            vector[CySolverDense] dense_vec
+            shared_ptr[CySolverBase] solver_sptr
+            vector[double] interp_time_vec
+
             void save_data(double new_t, double* new_solution_y, double* new_solution_dy)
+            CySolverDense* build_dense(cpp_bool save)
+            void solve()
             void finalize()
             void reset()
+            void build_solver(
+                DiffeqFuncType diffeq_ptr,
+                const double t_start,
+                const double t_end,
+                const double* y0_ptr,
+                const unsigned int method,
+                const size_t expected_size,
+                const void* args_ptr,
+                const size_t max_num_steps,
+                const size_t max_ram_MB,
+                const cpp_bool dense_output,
+                const double* t_eval,
+                const size_t len_t_eval,
+                PreEvalFunc pre_eval_func,
+                const double rtol,
+                const double atol,
+                const double* rtols_ptr,
+                const double* atols_ptr,
+                const double max_step_size,
+                const double first_step_size
+            )
             void update_message(const char* new_message)
             void call(const double t, double* y_interp)
             void call_vectorize(const double* t_array_ptr, size_t len_t, double* y_interp)
@@ -101,6 +141,11 @@ cdef class WrapCySolverResult:
 # Import CySolver Integrator Base Class
 # =====================================================================================================================
 cdef extern from "cysolver.cpp" nogil:
+    struct NowStatePointers:
+        double* t_now_ptr
+        double* y_now_ptr
+        double* dy_now_ptr
+
     cdef cppclass CySolverBase:
         CySolverBase()
         CySolverBase(
@@ -119,21 +164,30 @@ cdef extern from "cysolver.cpp" nogil:
             const size_t len_t_eval,
             PreEvalFunc pre_eval_func
         )
-        
-        shared_ptr[CySolverResult] storage_ptr
+
+        cpp_bool use_pysolver
+        DiffeqMethod py_diffeq_method
+        cpy_ref.PyObject cython_extension_class_instance
         int status
-        int integration_method
+        unsigned int integration_method
+        unsigned int num_dy
         unsigned int num_y
+        shared_ptr[CySolverResult] storage_ptr
         size_t len_t
         double t_now
-        double* y0
         double* y_now_ptr
         double* dy_now_ptr
+
         cpp_bool check_status()
-        void diffeq()
-        void take_step()
-        void change_storage(shared_ptr[CySolverResult] new_storage_ptr, cpp_bool auto_reset)
+        NowStatePointers get_now_state()
         void reset()
+        void offload_to_temp()
+        void load_back_from_temp()
+        void calc_first_step_size()
+        void take_step()
+        void solve()
+        void cy_diffeq()
+        void diffeq()
         void set_cython_extension_instance(cpy_ref.PyObject* cython_extension_class_instance)
         void py_diffeq()
 

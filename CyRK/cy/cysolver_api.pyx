@@ -2,7 +2,8 @@
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 
 import numpy as np
-np.import_array()
+cimport numpy as cnp
+cnp.import_array()
 
 # =====================================================================================================================
 # Import CySolverResult (container for integration results)
@@ -17,7 +18,7 @@ cdef class WrapCySolverResult:
 
         # Convert solution to pointers and views
         if self.cyresult_ptr.size > 0:
-            self.time_ptr  = &self.cyresult_ptr.time_domain[0]
+            self.time_ptr  = &self.cyresult_ptr.time_domain_vec[0]
             self.y_ptr     = &self.cyresult_ptr.solution[0]
             self.time_view = <double[:self.size]>self.time_ptr
             self.y_view    = <double[:self.size * self.num_dy]>self.y_ptr
@@ -85,7 +86,7 @@ cdef class WrapCySolverResult:
     
     def __call__(self, t):
 
-        if type(t) == np.ndarray:
+        if type(t) == cnp.ndarray:
             return self.call_vectorize(t)
         else:
             return self.call(t).reshape(self.cyresult_ptr.num_dy, 1)
@@ -116,7 +117,6 @@ cdef CySolveOutput cysolve_ivp(
             double first_step = 0.0,
             size_t expected_size = 0
             ) noexcept nogil:
-    
     cdef CySolveOutput result = baseline_cysolve_ivp(
         diffeq_ptr,
         t_span_ptr,

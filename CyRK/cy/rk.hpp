@@ -704,9 +704,6 @@ protected:
 protected:
     virtual void p_estimate_error() override;
     virtual void p_step_implementation() override;
-    virtual CySolverDense* p_dense_output_heap() override;
-    virtual void p_dense_output_stack(CySolverDense& dense_output_ptr) override;
-    virtual void p_update_Q(double* Q_ptr);
 
 public:
     RKSolver();
@@ -714,7 +711,7 @@ public:
     RKSolver(
         // Base Class input arguments
         DiffeqFuncType diffeq_ptr,
-        std::shared_ptr<CySolverResult> const storage_ptr,
+        std::shared_ptr<CySolverResult> const storage_sptr,
         const double t_start,
         const double t_end,
         const double* y0_ptr,
@@ -737,6 +734,7 @@ public:
     );
     virtual void reset() override;
     virtual void calc_first_step_size() override;
+    virtual void set_Q_array(double* Q_ptr, unsigned int* Q_order_ptr) override;
 };
 
 

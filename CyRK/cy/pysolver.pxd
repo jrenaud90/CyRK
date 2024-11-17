@@ -3,19 +3,16 @@ cimport cpython.ref as cpy_ref
 
 from CyRK.utils.memory cimport shared_ptr
 from CyRK.cy.pysolver_cyhook cimport DiffeqMethod
-from CyRK.cy.cysolver_api cimport CySolverResult
+from CyRK.cy.cysolver_api cimport CySolverResult, CySolverBase
 
-cimport numpy as np
+cimport numpy as cnp
+cnp.import_array()
 
 # =====================================================================================================================
 # Import the C++ cysolve_ivp helper function
 # =====================================================================================================================
 cdef extern from "cysolve.cpp" nogil:
     # Python-hook implementation
-    struct PySolverStatePointers:
-        double* dy_now_ptr
-        double* t_now_ptr
-        double* y_now_ptr
 
     cdef cppclass PySolver:
         PySolver()
@@ -23,11 +20,12 @@ cdef extern from "cysolve.cpp" nogil:
             unsigned int integration_method,
             cpy_ref.PyObject* cython_extension_class_instance,
             DiffeqMethod cython_extension_class_diffeq_method,
-            shared_ptr[CySolverResult] solution_ptr,
+            shared_ptr[CySolverResult] solution_sptr,
             const double t_start,
             const double t_end,
             const double* y0_ptr,
             const unsigned int num_y,
+            const size_t expected_size,
             const unsigned int num_extra,
             const void* args_ptr,
             const size_t max_num_steps,
@@ -41,8 +39,10 @@ cdef extern from "cysolve.cpp" nogil:
             const double* atols_ptr,
             const double max_step_size,
             const double first_step_size)
-        PySolverStatePointers get_state_pointers()
         void solve()
+        int status
+        unsigned int integration_method
+        shared_ptr[CySolverResult] solution_sptr
 
 
 cdef class WrapPyDiffeq:
@@ -55,20 +55,17 @@ cdef class WrapPyDiffeq:
     cdef unsigned int num_y
     cdef unsigned int num_dy
 
-    cdef np.ndarray y_now_arr
+    cdef cnp.ndarray y_now_arr
     cdef double[::1] y_now_view
-    cdef np.ndarray dy_now_arr
+    cdef cnp.ndarray dy_now_arr
     cdef double[::1] dy_now_view
 
     # State attributes
+    cdef shared_ptr[CySolverBase] solver_sptr
     cdef double* y_now_ptr
     cdef double* t_now_ptr
     cdef double* dy_now_ptr
 
-    cdef void set_state(self,
-        double* dy_ptr,
-        double* t_ptr,
-        double* y_ptr
-        ) noexcept
+    cdef void set_state(self, shared_ptr[CySolverBase]) noexcept
     
     cdef void diffeq(self) noexcept

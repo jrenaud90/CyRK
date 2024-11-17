@@ -6,10 +6,12 @@
 #include <algorithm>
 
 #include "common.hpp"
-#include "dense.hpp"
 #include "cy_array.hpp"
+#include "dense.hpp"
+#include "cysolver.hpp"
+#include "rk.hpp"
 
-class CySolverResult {
+class CySolverResult : public std::enable_shared_from_this<CySolverResult>{
 
 // Attributes
 protected:
@@ -23,20 +25,17 @@ protected:
 
     // Buffer
     unsigned int current_data_buffer_size  = 0;
-    unsigned int current_dense_buffer_size = 0;
     double* data_buffer_time_ptr           = &data_buffer_time[0];
     double* data_buffer_y_ptr              = &data_buffer_y[0];
-    double* data_buffer_interp_time_ptr    = &data_buffer_interp_time[0];
-    CySolverDense** data_buffer_dense_ptr  = &data_buffer_dense_output[0];
     
     // Metadata
     double last_t          = 0;
     double num_dy_dbl      = 0.0;
-    unsigned int num_extra = 0;
 
 public:
     // Storage for arrays
     bool capture_extra = false;
+    bool retain_solver = false;
     
     // Dense Output
     bool capture_dense_output = false;
@@ -58,9 +57,11 @@ public:
     // -50   : Error calling cython wrapper function from PySolver.
     int error_code = -999;
 
-    // Metadata
-    unsigned int num_y    = 0;
-    unsigned int num_dy   = 0;
+    // Meta data
+    unsigned int integrator_method = 999; // Something large since 0 already == RK23
+    unsigned int num_y             = 0;
+    unsigned int num_extra         = 0;
+    unsigned int num_dy            = 0;
 
     // More status information
     char* message_ptr = &message[0];
@@ -68,31 +69,31 @@ public:
     size_t num_interpolates = 0;
 
     // Pointer to storage arrays
-    std::vector<double> time_domain        = std::vector<double>(0);
-    std::vector<double> time_domain_sorted = std::vector<double>(0);
-    std::vector<double> solution           = std::vector<double>(0);
-    double* time_domain_sorted_ptr         = time_domain.data();
-
+    std::vector<double> time_domain_vec        = std::vector<double>();
+    std::vector<double> time_domain_vec_sorted = std::vector<double>();
+    std::vector<double> solution               = std::vector<double>();
+    double* time_domain_vec_sorted_ptr         = time_domain_vec.data();
+    
     // Dense output array
-    std::vector<CySolverDense*> dense_vector = std::vector<CySolverDense*>(0);
+    std::vector<CySolverDense> dense_vec = std::vector<CySolverDense>();  // Heap allocated dense solutions for when the user needs these saved.
+
+    // Solver storage
+    std::shared_ptr<CySolverBase> solver_sptr = nullptr;
 
     // Interpolant time array (used if t_eval is provided)
-    std::vector<double> interp_time = std::vector<double>(0);
+    std::vector<double> interp_time_vec = std::vector<double>();
 
 private:
     // Put data buffers at the end of memory stack
     double data_buffer_time[BUFFER_SIZE]                 = { };
     double data_buffer_y[BUFFER_SIZE * DY_LIMIT]         = { };
-    CySolverDense* data_buffer_dense_output[BUFFER_SIZE] = { };
-    double data_buffer_interp_time[BUFFER_SIZE]          = { };
 
 
 // Methods
 protected:
+    void p_delete_heap();
     void p_expand_data_storage();
-    void p_expand_dense_storage();
     void p_offload_data();
-    void p_offload_dense();
 
 public:
     virtual ~CySolverResult();
@@ -106,9 +107,33 @@ public:
         const bool capture_dense_output,
         const bool t_eval_provided);
     void save_data(const double new_t, double* const new_solution_y_ptr, double* const new_solution_dy_ptr);
-    void save_dense(const double sol_t, CySolverDense* dense_output_ptr);
+    CySolverDense* build_dense(bool save);
+    void solve();
     void finalize();
     void reset();
+    void build_solver(
+        DiffeqFuncType diffeq_ptr,
+        const double t_start,
+        const double t_end,
+        const double* y0_ptr,
+        const unsigned int method,
+        // General optional arguments
+        const size_t expected_size,
+        const void* args_ptr,
+        const size_t max_num_steps,
+        const size_t max_ram_MB,
+        const bool dense_output,
+        const double* t_eval,
+        const size_t len_t_eval,
+        PreEvalFunc pre_eval_func,
+        // rk optional arguments
+        const double rtol,
+        const double atol,
+        const double* rtols_ptr,
+        const double* atols_ptr,
+        const double max_step_size,
+        const double first_step_size
+    );
     void update_message(const char* const new_message_ptr);
     void call(const double t, double* y_interp_ptr);
     void call_vectorize(const double* t_array_ptr, size_t len_t, double* y_interp_ptr);

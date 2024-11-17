@@ -3,8 +3,7 @@
 #include <memory>
 
 #include "common.hpp"
-#include "cysolver.hpp"
-#include "rk.hpp"
+#include "cysolution.hpp"
 
 
 std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
@@ -34,16 +33,6 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
 
 
 /* Pure Python hook solvers and helpers */
-struct PySolverStatePointers
-{
-    double* dy_now_ptr;
-    double* t_now_ptr;
-    double* y_now_ptr;
-    PySolverStatePointers() :
-        dy_now_ptr(nullptr), t_now_ptr(nullptr), y_now_ptr(nullptr) {};
-    PySolverStatePointers(double* dy_now_ptr, double* t_now_ptr, double* y_now_ptr) :
-        dy_now_ptr(dy_now_ptr), t_now_ptr(t_now_ptr), y_now_ptr(y_now_ptr) {};
-};
 
 class PySolver
 {
@@ -52,12 +41,10 @@ public:
     int status = -999;
 
     // Integrator information
-    unsigned int integration_method = 1;
-    CySolverBase* solver = nullptr;
-    PySolverStatePointers state_pointers = PySolverStatePointers();
+    unsigned int integration_method = 999;
 
     // Solution information
-    std::shared_ptr<CySolverResult> solution_ptr = std::make_shared<CySolverResult>();
+    std::shared_ptr<CySolverResult> solution_sptr = nullptr;
 
 public:
     PySolver();
@@ -68,12 +55,13 @@ public:
         PyObject* cython_extension_class_instance,
         DiffeqMethod cython_extension_class_diffeq_method,
         // Regular integrator inputs
-        std::shared_ptr<CySolverResult> solution_ptr,
+        std::shared_ptr<CySolverResult> solution_sptr,
         const double t_start,
         const double t_end,
         const double* y0_ptr,
         const unsigned int num_y,
         // General optional arguments
+        const size_t expected_size,
         const unsigned int num_extra,
         const void* args_ptr,
         const size_t max_num_steps,
@@ -89,6 +77,5 @@ public:
         const double max_step_size,
         const double first_step_size
     );
-    PySolverStatePointers get_state_pointers() const;
     void solve();
 };

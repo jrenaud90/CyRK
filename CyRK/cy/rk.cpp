@@ -1,4 +1,6 @@
 #include "rk.hpp"
+#include "dense.hpp"
+#include "cysolution.hpp"
 
 // ########################################################################################################################
 // RKSolver (Base)
@@ -8,7 +10,7 @@ RKSolver::RKSolver() {}
 RKSolver::RKSolver(
     // Base Class input arguments
     DiffeqFuncType diffeq_ptr,
-    std::shared_ptr<CySolverResult> const storage_ptr,
+    std::shared_ptr<CySolverResult> const storage_sptr,
     const double t_start,
     const double t_end,
     const double* y0_ptr,
@@ -30,7 +32,7 @@ RKSolver::RKSolver(
     const double first_step_size) :
         CySolverBase(
             diffeq_ptr,
-            storage_ptr,
+            storage_sptr,
             t_start,
             t_end,
             y0_ptr,
@@ -51,20 +53,19 @@ RKSolver::RKSolver(
     {
         if (this->user_provided_first_step_size < 0.0) [[unlikely]]
         {
-            this->storage_ptr->error_code = -1;
-            this->storage_ptr->update_message("User-provided initial step size must be a positive number.");
+            this->storage_sptr->error_code = -1;
+            this->storage_sptr->update_message("User-provided initial step size must be a positive number.");
         }
         else if (first_step_size > (this->t_delta_abs * 0.5)) [[unlikely]]
         {
-            this->storage_ptr->error_code = -1;
-            this->storage_ptr->update_message("User-provided initial step size must be smaller than 50 % of the time span size.");
+            this->storage_sptr->error_code = -1;
+            this->storage_sptr->update_message("User-provided initial step size must be smaller than 50 % of the time span size.");
         }
     }
 
     // Setup tolerances
     // User can provide an array of relative tolerances, one for each y value.
     // The length of the pointer array must be the same as y0 (and <= 25).
-
     if (rtols_ptr)
     {
         // rtol for each y
@@ -107,7 +108,6 @@ RKSolver::~RKSolver()
 {
 
 }
-
 
 // Protected Methods
 void RKSolver::p_estimate_error()
@@ -168,7 +168,7 @@ void RKSolver::p_estimate_error()
         }
 
         // Find scale of y for error calculations
-        const double scale_inv = 1.0 / (atol + std::fmax(std::fabs(this->y_old_ptr[y_i]), std::fabs(this->y_now_ptr[y_i])) * rtol);
+        const double scale_inv = 1.0 / (atol + std::fmax(std::fabs(this->y_old[y_i]), std::fabs(this->y_now[y_i])) * rtol);
 
         // We need the absolute value but since we are taking the square, it is guaranteed to be positive.
         // TODO: This will need to change if CySolver ever accepts complex numbers
@@ -197,10 +197,10 @@ void RKSolver::p_step_implementation()
     const double* const l_A_ptr = this->A_ptr;
     const double* const l_B_ptr = this->B_ptr;
     const double* const l_C_ptr = this->C_ptr;
-    double* const l_y_now_ptr   = this->y_now_ptr;
-    double* const l_y_old_ptr   = this->y_old_ptr;
-    double* const l_dy_now_ptr  = this->dy_now_ptr;
-    double* const l_dy_old_ptr  = this->dy_old_ptr;
+    double* const l_y_now_ptr   = &this->y_now[0];
+    double* const l_y_old_ptr   = &this->y_old[0];
+    double* const l_dy_now_ptr  = &this->dy_now[0];
+    double* const l_dy_old_ptr  = &this->dy_old[0];
 
     // Determine step size based on previous loop
     // Find minimum step size based on the value of t (less floating point numbers between numbers when t is large)
@@ -232,22 +232,22 @@ void RKSolver::p_step_implementation()
         // Move time forward for this particular step size
         double t_delta_check;
         if (this->direction_flag) {
-            this->step             = this->step_size;
-            this->t_now_ptr[0] = this->t_old + this->step;
-            t_delta_check      = this->t_now_ptr[0] - this->t_end;
+            this->step    = this->step_size;
+            this->t_now   = this->t_old + this->step;
+            t_delta_check = this->t_now - this->t_end;
         }
         else {
-            this->step             = -this->step_size;
-            this->t_now_ptr[0] = this->t_old + this->step;
-            t_delta_check      = this->t_end - this->t_now_ptr[0];
+            this->step    = -this->step_size;
+            this->t_now   = this->t_old + this->step;
+            t_delta_check = this->t_end - this->t_now;
         }
 
         // Check that we are not at the end of integration with that move
         if (t_delta_check > 0.0) {
-            this->t_now_ptr[0] = this->t_end;
+            this->t_now = this->t_end;
 
             // If we are, correct the step so that it just hits the end of integration.
-            this->step = this->t_now_ptr[0] - this->t_old;
+            this->step = this->t_now - this->t_old;
             if (this->direction_flag) {
                 this->step_size = this->step;
             }
@@ -260,11 +260,11 @@ void RKSolver::p_step_implementation()
 
         // t_now must be updated for each loop of s in order to make the diffeq method calls.
         // But we need to return to its original value later on. Store in temp variable.
-        const double time_tmp = this->t_now_ptr[0];
+        const double time_tmp = this->t_now;
 
         for (unsigned int s = 1; s < this->len_C; s++) {
             // Find the current time based on the old time and the step size.
-            this->t_now_ptr[0] = this->t_old + l_C_ptr[s] * this->step;
+            this->t_now = this->t_old + l_C_ptr[s] * this->step;
             const unsigned int stride_A = s * this->len_Acols;
 
             for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
@@ -467,7 +467,7 @@ void RKSolver::p_step_implementation()
         }
 
         // Restore t_now to its previous value.
-        this->t_now_ptr[0] = time_tmp;
+        this->t_now = time_tmp;
 
         // Dot Product (K, B) * step
         for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
@@ -645,10 +645,10 @@ void RKSolver::calc_first_step_size()
                 atol = this->atols_ptr[y_i];
             }
 
-            y_old_tmp = this->y_old_ptr[y_i];
+            y_old_tmp = this->y_old[y_i];
             scale     = atol + std::fabs(y_old_tmp) * rtol;
             d0_abs    = std::fabs(y_old_tmp / scale);
-            d1_abs    = std::fabs(dy_old_ptr[y_i] / scale);
+            d1_abs    = std::fabs(this->dy_old[y_i] / scale);
             d0       += (d0_abs * d0_abs);
             d1       += (d1_abs * d1_abs);
         }
@@ -666,10 +666,10 @@ void RKSolver::calc_first_step_size()
 
         h0_direction = this->direction_flag ? h0 : -h0;
 
-        this->t_now_ptr[0] = this->t_old + h0_direction;
+        this->t_now = this->t_old + h0_direction;
         for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
         {
-            this->y_now_ptr[y_i] = this->y_old_ptr[y_i] + h0_direction * this->dy_old_ptr[y_i];
+            this->y_now[y_i] = this->y_old[y_i] + h0_direction * this->dy_old[y_i];
         }
 
         // Update dy
@@ -688,8 +688,8 @@ void RKSolver::calc_first_step_size()
                 atol = this->atols_ptr[y_i];
             }
 
-            scale  = atol + std::fabs(this->y_old_ptr[y_i]) * rtol;
-            d2_abs = std::fabs((this->dy_now_ptr[y_i] - this->dy_old_ptr[y_i]) / scale);
+            scale  = atol + std::fabs(this->y_old[y_i]) * rtol;
+            d2_abs = std::fabs((this->dy_now[y_i] - this->dy_old[y_i]) / scale);
             d2    += (d2_abs * d2_abs);
         }
 
@@ -708,12 +708,13 @@ void RKSolver::calc_first_step_size()
 
 /* Dense Output Methods */
 
-void RKSolver::p_update_Q(double* Q_ptr)
+void RKSolver::set_Q_array(double* Q_ptr, unsigned int* Q_order_ptr)
 {
     // Q's definition depends on the integrators implementation. 
     // For default RK, it is defined by Q = K.T.dot(self.P)  K has shape of (n_stages + 1, num_y) so K.T has shape of (num_y, n_stages + 1)
     // P has shape of (4, 3) for RK23; (7, 4) for RK45.. So (n_stages + 1, Q_order)
     // So Q has shape of (num_y, num_Pcols)
+    Q_order_ptr[0] = this->len_Pcols; 
 
     switch (this->integration_method)
     {
@@ -811,15 +812,7 @@ void RKSolver::p_update_Q(double* Q_ptr)
         // This method uses the current values stored in K and expands upon them by 3 more values determined by calls to the diffeq.
 
         // We need to save a copy of the current state because we will overwrite the values shortly
-        double dy_now_storage[DY_LIMIT] = { };
-        double* dy_now_storage_ptr = &dy_now_storage[0];
-        std::memcpy(dy_now_storage_ptr, this->dy_now_ptr, sizeof(double) * this->num_dy);
-
-        double y_now_storage[Y_LIMIT] = { };
-        double* y_now_storage_ptr = &y_now_storage[0];
-        std::memcpy(y_now_storage_ptr, this->y_now_ptr, sizeof(double) * this->num_y);
-
-        double time_storage = this->t_now_ptr[0];
+        this->offload_to_temp();
 
         // We also need to store dy_dt so that they can be used in dot products
         double K_extended[Y_LIMIT * 3] = { };
@@ -852,17 +845,17 @@ void RKSolver::p_update_Q(double* Q_ptr)
             }
 
             // Update y for diffeq call using the temp_double dot product.
-            this->y_now_ptr[y_i] = this->y_old_ptr[y_i] + temp_double * this->step;
+            this->y_now[y_i] = this->y_old[y_i] + temp_double * this->step;
         }
         // Update time and call the diffeq.
-        this->t_now_ptr[0] = this->t_old + (this->step * DOP853_CEXTRA_ptr[0]);
+        this->t_now = this->t_old + (this->step * DOP853_CEXTRA_ptr[0]);
         this->diffeq(this);
 
         // S (row) == 14
         for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
         {
             // Store dy from the last call.
-            K_ni = this->dy_now_ptr[y_i];
+            K_ni = this->dy_now[y_i];
             K_extended_ptr[y_i * 3] = K_ni;
 
             // Dot Product (K.T dot a) * h
@@ -871,17 +864,17 @@ void RKSolver::p_update_Q(double* Q_ptr)
             temp_double_arr[y_i * 2 + 1] += K_ni * DOP853_AEXTRA_ptr[3 * 13 + 2];
 
             // Update y for diffeq call
-            this->y_now_ptr[y_i] = this->y_old_ptr[y_i] + temp_double_arr[y_i * 2] * this->step;
+            this->y_now[y_i] = this->y_old[y_i] + temp_double_arr[y_i * 2] * this->step;
         }
         // Update time and call the diffeq.
-        this->t_now_ptr[0] = this->t_old + (this->step * DOP853_CEXTRA_ptr[1]);
+        this->t_now = this->t_old + (this->step * DOP853_CEXTRA_ptr[1]);
         this->diffeq(this);
 
         // S (row) == 15
         for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
         {
             // Store dy from the last call.
-            K_ni = this->dy_now_ptr[y_i];
+            K_ni = this->dy_now[y_i];
             K_extended_ptr[y_i * 3 + 1] = K_ni;
 
             // Dot Product (K.T dot a) * h            
@@ -889,10 +882,10 @@ void RKSolver::p_update_Q(double* Q_ptr)
             temp_double_arr[y_i * 2 + 1] += K_ni * DOP853_AEXTRA_ptr[3 * 14 + 2];
 
             // Update y for diffeq call
-            this->y_now_ptr[y_i] = this->y_old_ptr[y_i] + temp_double_arr[y_i * 2 + 1] * this->step;
+            this->y_now[y_i] = this->y_old[y_i] + temp_double_arr[y_i * 2 + 1] * this->step;
         }
         // Update time and call the diffeq.
-        this->t_now_ptr[0] = this->t_old + (this->step * DOP853_CEXTRA_ptr[2]);
+        this->t_now = this->t_old + (this->step * DOP853_CEXTRA_ptr[2]);
         this->diffeq(this);
 
 
@@ -900,7 +893,7 @@ void RKSolver::p_update_Q(double* Q_ptr)
         for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
         {
             // Store dy from the last call.
-            K_extended_ptr[y_i * 3 + 2] = this->dy_now_ptr[y_i];
+            K_extended_ptr[y_i * 3 + 2] = this->dy_now[y_i];
 
             // SciPy builds up a "F" matrix. Then in the dense interpolator this is reversed.
             // To keep consistency we will build F pre-reversed into Q. 
@@ -967,8 +960,8 @@ void RKSolver::p_update_Q(double* Q_ptr)
             // f_old = K[0]
             // delta_y requires the current y and last y, but the current y was just overwritten to find
             // K_extended. So we need to pull from the values we saved in temporary variables. Same thing with dy
-            const double delta_y = y_now_storage_ptr[y_i] - this->y_old_ptr[y_i];
-            const double sum_dy  = dy_now_storage_ptr[y_i] + this->K_ptr[stride_K];
+            const double delta_y = this->y_tmp[y_i] - this->y_old[y_i];
+            const double sum_dy  = this->dy_tmp[y_i] + this->K_ptr[stride_K];
             Q_ptr[stride_Q + 4] = 2.0 * delta_y - this->step * sum_dy;
 
             // F[5] = h * f_old - delta_y
@@ -980,9 +973,7 @@ void RKSolver::p_update_Q(double* Q_ptr)
         }
 
         // Return values that were saved in temp variables back to state variables.
-        std::memcpy(this->dy_now_ptr, dy_now_storage_ptr, sizeof(double) * this->num_dy);
-        std::memcpy(this->y_now_ptr, y_now_storage_ptr, sizeof(double) * this->num_y);
-        this->t_now_ptr[0] = time_storage;
+        this->load_back_from_temp();
         }
         break;
 
@@ -1011,40 +1002,6 @@ void RKSolver::p_update_Q(double* Q_ptr)
         break;
     }
 }
-
-CySolverDense* RKSolver::p_dense_output_heap()
-{
-    // Build dense output object instance
-    CySolverDense* dense_output = new CySolverDense(
-        this->integration_method,
-        this->t_old,
-        this->t_now_ptr[0],
-        this->y_old_ptr,
-        this->num_y,
-        this->num_extra,
-        this->len_Pcols,
-        this,
-        this->diffeq,
-        this->cython_extension_class_instance,
-        this->t_now_ptr,
-        this->y_now_ptr,
-        this->dy_now_ptr);
-
-    // Update Q
-    this->p_update_Q(dense_output->Q_ptr);
-
-    return dense_output;
-}
-
-void RKSolver::p_dense_output_stack(CySolverDense& dense_output_ptr)
-{
-    // Update integration method specific items
-    dense_output_ptr.Q_order = this->len_Pcols;
-    
-    // Update Q
-    this->p_update_Q(dense_output_ptr.Q_ptr);
-}
-
 
 // ########################################################################################################################
 // Explicit Runge - Kutta 2(3)
@@ -1220,7 +1177,7 @@ void DOP853::p_estimate_error()
         error_dot5 += this->E5_ptr[12] * temp_double;
 
         // Find scale of y for error calculations
-        const double scale_inv = 1.0 / (atol + std::fmax(std::fabs(this->y_old_ptr[y_i]), std::fabs(this->y_now_ptr[y_i])) * rtol);
+        const double scale_inv = 1.0 / (atol + std::fmax(std::fabs(this->y_old[y_i]), std::fabs(this->y_now[y_i])) * rtol);
 
         // We need the absolute value but since we are taking the square, it is guaranteed to be positive.
         // TODO: This will need to change if CySolver ever accepts complex numbers
@@ -1243,8 +1200,3 @@ void DOP853::p_estimate_error()
         this->error_norm = this->step_size * error_norm5 / std::sqrt(error_denom * this->num_y_dbl);
     }
 }
-
-
-// ########################################################################################################################
-// Dense Output Implementations
-// ########################################################################################################################
