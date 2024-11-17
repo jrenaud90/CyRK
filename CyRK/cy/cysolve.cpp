@@ -189,7 +189,7 @@ PySolver::PySolver(
     }
     else
     {
-        throw std::exception("Solution storage not created. Perhaps memory issue or bad alloc.");
+        throw std::exception(); // "Solution storage not created. Perhaps memory issue or bad alloc."
     }
 };
 
@@ -204,6 +204,6 @@ void PySolver::solve()
     }
     else
     {
-        throw std::exception("Solution storage pointer no longer valid.");
+        throw std::exception(); // Solution storage pointer no longer valid
     }
 }

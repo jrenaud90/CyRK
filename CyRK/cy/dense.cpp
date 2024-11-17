@@ -186,7 +186,7 @@ void CySolverDense::call(double t_interp, double* y_interp_ptr)
         }
         else
         {
-            throw std::exception("Can not complete interpolation for extra outputs because solver has been deconstructed.");
+            throw std::exception(); // "Can not complete interpolation for extra outputs because solver has been deconstructed."
         }
     }
 }
