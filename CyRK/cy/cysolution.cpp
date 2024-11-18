@@ -66,7 +66,7 @@ void CySolverResult::p_delete_heap()
 // Protected methods
 void CySolverResult::p_expand_data_storage()
 {
-    double new_storage_size_dbl = std::floor(DYNAMIC_GROWTH_RATE * this->storage_capacity);
+    double new_storage_size_dbl = std::floor(DYNAMIC_GROWTH_RATE * (double)this->storage_capacity);
 
     // Check if this new size is okay.
     if ((new_storage_size_dbl / this->num_dy_dbl) > SIZE_MAX_DBL) [[unlikely]]
@@ -78,7 +78,7 @@ void CySolverResult::p_expand_data_storage()
     {
         this->storage_capacity = (size_t)new_storage_size_dbl;
         // Ensure there is enough new room for the new size.
-        this->storage_capacity = std::max<size_t>(this->storage_capacity, this->size + 1);
+        this->storage_capacity = std::max<size_t>(this->storage_capacity, std::max<size_t>(this->size, this->num_interpolates) + 1);
 
         round_to_2(this->storage_capacity);
         try
@@ -325,6 +325,9 @@ CySolverDense* CySolverResult::build_dense(bool save)
 
 void CySolverResult::solve()
 {
+    // Reset this storage to its baseline state
+    this->reset();
+    
     if (this->solver_uptr)
     {
         // Reset the solver back to t=0
