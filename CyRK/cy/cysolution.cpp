@@ -253,11 +253,17 @@ void CySolverResult::build_solver(
         break;
     }
 
-    // Setup a single heap allocated dense solver if it is needed.
-    if (t_eval_provided && !this->capture_dense_output)
+    if (this->error_code == 0)
     {
-        this->dense_vec.emplace_back(this->integrator_method, this->solver_uptr.get(), false);
-        this->num_interpolates++;
+        // Prepare solver for integration by setting to t=0
+        this->solver_uptr->reset();
+
+        // Setup a single heap allocated dense solver if it is needed.
+        if (t_eval_provided && !this->capture_dense_output)
+        {
+            this->dense_vec.emplace_back(this->integrator_method, this->solver_uptr.get(), false);
+            this->num_interpolates++;
+        }
     }
 }
 
