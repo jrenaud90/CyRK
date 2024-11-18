@@ -323,6 +323,30 @@ ax.plot(result.t, 100*result.y[3], c='purple', ls=':')
 
 There is a lot more you can do to interface with CyRK's C++ backend and fully optimize the integrators to your needs. These details will be documented in "Documentation/Advanced CySolver.md".
 
+#### No Return `cysolve_ivp_noreturn`
+The example above shows using `cysolve_ivp` functions that return an output (which is a c++ shared pointer): `cdef CySolveOutput result = cysolve_ivp(...)`. CyRK also provides a function that takes the output as an input if you prefer to manage your own memory:
+```cython
+
+from libcpp.memory cimport make_shared, shared_ptr
+
+from CyRK cimport CySolverResult, cysolve_ivp_noreturn
+
+# Make our own stroage
+cdef shared_ptr[CySolverResult] solution_sptr =
+    make_shared[CySolverResult](
+        num_y,
+        num_extra,
+        expected_size,
+        t_end,
+        direction_flag,
+        dense_output,
+        t_eval_provided);
+
+# Pass it to the noreturn version of the solver for it to update.
+cysolve_ivp_noreturn(solution_sptr, <other inputs>)
+
+```
+
 #### `cysolve_ivp` and `cysolve_ivp_gil` Arguments
 
 ```cython
