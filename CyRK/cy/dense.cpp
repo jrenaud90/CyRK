@@ -190,9 +190,5 @@ void CySolverDense::call(double t_interp, double* y_interp_ptr)
             // Reset CySolver state to what it was before
             this->solver_ptr->load_back_from_temp();
         }
-        else
-        {
-            throw std::exception(); // "Can not complete interpolation for extra outputs because solver has been deconstructed."
-        }
     }
 }
