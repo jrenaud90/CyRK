@@ -33,8 +33,8 @@ CySolverBase::CySolverBase(
         const double t_start,
         const double t_end,
         const double* const y0_ptr,
-        const unsigned int num_y,
-        const unsigned int num_extra,
+        const size_t num_y,
+        const size_t num_extra,
         const void* const args_ptr,
         const size_t max_num_steps,
         const size_t max_ram_MB,
@@ -183,7 +183,12 @@ void CySolverBase::load_back_from_temp()
     this->t_now = this->t_tmp;
 }
 
-void CySolverBase::set_Q_array(double* Q_ptr, unsigned int* Q_order_ptr)
+void CySolverBase::set_Q_order(size_t* Q_order_ptr)
+{
+    // Overwritten by subclasses.
+}
+
+void CySolverBase::set_Q_array(double* Q_ptr)
 {
     // Overwritten by subclasses.
 }

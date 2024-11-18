@@ -6,11 +6,11 @@ void baseline_cysolve_ivp_noreturn(
         DiffeqFuncType diffeq_ptr,
         const double* t_span_ptr,
         const double* y0_ptr,
-        const unsigned int num_y,
-        const unsigned int method,
+        const size_t num_y,
+        const int method,
         // General optional arguments
         const size_t expected_size,
-        const unsigned int num_extra,
+        const size_t num_extra,
         const void* args_ptr,
         const size_t max_num_steps,
         const size_t max_ram_MB,
@@ -41,7 +41,7 @@ void baseline_cysolve_ivp_noreturn(
         if (rtols_ptr)
         {
             // rtol for each y
-            for (unsigned int y_i = 0; y_i < num_y; y_i++)
+            for (size_t y_i = 0; y_i < num_y; y_i++)
             {
                 double rtol_tmp = rtols_ptr[y_i];
                 if (rtol_tmp < EPS_100)
@@ -98,11 +98,11 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
         DiffeqFuncType diffeq_ptr,
         const double* t_span_ptr,
         const double* y0_ptr,
-        const unsigned int num_y,
-        const unsigned int method,
+        const size_t num_y,
+        const int method,
         // General optional arguments
         const size_t expected_size,
-        const unsigned int num_extra,
+        const size_t num_extra,
         const void* args_ptr,
         const size_t max_num_steps,
         const size_t max_ram_MB,
@@ -180,7 +180,7 @@ PySolver::~PySolver()
 
 
 PySolver::PySolver(
-        unsigned int integration_method,
+        int integration_method,
         // Cython class instance used for pyhook
         PyObject* cython_extension_class_instance,
         DiffeqMethod cython_extension_class_diffeq_method,
@@ -189,10 +189,10 @@ PySolver::PySolver(
         const double t_start,
         const double t_end,
         const double* y0_ptr,
-        const unsigned int num_y,
+        const size_t num_y,
         // General optional arguments
         const size_t expected_size,
-        const unsigned int num_extra,
+        const size_t num_extra,
         const void* args_ptr,
         const size_t max_num_steps,
         const size_t max_ram_MB,

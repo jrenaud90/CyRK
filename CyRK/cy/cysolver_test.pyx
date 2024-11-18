@@ -229,7 +229,7 @@ def cytester(
         len_t_eval = len(t_eval)
         t_eval_ptr = &t_eval[0]
 
-    cdef unsigned int num_y
+    cdef size_t num_y
     cdef double[10] y0_arr
     cdef double* y0_ptr = &y0_arr[0]
 

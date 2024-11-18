@@ -17,16 +17,16 @@ cdef extern from "cysolve.cpp" nogil:
     cdef cppclass PySolver:
         PySolver()
         PySolver(
-            unsigned int integration_method,
+            int integration_method,
             cpy_ref.PyObject* cython_extension_class_instance,
             DiffeqMethod cython_extension_class_diffeq_method,
             shared_ptr[CySolverResult] solution_sptr,
             const double t_start,
             const double t_end,
             const double* y0_ptr,
-            const unsigned int num_y,
+            const size_t num_y,
             const size_t expected_size,
-            const unsigned int num_extra,
+            const size_t num_extra,
             const void* args_ptr,
             const size_t max_num_steps,
             const size_t max_ram_MB,
@@ -41,7 +41,7 @@ cdef extern from "cysolve.cpp" nogil:
             const double first_step_size)
         void solve()
         int status
-        unsigned int integration_method
+        int integration_method
         shared_ptr[CySolverResult] solution_sptr
 
 
@@ -52,8 +52,8 @@ cdef class WrapPyDiffeq:
     cdef cpp_bool use_args
     cdef cpp_bool pass_dy_as_arg
 
-    cdef unsigned int num_y
-    cdef unsigned int num_dy
+    cdef size_t num_y
+    cdef size_t num_dy
 
     cdef cnp.ndarray y_now_arr
     cdef double[::1] y_now_view

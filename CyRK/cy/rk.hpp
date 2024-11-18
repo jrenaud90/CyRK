@@ -11,14 +11,14 @@
 // #####################################################################################################################
 // Runge - Kutta 2(3)
 // #####################################################################################################################
-const unsigned int RK23_METHOD_INT            = 0;
-const unsigned int RK23_order                 = 3;
-const unsigned int RK23_n_stages              = 3;
-const unsigned int RK23_len_Arows             = 3;
-const unsigned int RK23_len_Acols             = 3;
-const unsigned int RK23_len_C                 = 3;
-const unsigned int RK23_len_Pcols             = 3;
-const unsigned int RK23_error_estimator_order = 2;
+const int RK23_METHOD_INT               = 0;
+const size_t RK23_order                 = 3;
+const size_t RK23_n_stages              = 3;
+const size_t RK23_len_Arows             = 3;
+const size_t RK23_len_Acols             = 3;
+const size_t RK23_len_C                 = 3;
+const size_t RK23_len_Pcols             = 3;
+const size_t RK23_error_estimator_order = 2;
 const double RK23_error_exponent = 1.0 / (2.0 + 1.0);  // Defined as 1 / (error_order + 1)
 
 const double RK23_A[9] = {
@@ -84,14 +84,14 @@ const double* const RK23_P_ptr = &RK23_P[0];
 // #####################################################################################################################
 // Runge - Kutta 4(5)
 // #####################################################################################################################
-const unsigned int RK45_METHOD_INT            = 1;
-const unsigned int RK45_order                 = 5;
-const unsigned int RK45_n_stages              = 6;
-const unsigned int RK45_len_Arows             = 6;
-const unsigned int RK45_len_Acols             = 5;
-const unsigned int RK45_len_C                 = 6;
-const unsigned int RK45_len_Pcols             = 4;
-const unsigned int RK45_error_estimator_order = 4;
+const int RK45_METHOD_INT               = 1;
+const size_t RK45_order                 = 5;
+const size_t RK45_n_stages              = 6;
+const size_t RK45_len_Arows             = 6;
+const size_t RK45_len_Acols             = 5;
+const size_t RK45_len_C                 = 6;
+const size_t RK45_len_Pcols             = 4;
+const size_t RK45_error_estimator_order = 4;
 const double RK45_error_exponent = 1.0 / (4.0 + 1.0);  // Defined as 1 / (error_order + 1)
 
 const double RK45_A[30] = {
@@ -210,18 +210,18 @@ const double* const RK45_P_ptr = &RK45_P[0];
 // #####################################################################################################################
 // Runge - Kutta DOP 8(5; 3)
 // #####################################################################################################################
-const unsigned int DOP853_METHOD_INT            = 2;
-const unsigned int DOP853_order                 = 8;
-const unsigned int DOP853_n_stages              = 12;
-const unsigned int DOP853_nEXTRA_stages         = 16;
-const unsigned int DOP853_A_rows                = 12;
-const unsigned int DOP853_A_cols                = 12;
-const unsigned int DOP853_AEXTRA_rows           = 3;
-const unsigned int DOP853_AEXTRA_cols           = 16;
-const unsigned int DOP853_len_C                 = 12;
-const unsigned int DOP853_len_CEXTRA            = 3;
-const unsigned int DOP853_INTERPOLATOR_POWER    = 7;
-const unsigned int DOP853_error_estimator_order = 7;
+const int DOP853_METHOD_INT               = 2;
+const size_t DOP853_order                 = 8;
+const size_t DOP853_n_stages              = 12;
+const size_t DOP853_nEXTRA_stages         = 16;
+const size_t DOP853_A_rows                = 12;
+const size_t DOP853_A_cols                = 12;
+const size_t DOP853_AEXTRA_rows           = 3;
+const size_t DOP853_AEXTRA_cols           = 16;
+const size_t DOP853_len_C                 = 12;
+const size_t DOP853_len_CEXTRA            = 3;
+const size_t DOP853_INTERPOLATOR_POWER    = 7;
+const size_t DOP853_error_estimator_order = 7;
 const double DOP853_error_exponent              = 1.0 / (7.0 + 1.0);  // Defined as 1 / (error_order + 1)
 
 // Note both A and C are the _reduced_ versions.The full A and C are not shown.
@@ -656,14 +656,14 @@ protected:
     const double max_step_factor = MAX_FACTOR;
 
     // RK constants
-    unsigned int order = 0;
-    unsigned int error_estimator_order = 0;
-    unsigned int n_stages     = 0;
-    unsigned int n_stages_p1  = 0;
-    unsigned int len_Acols    = 0;
-    unsigned int len_C        = 0;
-    unsigned int len_Pcols    = 0;
-    unsigned int nstages_numy = 0;
+    size_t order = 0;
+    size_t error_estimator_order = 0;
+    size_t n_stages     = 0;
+    size_t n_stages_p1  = 0;
+    size_t len_Acols    = 0;
+    size_t len_C        = 0;
+    size_t len_Pcols    = 0;
+    size_t nstages_numy = 0;
     double error_exponent     = 0.0;
 
     // Pointers to RK constant arrays
@@ -715,8 +715,8 @@ public:
         const double t_start,
         const double t_end,
         const double* y0_ptr,
-        const unsigned int num_y,
-        const unsigned int num_extra = 0,
+        const size_t num_y,
+        const size_t num_extra = 0,
         const void* args_ptr = nullptr,
         const size_t max_num_steps = 0,
         const size_t max_ram_MB = 2000,
@@ -734,7 +734,8 @@ public:
     );
     virtual void reset() override;
     virtual void calc_first_step_size() override;
-    virtual void set_Q_array(double* Q_ptr, unsigned int* Q_order_ptr) override;
+    virtual void set_Q_order(size_t* Q_order_ptr) override;
+    virtual void set_Q_array(double* Q_ptr) override;
 };
 
 

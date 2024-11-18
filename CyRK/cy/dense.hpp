@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <functional>
+#include <vector>
 #include <cstring>
 
 #include "common.hpp"
@@ -14,11 +15,12 @@ class CySolverBase;
 
 
 class CySolverDense
+/* Many of these dense classes will be built if the integration is long and `dense_output=True`. It needs to be as light weight as possible. 
+Keep in mind that its true size equals the below structure + the size of the state_vector which is heap allocated and size = num_y * Q_order.
+*/
 {
 /* Attributes */
 protected:
-
-    double y_stored[Y_LIMIT] = { };
 
 public:
 
@@ -27,9 +29,8 @@ public:
 
     // y and t state info
     // Dense state variables
-    unsigned int Q_order = 0;
-    unsigned int num_y     = 0;
-    unsigned int num_extra = 0;
+    size_t Q_order = 0;
+    size_t num_y   = 0;
 
     // Pointer to the CySolverBase class
     CySolverBase* solver_ptr = nullptr;
@@ -39,11 +40,8 @@ public:
     double t_now = 0.0;
     double step  = 0.0;
 
-    // Q is defined by Q = K.T.dot(self.P)  K has shape of (n_stages + 1, num_y) so K.T has shape of (num_y, n_stages + 1)
-    // P has shape of (4, 3) for RK23; (7, 4) for RK45.. So (n_stages + 1, Q_order)
-    // So Q has shape of (num_y, q_order)
-    // The max size of Q is (7) * num_y. Lets assume this is the max size and stack allocate Q.
-    double Q[Y_LIMIT * 7] = { };
+    // Vectors for stored data (stored at each step)
+    std::vector<double> state_data_vec;
 
 /* Methods */
 protected:

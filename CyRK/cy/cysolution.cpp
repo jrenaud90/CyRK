@@ -10,8 +10,8 @@ CySolverResult::CySolverResult()
 }
 
 CySolverResult::CySolverResult(
-        const int num_y,
-        const int num_extra,
+        const size_t num_y,
+        const size_t num_extra,
         const size_t expected_size,
         const double last_t,
         const bool direction_flag,
@@ -129,7 +129,7 @@ void CySolverResult::p_offload_data()
 
 
 // Public methods
-void CySolverResult::set_expected_size(double expected_size)
+void CySolverResult::set_expected_size(size_t expected_size)
 {
     // Round expected size and store it.
     this->original_expected_size = expected_size;
@@ -183,7 +183,7 @@ void CySolverResult::build_solver(
         const double t_start,
         const double t_end,
         const double* y0_ptr,
-        const unsigned int method,
+        const int method,
         // General optional arguments
         const size_t expected_size,
         const void* args_ptr,
@@ -274,7 +274,7 @@ void CySolverResult::save_data(const double new_t, double* const new_solution_y_
     this->data_buffer_time_ptr[this->current_data_buffer_size] = new_t;
 
     // Save y
-    unsigned int stride = this->current_data_buffer_size * this->num_dy;  // We have to stride across num_dy even though we are only saving num_y values.
+    size_t stride = this->current_data_buffer_size * this->num_dy;  // We have to stride across num_dy even though we are only saving num_y values.
     std::memcpy(&this->data_buffer_y_ptr[stride], new_solution_y_ptr, sizeof(double) * this->num_y);
 
     // Save extra
@@ -294,10 +294,16 @@ CySolverDense* CySolverResult::build_dense(bool save)
     }
 
     if (save)
-    {    
+    {
+        this->num_interpolates++;
+        if (this->num_interpolates > this->storage_capacity)
+        {
+            // There is not enough room in the storage vectors. Expand them.
+            this->p_expand_data_storage();
+        }
+
         // We need to heap allocate the dense solution
         this->dense_vec.emplace_back(this->integrator_method, this->solver_uptr.get(), true);
-        this->num_interpolates++;
 
         // Save interpolated time (if t_eval was provided)
         if (this->t_eval_provided)

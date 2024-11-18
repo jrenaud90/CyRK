@@ -192,7 +192,7 @@ def pysolve_ivp(
         bint dense_output = False,   # If True, then dense interpolators will be saved to the solution. This allows a user to call solution as if a function (in time).
         tuple args = None,           # Python Tuple of additional args passed to the differential equation. These can be any python object.
         size_t expected_size = 0,    # Expected size of the solution. There is a slight performance improvement if selecting the the exact or slightly more time steps than the adaptive stepper will require (if you happen to know this ahead of time).
-        unsigned int num_extra = 0,  # Number of extra outputs you want to capture during integration. There is a performance hit if this is used in conjunction with t_eval or dense_output.
+        size_t num_extra = 0,  # Number of extra outputs you want to capture during integration. There is a performance hit if this is used in conjunction with t_eval or dense_output.
         double first_step = 0.0,     # Initial step size. If set to 0.0 then CyRK will guess a good step size.
         double max_step = INF,       # Maximum allowed step size.
         rtol = 1.0e-3,               # Relative tolerance used to control integration error. This can be provided as a numpy array if you'd like a different rtol for each y.
@@ -266,7 +266,7 @@ def run_cysolver(tuple t_span, double[::1] y0):
     
     # Convert the python user input to pure C types
     cdef double* y0_ptr       = &y0[0]
-    cdef unsigned int num_y   = len(y0)
+    cdef size_t num_y   = len(y0)
     cdef double[2] t_span_arr = [t_span[0], t_span[1]]
     cdef double* t_span_ptr   = &t_span_arr[0]
 
@@ -330,12 +330,12 @@ cdef shared_ptr[CySolverResult] cysolve_ivp(
     DiffeqFuncType diffeq_ptr,        # Differential equation defined as a cython function
     double* t_span_ptr,               # Pointer to array (size 2) of floats defining the start and stop points for integration
     double* y0_ptr,                   # Pointer to array defining initial y0 conditions.
-    unsigned int num_y,               # Size of y0_ptr array.
-    unsigned int method = 1,          # Integration method. Current options: 0 == RK23, 1 == RK45, 2 == DOP853
+    size_t num_y,                     # Size of y0_ptr array.
+    int method = 1,                   # Integration method. Current options: 0 == RK23, 1 == RK45, 2 == DOP853
     double rtol = 1.0e-3,             # Relative tolerance used to control integration error.
     double atol = 1.0e-6,             # Absolute tolerance (near 0) used to control integration error.
     void* args_ptr = NULL,            # Pointer to array of additional arguments passed to the diffeq. See "Advanced CySolver.md" for more details.
-    unsigned int num_extra = 0,       # Number of extra outputs you want to capture during integration. There is a performance hit if this is used in conjunction with t_eval or dense_output.
+    size_t num_extra = 0,             # Number of extra outputs you want to capture during integration. There is a performance hit if this is used in conjunction with t_eval or dense_output.
     size_t max_num_steps = 0,         # Maximum number of steps allowed. If exceeded then integration will fail. 0 (the default) turns this off.
     size_t max_ram_MB = 2000,         # Maximum amount of system memory the integrator is allowed to use. If this is exceeded then integration will fail.
     bint dense_output = False,        # If True, then dense interpolators will be saved to the solution. This allows a user to call solution as if a function (in time).
