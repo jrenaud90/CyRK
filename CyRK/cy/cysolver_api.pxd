@@ -1,6 +1,6 @@
 from libcpp cimport bool as cpp_bool
 from libcpp.vector cimport vector
-from libcpp.memory cimport shared_ptr
+from libcpp.memory cimport shared_ptr, unique_ptr
 
 cimport cpython.ref as cpy_ref
 from CyRK.cy.pysolver_cyhook cimport DiffeqMethod
@@ -38,13 +38,13 @@ cdef extern from "dense.cpp" nogil:
         CySolverDense()
         CySolverDense(
             int integrator_int,
-            shared_ptr[CySolverBase] solver_sptr,
+            CySolverBase* solver_ptr,
             cpp_bool set_state)
 
         int integrator_int
         unsigned int num_y
         unsigned int num_extra
-        shared_ptr[CySolverBase] solver_sptr
+        CySolverBase* solver_ptr
         double t_old
         double t_now
         double step
@@ -87,9 +87,9 @@ cdef extern from "cysolution.cpp" nogil:
             vector[double] time_domain_vec
             vector[double] time_domain_vec_sorted
             vector[double] solution
-            double* time_domain_vec_sorted_ptr
+            vector[double]* time_domain_vec_sorted_ptr
             vector[CySolverDense] dense_vec
-            shared_ptr[CySolverBase] solver_sptr
+            unique_ptr[CySolverBase] solver_uptr
             vector[double] interp_time_vec
 
             void save_data(double new_t, double* new_solution_y, double* new_solution_dy)
@@ -313,6 +313,31 @@ cdef extern from "rk.cpp" nogil:
 # =====================================================================================================================
 cdef extern from "cysolve.cpp" nogil:
     # Pure C++ and Cython implementation
+
+    cdef void baseline_cysolve_ivp_noreturn(
+            shared_ptr[CySolverResult] solution_sptr,
+            DiffeqFuncType diffeq_ptr,
+            const double* t_span_ptr,
+            const double* y0_ptr,
+            const unsigned int num_y,
+            const unsigned int method,
+            const size_t expected_size,
+            const unsigned int num_extra,
+            const void* args_ptr,
+            const size_t max_num_steps,
+            const size_t max_ram_MB,
+            const cpp_bool dense_output,
+            const double* t_eval,
+            const size_t len_t_eval,
+            PreEvalFunc pre_eval_func,
+            const double rtol,
+            const double atol,
+            const double* rtols_ptr,
+            const double* atols_ptr,
+            const double max_step_size,
+            const double first_step_size
+            )
+
     cdef shared_ptr[CySolverResult] baseline_cysolve_ivp(
             DiffeqFuncType diffeq_ptr,
             const double* t_span_ptr,
@@ -340,6 +365,30 @@ cdef extern from "cysolve.cpp" nogil:
 # =====================================================================================================================
 # Cython-based wrapper for baseline_cysolve_ivp that carries default values.
 # =====================================================================================================================
+cdef void cysolve_ivp_noreturn(
+    shared_ptr[CySolverResult] solution_sptr,
+    DiffeqFuncType diffeq_ptr,
+    const double* t_span_ptr,
+    const double* y0_ptr,
+    const unsigned int num_y,
+    unsigned int method = *,
+    double rtol = *,
+    double atol = *,
+    void* args_ptr = *,
+    unsigned int num_extra = *,
+    size_t max_num_steps = *,
+    size_t max_ram_MB = *,
+    bint dense_output = *,
+    double* t_eval = *,
+    size_t len_t_eval = *,
+    PreEvalFunc pre_eval_func = *,
+    double* rtols_ptr = *,
+    double* atols_ptr = *,
+    double max_step = *,
+    double first_step = *,
+    size_t expected_size = *
+    ) noexcept nogil
+
 cdef CySolveOutput cysolve_ivp(
     DiffeqFuncType diffeq_ptr,
     const double* t_span_ptr,

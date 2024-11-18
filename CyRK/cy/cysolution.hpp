@@ -21,7 +21,6 @@ protected:
     // Current storage information
     size_t original_expected_size = 0;
     size_t storage_capacity       = 0;
-    size_t dense_storage_capacity = 0;
 
     // Buffer
     unsigned int current_data_buffer_size  = 0;
@@ -29,8 +28,8 @@ protected:
     double* data_buffer_y_ptr              = &data_buffer_y[0];
     
     // Metadata
-    double last_t          = 0;
-    double num_dy_dbl      = 0.0;
+    double last_t     = 0;
+    double num_dy_dbl = 0.0;
 
 public:
     // Storage for arrays
@@ -72,13 +71,13 @@ public:
     std::vector<double> time_domain_vec        = std::vector<double>();
     std::vector<double> time_domain_vec_sorted = std::vector<double>();
     std::vector<double> solution               = std::vector<double>();
-    double* time_domain_vec_sorted_ptr         = time_domain_vec.data();
+    std::vector<double>* time_domain_vec_sorted_ptr = nullptr;
     
     // Dense output array
     std::vector<CySolverDense> dense_vec = std::vector<CySolverDense>();  // Heap allocated dense solutions for when the user needs these saved.
 
     // Solver storage
-    std::shared_ptr<CySolverBase> solver_sptr = nullptr;
+    std::unique_ptr<CySolverBase> solver_uptr = nullptr;
 
     // Interpolant time array (used if t_eval is provided)
     std::vector<double> interp_time_vec = std::vector<double>();
@@ -110,6 +109,7 @@ public:
     CySolverDense* build_dense(bool save);
     void solve();
     void finalize();
+    void set_expected_size(double expected_size);
     void reset();
     void build_solver(
         DiffeqFuncType diffeq_ptr,

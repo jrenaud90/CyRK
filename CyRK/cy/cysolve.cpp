@@ -1,7 +1,8 @@
 #include "cysolve.hpp"
 #include <exception>
 
-std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
+void baseline_cysolve_ivp_noreturn(
+        std::shared_ptr<CySolverResult> solution_sptr,
         DiffeqFuncType diffeq_ptr,
         const double* t_span_ptr,
         const double* y0_ptr,
@@ -62,16 +63,8 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
         expected_size_touse = find_expected_size(num_y, num_extra, std::fabs(t_end - t_start), min_rtol);
     }
 
-    // Build storage class
-    std::shared_ptr<CySolverResult> solution_sptr =
-        std::make_shared<CySolverResult>(
-            num_y,
-            num_extra,
-            expected_size_touse,
-            t_end,
-            direction_flag,
-            dense_output,
-            t_eval_provided);
+    // Set the expected size of the arrays
+    solution_sptr->set_expected_size(expected_size_touse);
 
     // Setup solver class
     solution_sptr->build_solver(
@@ -99,7 +92,75 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
     );
     // Run integrator
     solution_sptr->solve();
+}
 
+std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
+        DiffeqFuncType diffeq_ptr,
+        const double* t_span_ptr,
+        const double* y0_ptr,
+        const unsigned int num_y,
+        const unsigned int method,
+        // General optional arguments
+        const size_t expected_size,
+        const unsigned int num_extra,
+        const void* args_ptr,
+        const size_t max_num_steps,
+        const size_t max_ram_MB,
+        const bool dense_output,
+        const double* t_eval,
+        const size_t len_t_eval,
+        PreEvalFunc pre_eval_func,
+        // rk optional arguments
+        const double rtol,
+        const double atol,
+        const double* rtols_ptr,
+        const double* atols_ptr,
+        const double max_step_size,
+        const double first_step_size
+    )
+{
+    const double t_start       = t_span_ptr[0];
+    const double t_end         = t_span_ptr[1];
+    const bool direction_flag  = t_start <= t_end ? true : false;
+    const bool t_eval_provided = t_eval ? true : false;
+
+    // Build storage class
+    std::shared_ptr<CySolverResult> solution_sptr =
+        std::make_shared<CySolverResult>(
+            num_y,
+            num_extra,
+            expected_size,
+            t_end,
+            direction_flag,
+            dense_output,
+            t_eval_provided);
+
+    // Run
+    baseline_cysolve_ivp_noreturn(
+        solution_sptr,
+        diffeq_ptr,
+        t_span_ptr,
+        y0_ptr,
+        num_y,
+        method,
+        // General optional arguments
+        expected_size,
+        num_extra,
+        args_ptr,
+        max_num_steps,
+        max_ram_MB,
+        dense_output,
+        t_eval,
+        len_t_eval,
+        pre_eval_func,
+        // rk optional arguments
+        rtol,
+        atol,
+        rtols_ptr,
+        atols_ptr,
+        max_step_size,
+        first_step_size
+    );
 
     // Return the results
     return solution_sptr;
@@ -185,7 +246,7 @@ PySolver::PySolver(
         );
 
         // Add in python hooks
-        this->solution_sptr->solver_sptr->set_cython_extension_instance(cython_extension_class_instance, cython_extension_class_diffeq_method);
+        this->solution_sptr->solver_uptr->set_cython_extension_instance(cython_extension_class_instance, cython_extension_class_diffeq_method);
     }
     else
     {

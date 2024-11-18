@@ -5,6 +5,31 @@
 #include "common.hpp"
 #include "cysolution.hpp"
 
+void baseline_cysolve_ivp_noreturn(
+    std::shared_ptr<CySolverResult> solution_sptr,
+    DiffeqFuncType diffeq_ptr,
+    const double* t_span_ptr,
+    const double* y0_ptr,
+    const unsigned int num_y,
+    const unsigned int method,
+    // General optional arguments
+    const size_t expected_size,
+    const unsigned int num_extra,
+    const void* args_ptr,
+    const size_t max_num_steps,
+    const size_t max_ram_MB,
+    const bool dense_output,
+    const double* t_eval,
+    const size_t len_t_eval,
+    PreEvalFunc pre_eval_func,
+    // rk optional arguments
+    const double rtol,
+    const double atol,
+    const double* rtols_ptr,
+    const double* atols_ptr,
+    const double max_step_size,
+    const double first_step_size
+);
 
 std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
     DiffeqFuncType diffeq_ptr,

@@ -3,7 +3,7 @@ cimport cpython.ref as cpy_ref
 
 from CyRK.utils.memory cimport shared_ptr
 from CyRK.cy.pysolver_cyhook cimport DiffeqMethod
-from CyRK.cy.cysolver_api cimport CySolverResult, CySolverBase
+from CyRK.cy.cysolver_api cimport CySolverResult, NowStatePointers
 
 cimport numpy as cnp
 cnp.import_array()
@@ -61,11 +61,10 @@ cdef class WrapPyDiffeq:
     cdef double[::1] dy_now_view
 
     # State attributes
-    cdef shared_ptr[CySolverBase] solver_sptr
     cdef double* y_now_ptr
     cdef double* t_now_ptr
     cdef double* dy_now_ptr
 
-    cdef void set_state(self, shared_ptr[CySolverBase]) noexcept
+    cdef void set_state(self, NowStatePointers* solver_state_ptr) noexcept
     
     cdef void diffeq(self) noexcept
