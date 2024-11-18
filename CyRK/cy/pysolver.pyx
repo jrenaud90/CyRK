@@ -5,7 +5,7 @@ from libc.string cimport memcpy
 from libcpp.cmath cimport fmin, fabs
 
 from CyRK.utils.memory cimport make_shared
-from CyRK.cy.cysolver_api cimport find_expected_size, WrapCySolverResult, NowStatePointers, INF, EPS_100, Y_LIMIT, DY_LIMIT
+from CyRK.cy.cysolver_api cimport find_expected_size, WrapCySolverResult, INF, EPS_100, Y_LIMIT, DY_LIMIT
 
 import numpy as np
 cimport numpy as cnp
@@ -47,22 +47,12 @@ cdef class WrapPyDiffeq:
             self.pass_dy_as_arg = True
         else:
             self.pass_dy_as_arg = False
-        
-        # The cysolver instance is set after inititalization via `set_state`. For now it is null
-        # self.solver_sptr.reset()
     
-    def __dealloc__(self):
-        # Reset the solver shared pointer
-        if self.solver_sptr:
-            self.solver_sptr.reset()
-    
-    cdef void set_state(self, shared_ptr[CySolverBase] solver_sptr) noexcept:
-        self.solver_sptr = solver_sptr
-        cdef NowStatePointers solver_state = self.solver_sptr.get().get_now_state()
+    cdef void set_state(self, NowStatePointers* solver_state_ptr) noexcept:
         
-        self.t_now_ptr  = solver_state.t_now_ptr
-        self.y_now_ptr  = solver_state.y_now_ptr
-        self.dy_now_ptr = solver_state.dy_now_ptr
+        self.t_now_ptr  = solver_state_ptr.t_now_ptr
+        self.y_now_ptr  = solver_state_ptr.y_now_ptr
+        self.dy_now_ptr = solver_state_ptr.dy_now_ptr
 
         # Create memoryviews of the pointers
         self.y_now_view  = <double[:self.num_y]>self.y_now_ptr
@@ -267,7 +257,8 @@ def pysolve_ivp(
         )
 
     # Get pointers to the solver so that the Python differential equation can use and update its state variables (t_now, y_now, dy_now).
-    diffeq_wrap.set_state(solver.solution_sptr.get().solver_sptr)
+    cdef NowStatePointers solver_state = solver.solution_sptr.get().solver_uptr.get().get_now_state()
+    diffeq_wrap.set_state(&solver_state)
     
     ##
     # Run the integrator!

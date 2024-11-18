@@ -246,7 +246,7 @@ PySolver::PySolver(
         );
 
         // Add in python hooks
-        this->solution_sptr->solver_sptr->set_cython_extension_instance(cython_extension_class_instance, cython_extension_class_diffeq_method);
+        this->solution_sptr->solver_uptr->set_cython_extension_instance(cython_extension_class_instance, cython_extension_class_diffeq_method);
     }
     else
     {

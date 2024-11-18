@@ -5,13 +5,13 @@
 // Constructors
 CySolverDense::CySolverDense(
         int integrator_int,
-        std::shared_ptr<CySolverBase> solver_sptr,
+        CySolverBase* solver_ptr,
         bool set_state
         ) :
             integrator_int(integrator_int),
-            num_y(solver_sptr->num_y),
-            num_extra(solver_sptr->num_extra),
-            solver_sptr(solver_sptr)
+            num_y(solver_ptr->num_y),
+            num_extra(solver_ptr->num_extra),
+            solver_ptr(solver_ptr)
 {
     if (set_state)
     {
@@ -28,10 +28,10 @@ CySolverDense::~CySolverDense()
 void CySolverDense::set_state()
 {
     // Store time information
-    this->t_old = solver_sptr->t_old;
-    this->t_now = solver_sptr->t_now;
+    this->t_old = solver_ptr->t_old;
+    this->t_now = solver_ptr->t_now;
     // Make a copy of the y_in pointer in this Dense interpolator's storage
-    std::memcpy(&this->y_stored[0], &this->solver_sptr->y_old[0], sizeof(double) * this->num_y);
+    std::memcpy(&this->y_stored[0], &this->solver_ptr->y_old[0], sizeof(double) * this->num_y);
     // Calculate step
     this->step = this->t_now - this->t_old;
 
@@ -43,7 +43,7 @@ void CySolverDense::set_state()
         case 1:
         case 2:
             // Tell the RK solver to set the values of the Q array.
-            this->solver_sptr->set_Q_array(&this->Q[0], &this->Q_order);
+            this->solver_ptr->set_Q_array(&this->Q[0], &this->Q_order);
             break;
         
         default:
@@ -154,7 +154,7 @@ void CySolverDense::call(double t_interp, double* y_interp_ptr)
 
     if (this->num_extra > 0)
     {
-        if (this->solver_sptr.get())
+        if (this->solver_ptr)
         {
             // We have interpolated the dependent y-values but have not handled any extra outputs
             // We can not use the RK (or any other integration method's) fancy interpolation because extra outputs are
@@ -165,24 +165,24 @@ void CySolverDense::call(double t_interp, double* y_interp_ptr)
             size_t num_dy = this->num_y + this->num_extra;
 
             // We will be overwriting the solver's now variables so tell it to store a copy that it can be restored back to.
-            this->solver_sptr->offload_to_temp();
+            this->solver_ptr->offload_to_temp();
 
             // Load new values into t and y
-            std::memcpy(&this->solver_sptr->y_now[0], y_interp_ptr, sizeof(double) * this->num_y);
-            this->solver_sptr->t_now = t_interp;
+            std::memcpy(&this->solver_ptr->y_now[0], y_interp_ptr, sizeof(double) * this->num_y);
+            this->solver_ptr->t_now = t_interp;
             
             // Call diffeq to update dy_now pointer
-            this->solver_sptr->diffeq(this->solver_sptr.get());
+            this->solver_ptr->diffeq(this->solver_ptr);
 
             // Capture extra output and add to the y_interp_ptr array
             // We already have y interpolated from above so start at num_y
             for (size_t i = this->num_y; i < num_dy; i++)
             {
-                y_interp_ptr[i] = this->solver_sptr->dy_now[i];
+                y_interp_ptr[i] = this->solver_ptr->dy_now[i];
             }
 
             // Reset CySolver state to what it was before
-            this->solver_sptr->load_back_from_temp();
+            this->solver_ptr->load_back_from_temp();
         }
         else
         {

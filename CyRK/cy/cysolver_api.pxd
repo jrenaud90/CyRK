@@ -1,6 +1,6 @@
 from libcpp cimport bool as cpp_bool
 from libcpp.vector cimport vector
-from libcpp.memory cimport shared_ptr
+from libcpp.memory cimport shared_ptr, unique_ptr
 
 cimport cpython.ref as cpy_ref
 from CyRK.cy.pysolver_cyhook cimport DiffeqMethod
@@ -38,13 +38,13 @@ cdef extern from "dense.cpp" nogil:
         CySolverDense()
         CySolverDense(
             int integrator_int,
-            shared_ptr[CySolverBase] solver_sptr,
+            CySolverBase* solver_ptr,
             cpp_bool set_state)
 
         int integrator_int
         unsigned int num_y
         unsigned int num_extra
-        shared_ptr[CySolverBase] solver_sptr
+        CySolverBase* solver_ptr
         double t_old
         double t_now
         double step
@@ -87,9 +87,9 @@ cdef extern from "cysolution.cpp" nogil:
             vector[double] time_domain_vec
             vector[double] time_domain_vec_sorted
             vector[double] solution
-            double* time_domain_vec_sorted_ptr
+            vector[double]* time_domain_vec_sorted_ptr
             vector[CySolverDense] dense_vec
-            shared_ptr[CySolverBase] solver_sptr
+            unique_ptr[CySolverBase] solver_uptr
             vector[double] interp_time_vec
 
             void save_data(double new_t, double* new_solution_y, double* new_solution_dy)

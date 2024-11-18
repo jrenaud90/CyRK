@@ -59,7 +59,7 @@ void CySolverResult::p_delete_heap()
     this->solution.clear();
 
     // Need to delete the solver
-    this->solver_sptr.reset();
+    this->solver_uptr.reset();
 }
 
 
@@ -85,6 +85,15 @@ void CySolverResult::p_expand_data_storage()
         {
             this->time_domain_vec.reserve(this->storage_capacity);
             this->solution.reserve(this->storage_capacity * this->num_dy);
+            if (this->capture_dense_output)
+            {
+                this->dense_vec.reserve(this->storage_capacity);
+            }
+            if (this->t_eval_provided)
+            {
+                this->interp_time_vec.reserve(this->storage_capacity);
+            }
+            
         }
         catch (std::bad_alloc const&)
         {
@@ -141,8 +150,7 @@ void CySolverResult::reset()
     }
 
     // Set the storage size to the original expected size.
-    this->storage_capacity       = this->original_expected_size;
-    this->dense_storage_capacity = this->original_expected_size;
+    this->storage_capacity = this->original_expected_size;
 
     // Reset buffer trackers
     this->current_data_buffer_size  = 0;
@@ -154,11 +162,11 @@ void CySolverResult::reset()
         this->solution.reserve(this->storage_capacity * this->num_dy);
         if (this->capture_dense_output)
         {
-            this->dense_vec.reserve(this->dense_storage_capacity);
+            this->dense_vec.reserve(this->storage_capacity);
         }
         if (this->t_eval_provided)
         {
-            this->interp_time_vec.reserve(this->dense_storage_capacity);
+            this->interp_time_vec.reserve(this->storage_capacity);
         }
     }
     catch (std::bad_alloc const&)
@@ -195,9 +203,9 @@ void CySolverResult::build_solver(
     )
 {
     // Make sure the solver pointer is empty.
-    if (this->solver_sptr)
+    if (this->solver_uptr)
     {
-        this->solver_sptr.reset();
+        this->solver_uptr.reset();
     }
     
     this->integrator_method = method;
@@ -206,7 +214,7 @@ void CySolverResult::build_solver(
     {
     case 0:
         // RK23
-        this->solver_sptr = std::make_shared<RK23>(
+        this->solver_uptr = std::make_unique<RK23>(
             // Common Inputs
             diffeq_ptr, this->shared_from_this(), t_start, t_end, y0_ptr,
             this->num_y, this->num_extra, args_ptr, max_num_steps, max_ram_MB,
@@ -217,7 +225,7 @@ void CySolverResult::build_solver(
         break;
     case 1:
         // RK45
-        this->solver_sptr = std::make_shared<RK45>(
+        this->solver_uptr = std::make_unique<RK45>(
             // Common Inputs
             diffeq_ptr, this->shared_from_this(), t_start, t_end, y0_ptr, num_y,
             this->num_extra, args_ptr, max_num_steps, max_ram_MB,
@@ -228,7 +236,7 @@ void CySolverResult::build_solver(
         break;
     case 2:
         // DOP853
-        this->solver_sptr = std::make_shared<DOP853>(
+        this->solver_uptr = std::make_unique<DOP853>(
             // Common Inputs
             diffeq_ptr, this->shared_from_this(), t_start, t_end, y0_ptr, num_y,
             this->num_extra, args_ptr, max_num_steps, max_ram_MB,
@@ -238,7 +246,7 @@ void CySolverResult::build_solver(
         );
         break;
     [[unlikely]] default:
-        this->solver_sptr.reset();
+        this->solver_uptr.reset();
         this->success     = false;
         this->error_code = -3;
         this->update_message("Model Error: Not implemented or unknown CySolver model requested.\n");
@@ -248,7 +256,7 @@ void CySolverResult::build_solver(
     // Setup a single heap allocated dense solver if it is needed.
     if (t_eval_provided && !this->capture_dense_output)
     {
-        this->dense_vec.emplace_back(this->integrator_method, this->solver_sptr, false);
+        this->dense_vec.emplace_back(this->integrator_method, this->solver_uptr.get(), false);
         this->num_interpolates++;
     }
 }
@@ -280,7 +288,7 @@ void CySolverResult::save_data(const double new_t, double* const new_solution_y_
 
 CySolverDense* CySolverResult::build_dense(bool save)
 {
-    if (!this->solver_sptr) [[unlikely]]
+    if (!this->solver_uptr) [[unlikely]]
     {
         return nullptr;
     }
@@ -288,13 +296,13 @@ CySolverDense* CySolverResult::build_dense(bool save)
     if (save)
     {    
         // We need to heap allocate the dense solution
-        this->dense_vec.emplace_back(this->integrator_method, this->solver_sptr, true);
+        this->dense_vec.emplace_back(this->integrator_method, this->solver_uptr.get(), true);
         this->num_interpolates++;
 
         // Save interpolated time (if t_eval was provided)
         if (this->t_eval_provided)
         {
-            this->interp_time_vec.push_back(this->solver_sptr->t_now);
+            this->interp_time_vec.push_back(this->solver_uptr->t_now);
         }
 
         return &this->dense_vec.back();
@@ -311,13 +319,13 @@ CySolverDense* CySolverResult::build_dense(bool save)
 
 void CySolverResult::solve()
 {
-    if (this->solver_sptr.get())
+    if (this->solver_uptr)
     {
         // Reset the solver back to t=0
-        this->solver_sptr->reset();
+        this->solver_uptr->reset();
 
         // Tell the solver to starting solving the problem
-        this->solver_sptr->solve();
+        this->solver_uptr->solve();
         
         // Call the finalizer on the storage class instance
         this->finalize();
@@ -359,11 +367,11 @@ void CySolverResult::finalize()
         // Forward integration. We are already sorted.
         if (this->t_eval_provided)
         {
-            this->time_domain_vec_sorted_ptr = this->interp_time_vec.data();
+            this->time_domain_vec_sorted_ptr = &this->interp_time_vec;
         }
         else
         {
-            this->time_domain_vec_sorted_ptr = this->time_domain_vec.data();
+            this->time_domain_vec_sorted_ptr = &this->time_domain_vec;
         }
     }
     else
@@ -379,7 +387,7 @@ void CySolverResult::finalize()
             this->time_domain_vec_sorted.resize(this->time_domain_vec.size());
             std::reverse_copy(this->time_domain_vec.begin(), this->time_domain_vec.end(), this->time_domain_vec_sorted.begin());
         }
-        this->time_domain_vec_sorted_ptr = this->time_domain_vec_sorted.data();
+        this->time_domain_vec_sorted_ptr = &this->time_domain_vec_sorted;
     }
 
     // Check if the integrator finished
@@ -389,15 +397,10 @@ void CySolverResult::finalize()
     }
 
     // Delete the solver if we don't need it anymore
-    if (!this->retain_solver && this->solver_sptr)
+    if (!this->retain_solver && this->solver_uptr)
     {
-        for (size_t i = 0; i < this->dense_vec.size(); i++)
-        {
-            // Reset cysolver smart pointer in each dense class.
-            this->dense_vec[i].solver_sptr.reset();
-        }
         // Reset the cysolver smart pointer in this class.
-        this->solver_sptr.reset();
+        this->solver_uptr.reset();
     }
 }
 
@@ -433,15 +436,16 @@ void CySolverResult::call(const double t, double* y_interp_ptr)
 
         // Check if there are any t_eval steps between this new index and the last index.
         // Get lowest and highest indices
+        double* time_domain_sorted_ptr = this->time_domain_vec_sorted_ptr->data();
         auto lower_i = std::lower_bound(
-            this->time_domain_vec_sorted_ptr,
-            this->time_domain_vec_sorted_ptr + interp_time_vec_len_touse,
-            t) - this->time_domain_vec_sorted_ptr;
+            time_domain_sorted_ptr,
+            time_domain_sorted_ptr + interp_time_vec_len_touse,
+            t) - time_domain_sorted_ptr;
     
         auto upper_i = std::upper_bound(
-            this->time_domain_vec_sorted_ptr,
-            this->time_domain_vec_sorted_ptr + interp_time_vec_len_touse,
-            t) - this->time_domain_vec_sorted_ptr;
+            time_domain_sorted_ptr,
+            time_domain_sorted_ptr + interp_time_vec_len_touse,
+            t) - time_domain_sorted_ptr;
         
         if (lower_i == upper_i)
         {

@@ -26,19 +26,18 @@ public:
     int integrator_int = -1;
 
     // y and t state info
+    // Dense state variables
+    unsigned int Q_order = 0;
     unsigned int num_y     = 0;
     unsigned int num_extra = 0;
 
     // Pointer to the CySolverBase class
-    std::shared_ptr<CySolverBase> solver_sptr = nullptr;
+    CySolverBase* solver_ptr = nullptr;
 
     // Time step info
     double t_old = 0.0;
     double t_now = 0.0;
     double step  = 0.0;
-
-    // Dense state variables
-    unsigned int Q_order = 0;
 
     // Q is defined by Q = K.T.dot(self.P)  K has shape of (n_stages + 1, num_y) so K.T has shape of (num_y, n_stages + 1)
     // P has shape of (4, 3) for RK23; (7, 4) for RK45.. So (n_stages + 1, Q_order)
@@ -54,7 +53,7 @@ public:
     CySolverDense() {};
     CySolverDense(
         int integrator_int,
-        std::shared_ptr<CySolverBase> solver_sptr,
+        CySolverBase* solver_ptr,
         bool set_state
         );
 
