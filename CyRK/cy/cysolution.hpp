@@ -106,7 +106,7 @@ public:
         const bool capture_dense_output,
         const bool t_eval_provided);
     void save_data(const double new_t, double* const new_solution_y_ptr, double* const new_solution_dy_ptr);
-    CySolverDense* build_dense(bool save);
+    int build_dense(bool save);
     void solve();
     void finalize();
     void set_expected_size(size_t expected_size);

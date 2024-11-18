@@ -95,7 +95,7 @@ cdef extern from "cysolution.cpp" nogil:
             vector[double] interp_time_vec
 
             void save_data(double new_t, double* new_solution_y, double* new_solution_dy)
-            CySolverDense* build_dense(cpp_bool save)
+            int build_dense(cpp_bool save)
             void solve()
             void finalize()
             void reset()

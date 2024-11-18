@@ -286,11 +286,11 @@ void CySolverResult::save_data(const double new_t, double* const new_solution_y_
     this->current_data_buffer_size++;
 }
 
-CySolverDense* CySolverResult::build_dense(bool save)
+int CySolverResult::build_dense(bool save)
 {
     if (!this->solver_uptr) [[unlikely]]
     {
-        return nullptr;
+        return -1;
     }
 
     if (save)
@@ -311,7 +311,7 @@ CySolverDense* CySolverResult::build_dense(bool save)
             this->interp_time_vec.push_back(this->solver_uptr->t_now);
         }
 
-        return &this->dense_vec.back();
+        return 1;
     }
     else
     {
@@ -319,7 +319,7 @@ CySolverDense* CySolverResult::build_dense(bool save)
         // Need to update its state to match the current solver state.
         this->dense_vec[0].set_state();
 
-        return &this->dense_vec[0];
+        return 1;
     }
 }
 
@@ -327,7 +327,7 @@ void CySolverResult::solve()
 {
     // Reset this storage to its baseline state
     this->reset();
-    
+
     if (this->solver_uptr)
     {
         // Reset the solver back to t=0

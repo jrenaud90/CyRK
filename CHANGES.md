@@ -21,6 +21,7 @@ Fixes:
 * Fixed issue where if t_eval was less than t_end it could cause an access violation.
 * Fixed issue where dense output was sometimes being created twice when t_eval was provided.
 * Addressed several compile warnings.
+* Fixed issue where when t_eval is provided and dense output = true, cysolver may call a dense solution that has moved (hanging pointer).
 
 #### v0.11.2 (2024-11-12)
 
