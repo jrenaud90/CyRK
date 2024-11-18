@@ -160,7 +160,7 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
         atols_ptr,
         max_step_size,
         first_step_size
-    )
+    );
 
     // Return the results
     return solution_sptr;

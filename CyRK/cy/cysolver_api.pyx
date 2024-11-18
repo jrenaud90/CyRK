@@ -95,7 +95,7 @@ cdef class WrapCySolverResult:
 # =====================================================================================================================
 # Create Wrapped cysolve_ivp (has various defaults)
 # =====================================================================================================================
-cdef void cysolve_ivp(
+cdef void cysolve_ivp_noreturn(
             shared_ptr[CySolverResult] solution_sptr,
             DiffeqFuncType diffeq_ptr,
             const double* t_span_ptr,
