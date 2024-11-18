@@ -407,6 +407,15 @@ void CySolverResult::finalize()
     {
         // Reset the cysolver smart pointer in this class.
         this->solver_uptr.reset();
+
+        // Make sure that any dense outputs also have their ptr's nulled.
+        if (capture_dense_output)
+        {
+            for (size_t i = 0; i < this->dense_vec.size(); i++)
+            {
+                this->dense_vec[i].solver_ptr = nullptr;
+            }
+        }
     }
 }
 
