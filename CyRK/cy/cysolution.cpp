@@ -154,6 +154,7 @@ void CySolverResult::reset()
 
     // Reset buffer trackers
     this->current_data_buffer_size  = 0;
+    this->num_interpolates          = 0;
 
     // Reserve the memory for the vectors
     try
@@ -336,9 +337,6 @@ void CySolverResult::solve()
 
     if (this->solver_uptr)
     {
-        // Reset the solver back to t=0
-        this->solver_uptr->reset();
-
         // Tell the solver to starting solving the problem
         this->solver_uptr->solve();
         
