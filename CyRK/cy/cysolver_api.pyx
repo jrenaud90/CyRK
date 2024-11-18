@@ -95,6 +95,53 @@ cdef class WrapCySolverResult:
 # =====================================================================================================================
 # Create Wrapped cysolve_ivp (has various defaults)
 # =====================================================================================================================
+cdef void cysolve_ivp(
+            shared_ptr[CySolverResult] solution_sptr,
+            DiffeqFuncType diffeq_ptr,
+            const double* t_span_ptr,
+            const double* y0_ptr,
+            const unsigned int num_y,
+            unsigned int method = 1,
+            double rtol = 1.0e-3,
+            double atol = 1.0e-6,
+            void* args_ptr = NULL,
+            unsigned int num_extra = 0,
+            size_t max_num_steps = 0,
+            size_t max_ram_MB = 2000,
+            bint dense_output = False,
+            double* t_eval = NULL,
+            size_t len_t_eval = 0,
+            PreEvalFunc pre_eval_func = NULL,
+            double* rtols_ptr = NULL,
+            double* atols_ptr = NULL,
+            double max_step = MAX_STEP,
+            double first_step = 0.0,
+            size_t expected_size = 0
+            ) noexcept nogil:
+    baseline_cysolve_ivp_noreturn(
+        solution_sptr,
+        diffeq_ptr,
+        t_span_ptr,
+        y0_ptr,
+        num_y,
+        method,
+        expected_size,
+        num_extra,
+        args_ptr,
+        max_num_steps,
+        max_ram_MB,
+        dense_output,
+        t_eval,
+        len_t_eval,
+        pre_eval_func,
+        rtol,
+        atol,
+        rtols_ptr,
+        atols_ptr,
+        max_step,
+        first_step
+        )
+
 cdef CySolveOutput cysolve_ivp(
             DiffeqFuncType diffeq_ptr,
             const double* t_span_ptr,

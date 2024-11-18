@@ -25,14 +25,11 @@ CySolverResult::CySolverResult(
             num_y(num_y),
             num_extra(num_extra)
 {
-    // Round expected size and store it.
-    this->original_expected_size = expected_size;
-    round_to_2(this->original_expected_size);
-
     // num_dy will be larger than num_y if the user wishes to capture extra output during integration.
     this->capture_extra = this->num_extra > 0;
     this->num_dy        = this->num_y + this->num_extra;
     this->num_dy_dbl    = (double)this->num_dy;
+    this->set_expected_size(expected_size);
 
     // If save dense is true and capture extra is true then the dense solutions need to retain the solver to make
     // additional calls to the diffeq. Make sure that the solution class does not delete the solver during finalization.
@@ -123,6 +120,13 @@ void CySolverResult::p_offload_data()
 
 
 // Public methods
+void CySolverResult::set_expected_size(double expected_size)
+{
+    // Round expected size and store it.
+    this->original_expected_size = expected_size;
+    round_to_2(this->original_expected_size);
+}
+
 void CySolverResult::reset()
 {
     // Initialize the storage array

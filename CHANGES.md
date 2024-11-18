@@ -7,6 +7,7 @@
 New:
 * Added helper function to allow users to include CyRK headers during installation. `CyRK.get_include()` this returns a list which must be appended to your include list in "setup.py".
 * Some minor performance improvements when using dense output or t_eval.
+* Added new cysolve_ivp C++ function, `baseline_cysolve_ivp_noreturn`, and cython wrapped version, `cysolve_ivp_noreturn`, that require the storage class as input (then modify it) rather than provide it as output.
 
 C++ Changes:
 * Major rework of the C++ Solver backend

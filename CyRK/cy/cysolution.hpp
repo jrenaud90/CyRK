@@ -110,6 +110,7 @@ public:
     CySolverDense* build_dense(bool save);
     void solve();
     void finalize();
+    void set_expected_size(double expected_size);
     void reset();
     void build_solver(
         DiffeqFuncType diffeq_ptr,
