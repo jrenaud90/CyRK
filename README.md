@@ -11,7 +11,7 @@
 
 ---
 
-<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.11.2 Alpha-orange" alt="CyRK Version 0.11.2 Alpha" /></a>
+<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.11.3 Alpha-orange" alt="CyRK Version 0.11.3 Alpha" /></a>
 
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
@@ -28,7 +28,7 @@ The [cython-based](https://cython.org/) `cysolver_ivp` function that works with 
 An additional benefit of the two cython implementations is that they are pre-compiled. This avoids most of the start-up performance hit experienced by just-in-time compilers like numba.
 
 
-<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_predprey_v0-11-2.png" alt="CyRK Performance Graphic" />
+<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_predprey_v0-11-3.png" alt="CyRK Performance Graphic" />
 
 ## Installation
 

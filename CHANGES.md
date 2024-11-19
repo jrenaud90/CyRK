@@ -2,7 +2,7 @@
 
 ## 2024
 
-#### v0.11.3 (NNN)
+#### v0.11.3 (2024-11-18)
 
 New:
 * Added helper function to allow users to include CyRK headers during installation. `CyRK.get_include()` this returns a list which must be appended to your include list in "setup.py".
@@ -13,7 +13,7 @@ C++ Changes:
 * Major rework of the C++ Solver backend
   * The `CySolverResult` storage structure is now the owner of: the solution data, the dense outputs, _and_ the solver itself (before the solver was stand alone). This ensures that the solver is alive for the dense outputs which, depending on settings, may need to make calls to the solver even after the integration is complete. 
   * Removed many pointers in favor of direct access of variables. This was due to some variables moving and hanging pointers causing crashes.
-  * Drastically reduced the size of `CySolverDense` and moved its state data to a heap allocated array.
+  * Drastically reduced the size of `CySolverDense` and moved its state data to a heap allocated array. This has led to large performance gains when `dense_output=True` for integrations requiring a large number of steps.
 * `num_y` and `num_extra` are now size_t type instead of unsigned ints.
 * `integration method` is not int instead of unsigned int.
 
