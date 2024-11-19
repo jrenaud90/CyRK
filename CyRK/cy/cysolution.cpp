@@ -10,30 +10,38 @@ CySolverResult::CySolverResult()
 }
 
 CySolverResult::CySolverResult(
-        const int num_y,
-        const int num_extra,
+        const size_t num_y,
+        const size_t num_extra,
         const size_t expected_size,
         const double last_t,
         const bool direction_flag,
         const bool capture_dense_output,
         const bool t_eval_provided) :
             last_t(last_t),
-            num_extra(num_extra),
             capture_dense_output(capture_dense_output),
             t_eval_provided(t_eval_provided),
             direction_flag(direction_flag),
             error_code(0),
-            num_y(num_y)
+            num_y(num_y),
+            num_extra(num_extra)
 {
-    // Round expected size and store it.
-    this->original_expected_size = expected_size;
-    round_to_2(this->original_expected_size);
-
     // num_dy will be larger than num_y if the user wishes to capture extra output during integration.
     this->capture_extra = this->num_extra > 0;
     this->num_dy        = this->num_y + this->num_extra;
     this->num_dy_dbl    = (double)this->num_dy;
+    this->set_expected_size(expected_size);
 
+    // If save dense is true and capture extra is true then the dense solutions need to retain the solver to make
+    // additional calls to the diffeq. Make sure that the solution class does not delete the solver during finalization.
+    if (this->capture_dense_output && this->capture_extra)
+    {
+        this->retain_solver = true;
+    }
+    
+    // Get solution class ready to go
+    this->reset();
+
+    
     // Initialize other parameters
     this->update_message("CySolverResult Initialized.");
 }
@@ -42,27 +50,27 @@ CySolverResult::CySolverResult(
 // Deconstructors
 CySolverResult::~CySolverResult()
 {
-    // Vector header inforamtion is stack allocated, no need to delete them.
-    // The data itself is heap allocated but the vector class will handle that.
+    this->p_delete_heap();
+}
 
-    // Need to delete the heap allocated dense solutions
-    if (this->capture_dense_output)
-    {
-        for (size_t i = 0; i < this->num_interpolates; i++)
-        {
-            if (this->dense_vector[i]) [[likely]]
-            {
-                delete this->dense_vector[i];
-            }
-        }
-    }
+void CySolverResult::p_delete_heap()
+{
+    // Instruct the heap allocated vectors to start deconstructing.
+    this->dense_vec.clear();
+    this->interp_time_vec.clear();
+    this->time_domain_vec.clear();
+    this->time_domain_vec_sorted.clear();
+    this->solution.clear();
+
+    // Need to delete the solver
+    this->solver_uptr.reset();
 }
 
 
 // Protected methods
 void CySolverResult::p_expand_data_storage()
 {
-    double new_storage_size_dbl = std::floor(DYNAMIC_GROWTH_RATE * this->storage_capacity);
+    double new_storage_size_dbl = std::floor(DYNAMIC_GROWTH_RATE * (double)this->storage_capacity);
 
     // Check if this new size is okay.
     if ((new_storage_size_dbl / this->num_dy_dbl) > SIZE_MAX_DBL) [[unlikely]]
@@ -74,13 +82,22 @@ void CySolverResult::p_expand_data_storage()
     {
         this->storage_capacity = (size_t)new_storage_size_dbl;
         // Ensure there is enough new room for the new size.
-        this->storage_capacity = std::max<size_t>(this->storage_capacity, this->size + 1);
+        this->storage_capacity = std::max<size_t>(this->storage_capacity, std::max<size_t>(this->size, this->num_interpolates) + 1);
 
         round_to_2(this->storage_capacity);
         try
         {
-            this->time_domain.reserve(this->storage_capacity);
+            this->time_domain_vec.reserve(this->storage_capacity);
             this->solution.reserve(this->storage_capacity * this->num_dy);
+            if (this->capture_dense_output)
+            {
+                this->dense_vec.reserve(this->storage_capacity);
+            }
+            if (this->t_eval_provided)
+            {
+                this->interp_time_vec.reserve(this->storage_capacity);
+            }
+            
         }
         catch (std::bad_alloc const&)
         {
@@ -88,81 +105,6 @@ void CySolverResult::p_expand_data_storage()
             this->update_message("Memory Error: Malloc failed when reserving additional memory for storage vectors.");
         }
     }
-}
-
-void CySolverResult::p_expand_dense_storage()
-{
-    double new_storage_size_dbl = std::floor(DYNAMIC_GROWTH_RATE * this->dense_storage_capacity);
-
-    // Check if this new size is okay.
-    if ((new_storage_size_dbl) > SIZE_MAX_DBL) [[unlikely]]
-    {
-        this->error_code = -12;
-        this->update_message("Value Error: Requested new vector size is larger than the limits set by the system (specifically the max of size_t).");
-    }
-    else
-    {
-        this->dense_storage_capacity = (size_t)new_storage_size_dbl;
-        // Ensure there is enough new room for the new size.
-        this->dense_storage_capacity = std::max<size_t>(this->dense_storage_capacity, this->num_interpolates + 1);
-
-        round_to_2(this->dense_storage_capacity);
-        try
-        {
-            this->dense_vector.reserve(this->dense_storage_capacity);
-            if (this->t_eval_provided)
-            {
-                this->interp_time.reserve(this->dense_storage_capacity);
-            }
-        }
-        catch (std::bad_alloc const&)
-        {
-            this->error_code = -22;
-            this->update_message("Memory Error: Malloc failed when reserving additional memory for dense vectors.");
-        }
-    }
-}
-
-// Public methods
-void CySolverResult::reset()
-{
-    // Inititalize the storage array
-    if (this->reset_called) [[unlikely]]
-    {
-        // The storage array may have already been set. Delete any data and reset it.
-        this->time_domain.clear();
-        this->solution.clear();
-        if (this->capture_dense_output)
-        {
-            this->dense_vector.clear();
-        }
-    }
-
-    // Set the storage size to the original expected size.
-    this->storage_capacity       = this->original_expected_size;
-    this->dense_storage_capacity = this->original_expected_size;
-
-    // Reserve the memory for the vectors
-    try
-    {
-        this->time_domain.reserve(this->storage_capacity);
-        this->solution.reserve(this->storage_capacity * this->num_dy);
-        if (this->capture_dense_output)
-        {
-            this->dense_vector.reserve(this->dense_storage_capacity);
-        }
-        if (this->t_eval_provided)
-        {
-            this->interp_time.reserve(this->dense_storage_capacity);
-        }
-    }
-    catch (std::bad_alloc const&)
-    {
-        this->error_code = -12;
-        this->update_message("Memory Error: Malloc failed when reserving initial memory for storage vectors.\n");
-    }
-
-    this->reset_called = true;
 }
 
 void CySolverResult::p_offload_data()
@@ -180,7 +122,7 @@ void CySolverResult::p_offload_data()
     }
 
     // Save time results
-    this->time_domain.insert(this->time_domain.end(), this->data_buffer_time_ptr, this->data_buffer_time_ptr + this->current_data_buffer_size);
+    this->time_domain_vec.insert(this->time_domain_vec.end(), this->data_buffer_time_ptr, this->data_buffer_time_ptr + this->current_data_buffer_size);
 
     // Save y results and any extra output
     this->solution.insert(this->solution.end(), this->data_buffer_y_ptr, this->data_buffer_y_ptr + (this->num_dy * this->current_data_buffer_size));
@@ -189,31 +131,154 @@ void CySolverResult::p_offload_data()
     this->current_data_buffer_size = 0;
 }
 
-void CySolverResult::p_offload_dense()
+
+// Public methods
+void CySolverResult::set_expected_size(size_t expected_size)
 {
-    /*
-    * Saves dense solution interpolants that were temporarily held in buffers to heap-allocated vectors.
-    */
+    // Round expected size and store it.
+    this->original_expected_size = expected_size;
+    round_to_2(this->original_expected_size);
+}
 
-    this->num_interpolates += this->current_dense_buffer_size;
-
-    if (this->num_interpolates > this->dense_storage_capacity)
+void CySolverResult::reset()
+{
+    // Initialize the storage array
+    if (this->reset_called) [[unlikely]]
     {
-        // There is not enough room in the storage vectors. Expand them.
-        this->p_expand_dense_storage();
+        // The storage array may have already been set. Delete any data and reset it.
+        this->time_domain_vec.clear();
+        this->solution.clear();
+
+        // Ensure any previous heap allocated data is deleted
+        this->p_delete_heap();
     }
 
-    // Save dense output interpolants
-    this->dense_vector.insert(this->dense_vector.end(), this->data_buffer_dense_ptr, this->data_buffer_dense_ptr + this->current_dense_buffer_size);
+    // Set the storage size to the original expected size.
+    this->storage_capacity = this->original_expected_size;
 
-    // Offload interpolated times
-    if (this->t_eval_provided)
+    // Reset buffer trackers
+    this->current_data_buffer_size  = 0;
+    this->num_interpolates          = 0;
+
+    // Reserve the memory for the vectors
+    try
     {
-        this->interp_time.insert(this->interp_time.end(), this->data_buffer_interp_time_ptr, this->data_buffer_interp_time_ptr + this->current_dense_buffer_size);
+        this->time_domain_vec.reserve(this->storage_capacity);
+        this->solution.reserve(this->storage_capacity * this->num_dy);
+        if (this->capture_dense_output)
+        {
+            this->dense_vec.reserve(this->storage_capacity);
+        }
+        if (this->t_eval_provided)
+        {
+            this->interp_time_vec.reserve(this->storage_capacity);
+        }
+    }
+    catch (std::bad_alloc const&)
+    {
+        this->error_code = -12;
+        this->update_message("Memory Error: Malloc failed when reserving initial memory for storage vectors.\n");
     }
 
-    // Reset buffers
-    this->current_dense_buffer_size = 0;
+    // Make sure the solver is back to t=0
+    this->solver_reset_called = false;
+
+    // Mark that we have allocated memory so it can be cleared if reset is called again.
+    this->reset_called = true;
+}
+
+void CySolverResult::build_solver(
+        DiffeqFuncType diffeq_ptr,
+        const double t_start,
+        const double t_end,
+        const double* y0_ptr,
+        const int method,
+        // General optional arguments
+        const size_t expected_size,
+        const void* args_ptr,
+        const size_t max_num_steps,
+        const size_t max_ram_MB,
+        const bool dense_output,
+        const double* t_eval,
+        const size_t len_t_eval,
+        PreEvalFunc pre_eval_func,
+        // rk optional arguments
+        const double rtol,
+        const double atol,
+        const double* rtols_ptr,
+        const double* atols_ptr,
+        const double max_step_size,
+        const double first_step_size
+    )
+{
+    // Make sure the solver pointer is empty.
+    if (this->solver_uptr)
+    {
+        this->solver_uptr.reset();
+    }
+    
+    this->integrator_method = method;
+
+    switch (this->integrator_method)
+    {
+    case 0:
+        // RK23
+        this->solver_uptr = std::make_unique<RK23>(
+            // Common Inputs
+            diffeq_ptr, this->shared_from_this(), t_start, t_end, y0_ptr,
+            this->num_y, this->num_extra, args_ptr, max_num_steps, max_ram_MB,
+            this->capture_dense_output, t_eval, len_t_eval, pre_eval_func,
+            // RK Inputs
+            rtol, atol, rtols_ptr, atols_ptr, max_step_size, first_step_size
+        );
+        break;
+    case 1:
+        // RK45
+        this->solver_uptr = std::make_unique<RK45>(
+            // Common Inputs
+            diffeq_ptr, this->shared_from_this(), t_start, t_end, y0_ptr, num_y,
+            this->num_extra, args_ptr, max_num_steps, max_ram_MB,
+            this->capture_dense_output, t_eval, len_t_eval, pre_eval_func,
+            // RK Inputs
+            rtol, atol, rtols_ptr, atols_ptr, max_step_size, first_step_size
+        );
+        break;
+    case 2:
+        // DOP853
+        this->solver_uptr = std::make_unique<DOP853>(
+            // Common Inputs
+            diffeq_ptr, this->shared_from_this(), t_start, t_end, y0_ptr, num_y,
+            this->num_extra, args_ptr, max_num_steps, max_ram_MB,
+            this->capture_dense_output, t_eval, len_t_eval, pre_eval_func,
+            // RK Inputs
+            rtol, atol, rtols_ptr, atols_ptr, max_step_size, first_step_size
+        );
+        break;
+    [[unlikely]] default:
+        this->solver_uptr.reset();
+        this->success    = false;
+        this->error_code = -3;
+        this->update_message("Model Error: Not implemented or unknown CySolver model requested.\n");
+        break;
+    }
+}
+
+void CySolverResult::reset_solver()
+{   
+    if (this->solver_uptr.get())
+    {
+        // Prepare solver for integration by setting to t=0
+        this->solver_uptr->reset();
+
+        // Setup a single heap allocated dense solver if it is needed.
+        if (t_eval_provided && !this->capture_dense_output)
+        {
+            this->dense_vec.emplace_back(this->integrator_method, this->solver_uptr.get(), false);
+            this->num_interpolates++;
+        }
+
+        this->solver_reset_called = true;
+    }
 }
 
 void CySolverResult::save_data(const double new_t, double* const new_solution_y_ptr, double* const new_solution_dy_ptr)
@@ -229,7 +294,7 @@ void CySolverResult::save_data(const double new_t, double* const new_solution_y_
     this->data_buffer_time_ptr[this->current_data_buffer_size] = new_t;
 
     // Save y
-    unsigned int stride = this->current_data_buffer_size * this->num_dy;  // We have to stride across num_dy even though we are only saving num_y values.
+    size_t stride = this->current_data_buffer_size * this->num_dy;  // We have to stride across num_dy even though we are only saving num_y values.
     std::memcpy(&this->data_buffer_y_ptr[stride], new_solution_y_ptr, sizeof(double) * this->num_y);
 
     // Save extra
@@ -241,25 +306,63 @@ void CySolverResult::save_data(const double new_t, double* const new_solution_y_
     this->current_data_buffer_size++;
 }
 
-void CySolverResult::save_dense(const double sol_t, CySolverDense* dense_output_ptr)
+int CySolverResult::build_dense(bool save)
 {
-    // Check if our data buffer is full
-    if (this->current_dense_buffer_size >= BUFFER_SIZE)
+    if (!this->solver_uptr) [[unlikely]]
     {
-        this->p_offload_dense();
+        return -1;
     }
 
-    // Save data in buffer
-    // Save interpolates
-    this->data_buffer_dense_ptr[this->current_dense_buffer_size] = dense_output_ptr;
-
-    // Save interpolated time (if t_eval was provided)
-    if (this->t_eval_provided)
+    if (save)
     {
-        this->data_buffer_interp_time_ptr[this->current_dense_buffer_size] = sol_t;
+        this->num_interpolates++;
+        if (this->num_interpolates > this->storage_capacity)
+        {
+            // There is not enough room in the storage vectors. Expand them.
+            this->p_expand_data_storage();
+        }
+
+        // We need to heap allocate the dense solution
+        this->dense_vec.emplace_back(this->integrator_method, this->solver_uptr.get(), true);
+
+        // Save interpolated time (if t_eval was provided)
+        if (this->t_eval_provided)
+        {
+            this->interp_time_vec.push_back(this->solver_uptr->t_now);
+        }
+
+        return 1;
+    }
+    else
+    {
+        // Don't need to save. Use the single dense vector that is on the heap. 
+        // Need to update its state to match the current solver state.
+        this->dense_vec[0].set_state();
+
+        return 1;
+    }
+}
+
+void CySolverResult::solve()
+{
+    if (!this->reset_called) [[unlikely]]
+    {
+        this->reset();
     }
 
-    this->current_dense_buffer_size++;
+    if (this->solver_uptr)
+    {
+        if (!this->solver_reset_called)
+        {
+            this->reset_solver();
+        }
+    
+        // Tell the solver to starting solving the problem!
+        this->solver_uptr->solve();
+        
+        // Call the finalizer on the storage class instance
+        this->finalize();
+    }
 }
 
 void CySolverResult::finalize()
@@ -269,17 +372,13 @@ void CySolverResult::finalize()
     {
         this->p_offload_data();
     }
-    if (this->current_dense_buffer_size > 0)
-    {
-        this->p_offload_dense();
-    }
-    
+
     // Shrink vectors
     if (this->size > 100000)
     {
         // There is a lot of data. Let's make sure the vectors are not eating up too much memory if its not needed.
         // If there is not that much data then its not worth the performance hit of shrinking the arrays.
-        this->time_domain.shrink_to_fit();
+        this->time_domain_vec.shrink_to_fit();
         this->solution.shrink_to_fit();
     }
 
@@ -287,11 +386,11 @@ void CySolverResult::finalize()
     {
         if (this->capture_dense_output)
         {
-            this->dense_vector.shrink_to_fit();
+            this->dense_vec.shrink_to_fit();
         }
         if (this->t_eval_provided)
         {
-            this->interp_time.shrink_to_fit();
+            this->interp_time_vec.shrink_to_fit();
         }
     }
 
@@ -301,11 +400,11 @@ void CySolverResult::finalize()
         // Forward integration. We are already sorted.
         if (this->t_eval_provided)
         {
-            this->time_domain_sorted_ptr = this->interp_time.data();
+            this->time_domain_vec_sorted_ptr = &this->interp_time_vec;
         }
         else
         {
-            this->time_domain_sorted_ptr = this->time_domain.data();
+            this->time_domain_vec_sorted_ptr = &this->time_domain_vec;
         }
     }
     else
@@ -313,21 +412,37 @@ void CySolverResult::finalize()
         // Not sorted. Reverse time domain into new storage.
         if (this->t_eval_provided)
         {
-            this->time_domain_sorted.resize(this->interp_time.size());
-            std::reverse_copy(this->interp_time.begin(), this->interp_time.end(), this->time_domain_sorted.begin());
+            this->time_domain_vec_sorted.resize(this->interp_time_vec.size());
+            std::reverse_copy(this->interp_time_vec.begin(), this->interp_time_vec.end(), this->time_domain_vec_sorted.begin());
         }
         else
         {
-            this->time_domain_sorted.resize(this->time_domain.size());
-            std::reverse_copy(this->time_domain.begin(), this->time_domain.end(), this->time_domain_sorted.begin());
+            this->time_domain_vec_sorted.resize(this->time_domain_vec.size());
+            std::reverse_copy(this->time_domain_vec.begin(), this->time_domain_vec.end(), this->time_domain_vec_sorted.begin());
         }
-        this->time_domain_sorted_ptr = this->time_domain_sorted.data();
+        this->time_domain_vec_sorted_ptr = &this->time_domain_vec_sorted;
     }
 
     // Check if the integrator finished
     if (this->error_code == 1)
     {
         this->success = true;
+    }
+
+    // Delete the solver if we don't need it anymore
+    if (!this->retain_solver && this->solver_uptr)
+    {
+        // Reset the cysolver smart pointer in this class.
+        this->solver_uptr.reset();
+
+        // Make sure that any dense outputs also have their ptr's nulled.
+        if (capture_dense_output)
+        {
+            for (size_t i = 0; i < this->dense_vec.size(); i++)
+            {
+                this->dense_vec[i].solver_ptr = nullptr;
+            }
+        }
     }
 }
 
@@ -345,14 +460,14 @@ void CySolverResult::call(const double t, double* y_interp_ptr)
     }
     else
     {
-        size_t interp_time_len_touse = 0;
+        size_t interp_time_vec_len_touse = 0;
         if (this->t_eval_provided)
         {
-            interp_time_len_touse = this->num_interpolates;
+            interp_time_vec_len_touse = this->num_interpolates;
         }
         else
         {
-            interp_time_len_touse = this->size;
+            interp_time_vec_len_touse = this->size;
         }
         // SciPy uses np.searchedsorted which as far as I can tell works the same as bibnary search with guess
         // Except that it is searchedsorted is 1 more than binary search.
@@ -363,15 +478,16 @@ void CySolverResult::call(const double t, double* y_interp_ptr)
 
         // Check if there are any t_eval steps between this new index and the last index.
         // Get lowest and highest indices
+        double* time_domain_sorted_ptr = this->time_domain_vec_sorted_ptr->data();
         auto lower_i = std::lower_bound(
-            this->time_domain_sorted_ptr,
-            this->time_domain_sorted_ptr + interp_time_len_touse,
-            t) - this->time_domain_sorted_ptr;
+            time_domain_sorted_ptr,
+            time_domain_sorted_ptr + interp_time_vec_len_touse,
+            t) - time_domain_sorted_ptr;
     
         auto upper_i = std::upper_bound(
-            this->time_domain_sorted_ptr,
-            this->time_domain_sorted_ptr + interp_time_len_touse,
-            t) - this->time_domain_sorted_ptr;
+            time_domain_sorted_ptr,
+            time_domain_sorted_ptr + interp_time_vec_len_touse,
+            t) - time_domain_sorted_ptr;
         
         if (lower_i == upper_i)
         {
@@ -392,16 +508,16 @@ void CySolverResult::call(const double t, double* y_interp_ptr)
         // Clean up closest index
         if (this->direction_flag)
         {
-            closest_index = std::min<size_t>(std::max<size_t>(closest_index, 0), interp_time_len_touse - 1);
+            closest_index = std::min<size_t>(std::max<size_t>(closest_index, 0), interp_time_vec_len_touse - 1);
         }
         else
         {
-            closest_index = interp_time_len_touse - closest_index - 1;
-            closest_index = std::min<size_t>(std::max<size_t>(closest_index, 1), interp_time_len_touse - 1);
+            closest_index = interp_time_vec_len_touse - closest_index - 1;
+            closest_index = std::min<size_t>(std::max<size_t>(closest_index, 1), interp_time_vec_len_touse - 1);
         }
 
         // Call interpolant to update y
-        this->dense_vector[closest_index]->call(t, y_interp_ptr);
+        this->dense_vec[closest_index].call(t, y_interp_ptr);
     }
 }
 

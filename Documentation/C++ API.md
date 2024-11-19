@@ -30,11 +30,11 @@ baseline_cysolve_ivp(
     DiffeqFuncType diffeq_ptr,
     const double* t_span_ptr,
     const double* y0_ptr,
-    const unsigned int num_y,
-    const unsigned int method,
+    const size_t num_y,
+    const int method,
     // General optional arguments
     const size_t expected_size = 0,
-    const unsigned int num_extra = 0,
+    const size_t num_extra = 0,
     const double* args_ptr = nullptr,
     // rk optional arguments
     const size_t max_num_steps = 0,
@@ -52,7 +52,7 @@ baseline_cysolve_ivp(
 class PySolver
 {
     PySolver(
-        unsigned int integration_method,
+        int integration_method,
         // Cython class instance used for pyhook
         PyObject* cython_extension_class_instance,
         DiffeqMethod cython_extension_class_diffeq_method,
@@ -61,9 +61,9 @@ class PySolver
         const double t_start,
         const double t_end,
         const double* y0_ptr,
-        const unsigned int num_y,
+        const size_t num_y,
         // General optional arguments
-        const unsigned int num_extra,
+        const size_t num_extra,
         const double* args_ptr,
         // rk optional arguments
         const size_t max_num_steps,

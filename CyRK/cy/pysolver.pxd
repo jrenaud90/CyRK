@@ -3,32 +3,30 @@ cimport cpython.ref as cpy_ref
 
 from CyRK.utils.memory cimport shared_ptr
 from CyRK.cy.pysolver_cyhook cimport DiffeqMethod
-from CyRK.cy.cysolver_api cimport CySolverResult
+from CyRK.cy.cysolver_api cimport CySolverResult, NowStatePointers
 
-cimport numpy as np
+cimport numpy as cnp
+cnp.import_array()
 
 # =====================================================================================================================
 # Import the C++ cysolve_ivp helper function
 # =====================================================================================================================
 cdef extern from "cysolve.cpp" nogil:
     # Python-hook implementation
-    struct PySolverStatePointers:
-        double* dy_now_ptr
-        double* t_now_ptr
-        double* y_now_ptr
 
     cdef cppclass PySolver:
         PySolver()
         PySolver(
-            unsigned int integration_method,
+            int integration_method,
             cpy_ref.PyObject* cython_extension_class_instance,
             DiffeqMethod cython_extension_class_diffeq_method,
-            shared_ptr[CySolverResult] solution_ptr,
+            shared_ptr[CySolverResult] solution_sptr,
             const double t_start,
             const double t_end,
             const double* y0_ptr,
-            const unsigned int num_y,
-            const unsigned int num_extra,
+            const size_t num_y,
+            const size_t expected_size,
+            const size_t num_extra,
             const void* args_ptr,
             const size_t max_num_steps,
             const size_t max_ram_MB,
@@ -41,8 +39,10 @@ cdef extern from "cysolve.cpp" nogil:
             const double* atols_ptr,
             const double max_step_size,
             const double first_step_size)
-        PySolverStatePointers get_state_pointers()
         void solve()
+        int status
+        int integration_method
+        shared_ptr[CySolverResult] solution_sptr
 
 
 cdef class WrapPyDiffeq:
@@ -52,12 +52,12 @@ cdef class WrapPyDiffeq:
     cdef cpp_bool use_args
     cdef cpp_bool pass_dy_as_arg
 
-    cdef unsigned int num_y
-    cdef unsigned int num_dy
+    cdef size_t num_y
+    cdef size_t num_dy
 
-    cdef np.ndarray y_now_arr
+    cdef cnp.ndarray y_now_arr
     cdef double[::1] y_now_view
-    cdef np.ndarray dy_now_arr
+    cdef cnp.ndarray dy_now_arr
     cdef double[::1] dy_now_view
 
     # State attributes
@@ -65,10 +65,6 @@ cdef class WrapPyDiffeq:
     cdef double* t_now_ptr
     cdef double* dy_now_ptr
 
-    cdef void set_state(self,
-        double* dy_ptr,
-        double* t_ptr,
-        double* y_ptr
-        ) noexcept
+    cdef void set_state(self, NowStatePointers* solver_state_ptr) noexcept
     
     cdef void diffeq(self) noexcept

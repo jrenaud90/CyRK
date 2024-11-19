@@ -1,57 +1,57 @@
-
 #include "dense.hpp"
+#include "cysolver.hpp"
 
 // Constructors
 CySolverDense::CySolverDense(
         int integrator_int,
-        double t_old,
-        double t_now,
-        double* y_in_ptr,
-        unsigned int num_y,
-        unsigned int num_extra,
-        unsigned int Q_order,
-        CySolverBase* cysolver_instance_ptr,
-        std::function<void (CySolverBase *)> cysolver_diffeq_ptr,
-        PyObject* cython_extension_class_instance,
-        double* cysolver_t_now_ptr,
-        double* cysolver_y_now_ptr,
-        double* cysolver_dy_now_ptr
+        CySolverBase* solver_ptr,
+        bool set_state
         ) :
             integrator_int(integrator_int),
-            num_y(num_y),
-            num_extra(num_extra),
-            cysolver_instance_ptr(cysolver_instance_ptr),
-            cysolver_diffeq_ptr(cysolver_diffeq_ptr),
-            cython_extension_class_instance(cython_extension_class_instance),
-            cysolver_t_now_ptr(cysolver_t_now_ptr),
-            cysolver_y_now_ptr(cysolver_y_now_ptr),
-            cysolver_dy_now_ptr(cysolver_dy_now_ptr),
-            t_old(t_old),
-            t_now(t_now),
-            Q_order(Q_order)
+            num_y(solver_ptr->num_y),
+            solver_ptr(solver_ptr)
 {
-    // Make a copy of the y_in pointer in this Dense interpolator's storage
-    std::memcpy(this->y_stored_ptr, y_in_ptr, sizeof(double) * this->num_y);
-    // Calculate step
-    this->step = this->t_now - this->t_old;
+    // Allocate memory for state vectors (memory allocation should not change since num_y does not change)
+    this->num_y = this->solver_ptr->num_y;
+    this->solver_ptr->set_Q_order(&this->Q_order);
 
-    // Make a strong reference to the python class (if this dense output was built using the python hooks).
-    if (cython_extension_class_instance)
+    // Resize state vector based on dimensions. The state vector is a combination of the current y-values and Q
+    // Q is a matrix of solver-specific parameters at the current time.
+    // Q is defined by Q = K.T.dot(self.P)  K has shape of (n_stages + 1, num_y) so K.T has shape of (num_y, n_stages + 1)
+    // P has shape of (4, 3) for RK23; (7, 4) for RK45.. So (n_stages + 1, Q_order)
+    // So Q has shape of (num_y, q_order)
+    // The max size of Q is (7) * num_y for DOP853
+    // state vector is laid out as [y_vector, Q_matrix]
+    this->state_data_vec.resize(this->num_y * (this->Q_order + 1));  // +1 is so we can store y_values in the first spot.
+
+    // Populate values with current state
+    if (set_state)
     {
-        Py_XINCREF(this->cython_extension_class_instance);
-        this->deconstruct_python = true;
+        this->set_state();
     }
-    
 }
 
 // Destructors
 CySolverDense::~CySolverDense()
 {
-    if (this->deconstruct_python)
-    {
-        // Decrease reference count on the cython extension class instance
-        Py_XDECREF(this->cython_extension_class_instance);
-    }
+
+}
+
+void CySolverDense::set_state()
+{
+    // Store time information
+    this->t_old = solver_ptr->t_old;
+    this->t_now = solver_ptr->t_now;
+    
+    // Calculate step
+    this->step = this->t_now - this->t_old;
+
+    // Make a copy of the y_in pointer in the state vector storage
+    std::memcpy(&this->state_data_vec[0], &this->solver_ptr->y_old[0], sizeof(double) * this->num_y);
+
+    // Tell the solver to populate the values of the Q matrix. 
+    // Q starts at the num_y location of the state vector
+    this->solver_ptr->set_Q_array(&this->state_data_vec[this->num_y]);
 }
 
 void CySolverDense::call(double t_interp, double* y_interp_ptr)
@@ -59,65 +59,67 @@ void CySolverDense::call(double t_interp, double* y_interp_ptr)
     double step_factor = (t_interp - this->t_old) / this->step;
 
     // SciPy Step:: p = np.tile(x, self.order + 1) (scipy order is Q_order - 1)
+    // Create pointers to the y and Q sub components of the state vector for ease of reading
+    double* y_stored_ptr = &this->state_data_vec[0];
+    double* Q_ptr        = &this->state_data_vec[this->num_y];
 
     // Q has shape of (n_stages + 1, num_y)
     // y = y_old + Q dot p.
-
     switch (this->integrator_int)
     {
     case 0:
         // RK23
-        for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+        for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
-            unsigned int Q_stride = this->Q_order * y_i;
+            const size_t Q_stride = this->Q_order * y_i;
             // P=0
             // Initialize dot product
             double cumulative_prod = step_factor;
-            double temp_double = this->Q_ptr[Q_stride] * cumulative_prod;
+            double temp_double = Q_ptr[Q_stride] * cumulative_prod;
             // P=1
             cumulative_prod *= step_factor;
-            temp_double += this->Q_ptr[Q_stride + 1] * cumulative_prod;
+            temp_double += Q_ptr[Q_stride + 1] * cumulative_prod;
             // P=2
             cumulative_prod *= step_factor;
-            temp_double += this->Q_ptr[Q_stride + 2] * cumulative_prod;
+            temp_double += Q_ptr[Q_stride + 2] * cumulative_prod;
 
             // Finally multiply by step
             temp_double *= this->step;
 
-            y_interp_ptr[y_i] = this->y_stored_ptr[y_i] + temp_double;
+            y_interp_ptr[y_i] = y_stored_ptr[y_i] + temp_double;
         }
         break;
 
     case 1:
         // RK45
-        for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+        for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
-            const unsigned int Q_stride = this->Q_order * y_i;
+            const size_t Q_stride = this->Q_order * y_i;
             // P=0
             double cumulative_prod = step_factor;
-            double temp_double = this->Q_ptr[Q_stride] * cumulative_prod;
+            double temp_double = Q_ptr[Q_stride] * cumulative_prod;
             // P=1
             cumulative_prod *= step_factor;
-            temp_double += this->Q_ptr[Q_stride + 1] * cumulative_prod;
+            temp_double += Q_ptr[Q_stride + 1] * cumulative_prod;
             // P=2
             cumulative_prod *= step_factor;
-            temp_double += this->Q_ptr[Q_stride + 2] * cumulative_prod;
+            temp_double += Q_ptr[Q_stride + 2] * cumulative_prod;
             // P=3
             cumulative_prod *= step_factor;
-            temp_double += this->Q_ptr[Q_stride + 3] * cumulative_prod;
+            temp_double += Q_ptr[Q_stride + 3] * cumulative_prod;
             
             // Finally multiply by step
             temp_double *= this->step;
 
-            y_interp_ptr[y_i] = this->y_stored_ptr[y_i] + temp_double;
+            y_interp_ptr[y_i] = y_stored_ptr[y_i] + temp_double;
         }
         break;
 
     case 2:
         // DOP853
-        for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+        for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
-            const unsigned int Q_stride = this->Q_order * y_i;
+            const size_t Q_stride = this->Q_order * y_i;
             // This method is different from RK23 and RK45
             // Q is the reverse of SciPy's "F". The size of Q is (Interpolator power (Q_order), num_y)
             // DOP853 interp power is 7
@@ -125,76 +127,68 @@ void CySolverDense::call(double t_interp, double* y_interp_ptr)
             // Odd values are multiplied by 1 - step factor.
 
             // P=0
-            double temp_double = this->Q_ptr[Q_stride];
+            double temp_double = Q_ptr[Q_stride];
             temp_double *= step_factor;
             // P=1
-            temp_double += this->Q_ptr[Q_stride + 1];
+            temp_double += Q_ptr[Q_stride + 1];
             temp_double *= (1.0 - step_factor);
             // P=2
-            temp_double += this->Q_ptr[Q_stride + 2];
+            temp_double += Q_ptr[Q_stride + 2];
             temp_double *= step_factor;
             // P=3
-            temp_double += this->Q_ptr[Q_stride + 3];
+            temp_double += Q_ptr[Q_stride + 3];
             temp_double *= (1.0 - step_factor);
             // P=4
-            temp_double += this->Q_ptr[Q_stride + 4];
+            temp_double += Q_ptr[Q_stride + 4];
             temp_double *= step_factor;
             // P=5
-            temp_double += this->Q_ptr[Q_stride + 5];
+            temp_double += Q_ptr[Q_stride + 5];
             temp_double *= (1.0 - step_factor);
             // P=6
-            temp_double += this->Q_ptr[Q_stride + 6];
+            temp_double += Q_ptr[Q_stride + 6];
             temp_double *= step_factor;
 
-            y_interp_ptr[y_i] = this->y_stored_ptr[y_i] + temp_double;
+            y_interp_ptr[y_i] = y_stored_ptr[y_i] + temp_double;
         }
         break;
 
     [[unlikely]] default:
         // Don't know the model. Just return the input.
-        std::memcpy(y_interp_ptr, this->y_stored_ptr, sizeof(double) * this->num_y);
+        std::memcpy(y_interp_ptr, y_stored_ptr, sizeof(double) * this->num_y);
         break;
     }
 
-    if (this->num_extra > 0)
+    if (this->solver_ptr)
     {
-        // We have interpolated the dependent y-values but have not handled any extra outputs
-        // We can not use the RK (or any other integration method's) fancy interpolation because extra outputs are
-        // not included in the, for example, Q matrix building process.
-        // TODO: Perhaps we could include them in that? 
-        // For now, we will make an additional call to the diffeq using the y0 we just found above and t_interp.
-        
-        size_t num_dy = this->num_y + this->num_extra;
-
-        // Store a copy of dy_now, t_now, and y_now into old vectors so we can make the call non destructively.
-        // y array
-        double y_tmp[Y_LIMIT];
-        double* y_tmp_ptr = &y_tmp[0];
-        memcpy(y_tmp_ptr, this->cysolver_y_now_ptr, sizeof(double) * this->num_y);
-        // dy array
-        double dy_tmp[DY_LIMIT];
-        double* dy_tmp_ptr = &dy_tmp[0];
-        memcpy(dy_tmp_ptr, this->cysolver_dy_now_ptr, sizeof(double) * num_dy);
-        // t
-        double t_tmp = cysolver_t_now_ptr[0];
-
-        // Load new values into t and y
-        memcpy(this->cysolver_y_now_ptr, y_interp_ptr, sizeof(double) * this->num_y);
-        cysolver_t_now_ptr[0] = t_interp;
-        
-        // Call diffeq to update dy_now pointer
-        this->cysolver_diffeq_ptr(this->cysolver_instance_ptr);
-
-        // Capture extra output and add to the y_interp_ptr array
-        // We already have y interpolated from above so start at num_y
-        for (size_t i = this->num_y; i < num_dy; i++)
+        if (this->solver_ptr->num_extra > 0)
         {
-            y_interp_ptr[i] = this->cysolver_dy_now_ptr[i];
-        }
+            // We have interpolated the dependent y-values but have not handled any extra outputs
+            // We can not use the RK (or any other integration method's) fancy interpolation because extra outputs are
+            // not included in the, for example, Q matrix building process.
+            // TODO: Perhaps we could include them in that? 
+            // For now, we will make an additional call to the diffeq using the y0 we just found above and t_interp.
+            
+            size_t num_dy = this->solver_ptr->num_dy;
 
-        // Reset CySolver state to what it was before
-        cysolver_t_now_ptr[0] = t_tmp;
-        memcpy(this->cysolver_y_now_ptr, y_tmp_ptr, sizeof(double) * num_y);
-        memcpy(this->cysolver_dy_now_ptr, dy_tmp_ptr, sizeof(double) * num_dy);
+            // We will be overwriting the solver's now variables so tell it to store a copy that it can be restored back to.
+            this->solver_ptr->offload_to_temp();
+
+            // Load new values into t and y
+            std::memcpy(&this->solver_ptr->y_now[0], y_interp_ptr, sizeof(double) * this->num_y);
+            this->solver_ptr->t_now = t_interp;
+            
+            // Call diffeq to update dy_now pointer
+            this->solver_ptr->diffeq(this->solver_ptr);
+
+            // Capture extra output and add to the y_interp_ptr array
+            // We already have y interpolated from above so start at num_y
+            for (size_t i = this->num_y; i < num_dy; i++)
+            {
+                y_interp_ptr[i] = this->solver_ptr->dy_now[i];
+            }
+
+            // Reset CySolver state to what it was before
+            this->solver_ptr->load_back_from_temp();
+        }
     }
 }

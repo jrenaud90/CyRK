@@ -3,19 +3,43 @@
 #include <memory>
 
 #include "common.hpp"
-#include "cysolver.hpp"
-#include "rk.hpp"
+#include "cysolution.hpp"
 
+void baseline_cysolve_ivp_noreturn(
+    std::shared_ptr<CySolverResult> solution_sptr,
+    DiffeqFuncType diffeq_ptr,
+    const double* t_span_ptr,
+    const double* y0_ptr,
+    const size_t num_y,
+    const int method,
+    // General optional arguments
+    const size_t expected_size,
+    const size_t num_extra,
+    const void* args_ptr,
+    const size_t max_num_steps,
+    const size_t max_ram_MB,
+    const bool dense_output,
+    const double* t_eval,
+    const size_t len_t_eval,
+    PreEvalFunc pre_eval_func,
+    // rk optional arguments
+    const double rtol,
+    const double atol,
+    const double* rtols_ptr,
+    const double* atols_ptr,
+    const double max_step_size,
+    const double first_step_size
+);
 
 std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
     DiffeqFuncType diffeq_ptr,
     const double* t_span_ptr,
     const double* y0_ptr,
-    const unsigned int num_y,
-    const unsigned int method,
+    const size_t num_y,
+    const int method,
     // General optional arguments
     const size_t expected_size = 0,
-    const unsigned int num_extra = 0,
+    const size_t num_extra = 0,
     const void* args_ptr = nullptr,
     const size_t max_num_steps = 0,
     const size_t max_ram_MB = 2000,
@@ -34,16 +58,6 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
 
 
 /* Pure Python hook solvers and helpers */
-struct PySolverStatePointers
-{
-    double* dy_now_ptr;
-    double* t_now_ptr;
-    double* y_now_ptr;
-    PySolverStatePointers() :
-        dy_now_ptr(nullptr), t_now_ptr(nullptr), y_now_ptr(nullptr) {};
-    PySolverStatePointers(double* dy_now_ptr, double* t_now_ptr, double* y_now_ptr) :
-        dy_now_ptr(dy_now_ptr), t_now_ptr(t_now_ptr), y_now_ptr(y_now_ptr) {};
-};
 
 class PySolver
 {
@@ -52,29 +66,28 @@ public:
     int status = -999;
 
     // Integrator information
-    unsigned int integration_method = 1;
-    CySolverBase* solver = nullptr;
-    PySolverStatePointers state_pointers = PySolverStatePointers();
+    int integration_method = -1;
 
     // Solution information
-    std::shared_ptr<CySolverResult> solution_ptr = std::make_shared<CySolverResult>();
+    std::shared_ptr<CySolverResult> solution_sptr = nullptr;
 
 public:
     PySolver();
     ~PySolver();
     PySolver(
-        unsigned int integration_method,
+        int integration_method,
         // Cython class instance used for pyhook
         PyObject* cython_extension_class_instance,
         DiffeqMethod cython_extension_class_diffeq_method,
         // Regular integrator inputs
-        std::shared_ptr<CySolverResult> solution_ptr,
+        std::shared_ptr<CySolverResult> solution_sptr,
         const double t_start,
         const double t_end,
         const double* y0_ptr,
-        const unsigned int num_y,
+        const size_t num_y,
         // General optional arguments
-        const unsigned int num_extra,
+        const size_t expected_size,
+        const size_t num_extra,
         const void* args_ptr,
         const size_t max_num_steps,
         const size_t max_ram_MB,
@@ -89,6 +102,5 @@ public:
         const double max_step_size,
         const double first_step_size
     );
-    PySolverStatePointers get_state_pointers() const;
     void solve();
 };

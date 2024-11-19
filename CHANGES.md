@@ -2,6 +2,27 @@
 
 ## 2024
 
+#### v0.11.3 (2024-11-18)
+
+New:
+* Added helper function to allow users to include CyRK headers during installation. `CyRK.get_include()` this returns a list which must be appended to your include list in "setup.py".
+* Some minor performance improvements when using dense output or t_eval.
+* Added new cysolve_ivp C++ function, `baseline_cysolve_ivp_noreturn`, and cython wrapped version, `cysolve_ivp_noreturn`, that require the storage class as input (then modify it) rather than provide it as output.
+
+C++ Changes:
+* Major rework of the C++ Solver backend
+  * The `CySolverResult` storage structure is now the owner of: the solution data, the dense outputs, _and_ the solver itself (before the solver was stand alone). This ensures that the solver is alive for the dense outputs which, depending on settings, may need to make calls to the solver even after the integration is complete. 
+  * Removed many pointers in favor of direct access of variables. This was due to some variables moving and hanging pointers causing crashes.
+  * Drastically reduced the size of `CySolverDense` and moved its state data to a heap allocated array. This has led to large performance gains when `dense_output=True` for integrations requiring a large number of steps.
+* `num_y` and `num_extra` are now size_t type instead of unsigned ints.
+* `integration method` is not int instead of unsigned int.
+
+Fixes:
+* Fixed issue where if t_eval was less than t_end it could cause an access violation.
+* Fixed issue where dense output was sometimes being created twice when t_eval was provided.
+* Addressed several compile warnings.
+* Fixed issue where when t_eval is provided and dense output = true, cysolver may call a dense solution that has moved (hanging pointer).
+
 #### v0.11.2 (2024-11-12)
 
 New:

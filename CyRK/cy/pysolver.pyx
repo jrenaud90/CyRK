@@ -8,7 +8,8 @@ from CyRK.utils.memory cimport make_shared
 from CyRK.cy.cysolver_api cimport find_expected_size, WrapCySolverResult, INF, EPS_100, Y_LIMIT, DY_LIMIT
 
 import numpy as np
-np.import_array()
+cimport numpy as cnp
+cnp.import_array()
 
 # =====================================================================================================================
 # PySolver Class (holds the intergrator class and reference to the python diffeq function)
@@ -19,8 +20,8 @@ cdef class WrapPyDiffeq:
             self,
             object diffeq_func,
             tuple args,
-            unsigned int num_y,
-            unsigned int num_dy,
+            size_t num_y,
+            size_t num_dy,
             bint pass_dy_as_arg = False
             ):
         
@@ -47,10 +48,11 @@ cdef class WrapPyDiffeq:
         else:
             self.pass_dy_as_arg = False
     
-    cdef void set_state(self, double* dy_ptr, double* t_ptr, double* y_ptr) noexcept:
-        self.dy_now_ptr = dy_ptr
-        self.t_now_ptr  = t_ptr
-        self.y_now_ptr  = y_ptr
+    cdef void set_state(self, NowStatePointers* solver_state_ptr) noexcept:
+        
+        self.t_now_ptr  = solver_state_ptr.t_now_ptr
+        self.y_now_ptr  = solver_state_ptr.y_now_ptr
+        self.dy_now_ptr = solver_state_ptr.dy_now_ptr
 
         # Create memoryviews of the pointers
         self.y_now_view  = <double[:self.num_y]>self.y_now_ptr
@@ -60,17 +62,17 @@ cdef class WrapPyDiffeq:
         # That is why we use `PyArray_SimpleNewFromData` instead of a more simple `asarray`.
         # Note that it is not safe to return these arrays outside of this class because they may get deallocated while
         # the numpy array still points to the underlying memory.
-        cdef np.npy_intp[1] shape
-        cdef np.npy_intp* shape_ptr = &shape[0]
-        shape_ptr[0] = <np.npy_intp>self.num_y
+        cdef cnp.npy_intp[1] shape
+        cdef cnp.npy_intp* shape_ptr = &shape[0]
+        shape_ptr[0] = <cnp.npy_intp>self.num_y
         
-        self.y_now_arr = np.PyArray_SimpleNewFromData(1, shape_ptr, np.NPY_DOUBLE, self.y_now_ptr)
+        self.y_now_arr = cnp.PyArray_SimpleNewFromData(1, shape_ptr, cnp.NPY_DOUBLE, self.y_now_ptr)
         
         # Do the same for dy if the user provided the appropriate kind of differential equation.
         if self.pass_dy_as_arg:
             self.dy_now_view = <double[:self.num_dy]>self.dy_now_ptr
-            shape[0]         = <np.npy_intp>self.num_dy  # dy may have a larger shape than y
-            self.dy_now_arr  = np.PyArray_SimpleNewFromData(1, shape_ptr, np.NPY_DOUBLE, self.dy_now_ptr)   
+            shape[0]         = <cnp.npy_intp>self.num_dy  # dy may have a larger shape than y
+            self.dy_now_arr  = cnp.PyArray_SimpleNewFromData(1, shape_ptr, cnp.NPY_DOUBLE, self.dy_now_ptr)   
 
     cdef void diffeq(self) noexcept:
         # Run python diffeq
@@ -102,7 +104,7 @@ def pysolve_ivp(
         bint dense_output = False,
         tuple args = None,
         size_t expected_size = 0,
-        unsigned int num_extra = 0,
+        size_t num_extra = 0,
         double first_step = 0.0,
         double max_step = INF,
         rtol = 1.0e-3,
@@ -114,7 +116,7 @@ def pysolve_ivp(
 
     # Parse method
     method = method.lower()
-    cdef unsigned int integration_method = 1
+    cdef int integration_method = 1
     if method == "rk23":
         integration_method = 0
     elif method == "rk45":
@@ -133,7 +135,7 @@ def pysolve_ivp(
     cdef cpp_bool direction_flag = (t_end - t_start) >= 0
 
     # Parse y0
-    cdef unsigned int num_y   = len(y0)
+    cdef size_t num_y   = len(y0)
     cdef const double* y0_ptr = &y0[0]
     if num_y > Y_LIMIT:
         raise AttributeError(
@@ -154,7 +156,7 @@ def pysolve_ivp(
         raise AttributeError(
             f"CyRK can only capture a maximum number of {DY_LIMIT - Y_LIMIT} extra outputs. {num_extra} were provided."
             )
-    cdef unsigned int num_dy = num_y + num_extra
+    cdef size_t num_dy = num_y + num_extra
     
     # Parse rtol
     cdef double* rtols_ptr = NULL
@@ -207,7 +209,7 @@ def pysolve_ivp(
         raise AttributeError("Maximum step size must be a postive float.")
 
     # Build solution storage
-    cdef shared_ptr[CySolverResult] result_ptr = make_shared[CySolverResult](
+    cdef shared_ptr[CySolverResult] solution_sptr = make_shared[CySolverResult](
         num_y,
         num_extra,
         expected_size,
@@ -233,11 +235,12 @@ def pysolve_ivp(
             integration_method,
             <cpy_ref.PyObject*>diffeq_wrap,
             diffeq_func,
-            result_ptr,
+            solution_sptr,
             t_start,
             t_end,
             y0_ptr,
             num_y,
+            expected_size,
             num_extra,
             args_ptr,
             max_num_steps,
@@ -253,13 +256,9 @@ def pysolve_ivp(
             first_step
         )
 
-    # Get pointers to the solver's state variables so that the Python differential equation can use and update them.
-    cdef PySolverStatePointers state_pointers = solver.get_state_pointers()
-    diffeq_wrap.set_state(
-        state_pointers.dy_now_ptr,
-        state_pointers.t_now_ptr,
-        state_pointers.y_now_ptr
-        )
+    # Get pointers to the solver so that the Python differential equation can use and update its state variables (t_now, y_now, dy_now).
+    cdef NowStatePointers solver_state = solver.solution_sptr.get().solver_uptr.get().get_now_state()
+    diffeq_wrap.set_state(&solver_state)
     
     ##
     # Run the integrator!
@@ -268,7 +267,7 @@ def pysolve_ivp(
     
     # Wrap the solution in a python-safe wrapper class
     cdef WrapCySolverResult pyresult = WrapCySolverResult()
-    pyresult.set_cyresult_pointer(result_ptr)
+    pyresult.set_cyresult_pointer(solution_sptr)
 
     del solver
 

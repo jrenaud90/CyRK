@@ -1,11 +1,12 @@
 from libcpp cimport bool as cpp_bool
+from libcpp.vector cimport vector
+from libcpp.memory cimport shared_ptr, unique_ptr
 
 cimport cpython.ref as cpy_ref
-from CyRK.utils.vector cimport vector
-from CyRK.utils.memory cimport shared_ptr
 from CyRK.cy.pysolver_cyhook cimport DiffeqMethod
 
-cimport numpy as np
+cimport numpy as cnp
+cnp.import_array()
 
 
 # =====================================================================================================================
@@ -14,16 +15,17 @@ cimport numpy as np
 cdef extern from "common.cpp" nogil:
     const double INF
     const double EPS_100
-    const unsigned int Y_LIMIT
-    const unsigned int DY_LIMIT
+    const size_t Y_LIMIT
+    const size_t DY_LIMIT
+    const size_t BUFFER_SIZE
     const double MAX_STEP
 
     ctypedef void (*PreEvalFunc)(void*, double, double*, const void*)
     ctypedef void (*DiffeqFuncType)(double*, double, double*, const void*, PreEvalFunc)
 
     cdef size_t find_expected_size(        
-        int num_y,
-        int num_extra,
+        size_t num_y,
+        size_t num_extra,
         double t_delta_abs,
         double rtol_min)
 
@@ -37,15 +39,20 @@ cdef extern from "dense.cpp" nogil:
         CySolverDense()
         CySolverDense(
             int integrator_int,
-            double t_old,
-            double t_now,
-            double* y_in_ptr,
-            unsigned int num_y,
-            unsigned int Q_order)
+            CySolverBase* solver_ptr,
+            cpp_bool set_state)
+
         int integrator_int
-        unsigned int num_y
+        size_t Q_order
+        size_t num_y
+        CySolverBase* solver_ptr
         double t_old
         double t_now
+        double step
+
+        vector[double] state_data_vec
+
+        void set_state()
         void call(double t_interp, double* y_interped)
 
 
@@ -63,21 +70,58 @@ cdef extern from "cysolution.cpp" nogil:
                 const cpp_bool direction_flag,
                 const cpp_bool capture_dense_output,
                 const cpp_bool t_eval_provided)
-            cpp_bool success
-            cpp_bool reset_called
-            char* message_ptr
-            int error_code
-            size_t size
-            size_t num_y
-            size_t num_dy
+            
             cpp_bool capture_extra
+            cpp_bool retain_solver
             cpp_bool capture_dense_output
             cpp_bool t_eval_provided
-            vector[double] time_domain
+            cpp_bool success
+            cpp_bool reset_called
+            cpp_bool solver_reset_called
+            cpp_bool direction_flag
+            int error_code
+            int integrator_method
+            size_t num_y
+            size_t num_extra
+            size_t num_dy
+            char* message_ptr
+            size_t size
+            size_t num_interpolates
+            vector[double] time_domain_vec
+            vector[double] time_domain_vec_sorted
             vector[double] solution
+            vector[double]* time_domain_vec_sorted_ptr
+            vector[CySolverDense] dense_vec
+            unique_ptr[CySolverBase] solver_uptr
+            vector[double] interp_time_vec
+
             void save_data(double new_t, double* new_solution_y, double* new_solution_dy)
+            int build_dense(cpp_bool save)
+            void solve()
             void finalize()
             void reset()
+            void reset_solver()
+            void build_solver(
+                DiffeqFuncType diffeq_ptr,
+                const double t_start,
+                const double t_end,
+                const double* y0_ptr,
+                const int method,
+                const size_t expected_size,
+                const void* args_ptr,
+                const size_t max_num_steps,
+                const size_t max_ram_MB,
+                const cpp_bool dense_output,
+                const double* t_eval,
+                const size_t len_t_eval,
+                PreEvalFunc pre_eval_func,
+                const double rtol,
+                const double atol,
+                const double* rtols_ptr,
+                const double* atols_ptr,
+                const double max_step_size,
+                const double first_step_size
+            )
             void update_message(const char* new_message)
             void call(const double t, double* y_interp)
             void call_vectorize(const double* t_array_ptr, size_t len_t, double* y_interp)
@@ -101,6 +145,11 @@ cdef class WrapCySolverResult:
 # Import CySolver Integrator Base Class
 # =====================================================================================================================
 cdef extern from "cysolver.cpp" nogil:
+    struct NowStatePointers:
+        double* t_now_ptr
+        double* y_now_ptr
+        double* dy_now_ptr
+
     cdef cppclass CySolverBase:
         CySolverBase()
         CySolverBase(
@@ -109,8 +158,8 @@ cdef extern from "cysolver.cpp" nogil:
             const double t_start,
             const double t_end,
             const double* y0_ptr,
-            const unsigned int num_y,
-            const unsigned int num_extra,
+            const size_t num_y,
+            const size_t num_extra,
             const void* args_ptr,
             const size_t max_num_steps,
             const size_t max_ram_MB,
@@ -119,21 +168,30 @@ cdef extern from "cysolver.cpp" nogil:
             const size_t len_t_eval,
             PreEvalFunc pre_eval_func
         )
-        
-        shared_ptr[CySolverResult] storage_ptr
+
+        cpp_bool use_pysolver
+        DiffeqMethod py_diffeq_method
+        cpy_ref.PyObject cython_extension_class_instance
         int status
         int integration_method
-        unsigned int num_y
+        size_t num_dy
+        size_t num_y
+        shared_ptr[CySolverResult] storage_ptr
         size_t len_t
         double t_now
-        double* y0
         double* y_now_ptr
         double* dy_now_ptr
+
         cpp_bool check_status()
-        void diffeq()
-        void take_step()
-        void change_storage(shared_ptr[CySolverResult] new_storage_ptr, cpp_bool auto_reset)
+        NowStatePointers get_now_state()
         void reset()
+        void offload_to_temp()
+        void load_back_from_temp()
+        void calc_first_step_size()
+        void take_step()
+        void solve()
+        void cy_diffeq()
+        void diffeq()
         void set_cython_extension_instance(cpy_ref.PyObject* cython_extension_class_instance)
         void py_diffeq()
 
@@ -150,8 +208,8 @@ cdef extern from "rk.cpp" nogil:
             const double t_start,
             const double t_end,
             const double* y0_ptr,
-            const unsigned int num_y,
-            const unsigned int num_extra,
+            const size_t num_y,
+            const size_t num_extra,
             const void* args_ptr,
             const size_t max_num_steps,
             const size_t max_ram_MB,
@@ -172,7 +230,7 @@ cdef extern from "rk.cpp" nogil:
         void calc_first_step_size()
 
 
-    cdef unsigned int RK23_METHOD_INT
+    cdef int RK23_METHOD_INT
     cdef cppclass RK23(RKSolver):
         RK23()
         RK23(
@@ -181,8 +239,8 @@ cdef extern from "rk.cpp" nogil:
             const double t_start,
             const double t_end,
             const double* y0_ptr,
-            const unsigned int num_y,
-            const unsigned int num_extra,
+            const size_t num_y,
+            const size_t num_extra,
             const void* args_ptr,
             const size_t max_num_steps,
             const size_t max_ram_MB,
@@ -199,7 +257,7 @@ cdef extern from "rk.cpp" nogil:
         )
         void reset()
     
-    cdef unsigned int RK45_METHOD_INT
+    cdef int RK45_METHOD_INT
     cdef cppclass RK45(RKSolver):
         RK45()
         RK45(
@@ -208,8 +266,8 @@ cdef extern from "rk.cpp" nogil:
             const double t_start,
             const double t_end,
             const double* y0_ptr,
-            const unsigned int num_y,
-            const unsigned int num_extra,
+            const size_t num_y,
+            const size_t num_extra,
             const void* args_ptr,
             const size_t max_num_steps,
             const size_t max_ram_MB,
@@ -226,7 +284,7 @@ cdef extern from "rk.cpp" nogil:
         )
         void reset()
     
-    cdef unsigned int DOP853_METHOD_INT
+    cdef int DOP853_METHOD_INT
     cdef cppclass DOP853(RKSolver):
         DOP853()
         DOP853(
@@ -235,8 +293,8 @@ cdef extern from "rk.cpp" nogil:
             const double t_start,
             const double t_end,
             const double* y0_ptr,
-            const unsigned int num_y,
-            const unsigned int num_extra,
+            const size_t num_y,
+            const size_t num_extra,
             const void* args_ptr,
             const size_t max_num_steps,
             const size_t max_ram_MB,
@@ -259,14 +317,39 @@ cdef extern from "rk.cpp" nogil:
 # =====================================================================================================================
 cdef extern from "cysolve.cpp" nogil:
     # Pure C++ and Cython implementation
+
+    cdef void baseline_cysolve_ivp_noreturn(
+            shared_ptr[CySolverResult] solution_sptr,
+            DiffeqFuncType diffeq_ptr,
+            const double* t_span_ptr,
+            const double* y0_ptr,
+            const size_t num_y,
+            const int method,
+            const size_t expected_size,
+            const size_t num_extra,
+            const void* args_ptr,
+            const size_t max_num_steps,
+            const size_t max_ram_MB,
+            const cpp_bool dense_output,
+            const double* t_eval,
+            const size_t len_t_eval,
+            PreEvalFunc pre_eval_func,
+            const double rtol,
+            const double atol,
+            const double* rtols_ptr,
+            const double* atols_ptr,
+            const double max_step_size,
+            const double first_step_size
+            )
+
     cdef shared_ptr[CySolverResult] baseline_cysolve_ivp(
             DiffeqFuncType diffeq_ptr,
             const double* t_span_ptr,
             const double* y0_ptr,
-            const unsigned int num_y,
-            const unsigned int method,
+            const size_t num_y,
+            const int method,
             const size_t expected_size,
-            const unsigned int num_extra,
+            const size_t num_extra,
             const void* args_ptr,
             const size_t max_num_steps,
             const size_t max_ram_MB,
@@ -286,16 +369,40 @@ cdef extern from "cysolve.cpp" nogil:
 # =====================================================================================================================
 # Cython-based wrapper for baseline_cysolve_ivp that carries default values.
 # =====================================================================================================================
+cdef void cysolve_ivp_noreturn(
+    shared_ptr[CySolverResult] solution_sptr,
+    DiffeqFuncType diffeq_ptr,
+    const double* t_span_ptr,
+    const double* y0_ptr,
+    const size_t num_y,
+    int method = *,
+    double rtol = *,
+    double atol = *,
+    void* args_ptr = *,
+    size_t num_extra = *,
+    size_t max_num_steps = *,
+    size_t max_ram_MB = *,
+    bint dense_output = *,
+    double* t_eval = *,
+    size_t len_t_eval = *,
+    PreEvalFunc pre_eval_func = *,
+    double* rtols_ptr = *,
+    double* atols_ptr = *,
+    double max_step = *,
+    double first_step = *,
+    size_t expected_size = *
+    ) noexcept nogil
+
 cdef CySolveOutput cysolve_ivp(
     DiffeqFuncType diffeq_ptr,
     const double* t_span_ptr,
     const double* y0_ptr,
-    const unsigned int num_y,
-    unsigned int method = *,
+    const size_t num_y,
+    int method = *,
     double rtol = *,
     double atol = *,
     void* args_ptr = *,
-    unsigned int num_extra = *,
+    size_t num_extra = *,
     size_t max_num_steps = *,
     size_t max_ram_MB = *,
     bint dense_output = *,
@@ -313,12 +420,12 @@ cdef CySolveOutput cysolve_ivp_gil(
     DiffeqFuncType diffeq_ptr,
     const double* t_span_ptr,
     const double* y0_ptr,
-    const unsigned int num_y,
-    unsigned int method = *,
+    const size_t num_y,
+    int method = *,
     double rtol = *,
     double atol = *,
     void* args_ptr = *,
-    unsigned int num_extra = *,
+    size_t num_extra = *,
     size_t max_num_steps = *,
     size_t max_ram_MB = *,
     bint dense_output = *,

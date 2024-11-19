@@ -2,7 +2,8 @@
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 
 import numpy as np
-np.import_array()
+cimport numpy as cnp
+cnp.import_array()
 
 # =====================================================================================================================
 # Import CySolverResult (container for integration results)
@@ -17,7 +18,7 @@ cdef class WrapCySolverResult:
 
         # Convert solution to pointers and views
         if self.cyresult_ptr.size > 0:
-            self.time_ptr  = &self.cyresult_ptr.time_domain[0]
+            self.time_ptr  = &self.cyresult_ptr.time_domain_vec[0]
             self.y_ptr     = &self.cyresult_ptr.solution[0]
             self.time_view = <double[:self.size]>self.time_ptr
             self.y_view    = <double[:self.size * self.num_dy]>self.y_ptr
@@ -85,7 +86,7 @@ cdef class WrapCySolverResult:
     
     def __call__(self, t):
 
-        if type(t) == np.ndarray:
+        if type(t) == cnp.ndarray:
             return self.call_vectorize(t)
         else:
             return self.call(t).reshape(self.cyresult_ptr.num_dy, 1)
@@ -94,16 +95,17 @@ cdef class WrapCySolverResult:
 # =====================================================================================================================
 # Create Wrapped cysolve_ivp (has various defaults)
 # =====================================================================================================================
-cdef CySolveOutput cysolve_ivp(
+cdef void cysolve_ivp_noreturn(
+            shared_ptr[CySolverResult] solution_sptr,
             DiffeqFuncType diffeq_ptr,
             const double* t_span_ptr,
             const double* y0_ptr,
-            const unsigned int num_y,
-            unsigned int method = 1,
+            const size_t num_y,
+            int method = 1,
             double rtol = 1.0e-3,
             double atol = 1.0e-6,
             void* args_ptr = NULL,
-            unsigned int num_extra = 0,
+            size_t num_extra = 0,
             size_t max_num_steps = 0,
             size_t max_ram_MB = 2000,
             bint dense_output = False,
@@ -116,7 +118,52 @@ cdef CySolveOutput cysolve_ivp(
             double first_step = 0.0,
             size_t expected_size = 0
             ) noexcept nogil:
-    
+    baseline_cysolve_ivp_noreturn(
+        solution_sptr,
+        diffeq_ptr,
+        t_span_ptr,
+        y0_ptr,
+        num_y,
+        method,
+        expected_size,
+        num_extra,
+        args_ptr,
+        max_num_steps,
+        max_ram_MB,
+        dense_output,
+        t_eval,
+        len_t_eval,
+        pre_eval_func,
+        rtol,
+        atol,
+        rtols_ptr,
+        atols_ptr,
+        max_step,
+        first_step
+        )
+
+cdef CySolveOutput cysolve_ivp(
+            DiffeqFuncType diffeq_ptr,
+            const double* t_span_ptr,
+            const double* y0_ptr,
+            const size_t num_y,
+            int method = 1,
+            double rtol = 1.0e-3,
+            double atol = 1.0e-6,
+            void* args_ptr = NULL,
+            size_t num_extra = 0,
+            size_t max_num_steps = 0,
+            size_t max_ram_MB = 2000,
+            bint dense_output = False,
+            double* t_eval = NULL,
+            size_t len_t_eval = 0,
+            PreEvalFunc pre_eval_func = NULL,
+            double* rtols_ptr = NULL,
+            double* atols_ptr = NULL,
+            double max_step = MAX_STEP,
+            double first_step = 0.0,
+            size_t expected_size = 0
+            ) noexcept nogil:
     cdef CySolveOutput result = baseline_cysolve_ivp(
         diffeq_ptr,
         t_span_ptr,
@@ -146,12 +193,12 @@ cdef CySolveOutput cysolve_ivp_gil(
             DiffeqFuncType diffeq_ptr,
             const double* t_span_ptr,
             const double* y0_ptr,
-            const unsigned int num_y,
-            unsigned int method = 1,
+            const size_t num_y,
+            int method = 1,
             double rtol = 1.0e-3,
             double atol = 1.0e-6,
             void* args_ptr = NULL,
-            unsigned int num_extra = 0,
+            size_t num_extra = 0,
             size_t max_num_steps = 0,
             size_t max_ram_MB = 2000,
             bint dense_output = False,
