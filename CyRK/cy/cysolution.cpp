@@ -10,8 +10,8 @@ CySolverResult::CySolverResult()
 }
 
 CySolverResult::CySolverResult(
-        const int num_y,
-        const int num_extra,
+        const size_t num_y,
+        const size_t num_extra,
         const size_t expected_size,
         const double last_t,
         const bool direction_flag,
@@ -37,7 +37,11 @@ CySolverResult::CySolverResult(
     {
         this->retain_solver = true;
     }
+    
+    // Get solution class ready to go
+    this->reset();
 
+    
     // Initialize other parameters
     this->update_message("CySolverResult Initialized.");
 }
@@ -66,7 +70,7 @@ void CySolverResult::p_delete_heap()
 // Protected methods
 void CySolverResult::p_expand_data_storage()
 {
-    double new_storage_size_dbl = std::floor(DYNAMIC_GROWTH_RATE * this->storage_capacity);
+    double new_storage_size_dbl = std::floor(DYNAMIC_GROWTH_RATE * (double)this->storage_capacity);
 
     // Check if this new size is okay.
     if ((new_storage_size_dbl / this->num_dy_dbl) > SIZE_MAX_DBL) [[unlikely]]
@@ -78,7 +82,7 @@ void CySolverResult::p_expand_data_storage()
     {
         this->storage_capacity = (size_t)new_storage_size_dbl;
         // Ensure there is enough new room for the new size.
-        this->storage_capacity = std::max<size_t>(this->storage_capacity, this->size + 1);
+        this->storage_capacity = std::max<size_t>(this->storage_capacity, std::max<size_t>(this->size, this->num_interpolates) + 1);
 
         round_to_2(this->storage_capacity);
         try
@@ -129,7 +133,7 @@ void CySolverResult::p_offload_data()
 
 
 // Public methods
-void CySolverResult::set_expected_size(double expected_size)
+void CySolverResult::set_expected_size(size_t expected_size)
 {
     // Round expected size and store it.
     this->original_expected_size = expected_size;
@@ -154,6 +158,7 @@ void CySolverResult::reset()
 
     // Reset buffer trackers
     this->current_data_buffer_size  = 0;
+    this->num_interpolates          = 0;
 
     // Reserve the memory for the vectors
     try
@@ -175,6 +180,10 @@ void CySolverResult::reset()
         this->update_message("Memory Error: Malloc failed when reserving initial memory for storage vectors.\n");
     }
 
+    // Make sure the solver is back to t=0
+    this->solver_reset_called = false;
+
+    // Mark that we have allocated memory so it can be cleared if reset is called again.
     this->reset_called = true;
 }
 
@@ -183,7 +192,7 @@ void CySolverResult::build_solver(
         const double t_start,
         const double t_end,
         const double* y0_ptr,
-        const unsigned int method,
+        const int method,
         // General optional arguments
         const size_t expected_size,
         const void* args_ptr,
@@ -247,17 +256,28 @@ void CySolverResult::build_solver(
         break;
     [[unlikely]] default:
         this->solver_uptr.reset();
-        this->success     = false;
+        this->success    = false;
         this->error_code = -3;
         this->update_message("Model Error: Not implemented or unknown CySolver model requested.\n");
         break;
     }
+}
 
-    // Setup a single heap allocated dense solver if it is needed.
-    if (t_eval_provided && !this->capture_dense_output)
+void CySolverResult::reset_solver()
+{   
+    if (this->solver_uptr.get())
     {
-        this->dense_vec.emplace_back(this->integrator_method, this->solver_uptr.get(), false);
-        this->num_interpolates++;
+        // Prepare solver for integration by setting to t=0
+        this->solver_uptr->reset();
+
+        // Setup a single heap allocated dense solver if it is needed.
+        if (t_eval_provided && !this->capture_dense_output)
+        {
+            this->dense_vec.emplace_back(this->integrator_method, this->solver_uptr.get(), false);
+            this->num_interpolates++;
+        }
+
+        this->solver_reset_called = true;
     }
 }
 
@@ -274,7 +294,7 @@ void CySolverResult::save_data(const double new_t, double* const new_solution_y_
     this->data_buffer_time_ptr[this->current_data_buffer_size] = new_t;
 
     // Save y
-    unsigned int stride = this->current_data_buffer_size * this->num_dy;  // We have to stride across num_dy even though we are only saving num_y values.
+    size_t stride = this->current_data_buffer_size * this->num_dy;  // We have to stride across num_dy even though we are only saving num_y values.
     std::memcpy(&this->data_buffer_y_ptr[stride], new_solution_y_ptr, sizeof(double) * this->num_y);
 
     // Save extra
@@ -286,18 +306,24 @@ void CySolverResult::save_data(const double new_t, double* const new_solution_y_
     this->current_data_buffer_size++;
 }
 
-CySolverDense* CySolverResult::build_dense(bool save)
+int CySolverResult::build_dense(bool save)
 {
     if (!this->solver_uptr) [[unlikely]]
     {
-        return nullptr;
+        return -1;
     }
 
     if (save)
-    {    
+    {
+        this->num_interpolates++;
+        if (this->num_interpolates > this->storage_capacity)
+        {
+            // There is not enough room in the storage vectors. Expand them.
+            this->p_expand_data_storage();
+        }
+
         // We need to heap allocate the dense solution
         this->dense_vec.emplace_back(this->integrator_method, this->solver_uptr.get(), true);
-        this->num_interpolates++;
 
         // Save interpolated time (if t_eval was provided)
         if (this->t_eval_provided)
@@ -305,7 +331,7 @@ CySolverDense* CySolverResult::build_dense(bool save)
             this->interp_time_vec.push_back(this->solver_uptr->t_now);
         }
 
-        return &this->dense_vec.back();
+        return 1;
     }
     else
     {
@@ -313,18 +339,25 @@ CySolverDense* CySolverResult::build_dense(bool save)
         // Need to update its state to match the current solver state.
         this->dense_vec[0].set_state();
 
-        return &this->dense_vec[0];
+        return 1;
     }
 }
 
 void CySolverResult::solve()
 {
+    if (!this->reset_called) [[unlikely]]
+    {
+        this->reset();
+    }
+
     if (this->solver_uptr)
     {
-        // Reset the solver back to t=0
-        this->solver_uptr->reset();
-
-        // Tell the solver to starting solving the problem
+        if (!this->solver_reset_called)
+        {
+            this->reset_solver();
+        }
+    
+        // Tell the solver to starting solving the problem!
         this->solver_uptr->solve();
         
         // Call the finalizer on the storage class instance
@@ -401,6 +434,15 @@ void CySolverResult::finalize()
     {
         // Reset the cysolver smart pointer in this class.
         this->solver_uptr.reset();
+
+        // Make sure that any dense outputs also have their ptr's nulled.
+        if (capture_dense_output)
+        {
+            for (size_t i = 0; i < this->dense_vec.size(); i++)
+            {
+                this->dense_vec[i].solver_ptr = nullptr;
+            }
+        }
     }
 }
 

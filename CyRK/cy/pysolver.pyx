@@ -20,8 +20,8 @@ cdef class WrapPyDiffeq:
             self,
             object diffeq_func,
             tuple args,
-            unsigned int num_y,
-            unsigned int num_dy,
+            size_t num_y,
+            size_t num_dy,
             bint pass_dy_as_arg = False
             ):
         
@@ -104,7 +104,7 @@ def pysolve_ivp(
         bint dense_output = False,
         tuple args = None,
         size_t expected_size = 0,
-        unsigned int num_extra = 0,
+        size_t num_extra = 0,
         double first_step = 0.0,
         double max_step = INF,
         rtol = 1.0e-3,
@@ -116,7 +116,7 @@ def pysolve_ivp(
 
     # Parse method
     method = method.lower()
-    cdef unsigned int integration_method = 1
+    cdef int integration_method = 1
     if method == "rk23":
         integration_method = 0
     elif method == "rk45":
@@ -135,7 +135,7 @@ def pysolve_ivp(
     cdef cpp_bool direction_flag = (t_end - t_start) >= 0
 
     # Parse y0
-    cdef unsigned int num_y   = len(y0)
+    cdef size_t num_y   = len(y0)
     cdef const double* y0_ptr = &y0[0]
     if num_y > Y_LIMIT:
         raise AttributeError(
@@ -156,7 +156,7 @@ def pysolve_ivp(
         raise AttributeError(
             f"CyRK can only capture a maximum number of {DY_LIMIT - Y_LIMIT} extra outputs. {num_extra} were provided."
             )
-    cdef unsigned int num_dy = num_y + num_extra
+    cdef size_t num_dy = num_y + num_extra
     
     # Parse rtol
     cdef double* rtols_ptr = NULL

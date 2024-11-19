@@ -58,8 +58,8 @@ public:
         const double t_start,
         const double t_end,
         const double* const y0_ptr,
-        const unsigned int num_y,
-        const unsigned int num_extra = 0,
+        const size_t num_y,
+        const size_t num_extra = 0,
         const void* const args_ptr = nullptr,
         const size_t max_num_steps = 0,
         const size_t max_ram_MB = 2000,
@@ -73,7 +73,8 @@ public:
     virtual void reset();
     void offload_to_temp();
     void load_back_from_temp();
-    virtual void set_Q_array(double* Q_ptr, unsigned int* Q_order_ptr);
+    virtual void set_Q_order(size_t* Q_order_ptr);
+    virtual void set_Q_array(double* Q_ptr);
     virtual void calc_first_step_size();
     void take_step();
     void solve();
@@ -136,12 +137,12 @@ public:
 
     // Status attributes
     int status = -999;
-    unsigned int integration_method = 999;
+    int integration_method = -1;
 
     // Meta data
-    unsigned int num_dy    = 0;
-    unsigned int num_y     = 0;
-    unsigned int num_extra = 0;
+    size_t num_dy    = 0;
+    size_t num_y     = 0;
+    size_t num_extra = 0;
 
     // The size of the stack allocated tracking arrays is equal to the maximum allowed `num_y` (25).
     double y0[Y_LIMIT]    = { 0.0 };

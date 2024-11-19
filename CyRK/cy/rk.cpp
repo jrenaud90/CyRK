@@ -14,8 +14,8 @@ RKSolver::RKSolver(
     const double t_start,
     const double t_end,
     const double* y0_ptr,
-    const unsigned int num_y,
-    const unsigned int num_extra,
+    const size_t num_y,
+    const size_t num_extra,
     const void* args_ptr,
     const size_t max_num_steps,
     const size_t max_ram_MB,
@@ -70,7 +70,7 @@ RKSolver::RKSolver(
     {
         // rtol for each y
         this->use_array_rtols = true;
-        for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+        for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
             double temp_double = rtols_ptr[y_i];
             if (temp_double < EPS_100) [[unlikely]]
@@ -118,7 +118,7 @@ void RKSolver::p_estimate_error()
 
     this->error_norm = 0.0;
 
-    for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+    for (size_t y_i = 0; y_i < this->num_y; y_i++)
     {
         if (this->use_array_rtols)
         {
@@ -131,8 +131,8 @@ void RKSolver::p_estimate_error()
         }
 
         // Dot product between K and E
-        double error_dot = 0.0;
-        const unsigned int stride_K = y_i * this->n_stages_p1;
+        double error_dot      = 0.0;
+        const size_t stride_K = y_i * this->n_stages_p1;
 
         switch (this->n_stages)
         {
@@ -160,7 +160,7 @@ void RKSolver::p_estimate_error()
         [[unlikely]] default:
             // Resort to unrolled loops
             // New or Non-optimized RK method. default to for loop.
-            for (unsigned int j = 0; j < this->n_stages_p1; j++)
+            for (size_t j = 0; j < this->n_stages_p1; j++)
             {
                 error_dot += this->E_ptr[j] * this->K_ptr[stride_K + j];
             }
@@ -262,15 +262,15 @@ void RKSolver::p_step_implementation()
         // But we need to return to its original value later on. Store in temp variable.
         const double time_tmp = this->t_now;
 
-        for (unsigned int s = 1; s < this->len_C; s++) {
+        for (size_t s = 1; s < this->len_C; s++) {
             // Find the current time based on the old time and the step size.
             this->t_now = this->t_old + l_C_ptr[s] * this->step;
-            const unsigned int stride_A = s * this->len_Acols;
+            const size_t stride_A = s * this->len_Acols;
 
-            for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+            for (size_t y_i = 0; y_i < this->num_y; y_i++)
             {
                 double temp_double;
-                const unsigned int stride_K = y_i * this->n_stages_p1;
+                const size_t stride_K = y_i * this->n_stages_p1;
                 // Dot Product (K, a) * step
                 switch (s)
                 {
@@ -446,7 +446,7 @@ void RKSolver::p_step_implementation()
                     // Initialize
                     temp_double = 0.0;
 
-                    for (unsigned int j = 0; j < s; j++)
+                    for (size_t j = 0; j < s; j++)
                     {
                         temp_double += l_A_ptr[stride_A + j] * l_K_ptr[stride_K + j];
                     }
@@ -460,8 +460,8 @@ void RKSolver::p_step_implementation()
             this->diffeq(this);
 
             // Update K based on the new dy values.
-            for (unsigned int y_i = 0; y_i < this->num_y; y_i++) {
-                const unsigned int stride_K = y_i * this->n_stages_p1;
+            for (size_t y_i = 0; y_i < this->num_y; y_i++) {
+                const size_t stride_K = y_i * this->n_stages_p1;
                 l_K_ptr[stride_K + s] = l_dy_now_ptr[y_i];
             }
         }
@@ -470,10 +470,10 @@ void RKSolver::p_step_implementation()
         this->t_now = time_tmp;
 
         // Dot Product (K, B) * step
-        for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+        for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
             double temp_double;
-            const unsigned int stride_K = y_i * this->n_stages_p1;
+            const size_t stride_K = y_i * this->n_stages_p1;
 
             switch (this->n_stages)
             {
@@ -512,7 +512,7 @@ void RKSolver::p_step_implementation()
                 // Initialize
                 temp_double = 0.0;
 
-                for (unsigned int j = 0; j < this->n_stages; j++)
+                for (size_t j = 0; j < this->n_stages; j++)
                 {
                     temp_double += l_B_ptr[j] * l_K_ptr[stride_K + j];
                 }
@@ -527,9 +527,9 @@ void RKSolver::p_step_implementation()
         this->diffeq(this);
 
         // Set last column of K equal to dydt. K has size num_y * (n_stages + 1) so the last column is at n_stages
-        for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+        for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
-            const unsigned int stride_K = y_i * this->n_stages_p1;
+            const size_t stride_K = y_i * this->n_stages_p1;
             l_K_ptr[stride_K + this->n_stages] = l_dy_now_ptr[y_i];
         }
 
@@ -634,7 +634,7 @@ void RKSolver::calc_first_step_size()
         // Find the norm for d0 and d1
         d0 = 0.0;
         d1 = 0.0;
-        for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+        for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
             if (this->use_array_rtols)
             {
@@ -667,7 +667,7 @@ void RKSolver::calc_first_step_size()
         h0_direction = this->direction_flag ? h0 : -h0;
 
         this->t_now = this->t_old + h0_direction;
-        for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+        for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
             this->y_now[y_i] = this->y_old[y_i] + h0_direction * this->dy_old[y_i];
         }
@@ -677,7 +677,7 @@ void RKSolver::calc_first_step_size()
 
         // Find the norm for d2
         d2 = 0.0;
-        for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+        for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
             if (this->use_array_rtols)
             {
@@ -708,23 +708,31 @@ void RKSolver::calc_first_step_size()
 
 /* Dense Output Methods */
 
-void RKSolver::set_Q_array(double* Q_ptr, unsigned int* Q_order_ptr)
+void RKSolver::set_Q_order(size_t* Q_order_ptr)
 {
     // Q's definition depends on the integrators implementation. 
     // For default RK, it is defined by Q = K.T.dot(self.P)  K has shape of (n_stages + 1, num_y) so K.T has shape of (num_y, n_stages + 1)
     // P has shape of (4, 3) for RK23; (7, 4) for RK45.. So (n_stages + 1, Q_order)
     // So Q has shape of (num_y, num_Pcols)
     Q_order_ptr[0] = this->len_Pcols; 
+}
+
+void RKSolver::set_Q_array(double* Q_ptr)
+{
+    // Q's definition depends on the integrators implementation. 
+    // For default RK, it is defined by Q = K.T.dot(self.P)  K has shape of (n_stages + 1, num_y) so K.T has shape of (num_y, n_stages + 1)
+    // P has shape of (4, 3) for RK23; (7, 4) for RK45.. So (n_stages + 1, Q_order)
+    // So Q has shape of (num_y, num_Pcols)
 
     switch (this->integration_method)
     {
 
     case(0):
         // RK23
-        for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+        for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
-            const unsigned int stride_Q = y_i * this->len_Pcols;
-            const unsigned int stride_K = y_i * this->n_stages_p1;
+            const size_t stride_Q = y_i * this->len_Pcols;
+            const size_t stride_K = y_i * this->n_stages_p1;
             // len_Pcols == 3; n_stages + 1 == 4
 
             // P = 0
@@ -735,7 +743,7 @@ void RKSolver::set_Q_array(double* Q_ptr, unsigned int* Q_order_ptr)
             Q_ptr[stride_Q] = temp_double;
 
             // P = 1
-            unsigned int stride_P = this->n_stages_p1;
+            size_t stride_P = this->n_stages_p1;
             temp_double = this->K_ptr[stride_K] * this->P_ptr[stride_P];
             temp_double += this->K_ptr[stride_K + 1] * this->P_ptr[stride_P + 1];
             temp_double += this->K_ptr[stride_K + 2] * this->P_ptr[stride_P + 2];
@@ -754,10 +762,10 @@ void RKSolver::set_Q_array(double* Q_ptr, unsigned int* Q_order_ptr)
 
     case(1):
         // RK45
-        for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+        for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
-            const unsigned int stride_Q = y_i * this->len_Pcols;
-            const unsigned int stride_K = y_i * this->n_stages_p1;
+            const size_t stride_Q = y_i * this->len_Pcols;
+            const size_t stride_K = y_i * this->n_stages_p1;
 
             // len_Pcols == 4; n_stages + 1 == 7
             // P = 0
@@ -771,7 +779,7 @@ void RKSolver::set_Q_array(double* Q_ptr, unsigned int* Q_order_ptr)
             Q_ptr[stride_Q] = temp_double;
 
             // P = 1
-            unsigned int stride_P = this->n_stages_p1;
+            size_t stride_P = this->n_stages_p1;
             temp_double  = this->K_ptr[stride_K]     * this->P_ptr[stride_P];
             temp_double += this->K_ptr[stride_K + 1] * this->P_ptr[stride_P + 1];
             temp_double += this->K_ptr[stride_K + 2] * this->P_ptr[stride_P + 2];
@@ -826,9 +834,9 @@ void RKSolver::set_Q_array(double* Q_ptr, unsigned int* Q_order_ptr)
         double temp_double_3;
         double temp_double_4;
         double K_ni;
-        unsigned int stride_K;
+        size_t stride_K;
 
-        for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+        for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
             // Dot Product (K.T dot a) * h
             stride_K = this->n_stages_p1 * y_i;
@@ -836,7 +844,7 @@ void RKSolver::set_Q_array(double* Q_ptr, unsigned int* Q_order_ptr)
             temp_double   = 0.0;
             temp_double_arr[y_i * 2]     = 0.0;
             temp_double_arr[y_i * 2 + 1] = 0.0;
-            for (unsigned int n_i = 0; n_i < this->n_stages_p1; n_i++)
+            for (size_t n_i = 0; n_i < this->n_stages_p1; n_i++)
             {
                 K_ni = K_ptr[stride_K + n_i];
                 temp_double                  += K_ni * DOP853_AEXTRA_ptr[3 * n_i];
@@ -852,7 +860,7 @@ void RKSolver::set_Q_array(double* Q_ptr, unsigned int* Q_order_ptr)
         this->diffeq(this);
 
         // S (row) == 14
-        for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+        for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
             // Store dy from the last call.
             K_ni = this->dy_now[y_i];
@@ -871,7 +879,7 @@ void RKSolver::set_Q_array(double* Q_ptr, unsigned int* Q_order_ptr)
         this->diffeq(this);
 
         // S (row) == 15
-        for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+        for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
             // Store dy from the last call.
             K_ni = this->dy_now[y_i];
@@ -890,7 +898,7 @@ void RKSolver::set_Q_array(double* Q_ptr, unsigned int* Q_order_ptr)
 
 
         // Done with diffeq calls. Now build up Q matrix.
-        for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+        for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
             // Store dy from the last call.
             K_extended_ptr[y_i * 3 + 2] = this->dy_now[y_i];
@@ -898,7 +906,7 @@ void RKSolver::set_Q_array(double* Q_ptr, unsigned int* Q_order_ptr)
             // SciPy builds up a "F" matrix. Then in the dense interpolator this is reversed.
             // To keep consistency we will build F pre-reversed into Q. 
             // F (and Q) have the shape of (Interpolator Power, y_len); Interpolator power is 7
-            const unsigned int stride_Q = y_i * this->len_Pcols;
+            const size_t stride_Q = y_i * this->len_Pcols;
             // F in normal direction is:
             // F[0] = delta_y
             // F[1] = h * f_old - delta_y
@@ -919,7 +927,7 @@ void RKSolver::set_Q_array(double* Q_ptr, unsigned int* Q_order_ptr)
             temp_double_4 = 0.0;
 
             // First add up normal K
-            for (unsigned int n_i = 0; n_i < this->n_stages_p1; n_i++)
+            for (size_t n_i = 0; n_i < this->n_stages_p1; n_i++)
             {
                 K_ni = this->K_ptr[stride_K + n_i];
                 // Row 1
@@ -978,19 +986,19 @@ void RKSolver::set_Q_array(double* Q_ptr, unsigned int* Q_order_ptr)
         break;
 
     [[unlikely]] default:
-        for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+        for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
-            const unsigned int stride_K = this->n_stages_p1 * y_i;
-            const unsigned int stride_Q = y_i * this->len_Pcols;
+            const size_t stride_K = this->n_stages_p1 * y_i;
+            const size_t stride_Q = y_i * this->len_Pcols;
 
-            for (unsigned int P_i = 0; P_i < this->len_Pcols; P_i++)
+            for (size_t P_i = 0; P_i < this->len_Pcols; P_i++)
             {
-                const unsigned int stride_P = P_i * this->n_stages_p1;
+                const size_t stride_P = P_i * this->n_stages_p1;
                 // Initialize dot product
                 double temp_double = 0.0;
 
 
-                for (unsigned int n_i = 0; n_i < this->n_stages_p1; n_i++)
+                for (size_t n_i = 0; n_i < this->n_stages_p1; n_i++)
                 {
                     temp_double += this->K_ptr[stride_K + n_i] * this->P_ptr[stride_P + n_i];
                 }
@@ -1096,7 +1104,7 @@ void DOP853::p_estimate_error()
     double rtol = this->rtols_ptr[0];
     double atol = this->atols_ptr[0];
 
-    for (unsigned int y_i = 0; y_i < this->num_y; y_i++)
+    for (size_t y_i = 0; y_i < this->num_y; y_i++)
     {
         if (this->use_array_rtols)
         {
@@ -1108,7 +1116,7 @@ void DOP853::p_estimate_error()
             atol = this->atols_ptr[y_i];
         }
 
-        const unsigned int stride_K = y_i * this->n_stages_p1;
+        const size_t stride_K = y_i * this->n_stages_p1;
 
         // Dot product between K and E3 & E5 (sum over n_stages + 1; for DOP853 n_stages = 12
         // n = 0

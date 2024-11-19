@@ -23,9 +23,9 @@ protected:
     size_t storage_capacity       = 0;
 
     // Buffer
-    unsigned int current_data_buffer_size  = 0;
-    double* data_buffer_time_ptr           = &data_buffer_time[0];
-    double* data_buffer_y_ptr              = &data_buffer_y[0];
+    size_t current_data_buffer_size  = 0;
+    double* data_buffer_time_ptr     = &data_buffer_time[0];
+    double* data_buffer_y_ptr        = &data_buffer_y[0];
     
     // Metadata
     double last_t     = 0;
@@ -41,8 +41,9 @@ public:
     bool t_eval_provided      = false;
 
     // Status information
-    bool success      = false;
-    bool reset_called = false;
+    bool success             = false;
+    bool reset_called        = false;
+    bool solver_reset_called = false;
 
     // Integration direction
     bool direction_flag = true;
@@ -57,10 +58,10 @@ public:
     int error_code = -999;
 
     // Meta data
-    unsigned int integrator_method = 999; // Something large since 0 already == RK23
-    unsigned int num_y             = 0;
-    unsigned int num_extra         = 0;
-    unsigned int num_dy            = 0;
+    int integrator_method = -1;
+    size_t num_y     = 0;
+    size_t num_extra = 0;
+    size_t num_dy    = 0;
 
     // More status information
     char* message_ptr = &message[0];
@@ -98,25 +99,26 @@ public:
     virtual ~CySolverResult();
     CySolverResult();
     CySolverResult(
-        const int num_y,
-        const int num_extra,
+        const size_t num_y,
+        const size_t num_extra,
         const size_t expected_size,
         const double last_t,
         const bool direction_flag,
         const bool capture_dense_output,
         const bool t_eval_provided);
     void save_data(const double new_t, double* const new_solution_y_ptr, double* const new_solution_dy_ptr);
-    CySolverDense* build_dense(bool save);
+    int build_dense(bool save);
     void solve();
     void finalize();
-    void set_expected_size(double expected_size);
+    void set_expected_size(size_t expected_size);
     void reset();
+    void reset_solver();
     void build_solver(
         DiffeqFuncType diffeq_ptr,
         const double t_start,
         const double t_end,
         const double* y0_ptr,
-        const unsigned int method,
+        const int method,
         // General optional arguments
         const size_t expected_size,
         const void* args_ptr,

@@ -18,8 +18,8 @@ void round_to_2(size_t &initial_value)
 }
 
 MaxNumStepsOutput find_max_num_steps(
-    const int num_y,
-    const int num_extra,
+    const size_t num_y,
+    const size_t num_extra,
     const size_t max_num_steps,
     const size_t max_ram_MB)
 {
@@ -57,8 +57,8 @@ MaxNumStepsOutput find_max_num_steps(
 
 
 size_t find_expected_size(
-    const int num_y,
-    const int num_extra,
+    const size_t num_y,
+    const size_t num_extra,
     const double t_delta_abs,
     const double rtol_min)
     /* Finds an expected size for storage arrays (length of time domain) that is suitable to the provided problem */

@@ -33,8 +33,8 @@ CySolverBase::CySolverBase(
         const double t_start,
         const double t_end,
         const double* const y0_ptr,
-        const unsigned int num_y,
-        const unsigned int num_extra,
+        const size_t num_y,
+        const size_t num_extra,
         const void* const args_ptr,
         const size_t max_num_steps,
         const size_t max_ram_MB,
@@ -183,7 +183,12 @@ void CySolverBase::load_back_from_temp()
     this->t_now = this->t_tmp;
 }
 
-void CySolverBase::set_Q_array(double* Q_ptr, unsigned int* Q_order_ptr)
+void CySolverBase::set_Q_order(size_t* Q_order_ptr)
+{
+    // Overwritten by subclasses.
+}
+
+void CySolverBase::set_Q_array(double* Q_ptr)
 {
     // Overwritten by subclasses.
 }
@@ -263,7 +268,11 @@ void CySolverBase::reset()
     // Construct interpolator using t0 and y0 as its data point
     if (this->use_dense_output)
     {
-        CySolverDense* dense_output_ptr = this->storage_sptr->build_dense(true);
+        int built_dense = this->storage_sptr->build_dense(true);
+        if (built_dense < 0)
+        {
+            this->status = -100;
+        }
     }
 
     // Prep for t_eval
@@ -281,7 +290,7 @@ void CySolverBase::reset()
 }
 
 void CySolverBase::take_step()
-{    
+{ 
     if (!this->reset_called) [[unlikely]]
     {
         // Reset must be called first.
@@ -318,11 +327,15 @@ void CySolverBase::take_step()
             this->len_t++;
 
             // Take care of dense output and t_eval
-            CySolverDense* dense_output_ptr = nullptr;
+            int dense_built = 0;
             if (this->use_dense_output)
             {
                 // We need to save many dense interpolators to storage. So let's heap allocate them (that is what "true" indicates)
-                dense_output_ptr = this->storage_sptr->build_dense(true);
+                dense_built = this->storage_sptr->build_dense(true);
+                if (dense_built < 0)
+                {
+                    this->status = -100;
+                }
             }
 
             if (this->use_t_eval && !this->skip_t_eval)
@@ -377,11 +390,11 @@ void CySolverBase::take_step()
                 // ^ In this case do not save any data, we are done with this step.
                 if (t_eval_index_delta > 0)
                 {
-                    if (!dense_output_ptr)
+                    if (dense_built == 0)
                     {
                         // We are not saving interpolators to storage but we still need one to work on t_eval. 
                         // We will only ever need 1 interpolator per step. So let's just stack allocate that one.
-                        dense_output_ptr = this->storage_sptr->build_dense(false);
+                        dense_built = this->storage_sptr->build_dense(false);
                     }
 
                     // There are steps we need to interpolate over.
@@ -419,7 +432,7 @@ void CySolverBase::take_step()
                         }
 
                         // Call the interpolator using this new time value.
-                        dense_output_ptr->call(t_interp, y_interp_ptr);
+                        this->storage_sptr->dense_vec.back().call(t_interp, y_interp_ptr);
 
                         if (this->capture_extra)
                         {
