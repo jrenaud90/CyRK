@@ -77,6 +77,7 @@ cdef extern from "cysolution.cpp" nogil:
             cpp_bool t_eval_provided
             cpp_bool success
             cpp_bool reset_called
+            cpp_bool solver_reset_called
             cpp_bool direction_flag
             int error_code
             int integrator_method
@@ -99,6 +100,7 @@ cdef extern from "cysolution.cpp" nogil:
             void solve()
             void finalize()
             void reset()
+            void reset_solver()
             void build_solver(
                 DiffeqFuncType diffeq_ptr,
                 const double t_start,

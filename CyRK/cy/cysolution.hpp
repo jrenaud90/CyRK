@@ -41,8 +41,9 @@ public:
     bool t_eval_provided      = false;
 
     // Status information
-    bool success      = false;
-    bool reset_called = false;
+    bool success             = false;
+    bool reset_called        = false;
+    bool solver_reset_called = false;
 
     // Integration direction
     bool direction_flag = true;
@@ -111,6 +112,7 @@ public:
     void finalize();
     void set_expected_size(size_t expected_size);
     void reset();
+    void reset_solver();
     void build_solver(
         DiffeqFuncType diffeq_ptr,
         const double t_start,

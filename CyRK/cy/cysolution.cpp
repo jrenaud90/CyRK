@@ -37,7 +37,11 @@ CySolverResult::CySolverResult(
     {
         this->retain_solver = true;
     }
+    
+    // Get solution class ready to go
+    this->reset();
 
+    
     // Initialize other parameters
     this->update_message("CySolverResult Initialized.");
 }
@@ -176,6 +180,10 @@ void CySolverResult::reset()
         this->update_message("Memory Error: Malloc failed when reserving initial memory for storage vectors.\n");
     }
 
+    // Make sure the solver is back to t=0
+    this->solver_reset_called = false;
+
+    // Mark that we have allocated memory so it can be cleared if reset is called again.
     this->reset_called = true;
 }
 
@@ -248,13 +256,16 @@ void CySolverResult::build_solver(
         break;
     [[unlikely]] default:
         this->solver_uptr.reset();
-        this->success     = false;
+        this->success    = false;
         this->error_code = -3;
         this->update_message("Model Error: Not implemented or unknown CySolver model requested.\n");
         break;
     }
+}
 
-    if (this->error_code == 0)
+void CySolverResult::reset_solver()
+{   
+    if (this->solver_uptr.get())
     {
         // Prepare solver for integration by setting to t=0
         this->solver_uptr->reset();
@@ -265,6 +276,8 @@ void CySolverResult::build_solver(
             this->dense_vec.emplace_back(this->integrator_method, this->solver_uptr.get(), false);
             this->num_interpolates++;
         }
+
+        this->solver_reset_called = true;
     }
 }
 
@@ -332,12 +345,19 @@ int CySolverResult::build_dense(bool save)
 
 void CySolverResult::solve()
 {
-    // Reset this storage to its baseline state
-    this->reset();
+    if (!this->reset_called) [[unlikely]]
+    {
+        this->reset();
+    }
 
     if (this->solver_uptr)
     {
-        // Tell the solver to starting solving the problem
+        if (!this->solver_reset_called)
+        {
+            this->reset_solver();
+        }
+    
+        // Tell the solver to starting solving the problem!
         this->solver_uptr->solve();
         
         // Call the finalizer on the storage class instance

@@ -290,7 +290,7 @@ void CySolverBase::reset()
 }
 
 void CySolverBase::take_step()
-{    
+{ 
     if (!this->reset_called) [[unlikely]]
     {
         // Reset must be called first.
