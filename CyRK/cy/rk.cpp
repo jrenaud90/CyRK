@@ -2,6 +2,8 @@
 #include "dense.hpp"
 #include "cysolution.hpp"
 
+#include <cstdio>
+
 // ########################################################################################################################
 // RKSolver (Base)
 // ########################################################################################################################
@@ -536,6 +538,8 @@ void RKSolver::p_step_implementation()
         // Check how well this step performed by calculating its error.
         this->p_estimate_error();
 
+        printf("RK METHOD:: t_old = %e, t_now = %e, step = %e, error_norm = %e.\n", this->t_old, this->t_now, this->step, this->error_norm);
+
         // Check the size of the error
         if (this->error_norm < 1.0) {
             // We found our step size because the error is low!
@@ -568,6 +572,8 @@ void RKSolver::p_step_implementation()
             this->step_size *= std::max<double>(this->min_step_factor, error_safe);
             step_rejected = true;
         }
+        
+        printf("step_size = %e. step accepted = %d; step rejected = %d.\n", this->step_size, step_accepted, step_rejected);
     }
 
     // Update status depending if there were any errors.
