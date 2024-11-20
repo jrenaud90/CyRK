@@ -107,30 +107,6 @@ void CySolverResult::p_expand_data_storage()
     }
 }
 
-void CySolverResult::p_offload_data()
-{
-    /*
-    * Saves integration data that were temporarily held in buffers to heap-allocated vectors.
-    */
-
-    this->size += this->current_data_buffer_size;
-
-    if (this->size > this->storage_capacity)
-    {
-        // There is not enough room in the storage vectors. Expand them.
-        this->p_expand_data_storage();
-    }
-
-    // Save time results
-    this->time_domain_vec.insert(this->time_domain_vec.end(), this->data_buffer_time_ptr, this->data_buffer_time_ptr + this->current_data_buffer_size);
-
-    // Save y results and any extra output
-    this->solution.insert(this->solution.end(), this->data_buffer_y_ptr, this->data_buffer_y_ptr + (this->num_dy * this->current_data_buffer_size));
-
-    // Reset buffers
-    this->current_data_buffer_size = 0;
-}
-
 
 // Public methods
 void CySolverResult::set_expected_size(size_t expected_size)
@@ -156,9 +132,9 @@ void CySolverResult::reset()
     // Set the storage size to the original expected size.
     this->storage_capacity = this->original_expected_size;
 
-    // Reset buffer trackers
-    this->current_data_buffer_size  = 0;
-    this->num_interpolates          = 0;
+    // Reset trackers
+    this->size = 0;
+    this->num_interpolates = 0;
 
     // Reserve the memory for the vectors
     try
@@ -283,27 +259,25 @@ void CySolverResult::reset_solver()
 
 void CySolverResult::save_data(const double new_t, double* const new_solution_y_ptr, double* const new_solution_dy_ptr)
 {
-    // Check if our data buffer is full
-    if (this->current_data_buffer_size >= BUFFER_SIZE)
+    this->size++;
+    if (this->size > this->storage_capacity)
     {
-        this->p_offload_data();
+        // There is not enough room in the storage vectors. Expand them.
+        this->p_expand_data_storage();
     }
 
-    // Save data in buffer
-    // Save time
-    this->data_buffer_time_ptr[this->current_data_buffer_size] = new_t;
+    // Save time results
+    this->time_domain_vec.push_back(new_t);
 
-    // Save y
-    size_t stride = this->current_data_buffer_size * this->num_dy;  // We have to stride across num_dy even though we are only saving num_y values.
-    std::memcpy(&this->data_buffer_y_ptr[stride], new_solution_y_ptr, sizeof(double) * this->num_y);
+    // Save y results
+    this->solution.insert(this->solution.end(), new_solution_y_ptr, new_solution_y_ptr + this->num_y);
 
-    // Save extra
-    if (this->num_extra > 0)
+    if (this->capture_extra)
     {
-        std::memcpy(&this->data_buffer_y_ptr[stride + this->num_y], &new_solution_dy_ptr[this->num_y], sizeof(double) * this->num_extra);
+        // Save extra ouput results
+        // Start at the end of y values (Dependent dys) and go to the end of the dy array
+        this->solution.insert(this->solution.end(), &new_solution_dy_ptr[this->num_y], new_solution_dy_ptr + this->num_dy);
     }
-
-    this->current_data_buffer_size++;
 }
 
 int CySolverResult::build_dense(bool save)
@@ -367,12 +341,6 @@ void CySolverResult::solve()
 
 void CySolverResult::finalize()
 {
-    // Offload anything in the buffer
-    if (this->current_data_buffer_size > 0)
-    {
-        this->p_offload_data();
-    }
-
     // Shrink vectors
     if (this->size > 100000)
     {

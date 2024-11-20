@@ -61,20 +61,7 @@ CySolverBase::CySolverBase(
     this->storage_sptr->update_message("CySolverBase Initializing.");
 
     // Check for errors
-    if (this->num_extra > (DY_LIMIT - Y_LIMIT))
-    {
-        this->status = -9;
-        this->storage_sptr->error_code = -1;
-        this->storage_sptr->update_message("CySolverBase Attribute Error: `num_extra` exceeds the maximum supported size.");
-    }
-
-    if (this->num_y > Y_LIMIT)
-    {
-        this->status = -9;
-        this->storage_sptr->error_code = -1;
-        this->storage_sptr->update_message("CySolverBase Attribute Error: `num_y` exceeds the maximum supported size.");
-    }
-    else if (this->num_y == 0)
+    if (this->num_y == 0)
     {
         this->status = -9;
         this->storage_sptr->error_code = -1;
@@ -85,6 +72,18 @@ CySolverBase::CySolverBase(
     this->num_y_dbl  = (double)this->num_y;
     this->num_y_sqrt = std::sqrt(this->num_y_dbl);
     this->num_dy     = this->num_y + this->num_extra;
+
+    // Set up heap allocated arrays
+    this->y0.resize(this->num_y);
+    this->y_old.resize(this->num_y);
+    this->y_now.resize(this->num_y);
+    this->y_tmp.resize(this->num_y);
+    this->y_interp.resize(this->num_y);
+    // For dy, both the dy/dt and any extra outputs are stored. So the maximum size is `num_y` (25) + `num_extra` (25)
+    this->dy_old.resize(this->num_dy);
+    this->dy_now.resize(this->num_dy);
+    this->dy_tmp.resize(this->num_dy);
+
     // Make a copy of y0
     std::memcpy(&this->y0[0], y0_ptr, sizeof(double) * this->num_y);
     
@@ -200,7 +199,7 @@ void CySolverBase::calc_first_step_size()
 
 NowStatePointers CySolverBase::get_now_state()
 {
-    return NowStatePointers(&this->t_now, &this->y_now[0], &this->dy_now[0]);
+    return NowStatePointers(&this->t_now, this->y_now.data(), this->dy_now.data());
 }
 
 bool CySolverBase::check_status() const
@@ -232,7 +231,7 @@ bool CySolverBase::check_status() const
 void CySolverBase::cy_diffeq() noexcept
 {
     // Call c function
-    this->diffeq_ptr(&this->dy_now[0], this->t_now, &this->y_now[0], this->args_ptr, this->pre_eval_func);
+    this->diffeq_ptr(this->dy_now.data(), this->t_now, this->y_now.data(), this->args_ptr, this->pre_eval_func);
 }
 
 void CySolverBase::reset()
@@ -400,8 +399,6 @@ void CySolverBase::take_step()
                     // There are steps we need to interpolate over.
                     // Start with the old time and add t_eval step sizes until we are done.
                     // Create a y array and dy_array to use during interpolation
-                    double y_interp[Y_LIMIT] = { };
-                    double* y_interp_ptr     = &y_interp[0];
 
                     // If capture extra is set to true then we need to hold onto a copy of the current state
                     // The current state pointers must be overwritten if extra output is to be captured.
@@ -432,7 +429,7 @@ void CySolverBase::take_step()
                         }
 
                         // Call the interpolator using this new time value.
-                        this->storage_sptr->dense_vec.back().call(t_interp, y_interp_ptr);
+                        this->storage_sptr->dense_vec.back().call(t_interp, this->y_interp.data());
 
                         if (this->capture_extra)
                         {
@@ -443,13 +440,13 @@ void CySolverBase::take_step()
 
                             // Copy the interpreted y onto the current y_now_ptr. Also update t_now
                             this->t_now = t_interp;
-                            std::memcpy(&this->y_now[0], y_interp_ptr, sizeof(double) * this->num_y);
+                            std::memcpy(&this->y_now[0], this->y_interp.data(), sizeof(double) * this->num_y);
 
                             // Call diffeq to update dy_now_ptr with the extra output.
                             this->diffeq(this);
                         }
                         // Save interpolated data to storage. If capture extra is true then dy_now holds those extra values. If it is false then it won't hurt to pass dy_now to storage.
-                        this->storage_sptr->save_data(t_interp, y_interp_ptr, &this->dy_now[0]);
+                        this->storage_sptr->save_data(t_interp, this->y_interp.data(), &this->dy_now[0]);
                     }
                 }
                 // Update the old index for the next step

@@ -70,6 +70,8 @@ RKSolver::RKSolver(
     {
         // rtol for each y
         this->use_array_rtols = true;
+        // Allocate array
+        this->rtols.resize(this->num_y);
         for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
             double temp_double = rtols_ptr[y_i];
@@ -77,29 +79,36 @@ RKSolver::RKSolver(
             {
                 temp_double = EPS_100;
             }
-            this->rtols_ptr[y_i] = temp_double;
+            this->rtols[y_i] = temp_double;
         }
     }
     else {
         // only one rtol
         double temp_double = rtol;
+        this->rtols.resize(1);
         if (temp_double < EPS_100) [[unlikely]]
         {
             temp_double = EPS_100;
         }
-        this->rtols_ptr[0] = temp_double;
+        this->rtols[0] = temp_double;
     }
 
     if (atols_ptr)
     {
         // atol for each y
         this->use_array_atols = true;
-        std::memcpy(this->atols_ptr, atols_ptr, sizeof(double) * this->num_y);
+        this->atols.resize(this->num_y);
+        std::memcpy(this->atols.data(), atols_ptr, sizeof(double) * this->num_y);
     }
     else {
         // only one atol
-        this->atols_ptr[0] = atol;
+        this->atols.resize(1);
+        this->atols[0] = atol;
     }
+
+    // Setup rtol and atol pointers
+    this->rtols_ptr = this->rtols.data();
+    this->atols_ptr = this->atols.data();
 }
 
 
@@ -197,10 +206,10 @@ void RKSolver::p_step_implementation()
     const double* const l_A_ptr = this->A_ptr;
     const double* const l_B_ptr = this->B_ptr;
     const double* const l_C_ptr = this->C_ptr;
-    double* const l_y_now_ptr   = &this->y_now[0];
-    double* const l_y_old_ptr   = &this->y_old[0];
-    double* const l_dy_now_ptr  = &this->dy_now[0];
-    double* const l_dy_old_ptr  = &this->dy_old[0];
+    double* const l_y_now_ptr   = this->y_now.data();
+    double* const l_y_old_ptr   = this->y_old.data();
+    double* const l_dy_now_ptr  = this->dy_now.data();
+    double* const l_dy_old_ptr  = this->dy_old.data();
 
     // Determine step size based on previous loop
     // Find minimum step size based on the value of t (less floating point numbers between numbers when t is large)
@@ -823,12 +832,11 @@ void RKSolver::set_Q_array(double* Q_ptr)
         this->offload_to_temp();
 
         // We also need to store dy_dt so that they can be used in dot products
-        double K_extended[Y_LIMIT * 3] = { };
-        double* K_extended_ptr = &K_extended[0];
+        double* K_extended_ptr        = &this->K[13 * this->num_y];
+        double* temp_double_array_ptr = &this->K[16 * this->num_y];
 
         // S (row) == 13
         // Solve for dy used to call diffeq
-        double temp_double_arr[Y_LIMIT * 2] = { };
         double temp_double;
         double temp_double_2;
         double temp_double_3;
@@ -842,14 +850,14 @@ void RKSolver::set_Q_array(double* Q_ptr)
             stride_K = this->n_stages_p1 * y_i;
             // Go up to a max of Row 13
             temp_double   = 0.0;
-            temp_double_arr[y_i * 2]     = 0.0;
-            temp_double_arr[y_i * 2 + 1] = 0.0;
+            temp_double_array_ptr[y_i * 2]     = 0.0;
+            temp_double_array_ptr[y_i * 2 + 1] = 0.0;
             for (size_t n_i = 0; n_i < this->n_stages_p1; n_i++)
             {
                 K_ni = K_ptr[stride_K + n_i];
                 temp_double                  += K_ni * DOP853_AEXTRA_ptr[3 * n_i];
-                temp_double_arr[y_i * 2]     += K_ni * DOP853_AEXTRA_ptr[3 * n_i + 1];
-                temp_double_arr[y_i * 2 + 1] += K_ni * DOP853_AEXTRA_ptr[3 * n_i + 2];
+                temp_double_array_ptr[y_i * 2]     += K_ni * DOP853_AEXTRA_ptr[3 * n_i + 1];
+                temp_double_array_ptr[y_i * 2 + 1] += K_ni * DOP853_AEXTRA_ptr[3 * n_i + 2];
             }
 
             // Update y for diffeq call using the temp_double dot product.
@@ -868,11 +876,11 @@ void RKSolver::set_Q_array(double* Q_ptr)
 
             // Dot Product (K.T dot a) * h
             // Add row 14 to the remaining dot product trackers
-            temp_double_arr[y_i * 2]     += K_ni * DOP853_AEXTRA_ptr[3 * 13 + 1];
-            temp_double_arr[y_i * 2 + 1] += K_ni * DOP853_AEXTRA_ptr[3 * 13 + 2];
+            temp_double_array_ptr[y_i * 2]     += K_ni * DOP853_AEXTRA_ptr[3 * 13 + 1];
+            temp_double_array_ptr[y_i * 2 + 1] += K_ni * DOP853_AEXTRA_ptr[3 * 13 + 2];
 
             // Update y for diffeq call
-            this->y_now[y_i] = this->y_old[y_i] + temp_double_arr[y_i * 2] * this->step;
+            this->y_now[y_i] = this->y_old[y_i] + temp_double_array_ptr[y_i * 2] * this->step;
         }
         // Update time and call the diffeq.
         this->t_now = this->t_old + (this->step * DOP853_CEXTRA_ptr[1]);
@@ -887,10 +895,10 @@ void RKSolver::set_Q_array(double* Q_ptr)
 
             // Dot Product (K.T dot a) * h            
             // Add row 15 to the remaining dot product trackers
-            temp_double_arr[y_i * 2 + 1] += K_ni * DOP853_AEXTRA_ptr[3 * 14 + 2];
+            temp_double_array_ptr[y_i * 2 + 1] += K_ni * DOP853_AEXTRA_ptr[3 * 14 + 2];
 
             // Update y for diffeq call
-            this->y_now[y_i] = this->y_old[y_i] + temp_double_arr[y_i * 2 + 1] * this->step;
+            this->y_now[y_i] = this->y_old[y_i] + temp_double_array_ptr[y_i * 2 + 1] * this->step;
         }
         // Update time and call the diffeq.
         this->t_now = this->t_old + (this->step * DOP853_CEXTRA_ptr[2]);
@@ -1016,6 +1024,10 @@ void RKSolver::set_Q_array(double* Q_ptr)
 // ########################################################################################################################
 void RK23::reset()
 {
+
+    // Allocate the size of K
+    this->K.resize(this->num_y * 4);
+
     // Setup RK constants before calling the base class reset
     this->C_ptr     = RK23_C_ptr;
     this->A_ptr     = RK23_A_ptr;
@@ -1025,7 +1037,7 @@ void RK23::reset()
     this->E5_ptr    = nullptr;       // Not used for RK23
     this->P_ptr     = RK23_P_ptr;       
     this->D_ptr     = nullptr;       // Not used for RK23
-    this->K_ptr     = &this->K[0];
+    this->K_ptr     = this->K.data();
     this->order     = RK23_order;
     this->n_stages  = RK23_n_stages;
     this->len_Acols = RK23_len_Acols;
@@ -1044,6 +1056,9 @@ void RK23::reset()
 // ########################################################################################################################
 void RK45::reset()
 {
+    // Allocate the size of K
+    this->K.resize(this->num_y * 7);
+
     // Setup RK constants before calling the base class reset
     this->C_ptr     = RK45_C_ptr;
     this->A_ptr     = RK45_A_ptr;
@@ -1053,7 +1068,7 @@ void RK45::reset()
     this->E5_ptr    = nullptr;       // Not used for RK45
     this->P_ptr     = RK45_P_ptr;
     this->D_ptr     = nullptr;       // Not used for RK45
-    this->K_ptr     = &this->K[0];
+    this->K_ptr     = this->K.data();
     this->order     = RK45_order;
     this->n_stages  = RK45_n_stages;
     this->len_Acols = RK45_len_Acols;
@@ -1072,6 +1087,12 @@ void RK45::reset()
 // ########################################################################################################################
 void DOP853::reset()
 {
+    // Allocate the size of K
+    this->K.resize(this->num_y * 18);
+        // First 13 cols are K
+        // Next 3 are K_extended
+        // Next 2 are temp_double_array_ptr
+
     // Setup RK constants before calling the base class reset
     this->C_ptr     = DOP853_C_ptr;
     this->A_ptr     = DOP853_A_ptr;
@@ -1081,7 +1102,7 @@ void DOP853::reset()
     this->E5_ptr    = DOP853_E5_ptr;
     this->P_ptr     = nullptr;        // TODO: Not implemented
     this->D_ptr     = nullptr;        // TODO: Not implemented
-    this->K_ptr     = &this->K[0];
+    this->K_ptr     = this->K.data();
     this->order     = DOP853_order;
     this->n_stages  = DOP853_n_stages;
     this->len_Acols = DOP853_A_cols;

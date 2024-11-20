@@ -15,8 +15,6 @@ cnp.import_array()
 cdef extern from "common.cpp" nogil:
     const double INF
     const double EPS_100
-    const size_t Y_LIMIT
-    const size_t DY_LIMIT
     const size_t BUFFER_SIZE
     const double MAX_STEP
 
@@ -179,8 +177,8 @@ cdef extern from "cysolver.cpp" nogil:
         shared_ptr[CySolverResult] storage_ptr
         size_t len_t
         double t_now
-        double* y_now_ptr
-        double* dy_now_ptr
+        vector[double] y_now
+        vector[double] dy_now
 
         cpp_bool check_status()
         NowStatePointers get_now_state()

@@ -5,7 +5,7 @@ from libc.string cimport memcpy
 from libcpp.cmath cimport fmin, fabs
 
 from CyRK.utils.memory cimport make_shared
-from CyRK.cy.cysolver_api cimport find_expected_size, WrapCySolverResult, INF, EPS_100, Y_LIMIT, DY_LIMIT
+from CyRK.cy.cysolver_api cimport find_expected_size, WrapCySolverResult, INF, EPS_100
 
 import numpy as np
 cimport numpy as cnp
@@ -137,10 +137,6 @@ def pysolve_ivp(
     # Parse y0
     cdef size_t num_y   = len(y0)
     cdef const double* y0_ptr = &y0[0]
-    if num_y > Y_LIMIT:
-        raise AttributeError(
-            f"CyRK only supports a maximum number of {Y_LIMIT} dependent variables. {num_y} were provided."
-            )
     
     # Parse t_eval
     cdef const double* t_eval_ptr = NULL
@@ -152,10 +148,6 @@ def pysolve_ivp(
         t_eval_ptr = &t_eval[0]
     
     # Parse num_extra
-    if num_extra > (DY_LIMIT - Y_LIMIT):
-        raise AttributeError(
-            f"CyRK can only capture a maximum number of {DY_LIMIT - Y_LIMIT} extra outputs. {num_extra} were provided."
-            )
     cdef size_t num_dy = num_y + num_extra
     
     # Parse rtol
@@ -257,7 +249,7 @@ def pysolve_ivp(
         )
 
     # Get pointers to the solver so that the Python differential equation can use and update its state variables (t_now, y_now, dy_now).
-    cdef NowStatePointers solver_state = solver.solution_sptr.get().solver_uptr.get().get_now_state()
+    cdef NowStatePointers solver_state = solution_sptr.get().solver_uptr.get().get_now_state()
     diffeq_wrap.set_state(&solver_state)
     
     ##

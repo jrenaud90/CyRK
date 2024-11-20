@@ -1,6 +1,6 @@
 #pragma once
 
-
+#include <vector>
 #include "common.hpp"
 #include "cysolver.hpp"
 
@@ -658,13 +658,13 @@ protected:
     // RK constants
     size_t order = 0;
     size_t error_estimator_order = 0;
-    size_t n_stages     = 0;
-    size_t n_stages_p1  = 0;
-    size_t len_Acols    = 0;
-    size_t len_C        = 0;
-    size_t len_Pcols    = 0;
-    size_t nstages_numy = 0;
-    double error_exponent     = 0.0;
+    size_t n_stages       = 0;
+    size_t n_stages_p1    = 0;
+    size_t len_Acols      = 0;
+    size_t len_C          = 0;
+    size_t len_Pcols      = 0;
+    size_t nstages_numy   = 0;
+    double error_exponent = 0.0;
 
     // Pointers to RK constant arrays
     const double* C_ptr  = nullptr;
@@ -675,19 +675,19 @@ protected:
     const double* E5_ptr = nullptr;
     const double* P_ptr  = nullptr;
     const double* D_ptr  = nullptr;
+    double* K_ptr        = nullptr;
 
     // K is not const. Its values are stored in an array that is held by this class.
-    double K[1]   = { std::nan("") };
-    double* K_ptr = &this->K[0];
+    std::vector<double> K = std::vector<double>();
 
     // Tolerances
     // For the same reason num_y is limited, the total number of tolerances are limited.
-    double rtols[Y_LIMIT] = { std::nan("") };
-    double atols[Y_LIMIT] = { std::nan("") };
-    double* rtols_ptr     = &rtols[0];
-    double* atols_ptr     = &atols[0];
-    bool use_array_rtols  = false;
-    bool use_array_atols  = false;
+    std::vector<double> rtols = std::vector<double>();
+    std::vector<double> atols = std::vector<double>();
+    double* rtols_ptr = nullptr;
+    double* atols_ptr = nullptr;
+    bool use_array_rtols = false;
+    bool use_array_atols = false;
 
     // Step size parameters
     double user_provided_first_step_size = 0.0;
@@ -743,7 +743,6 @@ public:
 class RK23 : public RKSolver {
 
 protected:
-    double K[4 * Y_LIMIT] = { 0.0 };
 
 public:
     // Copy over base class constructors
@@ -754,7 +753,6 @@ public:
 class RK45 : public RKSolver {
 
 protected:
-    double K[7 * Y_LIMIT] = { 0.0 };
 
 public:
     // Copy over base class constructors
@@ -765,7 +763,9 @@ public:
 class DOP853 : public RKSolver {
 
 protected:
-    double K[13 * Y_LIMIT] = { 0.0 };
+
+    std::vector<double> K_extended      = std::vector<double>();
+    std::vector<double> temp_double_arr = std::vector<double>();
 
 public:
     // Copy over base class constructors
