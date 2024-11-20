@@ -2,6 +2,11 @@
 
 ## 2024
 
+#### v0.NNN (NNN)
+
+C++ Changes
+* Moved away from stack to heap allocated vectors for arrays that depend on the size of y0. Prior stack allocation required a hard upper limit which was a limitation for some users (See GitHub Issue [#74](https://github.com/jrenaud90/CyRK/issues/74)).
+
 #### v0.11.3 (2024-11-18)
 
 New:
