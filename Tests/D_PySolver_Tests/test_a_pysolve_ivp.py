@@ -233,21 +233,6 @@ def test_pysolve_ivp_errors():
                         pass_dy_as_arg=False)
     
     with pytest.raises(AttributeError) as e_info:
-        # Check for unsupported number of dependent variables
-        result = pysolve_ivp(diffeq_scipy_style, time_span, np.linspace(0.0, 1.0, 1000),
-                        method="RK23",
-                        args=None, rtol=rtol, atol=atol,
-                        pass_dy_as_arg=False)
-    
-    with pytest.raises(AttributeError) as e_info:
-        # Check for unsupported number of additional captures
-        result = pysolve_ivp(diffeq_scipy_style, time_span, initial_conds,
-                        method="RK23",
-                        args=None, rtol=rtol, atol=atol,
-                        num_extra=1000,
-                        pass_dy_as_arg=False)
-    
-    with pytest.raises(AttributeError) as e_info:
         # Check for bad first step
         result = pysolve_ivp(diffeq_scipy_style, time_span, initial_conds,
                         method="RK23",

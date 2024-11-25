@@ -145,14 +145,15 @@ public:
     size_t num_extra = 0;
 
     // The size of the stack allocated tracking arrays is equal to the maximum allowed `num_y` (25).
-    double y0[Y_LIMIT]    = { 0.0 };
-    double y_old[Y_LIMIT] = { 0.0 };
-    double y_now[Y_LIMIT] = { 0.0 };
-    double y_tmp[Y_LIMIT] = { 0.0 };
+    std::vector<double> y0       = std::vector<double>();
+    std::vector<double> y_old    = std::vector<double>();
+    std::vector<double> y_now    = std::vector<double>();
+    std::vector<double> y_tmp    = std::vector<double>();
+    std::vector<double> y_interp = std::vector<double>();
     // For dy, both the dy/dt and any extra outputs are stored. So the maximum size is `num_y` (25) + `num_extra` (25)
-    double dy_old[DY_LIMIT] = { 0.0 };
-    double dy_now[DY_LIMIT] = { 0.0 };
-    double dy_tmp[DY_LIMIT] = { 0.0 };
+    std::vector<double> dy_old = std::vector<double>();
+    std::vector<double> dy_now = std::vector<double>();
+    std::vector<double> dy_tmp = std::vector<double>();
 
     // Result storage
     std::shared_ptr<CySolverResult> storage_sptr = nullptr;

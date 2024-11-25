@@ -2,6 +2,11 @@
 
 ## 2024
 
+#### v0.11.4 (2024-11-25)
+
+C++ Changes
+* Moved away from stack to heap allocated vectors for arrays that depend on the size of y0. Prior stack allocation required a hard upper limit which was a limitation for some use cases (See GitHub Issue [#74](https://github.com/jrenaud90/CyRK/issues/74)).
+
 #### v0.11.3 (2024-11-18)
 
 New:
@@ -43,7 +48,7 @@ Fixes:
 Issues:
 * Cython `prange` was failing (for the array interps) only on MacOS on some versions of Python. Couldn't figure it out so removing prange for now.
 
-#### v0.11.0 (2024-11-09)
+### v0.11.0 (2024-11-09)
 
 New:
 * `WrapCySolverResult` result class now provides user access to attribute `num_y`.
