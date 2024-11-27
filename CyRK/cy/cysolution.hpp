@@ -60,8 +60,9 @@ public:
 
     // More status information
     char* message_ptr = &message[0];
-    size_t size = 0;
+    size_t size             = 0;
     size_t num_interpolates = 0;
+    size_t steps_taken      = 0;
 
     // Pointer to storage arrays
     std::vector<double> time_domain_vec        = std::vector<double>();

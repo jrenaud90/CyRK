@@ -324,6 +324,7 @@ void CySolverBase::take_step()
 
             this->p_step_implementation();
             this->len_t++;
+            this->storage_sptr->steps_taken++;
 
             // Take care of dense output and t_eval
             int dense_built = 0;

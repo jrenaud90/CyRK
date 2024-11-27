@@ -85,6 +85,7 @@ cdef extern from "cysolution.cpp" nogil:
             char* message_ptr
             size_t size
             size_t num_interpolates
+            size_t steps_taken
             vector[double] time_domain_vec
             vector[double] time_domain_vec_sorted
             vector[double] solution

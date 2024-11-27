@@ -199,6 +199,7 @@ def test_pysolve_ivp(use_scipy_style, use_args, use_njit_always,
     assert result.success
     assert result.error_code == 1
     assert result.size > 1
+    assert result.steps_taken > 1
     assert result.message == "Integration completed without issue."
     # Check that the ndarrays make sense
     assert type(result.t) == np.ndarray

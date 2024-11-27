@@ -133,8 +133,9 @@ void CySolverResult::reset()
     this->storage_capacity = this->original_expected_size;
 
     // Reset trackers
-    this->size = 0;
+    this->size             = 0;
     this->num_interpolates = 0;
+    this->steps_taken      = 0;
 
     // Reserve the memory for the vectors
     try
