@@ -245,12 +245,15 @@ bool CySolverBase::check_status() const
 void CySolverBase::cy_diffeq() noexcept
 {
     // Call c function
-    printf("\tcy_diffeq calle.\n\t\tt_now       = %e;\n", this->t_now);
+    printf("\tcy_diffeq called\n\t\tt_now       = %e;\n", this->t_now);
+    printf("\t\tthis   -> %p\n", this);
+    printf("\t\tdiffeq -> %p\n", this->diffeq_ptr);
     printf("\t\tdy ptr      = %p;\n", this->dy_now.data());
     printf("\t\ty ptr       = %p;\n", this->y_now.data());
     printf("\t\targs ptr    = %p;\n", this->args_ptr);
     printf("\t\tpreeval ptr = %p;\n", this->pre_eval_func);
     this->diffeq_ptr(this->dy_now.data(), this->t_now, this->y_now.data(), this->args_ptr, this->pre_eval_func);
+    printf("\ttcy_diffeq Finished\n", this->diffeq_ptr);
 }
 
 void CySolverBase::reset()
