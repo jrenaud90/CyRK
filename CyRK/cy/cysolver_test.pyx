@@ -236,7 +236,7 @@ def cytester(
     cdef double[2] t_span_arr
     cdef double* t_span_ptr = &t_span_arr[0]
 
-    cdef int num_extra = 0
+    cdef size_t num_extra = 0
     cdef DiffeqFuncType diffeq = NULL
     cdef PreEvalFunc pre_eval_func = NULL
     if diffeq_number == 0:
