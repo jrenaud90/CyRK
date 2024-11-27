@@ -2,7 +2,12 @@
 
 ## 2024
 
-#### v0.11.4 (2024-11-27)
+#### v0.11.6 (2024-NNN)
+
+Tests:
+* Fixed tests where additional args were not being used.
+
+#### v0.11.5 (2024-11-27)
 
 New:
 * Added a `steps_taken` tracking variable to the C++ class `CySolverResult` and the Cython wrapped `WrapCySolverResult` so that users can see how many steps were taken during integration even when using `t_eval`.
