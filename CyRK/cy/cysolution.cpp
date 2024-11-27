@@ -2,6 +2,7 @@
 
 #include "cysolution.hpp"
 
+#include <cstdio>
 
 // Constructors
 CySolverResult::CySolverResult()
@@ -189,6 +190,7 @@ void CySolverResult::build_solver(
     )
 {
     // Make sure the solver pointer is empty.
+    printf("CySolverResult::build_solver pt 1; diffeq ptr = %p\n", diffeq_ptr);
     if (this->solver_uptr)
     {
         this->solver_uptr.reset();

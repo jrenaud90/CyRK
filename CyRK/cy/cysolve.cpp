@@ -73,6 +73,7 @@ void baseline_cysolve_ivp_noreturn(
     solution_sptr->set_expected_size(expected_size_touse);
 
     // Setup solver class
+    printf("baseline_cysolve_ivp_noreturn pt 3b. diffeq ptr = %p\n", diffeq_ptr);
     solution_sptr->build_solver(
         diffeq_ptr,
         t_start,
@@ -146,7 +147,7 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
             t_eval_provided);
 
     // Run
-    printf("baseline_cysolve_ivp pt 3\n");
+    printf("baseline_cysolve_ivp pt 3; diffeq ptr = %p\n", diffeq_ptr);
     baseline_cysolve_ivp_noreturn(
         solution_sptr,
         diffeq_ptr,

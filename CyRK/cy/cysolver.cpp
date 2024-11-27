@@ -72,7 +72,7 @@ CySolverBase::CySolverBase(
     }
 
     // Parse y values
-    printf("CYSOLVE INIT pt 2\n");
+    printf("CYSOLVE INIT pt 2; num_y = %d\n", this->num_y);
     this->num_y_dbl  = (double)this->num_y;
     this->num_y_sqrt = std::sqrt(this->num_y_dbl);
     this->num_dy     = this->num_y + this->num_extra;
@@ -151,7 +151,9 @@ CySolverBase::CySolverBase(
     this->max_num_steps               = max_num_steps_output.max_num_steps;
 
     // Bind diffeq to C++ version
-    printf("CYSOLVE INIT pt 10\n");
+    printf("CYSOLVE INIT pt 10a; diffeq ptr = %p\n", diffeq_ptr);
+    printf("CYSOLVE INIT pt 10a; this-> diffeq ptr = %p\n", this->diffeq_ptr);
+    printf("CYSOLVE INIT pt 10b; cy_diffeq ptr = %p\n", &CySolverBase::cy_diffeq);
     this->diffeq = &CySolverBase::cy_diffeq;
 }
 
@@ -243,6 +245,11 @@ bool CySolverBase::check_status() const
 void CySolverBase::cy_diffeq() noexcept
 {
     // Call c function
+    printf("\tcy_diffeq calle.\n\t\tt_now       = %e;\n", this->t_now);
+    printf("\t\tdy ptr      = %p;\n", this->dy_now.data());
+    printf("\t\ty ptr       = %p;\n", this->y_now.data());
+    printf("\t\targs ptr    = %p;\n", this->args_ptr);
+    printf("\t\tpreeval ptr = %p;\n", this->pre_eval_func);
     this->diffeq_ptr(this->dy_now.data(), this->t_now, this->y_now.data(), this->args_ptr, this->pre_eval_func);
 }
 
