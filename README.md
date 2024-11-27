@@ -69,7 +69,7 @@ test_nbrk()
 - If you see a "Can not load module: CyRK.cy" or similar error then the cython extensions likely did not compile during installation. Try running `pip install CyRK --no-binary="CyRK"` 
 to force python to recompile the cython extensions locally (rather than via a prebuilt wheel).
 
-- On MacOS: If you run into problems installing CyRK then reinstall using the verbose flag (`pip install -v .`) to look at the installation log. If you see an error that looks like "clang: error: unsupported option '-fopenmp'" then you are likely using the default compiler or other compiler that does not support OpenMP. Read more about this issue [here](https://github.com/facebookresearch/xformers/issues/157) and the steps taken [here](https://github.com/jrenaud90/CyRK/blob/main/.github/workflows/push_tests_mac.yml). To fix this by performing the following in your terminal.
+- On MacOS: If you run into problems installing CyRK then reinstall using the verbose flag (`pip install -v .`) to look at the installation log. If you see an error that looks like "clang: error: unsupported option '-fopenmp'" then you are likely using the default compiler or other compiler that does not support OpenMP. Read more about this issue [here](https://github.com/facebookresearch/xformers/issues/157) and the steps taken [here](https://github.com/jrenaud90/CyRK/blob/main/.github/workflows/push_tests_mac.yml). A fix for this issue is to use `llvm`'s clang compiler. This can be done by doing the following in your terminal before installing CyRK.
 ```
 brew install llvm
 brew install libomp
