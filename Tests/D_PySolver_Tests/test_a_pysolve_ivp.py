@@ -199,6 +199,7 @@ def test_pysolve_ivp(use_scipy_style, use_args, use_njit_always,
     assert result.success
     assert result.error_code == 1
     assert result.size > 1
+    assert result.steps_taken > 1
     assert result.message == "Integration completed without issue."
     # Check that the ndarrays make sense
     assert type(result.t) == np.ndarray
@@ -230,21 +231,6 @@ def test_pysolve_ivp_errors():
         result = pysolve_ivp(diffeq_scipy_style, time_span, initial_conds,
                         method="FakeIntegrationMethod",
                         args=None, rtol=rtol, atol=atol,
-                        pass_dy_as_arg=False)
-    
-    with pytest.raises(AttributeError) as e_info:
-        # Check for unsupported number of dependent variables
-        result = pysolve_ivp(diffeq_scipy_style, time_span, np.linspace(0.0, 1.0, 1000),
-                        method="RK23",
-                        args=None, rtol=rtol, atol=atol,
-                        pass_dy_as_arg=False)
-    
-    with pytest.raises(AttributeError) as e_info:
-        # Check for unsupported number of additional captures
-        result = pysolve_ivp(diffeq_scipy_style, time_span, initial_conds,
-                        method="RK23",
-                        args=None, rtol=rtol, atol=atol,
-                        num_extra=1000,
                         pass_dy_as_arg=False)
     
     with pytest.raises(AttributeError) as e_info:

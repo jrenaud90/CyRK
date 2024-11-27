@@ -21,11 +21,6 @@ protected:
     // Current storage information
     size_t original_expected_size = 0;
     size_t storage_capacity       = 0;
-
-    // Buffer
-    size_t current_data_buffer_size  = 0;
-    double* data_buffer_time_ptr     = &data_buffer_time[0];
-    double* data_buffer_y_ptr        = &data_buffer_y[0];
     
     // Metadata
     double last_t     = 0;
@@ -65,8 +60,9 @@ public:
 
     // More status information
     char* message_ptr = &message[0];
-    size_t size = 0;
+    size_t size             = 0;
     size_t num_interpolates = 0;
+    size_t steps_taken      = 0;
 
     // Pointer to storage arrays
     std::vector<double> time_domain_vec        = std::vector<double>();
@@ -84,16 +80,11 @@ public:
     std::vector<double> interp_time_vec = std::vector<double>();
 
 private:
-    // Put data buffers at the end of memory stack
-    double data_buffer_time[BUFFER_SIZE]                 = { };
-    double data_buffer_y[BUFFER_SIZE * DY_LIMIT]         = { };
-
 
 // Methods
 protected:
     void p_delete_heap();
     void p_expand_data_storage();
-    void p_offload_data();
 
 public:
     virtual ~CySolverResult();

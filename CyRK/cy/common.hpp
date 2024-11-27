@@ -4,8 +4,6 @@
 #include <limits>
 
 // Pre-processor constants
-static const size_t Y_LIMIT     = 32;
-static const size_t DY_LIMIT    = 64;  // dy limit is defined by Y_LIMIT and number of extra output allowed. Typically we allow 2x the Y_LIMIT.
 static const int MESSAGE_SIZE   = 128;
 static const size_t BUFFER_SIZE = 16;
 

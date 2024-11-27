@@ -73,6 +73,10 @@ cdef class WrapCySolverResult:
         return self.cyresult_ptr.size
     
     @property
+    def steps_taken(self):
+        return self.cyresult_ptr.steps_taken
+    
+    @property
     def num_y(self):
         return self.cyresult_ptr.num_y
     
