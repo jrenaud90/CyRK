@@ -25,6 +25,8 @@ void Py_XDECREF(PyObject* x)
 }
 */
 
+#include <cstdio>
+
 // Constructors
 CySolverBase::CySolverBase() {}
 CySolverBase::CySolverBase(
@@ -55,6 +57,7 @@ CySolverBase::CySolverBase(
             storage_sptr(storage_sptr)
 {
     // Parse inputs
+    printf("CYSOLVE INIT pt 1\n");
     this->capture_extra = num_extra > 0;
 
     // Setup storage
@@ -69,25 +72,30 @@ CySolverBase::CySolverBase(
     }
 
     // Parse y values
+    printf("CYSOLVE INIT pt 2\n");
     this->num_y_dbl  = (double)this->num_y;
     this->num_y_sqrt = std::sqrt(this->num_y_dbl);
     this->num_dy     = this->num_y + this->num_extra;
 
     // Set up heap allocated arrays
+    printf("CYSOLVE INIT pt 3\n");
     this->y0.resize(this->num_y);
     this->y_old.resize(this->num_y);
     this->y_now.resize(this->num_y);
     this->y_tmp.resize(this->num_y);
     this->y_interp.resize(this->num_y);
     // For dy, both the dy/dt and any extra outputs are stored. So the maximum size is `num_y` (25) + `num_extra` (25)
+    printf("CYSOLVE INIT pt 4\n");
     this->dy_old.resize(this->num_dy);
     this->dy_now.resize(this->num_dy);
     this->dy_tmp.resize(this->num_dy);
 
     // Make a copy of y0
+    printf("CYSOLVE INIT pt 5\n");
     std::memcpy(&this->y0[0], y0_ptr, sizeof(double) * this->num_y);
     
     // Parse t_eval
+    printf("CYSOLVE INIT pt 6\n");
     if ((t_eval) && (this->len_t_eval > 0))
     {
         this->use_t_eval = true;
@@ -98,6 +106,7 @@ CySolverBase::CySolverBase(
     }
 
     // Parse time information
+    printf("CYSOLVE INIT pt 7\n");
     this->t_delta = t_end - t_start;
     this->t_delta_abs = std::fabs(this->t_delta);
     if (this->t_delta >= 0.0)
@@ -130,16 +139,19 @@ CySolverBase::CySolverBase(
     }
 
     // Parse maximum number of steps
+    printf("CYSOLVE INIT pt 8\n");
     MaxNumStepsOutput max_num_steps_output = find_max_num_steps(
         this->num_y,
         num_extra,
         max_num_steps,
         max_ram_MB
     );
+    printf("CYSOLVE INIT pt 9\n");
     this->user_provided_max_num_steps = max_num_steps_output.user_provided_max_num_steps;
     this->max_num_steps               = max_num_steps_output.max_num_steps;
 
     // Bind diffeq to C++ version
+    printf("CYSOLVE INIT pt 10\n");
     this->diffeq = &CySolverBase::cy_diffeq;
 }
 
@@ -236,6 +248,7 @@ void CySolverBase::cy_diffeq() noexcept
 
 void CySolverBase::reset()
 {
+    printf("CYSOLVE RESET pt 1\n");
     this->status = 0;
     this->reset_called = false;
 
@@ -243,30 +256,37 @@ void CySolverBase::reset()
     this->skip_t_eval = false;
 
     // Reset time
+    printf("CYSOLVE RESET pt 2\n");
     this->t_now = this->t_start;
     this->t_old = this->t_start;
     this->len_t = 1;
 
     // Reset ys
+    printf("CYSOLVE RESET pt 3\n");
     std::memcpy(&this->y_now[0], &this->y0[0], sizeof(double) * this->num_y);
     std::memcpy(&this->y_old[0], &this->y0[0], sizeof(double) * this->num_y);
 
     // Call differential equation to set dy0
+    printf("CYSOLVE RESET pt 4\n");
     this->diffeq(this);
 
     // Update dys
+    printf("CYSOLVE RESET pt 5\n");
     std::memcpy(&this->dy_old[0], &this->dy_now[0], sizeof(double) * this->num_y);
 
     // If t_eval is set then don't save initial conditions. They will be captured during stepping.
     if (!this->use_t_eval)
     {
         // Store initial conditions
+        printf("CYSOLVE RESET pt 5b\n");
         this->storage_sptr->save_data(this->t_now, &this->y_now[0], &this->dy_now[0]);
     }
     
     // Construct interpolator using t0 and y0 as its data point
+    printf("CYSOLVE RESET pt 6\n");
     if (this->use_dense_output)
     {
+        printf("CYSOLVE RESET pt 6b\n");
         int built_dense = this->storage_sptr->build_dense(true);
         if (built_dense < 0)
         {
@@ -275,6 +295,7 @@ void CySolverBase::reset()
     }
 
     // Prep for t_eval
+    printf("CYSOLVE RESET pt 7\n");
     if (this->direction_flag)
     {
         this->t_eval_index_old = 0;
@@ -511,10 +532,12 @@ void CySolverBase::take_step()
 // Main Solve Method!
 void CySolverBase::solve()
 {
+    printf("CYSOLVE SOLVE pt 1\n");
     while (this->check_status())
     {
         this->take_step();
     }
+    printf("CYSOLVE SOLVE DONE\n");
 }
 
 

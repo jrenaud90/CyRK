@@ -1,6 +1,9 @@
 #include "cysolve.hpp"
 #include <exception>
 
+
+#include <cstdio>
+
 void baseline_cysolve_ivp_noreturn(
         std::shared_ptr<CySolverResult> solution_sptr,
         DiffeqFuncType diffeq_ptr,
@@ -28,12 +31,14 @@ void baseline_cysolve_ivp_noreturn(
     )
 {
     // Parse input
+    printf("baseline_cysolve_ivp_noreturn pt 1\n");
     const double t_start       = t_span_ptr[0];
     const double t_end         = t_span_ptr[1];
     const bool direction_flag  = t_start <= t_end ? true : false;
     const bool t_eval_provided = t_eval ? true : false;
 
     // Get new expected size
+    printf("baseline_cysolve_ivp_noreturn pt 2\n");
     size_t expected_size_touse = expected_size;
     if (expected_size_touse == 0)
     {
@@ -64,6 +69,7 @@ void baseline_cysolve_ivp_noreturn(
     }
 
     // Set the expected size of the arrays
+    printf("baseline_cysolve_ivp_noreturn pt 3\n");
     solution_sptr->set_expected_size(expected_size_touse);
 
     // Setup solver class
@@ -91,7 +97,9 @@ void baseline_cysolve_ivp_noreturn(
         first_step_size
     );
     // Run integrator
+    printf("baseline_cysolve_ivp_noreturn pt 4\n");
     solution_sptr->solve();
+    printf("baseline_cysolve_ivp_noreturn DONE\n");
 }
 
 std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
@@ -119,12 +127,14 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
         const double first_step_size
     )
 {
+    printf("baseline_cysolve_ivp pt 1\n");
     const double t_start       = t_span_ptr[0];
     const double t_end         = t_span_ptr[1];
     const bool direction_flag  = t_start <= t_end ? true : false;
     const bool t_eval_provided = t_eval ? true : false;
 
     // Build storage class
+    printf("baseline_cysolve_ivp pt 2\n");
     std::shared_ptr<CySolverResult> solution_sptr =
         std::make_shared<CySolverResult>(
             num_y,
@@ -136,6 +146,7 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
             t_eval_provided);
 
     // Run
+    printf("baseline_cysolve_ivp pt 3\n");
     baseline_cysolve_ivp_noreturn(
         solution_sptr,
         diffeq_ptr,
@@ -163,6 +174,7 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
     );
 
     // Return the results
+    printf("baseline_cysolve_ivp DONE \n");
     return solution_sptr;
 }
 
