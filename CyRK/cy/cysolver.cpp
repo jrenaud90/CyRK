@@ -248,7 +248,7 @@ void CySolverBase::cy_diffeq() noexcept
 
 void CySolverBase::reset()
 {
-    printf("CYSOLVE RESET pt 1\n");
+    printf("CYSOLVE RESET pt 1; num_y = %d; num_dy = %d\n", this->num_y, this->num_dy);
     this->status = 0;
     this->reset_called = false;
 
@@ -267,8 +267,10 @@ void CySolverBase::reset()
     std::memcpy(&this->y_old[0], &this->y0[0], sizeof(double) * this->num_y);
 
     // Call differential equation to set dy0
-    printf("CYSOLVE RESET pt 4\n");
+    printf("CYSOLVE RESET pt 4;\n");
+    printf("CYSOLVE RESET pt 4b; diffeq = %p; this = %p\n", this->diffeq, this);
     this->diffeq(this);
+    printf("CYSOLVE RESET pt 4c;\n");
 
     // Update dys
     printf("CYSOLVE RESET pt 5\n");
