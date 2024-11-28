@@ -152,6 +152,12 @@ CySolverBase::~CySolverBase()
         // Decrease reference count on the cython extension class instance
         Py_XDECREF(this->cython_extension_class_instance);
     }
+
+    // Reset shared pointers
+    if (this->storage_sptr)
+    {
+        this->storage_sptr.reset();
+    }
 }
 
 // Protected methods

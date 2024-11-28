@@ -1,6 +1,5 @@
 # distutils: language = c++
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
-
 import numpy as np
 cimport numpy as cnp
 cnp.import_array()

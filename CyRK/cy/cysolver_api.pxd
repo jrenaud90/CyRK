@@ -110,7 +110,6 @@ cdef extern from "cysolution.cpp" nogil:
                 const void* args_ptr,
                 const size_t max_num_steps,
                 const size_t max_ram_MB,
-                const cpp_bool dense_output,
                 const double* t_eval,
                 const size_t len_t_eval,
                 PreEvalFunc pre_eval_func,

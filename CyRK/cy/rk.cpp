@@ -10,13 +10,13 @@ RKSolver::RKSolver() {}
 RKSolver::RKSolver(
     // Base Class input arguments
     DiffeqFuncType diffeq_ptr,
-    std::shared_ptr<CySolverResult> const storage_sptr,
+    std::shared_ptr<CySolverResult> storage_sptr,
     const double t_start,
     const double t_end,
-    const double* y0_ptr,
+    const double* const y0_ptr,
     const size_t num_y,
     const size_t num_extra,
-    const void* args_ptr,
+    void* args_ptr,
     const size_t max_num_steps,
     const size_t max_ram_MB,
     const bool use_dense_output,

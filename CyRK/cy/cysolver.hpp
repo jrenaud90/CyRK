@@ -59,14 +59,14 @@ public:
         const double t_end,
         const double* const y0_ptr,
         const size_t num_y,
-        const size_t num_extra = 0,
-        const void* const args_ptr = nullptr,
-        const size_t max_num_steps = 0,
-        const size_t max_ram_MB = 2000,
-        const bool use_dense_output = false,
-        const double* t_eval = nullptr,
-        const size_t len_t_eval = 0,
-        PreEvalFunc pre_eval_func = nullptr
+        const size_t num_extra,
+        void args_ptr,
+        const size_t max_num_steps,
+        const size_t max_ram_MB,
+        const bool use_dense_output,
+        const double* t_eval,
+        const size_t len_t_eval,
+        PreEvalFunc pre_eval_func
     );
 
     bool check_status() const;
@@ -104,7 +104,7 @@ protected:
     // Integration step information
     size_t max_num_steps = 0;
 
-    // Differential equation information
+    // Differential equation information    
     const void* args_ptr      = nullptr;
     DiffeqFuncType diffeq_ptr = nullptr;
     

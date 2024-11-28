@@ -78,7 +78,6 @@ void baseline_cysolve_ivp_noreturn(
         args_ptr,
         max_num_steps,
         max_ram_MB,
-        dense_output,
         t_eval,
         len_t_eval,
         pre_eval_func,
@@ -222,7 +221,7 @@ PySolver::PySolver(
     if (this->solution_sptr) [[likely]]
     {
         this->solution_sptr->build_solver(
-            diffeq_ptr,
+            diffeq_ptr,  // not used when using pysolver
             t_start,
             t_end,
             y0_ptr,
@@ -232,10 +231,9 @@ PySolver::PySolver(
             args_ptr,
             max_num_steps,
             max_ram_MB,
-            dense_output,
             t_eval,
             len_t_eval,
-            pre_eval_func,
+            pre_eval_func,  // not used when using pysolver
             // rk optional arguments
             rtol,
             atol,

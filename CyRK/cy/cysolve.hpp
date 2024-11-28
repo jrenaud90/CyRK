@@ -38,22 +38,22 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
     const size_t num_y,
     const int method,
     // General optional arguments
-    const size_t expected_size = 0,
-    const size_t num_extra = 0,
-    const void* args_ptr = nullptr,
-    const size_t max_num_steps = 0,
-    const size_t max_ram_MB = 2000,
-    const bool dense_output = false,
-    const double* t_eval = nullptr,
-    const size_t len_t_eval = 0,
-    PreEvalFunc pre_eval_func = nullptr,
+    const size_t expected_size,
+    const size_t num_extra,
+    void* args_ptr,
+    const size_t max_num_steps,
+    const size_t max_ram_MB,
+    const bool dense_output,
+    const double* t_eval,
+    const size_t len_t_eval,
+    PreEvalFunc pre_eval_func,
     // rk optional arguments
-    const double rtol = 1.0e-3,
-    const double atol = 1.0e-6,
-    const double* rtols_ptr = nullptr,
-    const double* atols_ptr = nullptr,
-    const double max_step_size = MAX_STEP,
-    const double first_step_size = 0.0
+    const double rtol,
+    const double atol,
+    const double* rtols_ptr,
+    const double* atols_ptr,
+    const double max_step_size,
+    const double first_step_size
 );
 
 

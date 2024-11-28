@@ -1,7 +1,20 @@
 # distutils: language = c++
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 
+from libcpp cimport bool as cpp_bool
+from libcpp.memory cimport make_shared, shared_ptr
+from libcpp.vector cimport vector
+from libcpp.limits cimport numeric_limits
+from libc.math cimport sin, cos, fabs, fmin, fmax
+
+cdef double d_NAN = numeric_limits[double].quiet_NaN()
+
+from CyRK.cy.cysolver_api cimport cysolve_ivp, WrapCySolverResult, DiffeqFuncType,MAX_STEP, CySolveOutput, null_void_sptr
+
 import numpy as np
+cimport numpy as np
+np.import_array()
+
 
 cdef void baseline_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
     # Unpack y
