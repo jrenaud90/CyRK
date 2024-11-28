@@ -27,7 +27,6 @@ cdef extern from "cysolve.cpp" nogil:
             const size_t num_y,
             const size_t expected_size,
             const size_t num_extra,
-            const void* args_ptr,
             const size_t max_num_steps,
             const size_t max_ram_MB,
             const cpp_bool dense_output,

@@ -88,7 +88,6 @@ public:
         // General optional arguments
         const size_t expected_size,
         const size_t num_extra,
-        const void* args_ptr,
         const size_t max_num_steps,
         const size_t max_ram_MB,
         const bool dense_output,

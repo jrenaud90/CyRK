@@ -12,6 +12,7 @@ void baseline_cysolve_ivp_noreturn(
         const size_t expected_size,
         const size_t num_extra,
         const void* args_ptr,
+        const size_t size_of_args,
         const size_t max_num_steps,
         const size_t max_ram_MB,
         const bool dense_output,
@@ -76,6 +77,7 @@ void baseline_cysolve_ivp_noreturn(
         // General optional arguments
         expected_size,
         args_ptr,
+        size_of_args,
         max_num_steps,
         max_ram_MB,
         t_eval,
@@ -103,6 +105,7 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
         const size_t expected_size,
         const size_t num_extra,
         const void* args_ptr,
+        const size_t size_of_args,
         const size_t max_num_steps,
         const size_t max_ram_MB,
         const bool dense_output,
@@ -146,6 +149,7 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
         expected_size,
         num_extra,
         args_ptr,
+        size_of_args,
         max_num_steps,
         max_ram_MB,
         dense_output,
@@ -192,7 +196,6 @@ PySolver::PySolver(
         // General optional arguments
         const size_t expected_size,
         const size_t num_extra,
-        const void* args_ptr,
         const size_t max_num_steps,
         const size_t max_ram_MB,
         const bool dense_output,
@@ -216,6 +219,10 @@ PySolver::PySolver(
     // We also need to pass a fake pre-eval function
     PreEvalFunc pre_eval_func = nullptr;
 
+    // Args are handled by the python class too.
+    void* args_ptr      = nullptr;
+    size_t size_of_args = 0;
+
     // Build the solver class. This must be heap allocated to take advantage of polymorphism.
     // Setup solver class
     if (this->solution_sptr) [[likely]]
@@ -229,6 +236,7 @@ PySolver::PySolver(
             // General optional arguments
             expected_size,
             args_ptr,
+            size_of_args,
             max_num_steps,
             max_ram_MB,
             t_eval,

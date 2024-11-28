@@ -6,6 +6,7 @@ from libcpp.memory cimport make_shared, shared_ptr
 from libcpp.vector cimport vector
 from libcpp.limits cimport numeric_limits
 from libc.math cimport sin, cos, fabs, fmin, fmax
+from libc.stdlib cimport malloc, free, realloc
 
 cdef double d_NAN = numeric_limits[double].quiet_NaN()
 
@@ -216,6 +217,73 @@ cdef void pendulum_preeval_diffeq(double* dy_ptr, double t, double* y_ptr, const
     dy_ptr[0] = y1
     dy_ptr[1] = pre_eval_storage_ptr[1] * sin(y0) + pre_eval_storage_ptr[2] * pre_eval_storage_ptr[0]
 
+
+def cy_extra_output_tester():
+
+    cdef double[2] t_span = [0., 10.]
+    cdef double* t_span_ptr = &t_span[0]
+
+    cdef double[3] y0 = [1., 0., 0]
+    cdef double* y0_ptr = &y0[0]
+    
+    cdef size_t num_y     = 3
+    cdef size_t num_extra = 3
+
+    cdef int int_method   = 1
+
+    cdef size_t arg_size = sizeof(double)*3
+    cdef double* args_ptr = <double*>malloc(arg_size)
+    args_ptr[0] = 10.0
+    args_ptr[1] = 28.0
+    args_ptr[2] = 8.0 / 3.0
+    
+    cdef CySolveOutput result = cysolve_ivp(
+        lorenz_extraoutput_diffeq,
+        t_span_ptr,
+        y0_ptr,
+        num_y,
+        int_method,
+        1.0e-4,
+        1.0e-5,
+        args_ptr,
+        arg_size,
+        num_extra
+        )
+
+    cdef double dy1, dy2, dy3, e1, e2, e3
+    cdef double check_t = 4.335
+
+    # Call the result to get the baseline values for extra output
+    cdef double[6] y_interp
+    cdef double* y_interp_ptr = &y_interp[0]
+    result.get().call(check_t, y_interp_ptr)
+    dy1 = y_interp_ptr[0]
+    dy2 = y_interp_ptr[1]
+    dy3 = y_interp_ptr[2]
+    e1  = y_interp_ptr[3]
+    e2  = y_interp_ptr[4]
+    e3  = y_interp_ptr[5]
+
+    # Corrupt or otherwise mess up the arg pointer
+    args_ptr = <double*>realloc(args_ptr, sizeof(double)*3000)
+    cdef size_t i 
+    for i in range(3000):
+        args_ptr[i] = -99.0
+    
+
+    # Recall the solution to see if it still produces the expected values
+    result.get().call(check_t, y_interp_ptr)
+    cdef bint passed = True
+
+    passed = dy1 == y_interp_ptr[0]
+    passed = dy2 == y_interp_ptr[1]
+    passed = dy3 == y_interp_ptr[2]
+    passed = e1  == y_interp_ptr[3]
+    passed = e2  == y_interp_ptr[4]
+    passed = e3  == y_interp_ptr[5]
+
+    return passed
+
 def cytester(
         int diffeq_number,
         tuple t_span = None,
@@ -277,7 +345,8 @@ def cytester(
         raise NotImplementedError
 
     # Set up additional argument information
-    cdef bint cast_arg_dbl = False
+    cdef size_t size_of_args = 0
+    cdef bint cast_arg_dbl   = False
     cdef double[10] args_arr
     cdef void* args_ptr = NULL
     cdef double* args_ptr_dbl = &args_arr[0]
@@ -369,6 +438,7 @@ def cytester(
             t_span_ptr[1] = 10.0
             # Set args pointer to our arb args struct variable's address and cast it to a void pointer
             args_ptr = <void*>&arb_arg_struct
+            size_of_args = sizeof(arb_arg_struct)
             cast_arg_dbl = False
         
         elif diffeq_number == 8:
@@ -393,11 +463,13 @@ def cytester(
         t_span_ptr[1] = t_span[1]
         if args is not None:
             args_ptr = <void*>&args[0]
+            size_of_args = sizeof(double) * args.size
         else:
             args_ptr = NULL
 
     if cast_arg_dbl:
         args_ptr = <void*>args_ptr_dbl
+        size_of_args = sizeof(args_arr)
 
     # Parse rtol
     cdef double* rtols_ptr = NULL
@@ -418,6 +490,7 @@ def cytester(
         rtol = rtol,
         atol = atol,
         args_ptr = args_ptr,
+        size_of_args = size_of_args,
         num_extra = num_extra,
         max_num_steps = max_num_steps,
         max_ram_MB = max_ram_MB,
@@ -436,4 +509,3 @@ def cytester(
     pysafe_result.set_cyresult_pointer(result)
 
     return pysafe_result
-

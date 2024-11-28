@@ -17,6 +17,7 @@ RKSolver::RKSolver(
     const size_t num_y,
     const size_t num_extra,
     const void* args_ptr,
+    const size_t size_of_args,
     const size_t max_num_steps,
     const size_t max_ram_MB,
     const bool use_dense_output,
@@ -39,6 +40,7 @@ RKSolver::RKSolver(
             num_y,
             num_extra,
             args_ptr,
+            size_of_args,
             max_num_steps,
             max_ram_MB,
             use_dense_output,
@@ -115,6 +117,8 @@ RKSolver::RKSolver(
 // Destructors
 RKSolver::~RKSolver()
 {
+    // Call parent destructor
+    CySolverBase::~CySolverBase();
 
 }
 

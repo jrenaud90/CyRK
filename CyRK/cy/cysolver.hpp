@@ -61,6 +61,7 @@ public:
         const size_t num_y,
         const size_t num_extra,
         const void* args_ptr,
+        const size_t size_of_args,
         const size_t max_num_steps,
         const size_t max_ram_MB,
         const bool use_dense_output,
@@ -105,7 +106,8 @@ protected:
     size_t max_num_steps = 0;
 
     // Differential equation information    
-    const void* args_ptr      = nullptr;
+    void* args_ptr            = nullptr;
+    bool args_built           = false;
     DiffeqFuncType diffeq_ptr = nullptr;
     
     // t_eval information

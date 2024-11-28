@@ -11,7 +11,7 @@
 
 ---
 
-<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.11.4 Alpha-orange" alt="CyRK Version 0.11.4 Alpha" /></a>
+<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.11.6 Alpha-orange" alt="CyRK Version 0.11.6 Alpha" /></a>
 
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
@@ -298,7 +298,7 @@ def run_cysolver(tuple t_span, double[::1] y0):
     
     # Convert the python user input to pure C types
     cdef double* y0_ptr       = &y0[0]
-    cdef size_t num_y   = len(y0)
+    cdef size_t num_y         = len(y0)
     cdef double[2] t_span_arr = [t_span[0], t_span[1]]
     cdef double* t_span_ptr   = &t_span_arr[0]
 
@@ -307,6 +307,10 @@ def run_cysolver(tuple t_span, double[::1] y0):
     cdef double* args_dbl_ptr = &args[0]
     # Need to cast the arg double pointer to void
     cdef void* args_ptr = <void*>args_dbl_ptr
+
+    # CySolver makes a copy of the arg structure so that it can retain the values for later computation.
+    # In order to make this copy, it needs to know the size of the structure.
+    cdef size_t size_of_args = 2 * sizeof(double)
 
     # Run the integrator!
     cdef CySolveOutput result = cysolve_ivp(
@@ -318,6 +322,7 @@ def run_cysolver(tuple t_span, double[::1] y0):
         rtol = 1.0e-7,
         atol = 1.0e-8,
         args_ptr = args_ptr,
+        size_of_args = size_of_args,
         num_extra = 2
     )
 
@@ -363,7 +368,7 @@ from libcpp.memory cimport make_shared, shared_ptr
 
 from CyRK cimport CySolverResult, cysolve_ivp_noreturn
 
-# Make our own stroage
+# Make our own storage
 cdef shared_ptr[CySolverResult] solution_sptr =
     make_shared[CySolverResult](
         num_y,
@@ -391,6 +396,7 @@ cdef shared_ptr[CySolverResult] cysolve_ivp(
     double rtol = 1.0e-3,             # Relative tolerance used to control integration error.
     double atol = 1.0e-6,             # Absolute tolerance (near 0) used to control integration error.
     void* args_ptr = NULL,            # Pointer to array of additional arguments passed to the diffeq. See "Advanced CySolver.md" for more details.
+    size_t size_of_args = 0,          # Size of the structure that `args_ptr` is pointing to. 
     size_t num_extra = 0,             # Number of extra outputs you want to capture during integration. There is a performance hit if this is used in conjunction with t_eval or dense_output.
     size_t max_num_steps = 0,         # Maximum number of steps allowed. If exceeded then integration will fail. 0 (the default) turns this off.
     size_t max_ram_MB = 2000,         # Maximum amount of system memory the integrator is allowed to use. If this is exceeded then integration will fail.

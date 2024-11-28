@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from CyRK.cy.cysolver_api import WrapCySolverResult
-from CyRK.cy.cysolver_test import cytester
+from CyRK.cy.cysolver_test import cytester, cy_extra_output_tester
 
 args = (0.01, 0.02)
 
@@ -202,3 +202,9 @@ def test_cysolve_ivp_all_diffeqs(cysolve_test_func):
     assert result.y.shape[0] > 0
     assert np.all(~np.isnan(result.t))
     assert np.all(~np.isnan(result.y))
+
+
+def test_cysolve_extra_output():
+    """ Tests if cysolver is able to retain onto additional arguments for later calls when extra-output and dense-output are on """
+
+    assert cy_extra_output_tester()

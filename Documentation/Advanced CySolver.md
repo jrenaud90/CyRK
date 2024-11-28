@@ -8,6 +8,8 @@ _Many of the examples below can be found in the interactive "Demos/Advanced CySo
 
 Before we describe arbitrary arguments, first we will outline basic argument usage assuming a user has a differential equation that requires an array of floating point numbers.
 
+**Important Note About Memory Ownership**: CySolverBase makes a copy of the the additional argument structure. If this argument structure contains pointers to other structures or data then it will make a copy of those raw pointers _but does not take ownership of their memory_. If those pointers are later released or changed then CySolver will not know about the change and will have hanging pointers. _We highly recommended against using raw pointers in the additional argument structure._ If you do use them then you need to guarantee that the data they point to stays alive, unchanged, and in the same location throughout the life of the CySolver class.
+
 _Note: This assumes you are working in a Jupyter notebook. If you are not then you can exclude the "%%cython --force" at the beginning of each cell._
 
 ```cython
@@ -20,7 +22,7 @@ np.import_array()
 
 from libc.math cimport sin
 
-from CyRK.cy.cysolverNew cimport cysolve_ivp, WrapCySolverResult, DiffeqFuncType,MAX_STEP, CySolveOutput, PreEvalFunc
+from CyRK cimport cysolve_ivp, WrapCySolverResult, DiffeqFuncType, MAX_STEP, CySolveOutput, PreEvalFunc
 
 cdef void pendulum_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
     # Arguments are passed in as a void pointer to preallocated and instantiated memory. 
@@ -61,6 +63,9 @@ def run():
     cdef double[3] args_arr = [1.0, 1.0, 9.81]
     cdef double* args_dbl_ptr = &args_arr[0]
 
+    # We need to tell CySolver the size of the additional argument structure so that it can make a copy.
+    cdef size_t size_of_args = sizeof(double) * 3
+
     # To work with cysolve_ivp, we must cast the args ptr to a void pointer
     cdef void* args_ptr = <void*>args_dbl_ptr
 
@@ -72,7 +77,8 @@ def run():
         method = 1, # Integration method
         rtol = 1.0e-6,
         atol = 1.0e-8,
-        args_ptr = args_ptr
+        args_ptr = args_ptr,
+        size_of_args = size_of_args
         )
 
     # If we want to pass the solution back to python we need to wrap it in a CyRK `WrapCySolverResult` class.
@@ -99,7 +105,7 @@ np.import_array()
 from libc.math cimport sin
 from libcpp cimport bool as cpp_bool
 
-from CyRK.cy.cysolverNew cimport cysolve_ivp, WrapCySolverResult, DiffeqFuncType,MAX_STEP, CySolveOutput, PreEvalFunc
+from CyRK cimport cysolve_ivp, WrapCySolverResult, DiffeqFuncType,MAX_STEP, CySolveOutput, PreEvalFunc
 
 cdef struct PendulumArgs:
     # Structure that contains heterogeneous types
@@ -141,11 +147,11 @@ def run():
 
     # Define time domain
     cdef double[2] time_span_arr = [0.0, 10.0]
-    cdef double* t_span_ptr = &time_span_arr[0]
+    cdef double* t_span_ptr      = &time_span_arr[0]
     
     # Define initial conditions
     cdef double[2] y0_arr = [0.01, 0.0]
-    cdef double* y0_ptr = &y0_arr[0]
+    cdef double* y0_ptr   = &y0_arr[0]
     
     # Define our arguments.
     # We now have a a structure that we need to allocate memory for.
@@ -153,6 +159,9 @@ def run():
     cdef PendulumArgs pendulum_args = PendulumArgs(True, 9.81, 1.0, 1.0)
     # We need to pass in a void pointer to cysolve_ivp, so let's cast the address of the struct to void*
     cdef void* args_ptr = <void*>&pendulum_args
+
+    # It is important that you take the size of the underlying structure and _not_ the `args_ptr` which would just be the size of the pointer PendulumArgs*
+    cdef size_t size_of_args = sizeof(pendulum_args)
 
     cdef CySolveOutput result = cysolve_ivp(
         diffeq,
@@ -162,7 +171,8 @@ def run():
         method = 1, # Integration method
         rtol = 1.0e-6,
         atol = 1.0e-8,
-        args_ptr = args_ptr
+        args_ptr = args_ptr,
+        size_of_args = size_of_args
         )
 
     # If we want to pass the solution back to python we need to wrap it in a CyRK `WrapCySolverResult` class.
@@ -192,7 +202,7 @@ np.import_array()
 
 from libc.math cimport sin
 
-from CyRK.cy.cysolverNew cimport cysolve_ivp, WrapCySolverResult, DiffeqFuncType,MAX_STEP, CySolveOutput, PreEvalFunc
+from CyRK cimport cysolve_ivp, WrapCySolverResult, DiffeqFuncType,MAX_STEP, CySolveOutput, PreEvalFunc
 
 cdef void pendulum_preeval_nodrag(void* output_ptr, double time, double* y_ptr, const void* args_ptr) noexcept nogil:
     # Unpack args (in this example we do not need these but they follow the same rules as the Arbitrary Args section discussed above)
@@ -274,6 +284,7 @@ def run():
     # Define our arguments.
     cdef double[3] args_arr = [1.0, 1.0, 9.81]
     cdef double* args_dbl_ptr = &args_arr[0]
+    cdef size_t size_of_args = sizeof(double) * 3
 
     # To work with cysolve_ivp, we must cast the args ptr to a void pointer
     cdef void* args_ptr = <void*>args_dbl_ptr
@@ -287,6 +298,7 @@ def run():
         rtol = 1.0e-6,
         atol = 1.0e-8,
         args_ptr = args_ptr,
+        size_of_args = size_of_args,
         num_extra = 0,
         max_num_steps = 100_000_000,
         max_ram_MB = 2000,
