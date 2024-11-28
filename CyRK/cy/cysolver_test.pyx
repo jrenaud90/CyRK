@@ -9,7 +9,7 @@ from libc.math cimport sin, cos, fabs, fmin, fmax
 
 cdef double d_NAN = numeric_limits[double].quiet_NaN()
 
-from CyRK.cy.cysolver_api cimport cysolve_ivp, WrapCySolverResult, DiffeqFuncType,MAX_STEP, CySolveOutput, null_void_sptr
+from CyRK.cy.cysolver_api cimport cysolve_ivp, WrapCySolverResult, DiffeqFuncType,MAX_STEP, CySolveOutput
 
 import numpy as np
 cimport numpy as np
