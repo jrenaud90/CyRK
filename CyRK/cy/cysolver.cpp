@@ -69,10 +69,13 @@ CySolverBase::CySolverBase(
         printf("Pre resize\n");
         this->args_char_vec.resize(size_of_args);
 
-        this->args_ptr = (void*)this->args_char_vec.data();
         // Copy over contents of arg
-        printf("Pre Copy Over\n");
-        std::memcpy(this->args_ptr, args_ptr, size_of_args);
+        char* args_in_as_char_ptr = (char*)args_ptr;
+        printf("Pre Copy Over: arg_in_char = %p; sizeof = %d; args_in_char+size = %p\n", args_in_as_char_ptr, size_of_args, args_in_as_char_ptr + size_of_args);
+        this->args_char_vec.insert(this->args_char_vec.begin(), args_in_as_char_ptr, args_in_as_char_ptr + size_of_args);
+        // std::memcpy(this->args_ptr, args_ptr, size_of_args);
+        
+        this->args_ptr = (void*)this->args_char_vec.data();
         printf("Post\n");
     }
     else
