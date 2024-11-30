@@ -28,6 +28,12 @@ jobs:
       - name: Install package
         run: |
           python -m pip install . -v
+        
+      - name: Manual Test
+        run: |
+          cd Tests/E_CySolver_Tests/
+          python -c "from test_a_cysolve_ivp import test_cysolve_ivp; test_cysolve_ivp(True, False, False, False, False, 1, 0.0, 10_000, True)"
+          cd ../..
 
       - name: Run pytest
         run: pytest -n auto -v Tests/
