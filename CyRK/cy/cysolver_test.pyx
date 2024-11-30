@@ -304,7 +304,7 @@ def cytester(
         double max_step = MAX_STEP,
         double first_step = 0.0
         ):
-    
+    printf("Cytester pt0\n")
     cdef size_t i
     cdef double* t_eval_ptr = NULL
     cdef size_t len_t_eval = 0
@@ -322,6 +322,7 @@ def cytester(
     cdef size_t num_extra = 0
     cdef DiffeqFuncType diffeq = NULL
     cdef PreEvalFunc pre_eval_func = NULL
+    printf("Cytester pt1\n")
     if diffeq_number == 0:
         diffeq = baseline_diffeq
     elif diffeq_number == 1:
@@ -345,6 +346,7 @@ def cytester(
         pre_eval_func = pendulum_preeval_func
     else:
         raise NotImplementedError
+    printf("Cytester pt2\n")
 
     # Set up additional argument information
     cdef size_t size_of_args = 0
@@ -356,6 +358,7 @@ def cytester(
     cdef ArbitraryArgStruct arb_arg_struct = ArbitraryArgStruct(1.0, False, 1.0, 9.81)
     
     # Check if generic testing was requested.
+    printf("Cytester pt3\n")
     if y0 is None:
         # Generic Testing Requested
         
@@ -457,6 +460,7 @@ def cytester(
         else:
             raise NotImplementedError
     else:
+        printf("Cytester pt4bn")
         # Regular testing requested.
         num_y = len(y0)
         for i in range(num_y):
@@ -475,6 +479,7 @@ def cytester(
         size_of_args = sizeof(args_arr)
 
     # Parse rtol
+    printf("Cytester pt5\n")
     cdef double* rtols_ptr = NULL
     if rtol_array is not None:
         rtols_ptr = &rtol_array[0]
