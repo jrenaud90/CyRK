@@ -2,6 +2,7 @@
 
 #include <cstring>
 
+#include <vector>
 #include <algorithm>
 #include <functional>
 #include <memory>
@@ -105,10 +106,11 @@ protected:
     // Integration step information
     size_t max_num_steps = 0;
 
-    // Differential equation information    
-    void* args_ptr            = nullptr;
-    char* args_char_ptr       = nullptr;
-    bool args_built           = false;
+    // Additional arguments for the diffeq are stored locally in a char dynamic vector. 
+    std::vector<char> args_char_vec = std::vector<char>();
+    void* args_ptr = nullptr;
+    
+    // Differential equation information
     DiffeqFuncType diffeq_ptr = nullptr;
     
     // t_eval information

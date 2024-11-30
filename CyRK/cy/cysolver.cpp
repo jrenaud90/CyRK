@@ -67,23 +67,18 @@ CySolverBase::CySolverBase(
     {
         // Allocate memory for the size of args.
         // Store void pointer to it.
-        printf("Pre Malloc\n");
-        this->args_char_ptr = new char[size_of_args];
+        printf("Pre resize\n");
+        this->args_char_vec.resize(size_of_args);
 
-        if (this->args_char_ptr)
-        {
-            this->args_built = true;
-            this->args_ptr   = (void*)this->args_char_ptr;
-            // Copy over contents of arg
-            printf("Pre Copy Over\n");
-            std::memcpy(this->args_ptr, args_ptr, size_of_args);
-            printf("Post\n");
-        }
-        else
-        {
-            // TODO: Memory error?
-            this->storage_sptr->error_code = -870;
-        }
+        this->args_ptr = (void*)this->args_char_vec.data();
+        // Copy over contents of arg
+        printf("Pre Copy Over\n");
+        std::memcpy(this->args_ptr, args_ptr, size_of_args);
+        printf("Post\n");
+    }
+    else
+    {
+        this->args_ptr = nullptr;
     }
 
     // Check for errors
@@ -184,20 +179,6 @@ CySolverBase::~CySolverBase()
     if (this->storage_sptr)
     {
         this->storage_sptr.reset();
-    }
-
-    // Release args data
-    if (this->args_built)
-    {
-        printf("Deconstructor:: args built.\n");
-        if (this->args_char_ptr)
-        {
-            printf("Deconstructor:: args array not null.\n");
-            delete[] this->args_char_ptr;
-            printf("Deconstructor:: args deleted.\n");
-            this->args_char_ptr = nullptr;
-            this->args_ptr      = nullptr;
-        }
     }
 }
 
