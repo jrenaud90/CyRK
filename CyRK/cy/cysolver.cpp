@@ -1,4 +1,3 @@
-#include <cstring>
 #include <cstdio>
 #include "cysolver.hpp"
 #include "dense.hpp"
