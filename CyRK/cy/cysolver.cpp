@@ -80,7 +80,13 @@ CySolverBase::CySolverBase(
     }
     else
     {
-        this->args_ptr = nullptr;
+        this->args_char_vec.resize(8);
+        for (size_t i = 0; i < 8; i++)
+        {
+            this->args_char_vec[i] = 0;
+        }
+        
+        this->args_ptr = (void*)this->args_char_vec.data();
     }
 
     // Check for errors
