@@ -107,6 +107,7 @@ protected:
 
     // Differential equation information    
     void* args_ptr            = nullptr;
+    char* args_char_ptr       = nullptr;
     bool args_built           = false;
     DiffeqFuncType diffeq_ptr = nullptr;
     

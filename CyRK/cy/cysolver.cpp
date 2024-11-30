@@ -68,12 +68,22 @@ CySolverBase::CySolverBase(
         // Allocate memory for the size of args.
         // Store void pointer to it.
         printf("Pre Malloc\n");
-        this->args_ptr = malloc(size_of_args);
+        this->args_char_ptr = new char[size_of_args];
 
-        // Copy over contents of arg
-        printf("Pre Copy Over\n");
-        std::memcpy(this->args_ptr, args_ptr, size_of_args);
-        printf("Post\n");
+        if (this->args_char_ptr)
+        {
+            this->args_built = true;
+            this->args_ptr   = (void*)this->args_char_ptr;
+            // Copy over contents of arg
+            printf("Pre Copy Over\n");
+            std::memcpy(this->args_ptr, args_ptr, size_of_args);
+            printf("Post\n");
+        }
+        else
+        {
+            // TODO: Memory error?
+            this->storage_sptr->error_code = -870;
+        }
     }
 
     // Check for errors
@@ -163,6 +173,7 @@ CySolverBase::CySolverBase(
 // Destructors
 CySolverBase::~CySolverBase()
 {
+    printf("CySolver Deconstructor called.\n");
     if (this->deconstruct_python)
     {
         // Decrease reference count on the cython extension class instance
@@ -176,11 +187,16 @@ CySolverBase::~CySolverBase()
     }
 
     // Release args data
-    if (args_built)
+    if (this->args_built)
     {
-        if (this->args_ptr)
+        printf("Deconstructor:: args built.\n");
+        if (this->args_char_ptr)
         {
-            free(this->args_ptr);
+            printf("Deconstructor:: args array not null.\n");
+            delete[] this->args_char_ptr;
+            printf("Deconstructor:: args deleted.\n");
+            this->args_char_ptr = nullptr;
+            this->args_ptr      = nullptr;
         }
     }
 }
