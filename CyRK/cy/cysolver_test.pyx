@@ -284,6 +284,8 @@ def cy_extra_output_tester():
 
     return passed
 
+from libc.stdio cimport printf
+
 def cytester(
         int diffeq_number,
         tuple t_span = None,
@@ -462,13 +464,14 @@ def cytester(
         t_span_ptr[0] = t_span[0]
         t_span_ptr[1] = t_span[1]
         if args is not None:
-            args_ptr = <void*>&args[0]
+            args_ptr     = <void*>&args[0]
             size_of_args = sizeof(double) * args.size
         else:
-            args_ptr = NULL
+            args_ptr     = NULL
+            size_of_args = 0
 
     if cast_arg_dbl:
-        args_ptr = <void*>args_ptr_dbl
+        args_ptr     = <void*>args_ptr_dbl
         size_of_args = sizeof(args_arr)
 
     # Parse rtol
@@ -480,6 +483,9 @@ def cytester(
     cdef double* atols_ptr = NULL
     if atol_array is not None:
         atols_ptr = &atol_array[0]
+
+    
+    printf("EXTRA ARGS SIZE = %d; Ptr = %p\n", size_of_args, args_ptr)
 
     cdef CySolveOutput result = cysolve_ivp(
         diffeq,

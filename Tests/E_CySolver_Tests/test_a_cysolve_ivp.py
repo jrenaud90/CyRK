@@ -195,7 +195,7 @@ def test_cysolve_ivp_all_diffeqs(cysolve_test_func):
         on_macos = True
     if not result.success and on_macos and cysolve_test_func==5:
         pytest.skip("Weird macos bug on diffeq5")
-    on_macos = False
+    # on_macos = False
     
     assert result.success
     assert result.t.size > 0

@@ -1,5 +1,5 @@
 #include <cstring>
-
+#include <cstdio>
 #include "cysolver.hpp"
 #include "dense.hpp"
 #include "cysolution.hpp"
@@ -67,10 +67,13 @@ CySolverBase::CySolverBase(
     {
         // Allocate memory for the size of args.
         // Store void pointer to it.
+        printf("Pre Malloc\n");
         this->args_ptr = malloc(size_of_args);
 
         // Copy over contents of arg
+        printf("Pre Copy Over\n");
         std::memcpy(this->args_ptr, args_ptr, size_of_args);
+        printf("Post\n");
     }
 
     // Check for errors
@@ -175,7 +178,10 @@ CySolverBase::~CySolverBase()
     // Release args data
     if (args_built)
     {
-        free(this->args_ptr);
+        if (this->args_ptr)
+        {
+            free(this->args_ptr);
+        }
     }
 }
 
