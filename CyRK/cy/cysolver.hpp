@@ -108,7 +108,7 @@ protected:
 
     // Additional arguments for the diffeq are stored locally in a char dynamic vector. 
     std::vector<char> args_char_vec = std::vector<char>();
-    void* args_ptr = nullptr;
+    const void* args_ptr = nullptr;
     
     // Differential equation information
     DiffeqFuncType diffeq_ptr = nullptr;
