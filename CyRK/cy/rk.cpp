@@ -118,7 +118,7 @@ RKSolver::RKSolver(
 RKSolver::~RKSolver()
 {
     // Call parent destructor
-    CySolverBase::~CySolverBase();
+    // CySolverBase::~CySolverBase();
 
 }
 

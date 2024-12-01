@@ -114,7 +114,7 @@ protected:
     DiffeqFuncType diffeq_ptr = nullptr;
     
     // t_eval information
-    std::vector<double> t_eval_vec = std::vector<double>(0);
+    std::vector<double> t_eval_vec = std::vector<double>();
     double* t_eval_ptr       = t_eval_vec.data();
     size_t t_eval_index_old  = 0;
     size_t len_t_eval        = 0;

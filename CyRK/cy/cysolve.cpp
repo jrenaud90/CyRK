@@ -220,8 +220,8 @@ PySolver::PySolver(
     PreEvalFunc pre_eval_func = nullptr;
 
     // Args are handled by the python class too.
-    void* args_ptr      = nullptr;
-    size_t size_of_args = 0;
+    const void* args_ptr      = nullptr;
+    const size_t size_of_args = 0;
 
     // Build the solver class. This must be heap allocated to take advantage of polymorphism.
     // Setup solver class
