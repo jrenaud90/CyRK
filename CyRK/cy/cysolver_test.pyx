@@ -17,7 +17,7 @@ cimport numpy as np
 np.import_array()
 
 
-cdef void baseline_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
+cdef void baseline_diffeq(double* dy_ptr, double t, double* y_ptr, char* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
     # Unpack y
     cdef double y0, y1
     y0 = y_ptr[0]
@@ -27,7 +27,7 @@ cdef void baseline_diffeq(double* dy_ptr, double t, double* y_ptr, const void* a
     dy_ptr[1] = (0.02 * y0 - 1.) * y1
 
 
-cdef void accuracy_test_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
+cdef void accuracy_test_diffeq(double* dy_ptr, double t, double* y_ptr, char* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
     # Unpack y
     cdef double y0, y1
     y0 = y_ptr[0]
@@ -37,7 +37,7 @@ cdef void accuracy_test_diffeq(double* dy_ptr, double t, double* y_ptr, const vo
     dy_ptr[1] = cos(t) + y0
 
 
-cdef void extraoutput_test_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
+cdef void extraoutput_test_diffeq(double* dy_ptr, double t, double* y_ptr, char* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
     # Unpack y
     cdef double y0, y1, extra_0, extra_1
     y0 = y_ptr[0]
@@ -55,7 +55,7 @@ cdef void extraoutput_test_diffeq(double* dy_ptr, double t, double* y_ptr, const
     dy_ptr[3] = extra_1
 
 
-cdef void lorenz_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
+cdef void lorenz_diffeq(double* dy_ptr, double t, double* y_ptr, char* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
     # Unpack args
     cdef double* args_dbl_ptr = <double*>args_ptr
     cdef double a = args_dbl_ptr[0]
@@ -73,7 +73,7 @@ cdef void lorenz_diffeq(double* dy_ptr, double t, double* y_ptr, const void* arg
     dy_ptr[2] = y0 * y1 - c * y2
 
 
-cdef void lorenz_extraoutput_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
+cdef void lorenz_extraoutput_diffeq(double* dy_ptr, double t, double* y_ptr, char* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
     # Unpack args
     cdef double* args_dbl_ptr = <double*>args_ptr
     cdef double a = args_dbl_ptr[0]
@@ -99,7 +99,7 @@ cdef void lorenz_extraoutput_diffeq(double* dy_ptr, double t, double* y_ptr, con
     dy_ptr[5] = e_3
 
 
-cdef void lotkavolterra_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
+cdef void lotkavolterra_diffeq(double* dy_ptr, double t, double* y_ptr, char* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
     # Unpack args
     cdef double* args_dbl_ptr = <double*>args_ptr
     cdef double a = args_dbl_ptr[0]
@@ -117,7 +117,7 @@ cdef void lotkavolterra_diffeq(double* dy_ptr, double t, double* y_ptr, const vo
 
 
 
-cdef void pendulum_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
+cdef void pendulum_diffeq(double* dy_ptr, double t, double* y_ptr, char* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
     # Unpack args
     cdef double* args_dbl_ptr = <double*>args_ptr
     cdef double l = args_dbl_ptr[0]
@@ -146,7 +146,7 @@ cdef struct ArbitraryArgStruct:
     double m
     double g
 
-cdef void arbitrary_arg_test(double* dy_ptr, double t, double* y_ptr, const void* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
+cdef void arbitrary_arg_test(double* dy_ptr, double t, double* y_ptr, char* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
     # Unpack args
     cdef ArbitraryArgStruct* arb_args_ptr = <ArbitraryArgStruct*>args_ptr
     cdef double l = arb_args_ptr.l
@@ -175,7 +175,7 @@ cdef void arbitrary_arg_test(double* dy_ptr, double t, double* y_ptr, const void
 
 
 
-cdef void pendulum_preeval_func(void* output_ptr, double time, double* y_ptr, const void* args_ptr) noexcept nogil:
+cdef void pendulum_preeval_func(char* output_ptr, double time, double* y_ptr, char* args_ptr) noexcept nogil:
 
     # Unpack args
     cdef double* args_dbl_ptr = <double*>args_ptr
@@ -199,14 +199,14 @@ cdef void pendulum_preeval_func(void* output_ptr, double time, double* y_ptr, co
     output_dbl_ptr[2] = coeff_2
 
 
-cdef void pendulum_preeval_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
+cdef void pendulum_preeval_diffeq(double* dy_ptr, double t, double* y_ptr, char* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
     
     # Make stack allocated storage for pre eval output
     cdef double[3] pre_eval_storage
     cdef double* pre_eval_storage_ptr = &pre_eval_storage[0]
 
     # Cast storage to void so we can call function
-    cdef void* pre_eval_storage_void_ptr = <void*>pre_eval_storage_ptr
+    cdef char* pre_eval_storage_void_ptr = <char*>pre_eval_storage_ptr
 
     # Call Pre-Eval Function
     pre_eval_func(pre_eval_storage_void_ptr, t, y_ptr, args_ptr)
@@ -349,10 +349,12 @@ def cytester(
     printf("Cytester pt2\n")
 
     # Set up additional argument information
+    cdef char* args_ptr = NULL
     cdef size_t size_of_args = 0
+
+    # Arg double array for the diffeq's that use it
     cdef bint cast_arg_dbl   = False
     cdef double[10] args_arr
-    cdef void* args_ptr = NULL
     cdef double* args_ptr_dbl = &args_arr[0]
     # Abitrary arg test requires a ArbitraryArgStruct class instance to be passed in
     cdef ArbitraryArgStruct arb_arg_struct = ArbitraryArgStruct(1.0, False, 1.0, 9.81)
@@ -442,7 +444,7 @@ def cytester(
             t_span_ptr[0] = 0.0
             t_span_ptr[1] = 10.0
             # Set args pointer to our arb args struct variable's address and cast it to a void pointer
-            args_ptr = <void*>&arb_arg_struct
+            args_ptr = <char*>&arb_arg_struct
             size_of_args = sizeof(arb_arg_struct)
             cast_arg_dbl = False
         
@@ -468,14 +470,14 @@ def cytester(
         t_span_ptr[0] = t_span[0]
         t_span_ptr[1] = t_span[1]
         if args is not None:
-            args_ptr     = <void*>&args[0]
+            args_ptr     = <char*>&args[0]
             size_of_args = sizeof(double) # * args.size
         else:
             args_ptr     = NULL
             size_of_args = 0
 
     if cast_arg_dbl:
-        args_ptr     = <void*>args_ptr_dbl
+        args_ptr     = <char*>args_ptr_dbl
         size_of_args = sizeof(args_arr)
 
     # Parse rtol

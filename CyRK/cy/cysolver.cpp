@@ -36,7 +36,7 @@ CySolverBase::CySolverBase(
         const double* const y0_ptr,
         const size_t num_y,
         const size_t num_extra,
-        const void* args_ptr,
+        const char* args_ptr,
         const size_t size_of_args,
         const size_t max_num_steps,
         const size_t max_ram_MB,
@@ -68,6 +68,7 @@ CySolverBase::CySolverBase(
         // Store void pointer to it.
         printf("Pre resize\n");
         this->args_char_vec.resize(size_of_args);
+        this->args_ptr = this->args_char_vec.data();
 
         // Copy over contents of arg
         char* args_in_as_char_ptr = (char*)args_ptr;
@@ -75,18 +76,11 @@ CySolverBase::CySolverBase(
         this->args_char_vec.insert(this->args_char_vec.begin(), args_in_as_char_ptr, args_in_as_char_ptr + size_of_args);
         // std::memcpy(this->args_ptr, args_ptr, size_of_args);
         
-        this->args_ptr = (void*)this->args_char_vec.data();
         printf("Post\n");
     }
     else
     {
-        this->args_char_vec.resize(8);
-        for (size_t i = 0; i < 8; i++)
-        {
-            this->args_char_vec[i] = 0;
-        }
-        
-        this->args_ptr = (void*)this->args_char_vec.data();
+        this->args_ptr = nullptr;
     }
 
     // Check for errors

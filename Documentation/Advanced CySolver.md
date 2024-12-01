@@ -24,7 +24,7 @@ from libc.math cimport sin
 
 from CyRK cimport cysolve_ivp, WrapCySolverResult, DiffeqFuncType, MAX_STEP, CySolveOutput, PreEvalFunc
 
-cdef void pendulum_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
+cdef void pendulum_diffeq(double* dy_ptr, double t, double* y_ptr, char* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
     # Arguments are passed in as a void pointer to preallocated and instantiated memory. 
     # This memory could be stack or heap allocated. If it is not valid then you will run into seg faults.
     cdef double* args_dbl_ptr = <double*>args_ptr
@@ -66,8 +66,8 @@ def run():
     # We need to tell CySolver the size of the additional argument structure so that it can make a copy.
     cdef size_t size_of_args = sizeof(double) * 3
 
-    # To work with cysolve_ivp, we must cast the args ptr to a void pointer
-    cdef void* args_ptr = <void*>args_dbl_ptr
+    # To work with cysolve_ivp, we must cast the args ptr to a char pointer
+    cdef char* args_ptr = <char*>args_dbl_ptr
 
     cdef CySolveOutput result = cysolve_ivp(
         diffeq,
@@ -114,7 +114,7 @@ cdef struct PendulumArgs:
     double l
     double m
 
-cdef void pendulum_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
+cdef void pendulum_diffeq(double* dy_ptr, double t, double* y_ptr, char* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
     # Arg pointer still must be listed as a void pointer or it will not work with cysolve_ivp.
     # But now the user can recast that void pointer to the structure they wish.
     cdef PendulumArgs* pendulum_args_ptr = <PendulumArgs*>args_ptr
@@ -157,8 +157,8 @@ def run():
     # We now have a a structure that we need to allocate memory for.
     # For this example, let's do it on the stack. 
     cdef PendulumArgs pendulum_args = PendulumArgs(True, 9.81, 1.0, 1.0)
-    # We need to pass in a void pointer to cysolve_ivp, so let's cast the address of the struct to void*
-    cdef void* args_ptr = <void*>&pendulum_args
+    # We need to pass in a char pointer to cysolve_ivp, so let's cast the address of the struct to char*
+    cdef char* args_ptr = <char*>&pendulum_args
 
     # It is important that you take the size of the underlying structure and _not_ the `args_ptr` which would just be the size of the pointer PendulumArgs*
     cdef size_t size_of_args = sizeof(pendulum_args)
@@ -204,7 +204,7 @@ from libc.math cimport sin
 
 from CyRK cimport cysolve_ivp, WrapCySolverResult, DiffeqFuncType,MAX_STEP, CySolveOutput, PreEvalFunc
 
-cdef void pendulum_preeval_nodrag(void* output_ptr, double time, double* y_ptr, const void* args_ptr) noexcept nogil:
+cdef void pendulum_preeval_nodrag(char* output_ptr, double time, double* y_ptr, char* args_ptr) noexcept nogil:
     # Unpack args (in this example we do not need these but they follow the same rules as the Arbitrary Args section discussed above)
     cdef double* args_dbl_ptr = <double*>args_ptr
 
@@ -216,7 +216,7 @@ cdef void pendulum_preeval_nodrag(void* output_ptr, double time, double* y_ptr, 
     output_dbl_ptr[0] = torque
     output_dbl_ptr[1] = 0.0  # No Drag
 
-cdef void pendulum_preeval_withdrag(void* output_ptr, double time, double* y_ptr, const void* args_ptr) noexcept nogil:
+cdef void pendulum_preeval_withdrag(char* output_ptr, double time, double* y_ptr, char* args_ptr) noexcept nogil:
     # Unpack args (in this example we do not need these but they follow the same rules as the Arbitrary Args section discussed above)
     cdef double* args_dbl_ptr = <double*>args_ptr
 
@@ -229,7 +229,7 @@ cdef void pendulum_preeval_withdrag(void* output_ptr, double time, double* y_ptr
     output_dbl_ptr[1] = -1.5 * y_ptr[1]  # With Drag
 
 
-cdef void pendulum_preeval_diffeq(double* dy_ptr, double t, double* y_ptr, const void* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
+cdef void pendulum_preeval_diffeq(double* dy_ptr, double t, double* y_ptr, char* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
 
     # Build other parameters that do not depend on the pre-eval func
     cdef double* args_dbl_ptr = <double*>args_ptr
@@ -244,8 +244,8 @@ cdef void pendulum_preeval_diffeq(double* dy_ptr, double t, double* y_ptr, const
     cdef double[4] pre_eval_storage
     cdef double* pre_eval_storage_ptr = &pre_eval_storage[0]
 
-    # Cast storage to void so we can call function
-    cdef void* pre_eval_storage_void_ptr = <void*>pre_eval_storage_ptr
+    # Cast storage to char so we can call function
+    cdef char* pre_eval_storage_void_ptr = <char*>pre_eval_storage_ptr
 
     # Call Pre-Eval Function
     # Note that even though CyRK calls this function a "pre-eval" function, it can be placed anywhere inside the diffeq function. 
@@ -254,8 +254,8 @@ cdef void pendulum_preeval_diffeq(double* dy_ptr, double t, double* y_ptr, const
     cdef double y0 = y_ptr[0]
     cdef double y1 = y_ptr[1]
 
-    # Use results of pre-eval function to update dy. Note that we are using the double* not the void* here.
-    # Even though pre_eval_func was passed the void* it updated the memory that the double* pointed to so we can use it below.
+    # Use results of pre-eval function to update dy. Note that we are using the double* not the char* here.
+    # Even though pre_eval_func was passed the char* it updated the memory that the double* pointed to so we can use it below.
     dy_ptr[0] = y1
     dy_ptr[1] = coeff_1 * sin(y0) + coeff_2 * pre_eval_storage_ptr[0] + pre_eval_storage_ptr[1]
 
@@ -286,8 +286,8 @@ def run():
     cdef double* args_dbl_ptr = &args_arr[0]
     cdef size_t size_of_args = sizeof(double) * 3
 
-    # To work with cysolve_ivp, we must cast the args ptr to a void pointer
-    cdef void* args_ptr = <void*>args_dbl_ptr
+    # To work with cysolve_ivp, we must cast the args ptr to a char pointer
+    cdef char* args_ptr = <char*>args_dbl_ptr
 
     cdef CySolveOutput result = cysolve_ivp(
         diffeq,

@@ -261,9 +261,9 @@ np.import_array()
 # Import the required functions from CyRK
 from CyRK cimport cysolve_ivp, DiffeqFuncType, WrapCySolverResult, CySolveOutput, PreEvalFunc
 
-# Note that currently you must provide the "const void* args, PreEvalFunc pre_eval_func" as inputs even if they are unused.
+# Note that currently you must provide the "char* args, PreEvalFunc pre_eval_func" as inputs even if they are unused.
 # See "Advanced CySolver.md" in the documentation for information about these parameters.
-cdef void cython_diffeq(double* dy, double t, double* y, const void* args, PreEvalFunc pre_eval_func) noexcept nogil:
+cdef void cython_diffeq(double* dy, double t, double* y, char* args, PreEvalFunc pre_eval_func) noexcept nogil:
     
     # Unpack args
     # CySolver assumes an arbitrary data type for additional arguments. So we must cast them to the array of 
@@ -306,7 +306,7 @@ def run_cysolver(tuple t_span, double[::1] y0):
     cdef double[2] args   = [0.01, 0.02]
     cdef double* args_dbl_ptr = &args[0]
     # Need to cast the arg double pointer to void
-    cdef void* args_ptr = <void*>args_dbl_ptr
+    cdef char* args_ptr = <char*>args_dbl_ptr
 
     # CySolver makes a copy of the arg structure so that it can retain the values for later computation.
     # In order to make this copy, it needs to know the size of the structure.
@@ -395,7 +395,7 @@ cdef shared_ptr[CySolverResult] cysolve_ivp(
     int method = 1,                   # Integration method. Current options: 0 == RK23, 1 == RK45, 2 == DOP853
     double rtol = 1.0e-3,             # Relative tolerance used to control integration error.
     double atol = 1.0e-6,             # Absolute tolerance (near 0) used to control integration error.
-    void* args_ptr = NULL,            # Pointer to array of additional arguments passed to the diffeq. See "Advanced CySolver.md" for more details.
+    char* args_ptr = NULL,            # Pointer to array of additional arguments passed to the diffeq. See "Advanced CySolver.md" for more details.
     size_t size_of_args = 0,          # Size of the structure that `args_ptr` is pointing to. 
     size_t num_extra = 0,             # Number of extra outputs you want to capture during integration. There is a performance hit if this is used in conjunction with t_eval or dense_output.
     size_t max_num_steps = 0,         # Maximum number of steps allowed. If exceeded then integration will fail. 0 (the default) turns this off.

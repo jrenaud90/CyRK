@@ -4,11 +4,11 @@
 
 #### v0.12.0 (2024-NNN)
 
-New:
-* `MAX_STEP` can now be cimported from the top-level of CyRK: "from CyRK cimport MAX_STEP"
+New & Changes:
+* `MAX_STEP` can now be cimported from the top-level of CyRK: `from CyRK cimport MAX_STEP`
+* Changed uses of `void*` to `char*` for both diffeq additional args and pre-eval outputs. The signature of these functions has changed, please review documentation for correct usage.
 
 Fixes:
-* Fixed issue where derived solvers (RK solvers) were not calling `CySolverBase` parent class' destructor.
 * Fixed issue with `cysolve_ivp` (`pysolve_ivp` did not have this bug) where additional args are passed to diffeq _and_ dense output is on _and_ extra output is captured.
   * Calling the dense output when extra output is on requires additional calls to the diffeq. However, after integration there is no gurantee that the args pointer is pointing to the same memory or that the values in that memory have not changed.
   * Best case, this could cause unexpected results as new values are used for additional args; worst case it could cause access violations if the diffeq tries to access released memory.

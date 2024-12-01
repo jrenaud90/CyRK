@@ -61,7 +61,7 @@ public:
         const double* const y0_ptr,
         const size_t num_y,
         const size_t num_extra,
-        const void* args_ptr,
+        const char* args_ptr,
         const size_t size_of_args,
         const size_t max_num_steps,
         const size_t max_ram_MB,
@@ -108,7 +108,7 @@ protected:
 
     // Additional arguments for the diffeq are stored locally in a char dynamic vector. 
     std::vector<char> args_char_vec = std::vector<char>();
-    const void* args_ptr = nullptr;
+    char* args_ptr = nullptr;
     
     // Differential equation information
     DiffeqFuncType diffeq_ptr = nullptr;

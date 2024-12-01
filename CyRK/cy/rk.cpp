@@ -16,7 +16,7 @@ RKSolver::RKSolver(
     const double* const y0_ptr,
     const size_t num_y,
     const size_t num_extra,
-    const void* args_ptr,
+    const char* args_ptr,
     const size_t size_of_args,
     const size_t max_num_steps,
     const size_t max_ram_MB,
