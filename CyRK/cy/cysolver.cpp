@@ -62,31 +62,38 @@ CySolverBase::CySolverBase(
     this->storage_sptr->update_message("CySolverBase Initializing.");
 
     // Build storage for args
-    if (args_ptr && (size_of_args > 0))
+    if (0)
     {
-        // Allocate memory for the size of args.
-        // Store void pointer to it.
-        printf("Pre resize\n");
-        this->args_char_vec.resize(size_of_args);
+        if (args_ptr && (size_of_args > 0))
+        {
+            // Allocate memory for the size of args.
+            // Store void pointer to it.
+            printf("Pre resize\n");
+            this->args_char_vec.resize(size_of_args);
 
-        // Copy over contents of arg
-        char* args_in_as_char_ptr = (char*)args_ptr;
-        printf("Pre Copy Over: arg_in_char = %p; sizeof = %d; args_in_char+size = %p\n", args_in_as_char_ptr, size_of_args, args_in_as_char_ptr + size_of_args);
-        this->args_char_vec.insert(this->args_char_vec.begin(), args_in_as_char_ptr, args_in_as_char_ptr + size_of_args);
-        // std::memcpy(this->args_ptr, args_ptr, size_of_args);
-        
-        this->args_ptr = (void*)this->args_char_vec.data();
-        printf("Post\n");
+            // Copy over contents of arg
+            char* args_in_as_char_ptr = (char*)args_ptr;
+            printf("Pre Copy Over: arg_in_char = %p; sizeof = %d; args_in_char+size = %p\n", args_in_as_char_ptr, size_of_args, args_in_as_char_ptr + size_of_args);
+            this->args_char_vec.insert(this->args_char_vec.begin(), args_in_as_char_ptr, args_in_as_char_ptr + size_of_args);
+            // std::memcpy(this->args_ptr, args_ptr, size_of_args);
+            
+            this->args_ptr = (void*)this->args_char_vec.data();
+            printf("Post\n");
+        }
+        else
+        {
+            this->args_char_vec.resize(8);
+            for (size_t i = 0; i < 8; i++)
+            {
+                this->args_char_vec[i] = 0;
+            }
+            
+            this->args_ptr = (void*)this->args_char_vec.data();
+        }
     }
     else
     {
-        this->args_char_vec.resize(8);
-        for (size_t i = 0; i < 8; i++)
-        {
-            this->args_char_vec[i] = 0;
-        }
-        
-        this->args_ptr = (void*)this->args_char_vec.data();
+        this->args_ptr = args_ptr;
     }
 
     // Check for errors
