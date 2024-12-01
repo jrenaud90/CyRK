@@ -707,7 +707,6 @@ protected:
 
 public:
     RKSolver();
-    virtual ~RKSolver() override;
     RKSolver(
         // Base Class input arguments
         DiffeqFuncType diffeq_ptr,

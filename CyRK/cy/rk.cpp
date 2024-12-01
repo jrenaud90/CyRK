@@ -113,15 +113,6 @@ RKSolver::RKSolver(
     this->atols_ptr = this->atols.data();
 }
 
-
-// Destructors
-RKSolver::~RKSolver()
-{
-    // Call parent destructor
-    // CySolverBase::~CySolverBase();
-
-}
-
 // Protected Methods
 void RKSolver::p_estimate_error()
 {   
