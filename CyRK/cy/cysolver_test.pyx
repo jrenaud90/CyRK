@@ -469,7 +469,7 @@ def cytester(
         t_span_ptr[1] = t_span[1]
         if args is not None:
             args_ptr     = <void*>&args[0]
-            size_of_args = sizeof(double) * args.size
+            size_of_args = sizeof(double) # * args.size
         else:
             args_ptr     = NULL
             size_of_args = 0
