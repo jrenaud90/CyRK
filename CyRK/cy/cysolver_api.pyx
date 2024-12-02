@@ -6,8 +6,6 @@ import numpy as np
 cimport numpy as cnp
 cnp.import_array()
 
-from libc.stdio cimport printf
-
 # =====================================================================================================================
 # Import CySolverResult (container for integration results)
 # =====================================================================================================================

@@ -1,7 +1,6 @@
 #include "cysolve.hpp"
 #include <exception>
 
-#include <cstdio>
 
 void baseline_cysolve_ivp_noreturn(
         std::shared_ptr<CySolverResult> solution_sptr,
@@ -35,7 +34,6 @@ void baseline_cysolve_ivp_noreturn(
     const double t_end         = t_span_ptr[1];
     const bool direction_flag  = t_start <= t_end ? true : false;
     const bool forward = direction_flag == true;
-    printf("t_start = %e; t_end = %e; direction_flag = %d; forward = %d\n", t_start, t_end, direction_flag, forward);
     const bool t_eval_provided = t_eval ? true : false;
 
     // Get new expected size

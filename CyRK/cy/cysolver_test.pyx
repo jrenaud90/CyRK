@@ -2,12 +2,9 @@
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 
 from libcpp cimport bool as cpp_bool
-from libcpp.memory cimport make_shared, shared_ptr
-from libcpp.vector cimport vector
 from libcpp.limits cimport numeric_limits
-from libc.math cimport sin, cos, fabs, fmin, fmax
+from libc.math cimport sin, cos
 from libc.stdlib cimport malloc, free, realloc
-from libc.stdio cimport printf
 
 cdef double d_NAN = numeric_limits[double].quiet_NaN()
 
@@ -156,7 +153,6 @@ cdef void arbitrary_arg_test(double* dy_ptr, double t, double* y_ptr, char* args
     cdef double g = arb_args_ptr.g
     cdef cpp_bool cause_fail = arb_args_ptr.cause_fail
     cdef cpp_bool checker    = arb_args_ptr.checker
-    printf("arbitrary_arg_test:: l = %e, m = %e, g = %e; cause_fail = %d\n", l, m, g, cause_fail)
 
     cdef double coeff_1 = (-3. * g / (2. * l))
     cdef double coeff_2 = (3. / (m * l**2))
@@ -224,31 +220,22 @@ cdef void pendulum_preeval_diffeq(double* dy_ptr, double t, double* y_ptr, char*
 
 def cy_extra_output_tester():
 
-    printf("cy_extra_output_tester Pt1\n")
-
     cdef double[2] t_span = [0., 10.]
     cdef double* t_span_ptr = &t_span[0]
 
-    printf("cy_extra_output_tester Pt2\n")
     cdef double[3] y0 = [1., 0., 0]
     cdef double* y0_ptr = &y0[0]
     
-    printf("cy_extra_output_tester Pt3\n")
     cdef size_t num_y     = 3
     cdef size_t num_extra = 3
     cdef int int_method   = 1
 
-    printf("cy_extra_output_tester Pt4\n")
-    cdef size_t arg_size = sizeof(double)*3
-    printf("cy_extra_output_tester Pt5\n")
+    cdef size_t arg_size = sizeof(double) * 3
     cdef double* args_ptr = <double*>malloc(arg_size)
-    printf("cy_extra_output_tester Pt6\n")
     args_ptr[0] = 10.0
     args_ptr[1] = 28.0
     args_ptr[2] = 8.0 / 3.0
-    printf("cy_extra_output_tester Pt7\n")
-    
-    printf("cy_extra_output_tester Pt8\n")
+
     cdef CySolveOutput result = cysolve_ivp(
         lorenz_extraoutput_diffeq,
         t_span_ptr,
@@ -261,18 +248,14 @@ def cy_extra_output_tester():
         arg_size,
         num_extra
         )
-    printf("cy_extra_output_tester Pt9\n")
 
     cdef double dy1, dy2, dy3, e1, e2, e3
     cdef double check_t = 4.335
 
     # Call the result to get the baseline values for extra output
-    printf("cy_extra_output_tester Pt10\n")
     cdef double[6] y_interp
     cdef double* y_interp_ptr = &y_interp[0]
-    printf("cy_extra_output_tester Pt11\n")
     result.get().call(check_t, y_interp_ptr)
-    printf("cy_extra_output_tester Pt12\n")
     dy1 = y_interp_ptr[0]
     dy2 = y_interp_ptr[1]
     dy3 = y_interp_ptr[2]
@@ -284,17 +267,14 @@ def cy_extra_output_tester():
     args_ptr[0] = -99.0
     args_ptr[1] = -99.0
     args_ptr[2] = -99.0
-    printf("cy_extra_output_tester Pt13\n")
-    args_ptr = <double*>realloc(args_ptr, sizeof(double)*50)
+    args_ptr = <double*>realloc(args_ptr, sizeof(double) * 50)
     cdef size_t i 
     for i in range(50):
         args_ptr[i] = -99.0
     
 
     # Recall the solution to see if it still produces the expected values
-    printf("cy_extra_output_tester Pt14\n")
     result.get().call(check_t, y_interp_ptr)
-    printf("cy_extra_output_tester Pt15\n")
 
     np.testing.assert_allclose(dy1, y_interp_ptr[0])
     np.testing.assert_allclose(dy2, y_interp_ptr[1])
@@ -302,7 +282,8 @@ def cy_extra_output_tester():
     np.testing.assert_allclose(e1, y_interp_ptr[3])
     np.testing.assert_allclose(e2, y_interp_ptr[4])
     np.testing.assert_allclose(e3, y_interp_ptr[5])
-    printf("cy_extra_output_tester Pt16\n")
+
+    free(args_ptr)
 
     return True
 
@@ -324,7 +305,6 @@ def cytester(
         double max_step = MAX_STEP,
         double first_step = 0.0
         ):
-    printf("Cytester pt0\n")
     cdef size_t i
     cdef double* t_eval_ptr = NULL
     cdef size_t len_t_eval = 0
@@ -342,7 +322,6 @@ def cytester(
     cdef size_t num_extra = 0
     cdef DiffeqFuncType diffeq = NULL
     cdef PreEvalFunc pre_eval_func = NULL
-    printf("Cytester pt1\n")
     if diffeq_number == 0:
         diffeq = baseline_diffeq
     elif diffeq_number == 1:
@@ -366,7 +345,6 @@ def cytester(
         pre_eval_func = pendulum_preeval_func
     else:
         raise NotImplementedError
-    printf("Cytester pt2\n")
 
     # Set up additional argument information
     cdef char* args_ptr = NULL
@@ -380,7 +358,6 @@ def cytester(
     cdef ArbitraryArgStruct arb_arg_struct = ArbitraryArgStruct(1.0, False, True, 1.0, 9.81)
     
     # Check if generic testing was requested.
-    printf("Cytester pt3\n")
     if y0 is None:
         # Generic Testing Requested
         
@@ -482,7 +459,6 @@ def cytester(
         else:
             raise NotImplementedError
     else:
-        printf("Cytester pt4bn")
         # Regular testing requested.
         num_y = len(y0)
         for i in range(num_y):
@@ -501,7 +477,6 @@ def cytester(
         size_of_args = sizeof(args_arr)
 
     # Parse rtol
-    printf("Cytester pt5\n")
     cdef double* rtols_ptr = NULL
     if rtol_array is not None:
         rtols_ptr = &rtol_array[0]
@@ -511,10 +486,6 @@ def cytester(
     if atol_array is not None:
         atols_ptr = &atol_array[0]
 
-    
-    printf("EXTRA ARGS SIZE = %d; Ptr = %p\n", size_of_args, args_ptr)
-
-    printf("PRE CySolve\n")
     cdef CySolveOutput result = cysolve_ivp(
         diffeq,
         t_span_ptr,
@@ -538,8 +509,6 @@ def cytester(
         first_step = first_step,
         expected_size = expected_size
         )
-    printf("POST CySolve\n")
-    
     cdef WrapCySolverResult pysafe_result = WrapCySolverResult()
     pysafe_result.set_cyresult_pointer(result)
 

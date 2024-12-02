@@ -1,4 +1,3 @@
-#include <cstdio>
 #include "cysolver.hpp"
 #include "dense.hpp"
 #include "cysolution.hpp"
@@ -67,29 +66,11 @@ CySolverBase::CySolverBase(
     {
         // Allocate memory for the size of args.
         // Store void pointer to it.
-        printf("Pre resize; size = %d\n", this->size_of_args);
-        printf("Pre resize; VECTOR size = %d\n", this->args_char_vec.size());
         this->args_char_vec.resize(this->size_of_args);
 
-        for (size_t i = 0; i < this->size_of_args; i++)
-        {
-            printf("\t %x\n", args_ptr[i] & 0xff);
-        }
-        
-
         // Copy over contents of arg
-        printf("Pre Copy Over: arg_in_char = %p; sizeof = %d; args_in_char+size = %p\n", args_ptr, this->size_of_args, args_ptr + this->size_of_args);
-        // this->args_char_vec.insert(this->args_char_vec.begin(), args_ptr, args_ptr + this->size_of_args);
         this->args_ptr = this->args_char_vec.data();
         std::memcpy(this->args_ptr, args_ptr, this->size_of_args);
-
-        printf("Vector array size = %d\n", this->args_char_vec.size());
-        for (size_t i = 0; i < this->args_char_vec.size(); i++)
-        {
-            printf("\t %x\n", this->args_char_vec[i] & 0xff);
-        }
-        
-        printf("Post\n");
     }
     else
     {
@@ -183,7 +164,6 @@ CySolverBase::CySolverBase(
 // Destructors
 CySolverBase::~CySolverBase()
 {
-    printf("CySolver Deconstructor called.\n");
     if (this->deconstruct_python)
     {
         // Decrease reference count on the cython extension class instance

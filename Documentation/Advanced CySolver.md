@@ -25,8 +25,11 @@ from libc.math cimport sin
 from CyRK cimport cysolve_ivp, WrapCySolverResult, DiffeqFuncType, MAX_STEP, CySolveOutput, PreEvalFunc
 
 cdef void pendulum_diffeq(double* dy_ptr, double t, double* y_ptr, char* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
-    # Arguments are passed in as a void pointer to preallocated and instantiated memory. 
-    # This memory could be stack or heap allocated. If it is not valid then you will run into seg faults.
+    # Arguments are passed in as char pointers.
+    # These point to preallocated and instantiated memory in the CySolver class that is filled with user-provided data.
+
+    # The user can then recast the generic char pointers back to original format of args_ptr. In this case, an array of doubles. 
+    # Seg faults will occur if this function recasts to the incorrect type.
     cdef double* args_dbl_ptr = <double*>args_ptr
     cdef double l = args_dbl_ptr[0]
     cdef double m = args_dbl_ptr[1]
@@ -115,8 +118,8 @@ cdef struct PendulumArgs:
     double m
 
 cdef void pendulum_diffeq(double* dy_ptr, double t, double* y_ptr, char* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
-    # Arg pointer still must be listed as a void pointer or it will not work with cysolve_ivp.
-    # But now the user can recast that void pointer to the structure they wish.
+    # Arg pointer still must be listed as a char pointer or it will not work with cysolve_ivp.
+    # But now the user can recast that char pointer to the structure they wish.
     cdef PendulumArgs* pendulum_args_ptr = <PendulumArgs*>args_ptr
     # And easily access its members which can be many heterogeneous types.
     cdef double l = pendulum_args_ptr.l
@@ -204,7 +207,7 @@ from libc.math cimport sin
 
 from CyRK cimport cysolve_ivp, WrapCySolverResult, DiffeqFuncType,MAX_STEP, CySolveOutput, PreEvalFunc
 
-cdef void pendulum_preeval_nodrag(char* output_ptr, double time, double* y_ptr, char* args_ptr) noexcept nogil:
+cdef void pendulum_preeval_nodrag(char* output_ptr, double time, double* y_ptr, const char* args_ptr) noexcept nogil:
     # Unpack args (in this example we do not need these but they follow the same rules as the Arbitrary Args section discussed above)
     cdef double* args_dbl_ptr = <double*>args_ptr
 
@@ -216,7 +219,7 @@ cdef void pendulum_preeval_nodrag(char* output_ptr, double time, double* y_ptr, 
     output_dbl_ptr[0] = torque
     output_dbl_ptr[1] = 0.0  # No Drag
 
-cdef void pendulum_preeval_withdrag(char* output_ptr, double time, double* y_ptr, char* args_ptr) noexcept nogil:
+cdef void pendulum_preeval_withdrag(char* output_ptr, double time, double* y_ptr, const char* args_ptr) noexcept nogil:
     # Unpack args (in this example we do not need these but they follow the same rules as the Arbitrary Args section discussed above)
     cdef double* args_dbl_ptr = <double*>args_ptr
 
@@ -245,11 +248,11 @@ cdef void pendulum_preeval_diffeq(double* dy_ptr, double t, double* y_ptr, char*
     cdef double* pre_eval_storage_ptr = &pre_eval_storage[0]
 
     # Cast storage to char so we can call function
-    cdef char* pre_eval_storage_void_ptr = <char*>pre_eval_storage_ptr
+    cdef char* pre_eval_storage_char_ptr = <char*>pre_eval_storage_ptr
 
     # Call Pre-Eval Function
     # Note that even though CyRK calls this function a "pre-eval" function, it can be placed anywhere inside the diffeq function. 
-    pre_eval_func(pre_eval_storage_void_ptr, t, y_ptr, args_ptr)
+    pre_eval_func(pre_eval_storage_char_ptr, t, y_ptr, args_ptr)
 
     cdef double y0 = y_ptr[0]
     cdef double y1 = y_ptr[1]
