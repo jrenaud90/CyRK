@@ -103,6 +103,9 @@ protected:
 
 
 public:
+    // Differential equation information
+    DiffeqFuncType diffeq_ptr = nullptr;
+
     // Integration step information
     size_t max_num_steps = 0;
 
@@ -111,9 +114,6 @@ public:
     std::vector<char> args_char_vec = std::vector<char>();
     char* args_ptr = nullptr;
     
-    // Differential equation information
-    DiffeqFuncType diffeq_ptr = nullptr;
-    
     // t_eval information
     std::vector<double> t_eval_vec = std::vector<double>();
     double* t_eval_ptr       = t_eval_vec.data();
@@ -121,9 +121,6 @@ public:
     size_t len_t_eval        = 0;
     bool skip_t_eval         = false;
     bool use_t_eval          = false;
-
-    // Function to send to diffeq which is called before dy is calculated
-    PreEvalFunc pre_eval_func = nullptr;
 
     // Keep bools together to reduce size
     bool direction_flag = false;
@@ -134,6 +131,9 @@ public:
 
     // Dense (Interpolation) Attributes
     bool use_dense_output = false;
+    
+    // Function to send to diffeq which is called before dy is calculated
+    PreEvalFunc pre_eval_func = nullptr;
 
     // PySolver Attributes
     bool use_pysolver = false;

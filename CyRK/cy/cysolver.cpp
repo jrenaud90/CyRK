@@ -43,17 +43,17 @@ CySolverBase::CySolverBase(
         const double* t_eval,
         const size_t len_t_eval,
         PreEvalFunc pre_eval_func) :
-            t_start(t_start),
-            t_end(t_end),
             diffeq_ptr(diffeq_ptr),
             size_of_args(size_of_args),
             len_t_eval(len_t_eval),
-            num_extra(num_extra),
             use_dense_output(use_dense_output),
             pre_eval_func(pre_eval_func),
             status(0),
             num_y(num_y),
-            storage_sptr(storage_sptr)
+            num_extra(num_extra),
+            storage_sptr(storage_sptr),
+            t_start(t_start),
+            t_end(t_end)
 {
     // Parse inputs
     this->capture_extra = num_extra > 0;

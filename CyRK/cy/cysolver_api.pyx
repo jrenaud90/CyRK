@@ -124,11 +124,11 @@ cdef class WrapCySolverResult:
     
     @property
     def t(self):
-        return np.asarray(self.time_view, dtype=np.float64, order='C')
+        return np.copy(np.asarray(self.time_view, dtype=np.float64, order='C'))
     
     @property
     def y(self):
-        return np.asarray(self.y_view, dtype=np.float64, order='C').reshape((self.size, self.num_dy)).T
+        return np.copy(np.asarray(self.y_view, dtype=np.float64, order='C')).reshape((self.size, self.num_dy)).T
     
     @property
     def size(self):
