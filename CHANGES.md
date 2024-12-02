@@ -19,6 +19,7 @@ Tests:
 * Fixed tests where additional args were not being used.
 * Fixed issue with diffeq test 5.
   * This fixes GitHub Issue [#67](https://github.com/jrenaud90/CyRK/issues/67)
+* Added tests to solve large number of diffeqs simultaneously to try to catch issues related to GitHub issue [#78](https://github.com/jrenaud90/CyRK/issues/78).
 
 Documentation:
 * Updated the "Advanced CySolver.md" documentation that was out of date.
