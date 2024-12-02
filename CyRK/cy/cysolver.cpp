@@ -53,7 +53,7 @@ CySolverBase::CySolverBase(
             num_extra(num_extra),
             storage_sptr(storage_sptr),
             t_start(t_start),
-            t_end(t_end),
+            t_end(t_end)
 {
     // Parse inputs
     this->capture_extra = num_extra > 0;
