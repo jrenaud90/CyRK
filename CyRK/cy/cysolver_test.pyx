@@ -245,7 +245,7 @@ def cy_extra_output_tester():
         rtol=1.0e-4,
         atol=1.0e-5,
         args_ptr=<char*>args_ptr,
-        size_of_args=rg_size,
+        size_of_args=arg_size,
         num_extra=num_extra,
         max_num_steps=0,
         max_ram_MB=2000,
