@@ -253,7 +253,7 @@ def cy_extra_output_tester():
         )
 
     cdef double check_t = 4.335
-    assert result.success
+    assert result.get().success
 
     # Call the result to get the baseline values for extra output
     cdef double[6] y_interp
