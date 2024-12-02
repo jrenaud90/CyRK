@@ -91,8 +91,6 @@ public:
 
 // Attributes
 protected:
-    // ** Attributes **
-
     // Time variables
     double t_tmp         = 0.0;
     double t_delta       = 0.0;
@@ -103,10 +101,13 @@ protected:
     double num_y_dbl  = 0.0;
     double num_y_sqrt = 0.0;
 
+
+public:
     // Integration step information
     size_t max_num_steps = 0;
 
     // Additional arguments for the diffeq are stored locally in a char dynamic vector. 
+    size_t size_of_args = 0;
     std::vector<char> args_char_vec = std::vector<char>();
     char* args_ptr = nullptr;
     
@@ -134,7 +135,6 @@ protected:
     // Dense (Interpolation) Attributes
     bool use_dense_output = false;
 
-public:
     // PySolver Attributes
     bool use_pysolver = false;
     DiffeqMethod py_diffeq_method = nullptr;

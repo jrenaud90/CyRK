@@ -177,6 +177,9 @@ cdef extern from "cysolver.cpp" nogil:
         size_t num_dy
         size_t num_y
         shared_ptr[CySolverResult] storage_ptr
+        size_t size_of_args
+        vector[char] args_char_vec
+        char* args_ptr
         size_t len_t
         double t_now
         vector[double] y_now

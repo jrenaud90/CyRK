@@ -143,6 +143,7 @@ cdef struct ArbitraryArgStruct:
     double l
     # Let's make sure it has something in the middle that is not a double for size checks.
     cpp_bool cause_fail
+    cpp_bool checker
     double m
     double g
 
@@ -153,6 +154,8 @@ cdef void arbitrary_arg_test(double* dy_ptr, double t, double* y_ptr, char* args
     cdef double m = arb_args_ptr.m
     cdef double g = arb_args_ptr.g
     cdef cpp_bool cause_fail = arb_args_ptr.cause_fail
+    cdef cpp_bool checker    = arb_args_ptr.checker
+    printf("arbitrary_arg_test:: l = %e, m = %e, g = %e; cause_fail = %d\n", l, m, g, cause_fail)
 
     cdef double coeff_1 = (-3. * g / (2. * l))
     cdef double coeff_2 = (3. / (m * l**2))
@@ -206,10 +209,10 @@ cdef void pendulum_preeval_diffeq(double* dy_ptr, double t, double* y_ptr, char*
     cdef double* pre_eval_storage_ptr = &pre_eval_storage[0]
 
     # Cast storage to void so we can call function
-    cdef char* pre_eval_storage_void_ptr = <char*>pre_eval_storage_ptr
+    cdef char* pre_eval_storage_char_ptr = <char*>pre_eval_storage_ptr
 
     # Call Pre-Eval Function
-    pre_eval_func(pre_eval_storage_void_ptr, t, y_ptr, args_ptr)
+    pre_eval_func(pre_eval_storage_char_ptr, t, y_ptr, args_ptr)
 
     cdef double y0 = y_ptr[0]
     cdef double y1 = y_ptr[1]
@@ -245,7 +248,7 @@ def cy_extra_output_tester():
         int_method,
         1.0e-4,
         1.0e-5,
-        args_ptr,
+        <char*>args_ptr,
         arg_size,
         num_extra
         )
@@ -264,7 +267,10 @@ def cy_extra_output_tester():
     e2  = y_interp_ptr[4]
     e3  = y_interp_ptr[5]
 
-    # Corrupt or otherwise mess up the arg pointer
+    # Corrupt or otherwise change up the arg pointer
+    args_ptr[0] = -99.0
+    args_ptr[1] = -99.0
+    args_ptr[2] = -99.0
     args_ptr = <double*>realloc(args_ptr, sizeof(double)*3000)
     cdef size_t i 
     for i in range(3000):
@@ -275,12 +281,12 @@ def cy_extra_output_tester():
     result.get().call(check_t, y_interp_ptr)
     cdef bint passed = True
 
-    passed = dy1 == y_interp_ptr[0]
-    passed = dy2 == y_interp_ptr[1]
-    passed = dy3 == y_interp_ptr[2]
-    passed = e1  == y_interp_ptr[3]
-    passed = e2  == y_interp_ptr[4]
-    passed = e3  == y_interp_ptr[5]
+    assert dy1 == y_interp_ptr[0]
+    assert dy2 == y_interp_ptr[1]
+    assert dy3 == y_interp_ptr[2]
+    assert e1  == y_interp_ptr[3]
+    assert e2  == y_interp_ptr[4]
+    assert e3  == y_interp_ptr[5]
 
     return passed
 
@@ -357,7 +363,7 @@ def cytester(
     cdef double[10] args_arr
     cdef double* args_ptr_dbl = &args_arr[0]
     # Abitrary arg test requires a ArbitraryArgStruct class instance to be passed in
-    cdef ArbitraryArgStruct arb_arg_struct = ArbitraryArgStruct(1.0, False, 1.0, 9.81)
+    cdef ArbitraryArgStruct arb_arg_struct = ArbitraryArgStruct(1.0, False, True, 1.0, 9.81)
     
     # Check if generic testing was requested.
     printf("Cytester pt3\n")
@@ -419,7 +425,7 @@ def cytester(
             y0_ptr[0] = 10.0
             y0_ptr[1] = 5.0
             t_span_ptr[0] = 0.0
-            t_span_ptr[0] = 15.0
+            t_span_ptr[1] = 15.0
             args_ptr_dbl[0] = 1.5
             args_ptr_dbl[1] = 1.0
             args_ptr_dbl[2] = 3.0

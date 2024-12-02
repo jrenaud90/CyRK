@@ -7,6 +7,7 @@
 New & Changes:
 * `MAX_STEP` can now be cimported from the top-level of CyRK: `from CyRK cimport MAX_STEP`
 * Changed uses of `void*` to `char*` for both diffeq additional args and pre-eval outputs. The signature of these functions has changed, please review documentation for correct usage.
+* Added new diagnostic info display tool to `cysolve_ivp` and `pysolve_ivp` output that you can access with `<result>.print_diagnostics()`.
 
 Fixes:
 * Fixed issue with `cysolve_ivp` (`pysolve_ivp` did not have this bug) where additional args are passed to diffeq _and_ dense output is on _and_ extra output is captured.
@@ -16,6 +17,7 @@ Fixes:
 
 Tests:
 * Fixed tests where additional args were not being used.
+* Fixed issue with diffeq test 5.
 
 Documentation:
 * Updated the "Advanced CySolver.md" documentation that was out of date.

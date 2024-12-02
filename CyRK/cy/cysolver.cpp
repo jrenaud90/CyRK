@@ -47,6 +47,7 @@ CySolverBase::CySolverBase(
             t_start(t_start),
             t_end(t_end),
             diffeq_ptr(diffeq_ptr),
+            size_of_args(size_of_args),
             len_t_eval(len_t_eval),
             num_extra(num_extra),
             use_dense_output(use_dense_output),
@@ -62,19 +63,31 @@ CySolverBase::CySolverBase(
     this->storage_sptr->update_message("CySolverBase Initializing.");
 
     // Build storage for args
-    if (args_ptr && (size_of_args > 0))
+    if (args_ptr && (this->size_of_args > 0))
     {
         // Allocate memory for the size of args.
         // Store void pointer to it.
-        printf("Pre resize\n");
-        this->args_char_vec.resize(size_of_args);
-        this->args_ptr = this->args_char_vec.data();
+        printf("Pre resize; size = %d\n", this->size_of_args);
+        printf("Pre resize; VECTOR size = %d\n", this->args_char_vec.size());
+        this->args_char_vec.resize(this->size_of_args);
+
+        for (size_t i = 0; i < this->size_of_args; i++)
+        {
+            printf("\t %x\n", args_ptr[i] & 0xff);
+        }
+        
 
         // Copy over contents of arg
-        char* args_in_as_char_ptr = (char*)args_ptr;
-        printf("Pre Copy Over: arg_in_char = %p; sizeof = %d; args_in_char+size = %p\n", args_in_as_char_ptr, size_of_args, args_in_as_char_ptr + size_of_args);
-        this->args_char_vec.insert(this->args_char_vec.begin(), args_in_as_char_ptr, args_in_as_char_ptr + size_of_args);
-        // std::memcpy(this->args_ptr, args_ptr, size_of_args);
+        printf("Pre Copy Over: arg_in_char = %p; sizeof = %d; args_in_char+size = %p\n", args_ptr, this->size_of_args, args_ptr + this->size_of_args);
+        // this->args_char_vec.insert(this->args_char_vec.begin(), args_ptr, args_ptr + this->size_of_args);
+        this->args_ptr = this->args_char_vec.data();
+        std::memcpy(this->args_ptr, args_ptr, this->size_of_args);
+
+        printf("Vector array size = %d\n", this->args_char_vec.size());
+        for (size_t i = 0; i < this->args_char_vec.size(); i++)
+        {
+            printf("\t %x\n", this->args_char_vec[i] & 0xff);
+        }
         
         printf("Post\n");
     }
