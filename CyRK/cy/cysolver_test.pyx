@@ -7,8 +7,6 @@ from libcpp.vector cimport vector
 from libcpp.limits cimport numeric_limits
 from libc.math cimport sin, cos, fabs, fmin, fmax
 from libc.stdlib cimport malloc, free, realloc
-
-
 from libc.stdio cimport printf
 
 cdef double d_NAN = numeric_limits[double].quiet_NaN()
@@ -297,20 +295,16 @@ def cy_extra_output_tester():
     printf("cy_extra_output_tester Pt14\n")
     result.get().call(check_t, y_interp_ptr)
     printf("cy_extra_output_tester Pt15\n")
-    cdef bint passed = True
 
-    assert dy1 == y_interp_ptr[0]
-    assert dy2 == y_interp_ptr[1]
-    assert dy3 == y_interp_ptr[2]
-    assert e1  == y_interp_ptr[3]
-    assert e2  == y_interp_ptr[4]
-    assert e3  == y_interp_ptr[5]
-    printf("cy_extra_output_tester Pt16; passed = %d\n", passed)
+    np.testing.assert_allclose(dy1, y_interp_ptr[0])
+    np.testing.assert_allclose(dy2, y_interp_ptr[1])
+    np.testing.assert_allclose(dy3, y_interp_ptr[2])
+    np.testing.assert_allclose(e1, y_interp_ptr[3])
+    np.testing.assert_allclose(e2, y_interp_ptr[4])
+    np.testing.assert_allclose(e3, y_interp_ptr[5])
+    printf("cy_extra_output_tester Pt16\n")
 
-    if passed:
-        return True
-    else:
-        return False
+    return True
 
 def cytester(
         int diffeq_number,
