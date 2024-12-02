@@ -2,7 +2,7 @@
 
 ## 2024
 
-#### v0.12.0 (2024-NNN)
+#### v0.12.0 (2024-12-02)
 
 New & Changes:
 * `MAX_STEP` can now be cimported from the top-level of CyRK: `from CyRK cimport MAX_STEP`
