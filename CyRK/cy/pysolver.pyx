@@ -217,9 +217,6 @@ def pysolve_ivp(
     # Finally we can actually run the integrator!
     # The following effectively copies the functionality of cysolve_ivp. We can not directly use that function
     # because we need to tie in the python-based diffeq function (via its wrapper)
-    
-    # Build null pointers to unused arguments
-    cdef void* args_ptr = NULL
 
     # We need to heap allocate the PySolver class instance otherwise it can get garbage collected while the solver
     # is running.
@@ -234,7 +231,6 @@ def pysolve_ivp(
             num_y,
             expected_size,
             num_extra,
-            args_ptr,
             max_num_steps,
             max_ram_MB,
             dense_output,

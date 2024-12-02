@@ -2,7 +2,29 @@
 
 ## 2024
 
-#### v0.11.4 (2024-11-27)
+#### v0.12.0 (2024-NNN)
+
+New & Changes:
+* `MAX_STEP` can now be cimported from the top-level of CyRK: `from CyRK cimport MAX_STEP`
+* Changed uses of `void*` to `char*` for both diffeq additional args and pre-eval outputs. The signature of these functions has changed, please review documentation for correct usage.
+* Added new diagnostic info display tool to `cysolve_ivp` and `pysolve_ivp` output that you can access with `<result>.print_diagnostics()`.
+
+Fixes:
+* Fixed issue with `cysolve_ivp` (`pysolve_ivp` did not have this bug) where additional args are passed to diffeq _and_ dense output is on _and_ extra output is captured.
+  * Calling the dense output when extra output is on requires additional calls to the diffeq. However, after integration there is no gurantee that the args pointer is pointing to the same memory or that the values in that memory have not changed.
+  * Best case, this could cause unexpected results as new values are used for additional args; worst case it could cause access violations if the diffeq tries to access released memory.
+  * Now the `CySolverBase` makes a copy of the additional argument structure so it always retains those values as long as it is alive. This requires an additional memory allocation at the start of integration. And it requires the user to provide the size of the additional argument structure to `cysolve_ivp`.
+
+Tests:
+* Fixed tests where additional args were not being used.
+* Fixed issue with diffeq test 5.
+  * This fixes GitHub Issue [#67](https://github.com/jrenaud90/CyRK/issues/67)
+* Added tests to solve large number of diffeqs simultaneously to try to catch issues related to GitHub issue [#78](https://github.com/jrenaud90/CyRK/issues/78).
+
+Documentation:
+* Updated the "Advanced CySolver.md" documentation that was out of date.
+
+#### v0.11.5 (2024-11-27)
 
 New:
 * Added a `steps_taken` tracking variable to the C++ class `CySolverResult` and the Cython wrapped `WrapCySolverResult` so that users can see how many steps were taken during integration even when using `t_eval`.

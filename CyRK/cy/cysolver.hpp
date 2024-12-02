@@ -2,6 +2,7 @@
 
 #include <cstring>
 
+#include <vector>
 #include <algorithm>
 #include <functional>
 #include <memory>
@@ -59,14 +60,15 @@ public:
         const double t_end,
         const double* const y0_ptr,
         const size_t num_y,
-        const size_t num_extra = 0,
-        const void* const args_ptr = nullptr,
-        const size_t max_num_steps = 0,
-        const size_t max_ram_MB = 2000,
-        const bool use_dense_output = false,
-        const double* t_eval = nullptr,
-        const size_t len_t_eval = 0,
-        PreEvalFunc pre_eval_func = nullptr
+        const size_t num_extra,
+        const char* args_ptr,
+        const size_t size_of_args,
+        const size_t max_num_steps,
+        const size_t max_ram_MB,
+        const bool use_dense_output,
+        const double* t_eval,
+        const size_t len_t_eval,
+        PreEvalFunc pre_eval_func
     );
 
     bool check_status() const;
@@ -89,8 +91,6 @@ public:
 
 // Attributes
 protected:
-    // ** Attributes **
-
     // Time variables
     double t_tmp         = 0.0;
     double t_delta       = 0.0;
@@ -101,15 +101,21 @@ protected:
     double num_y_dbl  = 0.0;
     double num_y_sqrt = 0.0;
 
+
+public:
     // Integration step information
     size_t max_num_steps = 0;
 
+    // Additional arguments for the diffeq are stored locally in a char dynamic vector. 
+    size_t size_of_args = 0;
+    std::vector<char> args_char_vec = std::vector<char>();
+    char* args_ptr = nullptr;
+    
     // Differential equation information
-    const void* args_ptr      = nullptr;
     DiffeqFuncType diffeq_ptr = nullptr;
     
     // t_eval information
-    std::vector<double> t_eval_vec = std::vector<double>(0);
+    std::vector<double> t_eval_vec = std::vector<double>();
     double* t_eval_ptr       = t_eval_vec.data();
     size_t t_eval_index_old  = 0;
     size_t len_t_eval        = 0;
@@ -129,7 +135,6 @@ protected:
     // Dense (Interpolation) Attributes
     bool use_dense_output = false;
 
-public:
     // PySolver Attributes
     bool use_pysolver = false;
     DiffeqMethod py_diffeq_method = nullptr;

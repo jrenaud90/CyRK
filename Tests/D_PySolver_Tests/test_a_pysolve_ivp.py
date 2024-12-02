@@ -46,8 +46,8 @@ def diffeq_extra(dy, t, y):
     dy[3] = extra_2
 
 def diffeq_args_extra(dy, t, y, a, b):
-    extra_1 = (1. - 0.01 * y[1])
-    extra_2 = (0.02 * y[0] - 1.)
+    extra_1 = (1. - a * y[1])
+    extra_2 = (b * y[0] - 1.)
     dy[0] = extra_1 * y[0]
     dy[1] = extra_2 * y[1]
     dy[2] = extra_1
@@ -65,8 +65,8 @@ def diffeq_scipy_style_extra(t, y):
 
 def diffeq_scipy_style_args_extra(t, y, a, b):
     dy = np.empty(y.size + 2, dtype=np.float64)
-    extra_1 = (1. - 0.01 * y[1])
-    extra_2 = (0.02 * y[0] - 1.)
+    extra_1 = (1. - a * y[1])
+    extra_2 = (b * y[0] - 1.)
     dy[0] = extra_1 * y[0]
     dy[1] = extra_2 * y[1]
     dy[2] = extra_1

@@ -35,7 +35,8 @@ CySolverBase::CySolverBase(
         const double* const y0_ptr,
         const size_t num_y,
         const size_t num_extra,
-        const void* const args_ptr,
+        const char* args_ptr,
+        const size_t size_of_args,
         const size_t max_num_steps,
         const size_t max_ram_MB,
         const bool use_dense_output,
@@ -44,8 +45,8 @@ CySolverBase::CySolverBase(
         PreEvalFunc pre_eval_func) :
             t_start(t_start),
             t_end(t_end),
-            args_ptr(args_ptr),
             diffeq_ptr(diffeq_ptr),
+            size_of_args(size_of_args),
             len_t_eval(len_t_eval),
             num_extra(num_extra),
             use_dense_output(use_dense_output),
@@ -59,6 +60,22 @@ CySolverBase::CySolverBase(
 
     // Setup storage
     this->storage_sptr->update_message("CySolverBase Initializing.");
+
+    // Build storage for args
+    if (args_ptr && (this->size_of_args > 0))
+    {
+        // Allocate memory for the size of args.
+        // Store void pointer to it.
+        this->args_char_vec.resize(this->size_of_args);
+
+        // Copy over contents of arg
+        this->args_ptr = this->args_char_vec.data();
+        std::memcpy(this->args_ptr, args_ptr, this->size_of_args);
+    }
+    else
+    {
+        this->args_ptr = nullptr;
+    }
 
     // Check for errors
     if (this->num_y == 0)
@@ -151,6 +168,12 @@ CySolverBase::~CySolverBase()
     {
         // Decrease reference count on the cython extension class instance
         Py_XDECREF(this->cython_extension_class_instance);
+    }
+
+    // Reset shared pointers
+    if (this->storage_sptr)
+    {
+        this->storage_sptr.reset();
     }
 }
 

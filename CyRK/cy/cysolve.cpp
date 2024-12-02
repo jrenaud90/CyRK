@@ -1,6 +1,7 @@
 #include "cysolve.hpp"
 #include <exception>
 
+
 void baseline_cysolve_ivp_noreturn(
         std::shared_ptr<CySolverResult> solution_sptr,
         DiffeqFuncType diffeq_ptr,
@@ -11,7 +12,8 @@ void baseline_cysolve_ivp_noreturn(
         // General optional arguments
         const size_t expected_size,
         const size_t num_extra,
-        const void* args_ptr,
+        const char* args_ptr,
+        const size_t size_of_args,
         const size_t max_num_steps,
         const size_t max_ram_MB,
         const bool dense_output,
@@ -31,6 +33,7 @@ void baseline_cysolve_ivp_noreturn(
     const double t_start       = t_span_ptr[0];
     const double t_end         = t_span_ptr[1];
     const bool direction_flag  = t_start <= t_end ? true : false;
+    const bool forward = direction_flag == true;
     const bool t_eval_provided = t_eval ? true : false;
 
     // Get new expected size
@@ -76,9 +79,9 @@ void baseline_cysolve_ivp_noreturn(
         // General optional arguments
         expected_size,
         args_ptr,
+        size_of_args,
         max_num_steps,
         max_ram_MB,
-        dense_output,
         t_eval,
         len_t_eval,
         pre_eval_func,
@@ -103,7 +106,8 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
         // General optional arguments
         const size_t expected_size,
         const size_t num_extra,
-        const void* args_ptr,
+        const char* args_ptr,
+        const size_t size_of_args,
         const size_t max_num_steps,
         const size_t max_ram_MB,
         const bool dense_output,
@@ -147,6 +151,7 @@ std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
         expected_size,
         num_extra,
         args_ptr,
+        size_of_args,
         max_num_steps,
         max_ram_MB,
         dense_output,
@@ -193,7 +198,6 @@ PySolver::PySolver(
         // General optional arguments
         const size_t expected_size,
         const size_t num_extra,
-        const void* args_ptr,
         const size_t max_num_steps,
         const size_t max_ram_MB,
         const bool dense_output,
@@ -217,12 +221,16 @@ PySolver::PySolver(
     // We also need to pass a fake pre-eval function
     PreEvalFunc pre_eval_func = nullptr;
 
+    // Args are handled by the python class too.
+    const char* args_ptr      = nullptr;
+    const size_t size_of_args = 0;
+
     // Build the solver class. This must be heap allocated to take advantage of polymorphism.
     // Setup solver class
     if (this->solution_sptr) [[likely]]
     {
         this->solution_sptr->build_solver(
-            diffeq_ptr,
+            diffeq_ptr,  // not used when using pysolver
             t_start,
             t_end,
             y0_ptr,
@@ -230,12 +238,12 @@ PySolver::PySolver(
             // General optional arguments
             expected_size,
             args_ptr,
+            size_of_args,
             max_num_steps,
             max_ram_MB,
-            dense_output,
             t_eval,
             len_t_eval,
-            pre_eval_func,
+            pre_eval_func,  // not used when using pysolver
             // rk optional arguments
             rtol,
             atol,

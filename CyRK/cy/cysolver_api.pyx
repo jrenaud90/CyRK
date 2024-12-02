@@ -1,5 +1,6 @@
 # distutils: language = c++
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
+from libc.math cimport floor
 
 import numpy as np
 cimport numpy as cnp
@@ -51,6 +52,67 @@ cdef class WrapCySolverResult:
 
         self.cyresult_ptr.call_vectorize(t_array_ptr, len_t, y_interp_ptr)
         return y_interp_array.reshape(len_t, self.cyresult_ptr.num_dy).T
+
+    def print_diagnostics(self):
+
+        cdef str diagnostic_str = ''
+        from CyRK import __version__
+        cdef str direction_str = 'Forward'
+        if self.cyresult_ptr.direction_flag == 0:
+            direction_str = 'Backward'
+        
+        diagnostic_str += f'CyRK v{__version__} - WrapCySolverResult Diagnostic.\n'
+        diagnostic_str += f'\n----------------------------------------------------\n'
+        diagnostic_str += f'# of y:      {self.num_y}.\n'
+        diagnostic_str += f'# of dy:     {self.num_dy}.\n'
+        diagnostic_str += f'Success:     {self.success}.\n'
+        diagnostic_str += f'Error Code:  {self.error_code}.\n'
+        diagnostic_str += f'Size:        {self.size}.\n'
+        diagnostic_str += f'Steps Taken: {self.steps_taken}.\n'
+        diagnostic_str += f'Message:\n\t{self.message}\n'
+        diagnostic_str += f'\n----------------- CySolverResult -------------------\n'
+        diagnostic_str += f'Capture Extra:         {self.cyresult_ptr.capture_extra}.\n'
+        diagnostic_str += f'Capture Dense Output:  {self.cyresult_ptr.capture_dense_output}.\n'
+        diagnostic_str += f'Integration Direction: {direction_str}.\n'
+        diagnostic_str += f'Integration Method:    {self.cyresult_ptr.integrator_method}.\n'
+        diagnostic_str += f'# of Interpolates:     {self.cyresult_ptr.num_interpolates}.\n'
+
+        cdef CySolverBase* cysolver = self.cyresult_ptr.solver_uptr.get()
+        cdef size_t num_y
+        cdef size_t num_dy
+        cdef size_t i
+        cdef size_t args_size
+        cdef size_t args_size_dbls
+        cdef double* args_dbl_ptr
+        if cysolver:
+            num_y  = cysolver.num_y
+            num_dy = cysolver.num_dy
+            diagnostic_str += f'\n------------------ CySolverBase --------------------\n'
+            diagnostic_str += f'Status:     {cysolver.status}.\n'
+            diagnostic_str += f'# of y:     {num_y}.\n'
+            diagnostic_str += f'# of dy:    {num_dy}.\n'
+            diagnostic_str += f'PySolver:   {cysolver.use_pysolver}.\n'
+            diagnostic_str += f't_now:      {cysolver.t_now}.\n'
+            diagnostic_str += f'y_now:\n'
+            for i in range(num_y):
+                diagnostic_str += f'\ty{i}  = {cysolver.y_now[i]:0.5e}.\n'
+            diagnostic_str += f'dy_now:\n'
+            for i in range(num_dy):
+                diagnostic_str += f'\tdy{i} = {cysolver.dy_now[i]:0.5e}.\n'
+            args_size      = cysolver.size_of_args
+            args_size_dbls = <size_t>floor(args_size / sizeof(double))
+            args_dbl_ptr   = <double*>cysolver.args_ptr
+            diagnostic_str += f'args size (bytes):   {args_size}.\n'
+            diagnostic_str += f'args size (doubles): {args_size_dbls}.\n'
+            if args_size_dbls > 0:
+                diagnostic_str += f'args (as doubles):\n'
+                for i in range(args_size_dbls):
+                    diagnostic_str += f'\targ{i} = {args_dbl_ptr[i]:0.5e}.\n'
+        else:
+            diagnostic_str += f'CySolverBase instance was deleted or voided.\n'
+
+        diagnostic_str += f'\n-------------- Diagnostic Complete -----------------\n'
+        print(diagnostic_str)
 
     @property
     def success(self):
@@ -108,7 +170,8 @@ cdef void cysolve_ivp_noreturn(
             int method = 1,
             double rtol = 1.0e-3,
             double atol = 1.0e-6,
-            void* args_ptr = NULL,
+            char* args_ptr = NULL,
+            size_t size_of_args = 0,
             size_t num_extra = 0,
             size_t max_num_steps = 0,
             size_t max_ram_MB = 2000,
@@ -132,6 +195,7 @@ cdef void cysolve_ivp_noreturn(
         expected_size,
         num_extra,
         args_ptr,
+        size_of_args,
         max_num_steps,
         max_ram_MB,
         dense_output,
@@ -154,7 +218,8 @@ cdef CySolveOutput cysolve_ivp(
             int method = 1,
             double rtol = 1.0e-3,
             double atol = 1.0e-6,
-            void* args_ptr = NULL,
+            char* args_ptr = NULL,
+            size_t size_of_args = 0,
             size_t num_extra = 0,
             size_t max_num_steps = 0,
             size_t max_ram_MB = 2000,
@@ -177,6 +242,7 @@ cdef CySolveOutput cysolve_ivp(
         expected_size,
         num_extra,
         args_ptr,
+        size_of_args,
         max_num_steps,
         max_ram_MB,
         dense_output,
@@ -201,7 +267,8 @@ cdef CySolveOutput cysolve_ivp_gil(
             int method = 1,
             double rtol = 1.0e-3,
             double atol = 1.0e-6,
-            void* args_ptr = NULL,
+            char* args_ptr = NULL,
+            size_t size_of_args = 0,
             size_t num_extra = 0,
             size_t max_num_steps = 0,
             size_t max_ram_MB = 2000,
@@ -225,6 +292,7 @@ cdef CySolveOutput cysolve_ivp_gil(
         expected_size,
         num_extra,
         args_ptr,
+        size_of_args,
         max_num_steps,
         max_ram_MB,
         dense_output,

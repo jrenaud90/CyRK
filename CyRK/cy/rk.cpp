@@ -10,13 +10,14 @@ RKSolver::RKSolver() {}
 RKSolver::RKSolver(
     // Base Class input arguments
     DiffeqFuncType diffeq_ptr,
-    std::shared_ptr<CySolverResult> const storage_sptr,
+    std::shared_ptr<CySolverResult> storage_sptr,
     const double t_start,
     const double t_end,
-    const double* y0_ptr,
+    const double* const y0_ptr,
     const size_t num_y,
     const size_t num_extra,
-    const void* args_ptr,
+    const char* args_ptr,
+    const size_t size_of_args,
     const size_t max_num_steps,
     const size_t max_ram_MB,
     const bool use_dense_output,
@@ -39,6 +40,7 @@ RKSolver::RKSolver(
             num_y,
             num_extra,
             args_ptr,
+            size_of_args,
             max_num_steps,
             max_ram_MB,
             use_dense_output,
@@ -109,13 +111,6 @@ RKSolver::RKSolver(
     // Setup rtol and atol pointers
     this->rtols_ptr = this->rtols.data();
     this->atols_ptr = this->atols.data();
-}
-
-
-// Destructors
-RKSolver::~RKSolver()
-{
-
 }
 
 // Protected Methods

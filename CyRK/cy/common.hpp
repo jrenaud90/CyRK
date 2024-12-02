@@ -38,9 +38,9 @@ static constexpr double SIZE_MAX_DBL = 0.99 * SIZE_MAX;
 
 
 
-typedef void (*PreEvalFunc)(void*, double, double*, const void*);
+typedef void (*PreEvalFunc)(char*, double, double*, char*);
 
-typedef void (*DiffeqFuncType)(double*, double, double*, const void*, PreEvalFunc);
+typedef void (*DiffeqFuncType)(double*, double, double*, char*, PreEvalFunc);
 
 
 

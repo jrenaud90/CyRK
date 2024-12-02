@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from CyRK.cy.cysolver_api import WrapCySolverResult
-from CyRK.cy.cysolver_test import cytester
+from CyRK.cy.cysolver_test import cytester, cy_extra_output_tester
 
 args = (0.01, 0.02)
 
@@ -187,18 +187,15 @@ def test_cysolve_ivp_all_diffeqs(cysolve_test_func):
 
     result = cytester(cysolve_test_func)
 
-    # There is a weird fail state that occasionally happens on MacOS for Python 3.10 where diffeq 5 (lotkavolterra) fails.
-    # See GitHub Issue [#67](https://github.com/jrenaud90/CyRK/issues/67)
-    import platform
-    on_macos = False
-    if platform.system().lower() == 'darwin':
-        on_macos = True
-    if not result.success and on_macos and cysolve_test_func==5:
-        pytest.skip("Weird macos bug on diffeq5")
-    
     assert result.success
     assert result.t.size > 0
     assert result.y.size > 0
     assert result.y.shape[0] > 0
     assert np.all(~np.isnan(result.t))
     assert np.all(~np.isnan(result.y))
+
+
+def test_cysolve_extra_output():
+    """ Tests if cysolver is able to retain onto additional arguments for later calls when extra-output and dense-output are on """
+
+    assert cy_extra_output_tester()

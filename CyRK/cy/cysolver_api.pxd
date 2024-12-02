@@ -18,8 +18,8 @@ cdef extern from "common.cpp" nogil:
     const size_t BUFFER_SIZE
     const double MAX_STEP
 
-    ctypedef void (*PreEvalFunc)(void*, double, double*, const void*)
-    ctypedef void (*DiffeqFuncType)(double*, double, double*, const void*, PreEvalFunc)
+    ctypedef void (*PreEvalFunc)(char*, double, double*, char*)
+    ctypedef void (*DiffeqFuncType)(double*, double, double*, char*, PreEvalFunc)
 
     cdef size_t find_expected_size(        
         size_t num_y,
@@ -107,10 +107,10 @@ cdef extern from "cysolution.cpp" nogil:
                 const double* y0_ptr,
                 const int method,
                 const size_t expected_size,
-                const void* args_ptr,
+                const char* args_ptr,
+                const size_t size_of_args,
                 const size_t max_num_steps,
                 const size_t max_ram_MB,
-                const cpp_bool dense_output,
                 const double* t_eval,
                 const size_t len_t_eval,
                 PreEvalFunc pre_eval_func,
@@ -159,7 +159,8 @@ cdef extern from "cysolver.cpp" nogil:
             const double* y0_ptr,
             const size_t num_y,
             const size_t num_extra,
-            const void* args_ptr,
+            const char* args_ptr,
+            const size_t size_of_args,
             const size_t max_num_steps,
             const size_t max_ram_MB,
             const cpp_bool use_dense_output,
@@ -176,6 +177,9 @@ cdef extern from "cysolver.cpp" nogil:
         size_t num_dy
         size_t num_y
         shared_ptr[CySolverResult] storage_ptr
+        size_t size_of_args
+        vector[char] args_char_vec
+        char* args_ptr
         size_t len_t
         double t_now
         vector[double] y_now
@@ -209,7 +213,8 @@ cdef extern from "rk.cpp" nogil:
             const double* y0_ptr,
             const size_t num_y,
             const size_t num_extra,
-            const void* args_ptr,
+            const char* args_ptr,
+            const size_t size_of_args,
             const size_t max_num_steps,
             const size_t max_ram_MB,
             const cpp_bool use_dense_output,
@@ -240,7 +245,8 @@ cdef extern from "rk.cpp" nogil:
             const double* y0_ptr,
             const size_t num_y,
             const size_t num_extra,
-            const void* args_ptr,
+            const char* args_ptr,
+            const size_t size_of_args,
             const size_t max_num_steps,
             const size_t max_ram_MB,
             const cpp_bool use_dense_output,
@@ -267,7 +273,8 @@ cdef extern from "rk.cpp" nogil:
             const double* y0_ptr,
             const size_t num_y,
             const size_t num_extra,
-            const void* args_ptr,
+            const char* args_ptr,
+            const size_t size_of_args,
             const size_t max_num_steps,
             const size_t max_ram_MB,
             const cpp_bool use_dense_output,
@@ -294,7 +301,8 @@ cdef extern from "rk.cpp" nogil:
             const double* y0_ptr,
             const size_t num_y,
             const size_t num_extra,
-            const void* args_ptr,
+            const char* args_ptr,
+            const size_t size_of_args,
             const size_t max_num_steps,
             const size_t max_ram_MB,
             const cpp_bool use_dense_output,
@@ -326,7 +334,8 @@ cdef extern from "cysolve.cpp" nogil:
             const int method,
             const size_t expected_size,
             const size_t num_extra,
-            const void* args_ptr,
+            const char* args_ptr,
+            const size_t size_of_args,
             const size_t max_num_steps,
             const size_t max_ram_MB,
             const cpp_bool dense_output,
@@ -349,7 +358,8 @@ cdef extern from "cysolve.cpp" nogil:
             const int method,
             const size_t expected_size,
             const size_t num_extra,
-            const void* args_ptr,
+            const char* args_ptr,
+            const size_t size_of_args,
             const size_t max_num_steps,
             const size_t max_ram_MB,
             const cpp_bool dense_output,
@@ -377,7 +387,8 @@ cdef void cysolve_ivp_noreturn(
     int method = *,
     double rtol = *,
     double atol = *,
-    void* args_ptr = *,
+    char* args_ptr = *,
+    size_t size_of_args = *,
     size_t num_extra = *,
     size_t max_num_steps = *,
     size_t max_ram_MB = *,
@@ -400,7 +411,8 @@ cdef CySolveOutput cysolve_ivp(
     int method = *,
     double rtol = *,
     double atol = *,
-    void* args_ptr = *,
+    char* args_ptr = *,
+    size_t size_of_args = *,
     size_t num_extra = *,
     size_t max_num_steps = *,
     size_t max_ram_MB = *,
@@ -423,7 +435,8 @@ cdef CySolveOutput cysolve_ivp_gil(
     int method = *,
     double rtol = *,
     double atol = *,
-    void* args_ptr = *,
+    char* args_ptr = *,
+    size_t size_of_args = *,
     size_t num_extra = *,
     size_t max_num_steps = *,
     size_t max_ram_MB = *,
