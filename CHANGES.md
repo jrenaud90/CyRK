@@ -2,6 +2,13 @@
 
 ## 2024
 
+#### v0.12.1 (2024-12-02)
+
+Fixes:
+
+Tests:
+* Added test to check that arrays stay alive after underlying `WrapCySolverResult` class is destroyed.
+
 #### v0.12.0 (2024-12-02)
 
 New & Changes:
