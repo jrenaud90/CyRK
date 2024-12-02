@@ -241,12 +241,15 @@ def cy_extra_output_tester():
         t_span_ptr,
         y0_ptr,
         num_y,
-        int_method,
-        1.0e-4,
-        1.0e-5,
-        <char*>args_ptr,
-        arg_size,
-        num_extra
+        method=int_method,
+        rtol=1.0e-4,
+        atol=1.0e-5,
+        args_ptr=<char*>args_ptr,
+        size_of_args=rg_size,
+        num_extra=num_extra,
+        max_num_steps=0,
+        max_ram_MB=2000,
+        dense_output=True
         )
 
     cdef double check_t = 4.335
