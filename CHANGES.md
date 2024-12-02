@@ -5,7 +5,7 @@
 #### v0.12.1 (2024-12-02)
 
 Fixes:
-* Added fix so that arrays returned by `WrapCySolverResult` class are not destroyed when class is. Instead they are managed by python's garbage collector once they are held by a python variable.
+* Added fix so that arrays returned by `WrapCySolverResult` class are not destroyed when class is. Instead they are managed by python's garbage collector once they are held by a python variable. This addresses Github issues [#80](https://github.com/jrenaud90/CyRK/issues/80) and [#78](https://github.com/jrenaud90/CyRK/issues/78)
 
 Tests:
 * Added test to check that arrays stay alive after underlying `WrapCySolverResult` class is destroyed.
