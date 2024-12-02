@@ -208,4 +208,5 @@ def test_cysolve_ivp_all_diffeqs(cysolve_test_func):
 def test_cysolve_extra_output():
     """ Tests if cysolver is able to retain onto additional arguments for later calls when extra-output and dense-output are on """
 
+    print(cy_extra_output_tester())
     assert cy_extra_output_tester()

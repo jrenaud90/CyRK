@@ -37,8 +37,6 @@ CySolverResult::CySolverResult(
     {
         this->retain_solver = true;
     }
-    // TEMP:
-    this->retain_solver = true;
     
     // Get solution class ready to go
     this->reset();
