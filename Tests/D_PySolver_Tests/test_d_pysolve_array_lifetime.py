@@ -1,8 +1,6 @@
-import pytest
 import numpy as np
-import numba as nb
 from CyRK import pysolve_ivp
-import math
+import gc
 
 
 def diffeq(dy, t, y):
@@ -17,7 +15,12 @@ atol = 1.0e-7
 
 def run_diffeq_array_return():
     result = pysolve_ivp(diffeq, time_span, initial_conds, method="RK45", rtol=rtol, atol=atol, pass_dy_as_arg=True)
-    return result.t, result.y
+
+    t = result.t
+    y = result.y
+    del result
+    gc.collect()
+    return t, y
 
 def run_diffeq_result_return():
     result = pysolve_ivp(diffeq, time_span, initial_conds, method="RK45", rtol=rtol, atol=atol, pass_dy_as_arg=True)
@@ -27,7 +30,7 @@ def test_pysolve_array_lifetimes():
     """ Tests that the underlying arrays returned by the WrapCySolverResult class can outlive the class instance. """
     
     # Run in a loop because sometimes memory corruptions can take a while to appear
-    for i in range(10):
+    for i in range(50):
         # Get result from the result instance class
         result = run_diffeq_result_return()
 
