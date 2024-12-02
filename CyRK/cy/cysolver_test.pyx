@@ -285,7 +285,7 @@ def cy_extra_output_tester():
     args_ptr[1] = -99.0
     args_ptr[2] = -99.0
     printf("cy_extra_output_tester Pt13\n")
-    args_ptr = <double*>realloc(args_ptr, sizeof(double)*3000)
+    args_ptr = <double*>realloc(args_ptr, sizeof(double)*50)
     cdef size_t i 
     for i in range(3000):
         args_ptr[i] = -99.0
