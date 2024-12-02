@@ -249,19 +249,20 @@ def cy_extra_output_tester():
         num_extra
         )
 
-    cdef double dy1, dy2, dy3, e1, e2, e3
     cdef double check_t = 4.335
+    assert result.success
 
     # Call the result to get the baseline values for extra output
     cdef double[6] y_interp
     cdef double* y_interp_ptr = &y_interp[0]
     result.get().call(check_t, y_interp_ptr)
-    dy1 = y_interp_ptr[0]
-    dy2 = y_interp_ptr[1]
-    dy3 = y_interp_ptr[2]
-    e1  = y_interp_ptr[3]
-    e2  = y_interp_ptr[4]
-    e3  = y_interp_ptr[5]
+    cdef double dy1 = y_interp_ptr[0]
+    cdef double dy2 = y_interp_ptr[1]
+    cdef double dy3 = y_interp_ptr[2]
+    cdef double e1  = y_interp_ptr[3]
+    cdef double e2  = y_interp_ptr[4]
+    cdef double e3  = y_interp_ptr[5]
+
 
     # Corrupt or otherwise change up the arg pointer
     args_ptr[0] = -99.0
