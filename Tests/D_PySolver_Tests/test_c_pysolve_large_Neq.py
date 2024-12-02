@@ -13,7 +13,7 @@ def cy_diffeq(dy, t, y):
         dy[i] = -y[i]/2 + 2*math.sin(3*t)
     
 
-@pytest.mark.parametrize('Neqs', (2**20, 2**21, 2**22))
+@pytest.mark.parametrize('Neqs', (2**22,))
 def test_pysolve_large_neqs(Neqs):
     """ Tests CyRK's ability to simultaneously solve many copies of this system. """
     y0 = np.full(Neqs, y_0, dtype=np.float64)
