@@ -1,5 +1,5 @@
 {% set name = "CyRK" %}
-{% set version = "0.11.1" %}
+{% set version = "0.12.1" %}
 
 package:
   name: {{ name|lower }}
@@ -7,12 +7,12 @@ package:
 
 source:
   url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/cyrk-{{ version }}.tar.gz
-  sha256: 63e48e92b846195623ddd798921af8aeee7bfcbd034964b0ddbf96da8d6fc2e0
+  sha256: e3359369a702e6056d3da3e2d3bda3fa3ee1acff72de827e6203b1fd2419f466
 
 build:
-  skip: true  # [py>=313 or py2k or py<=37]
+  skip: true  # [py>312]
   script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
-  number: 0
+  number: 1
 
 requirements:
   build:
@@ -20,14 +20,15 @@ requirements:
     - {{ compiler('cxx') }}
     - {{ stdlib('c') }}
   host:
-    - python >=3.8,<3.13
+    - python
     - setuptools >=64.0.0
-    - numpy >=1.22,<2
+    - numpy  # empty version spec will pick up channel pinnings
+    - numpy >=1.22,<2  # cyrk specific pinnings also enforced
     - cython >=3.0.0
     - wheel >=0.38
     - pip
   run:
-    - python >=3.8,<3.13
+    - python
     - numba >=0.54.1
     - scipy >=1.9.3
     - {{ pin_compatible('numpy') }}
@@ -37,7 +38,7 @@ test:
     - CyRK
   commands:
     - pip check
-    - {{ PYTHON }} -c "import CyRK; CyRK.test_nbrk(); CyRK.test_cysolver(); CyRK.test_pysolver()"
+    - python -c "import CyRK; CyRK.test_nbrk(); CyRK.test_cysolver(); CyRK.test_pysolver()"
   requires:
     - pip
 
