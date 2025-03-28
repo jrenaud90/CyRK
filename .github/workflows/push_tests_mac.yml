@@ -44,7 +44,7 @@ jobs:
         shell: bash -el {0}
         # export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
         run: |
-          conda install -c conda-forge nomkl
+          conda install -c conda-forge nomkl llvm-openmp
           export LDFLAGS="-L/opt/homebrew/opt/llvm/lib"
           export CPPFLAGS="-I/opt/homebrew/opt/llvm/include"
           export LDFLAGS="-L/opt/homebrew/opt/libomp/lib"
@@ -102,7 +102,7 @@ jobs:
         shell: bash -el {0}
         # export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
         run: |
-          conda install -c conda-forge nomkl
+          conda install -c conda-forge nomkl llvm-openmp
           export LDFLAGS="-L/usr/local/opt/llvm/lib"
           export CPPFLAGS="-I/usr/local/opt/llvm/include"
           export LDFLAGS="-L/usr/local/opt/libomp/lib"
