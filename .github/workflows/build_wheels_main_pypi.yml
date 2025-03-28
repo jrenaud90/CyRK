@@ -61,13 +61,13 @@ jobs:
         shell: bash -el {0}
         run: |
           python -m pip install --upgrade build
-          conda install pytest matplotlib numba numpy scipy cython pytest-xdist
           export LDFLAGS="-L/opt/homebrew/opt/llvm/lib"
           export CPPFLAGS="-I/opt/homebrew/opt/llvm/include"
           export LDFLAGS="-L/opt/homebrew/opt/libomp/lib"
           export CPPFLAGS="-I/opt/homebrew/opt/libomp/include"
           export CC=/opt/homebrew/opt/llvm/bin/clang
           export CXX=/opt/homebrew/opt/llvm/bin/clang++
+          conda install -c conda-forge nomkl
           python -m build --wheel --outdir ./wheelhouse/
 
       - uses: actions/upload-artifact@v4
@@ -113,14 +113,13 @@ jobs:
         shell: bash -el {0}
         run: |
           python -m pip install --upgrade build
-          conda install nomkl
-          conda install pytest matplotlib numba numpy scipy cython pytest-xdist
           export LDFLAGS="-L/usr/local/opt/llvm/lib"
           export CPPFLAGS="-I/usr/local/opt/llvm/include"
           export LDFLAGS="-L/usr/local/opt/libomp/lib"
           export CPPFLAGS="-I/usr/local/opt/libomp/include"
           export CC=/usr/local/opt/llvm/bin/clang
           export CXX=/usr/local/opt/llvm/bin/clang++
+          conda install -c conda-forge nomkl
           python -m build --wheel --outdir ./wheelhouse/
 
       - uses: actions/upload-artifact@v4

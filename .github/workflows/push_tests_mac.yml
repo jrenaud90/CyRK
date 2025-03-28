@@ -44,7 +44,7 @@ jobs:
         shell: bash -el {0}
         # export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
         run: |
-          conda install pytest matplotlib numba numpy scipy cython pytest-xdist
+          conda install -c conda-forge nomkl
           export LDFLAGS="-L/opt/homebrew/opt/llvm/lib"
           export CPPFLAGS="-I/opt/homebrew/opt/llvm/include"
           export LDFLAGS="-L/opt/homebrew/opt/libomp/lib"
@@ -52,6 +52,13 @@ jobs:
           export CC=/opt/homebrew/opt/llvm/bin/clang
           export CXX=/opt/homebrew/opt/llvm/bin/clang++
           python -m pip install -v .
+          conda install -c conda-forge pytest pytest-xdist
+      
+      - name: Manual Test
+        run: |
+          cd Tests/E_CySolver_Tests/
+          python -c "from test_a_cysolve_ivp import test_cysolve_ivp; print('Import Success!'); test_cysolve_ivp(True, False, False, False, False, 1, 0.0, 10_000, True); print('DONE!')"
+          cd ../..
         
       - name: Run pytest
         shell: bash -el {0}
@@ -95,8 +102,7 @@ jobs:
         shell: bash -el {0}
         # export CPPFLAGS="$CPPFLAGS -Xpreprocessor -fopenmp -lgomp"
         run: |
-          conda install nomkl
-          conda install pytest matplotlib numba numpy scipy cython pytest-xdist
+          conda install -c conda-forge nomkl
           export LDFLAGS="-L/usr/local/opt/llvm/lib"
           export CPPFLAGS="-I/usr/local/opt/llvm/include"
           export LDFLAGS="-L/usr/local/opt/libomp/lib"
@@ -104,6 +110,13 @@ jobs:
           export CC=/usr/local/opt/llvm/bin/clang
           export CXX=/usr/local/opt/llvm/bin/clang++
           python -m pip install -v .
+          conda install -c conda-forge pytest pytest-xdist
+
+      - name: Manual Test
+        run: |
+          cd Tests/E_CySolver_Tests/
+          python -c "from test_a_cysolve_ivp import test_cysolve_ivp; print('Import Success!'); test_cysolve_ivp(True, False, False, False, False, 1, 0.0, 10_000, True); print('DONE!')"
+          cd ../..
         
       - name: Run pytest
         shell: bash -el {0}
