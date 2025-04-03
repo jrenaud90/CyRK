@@ -11,7 +11,7 @@
 #include "cysolver.hpp"
 #include "rk.hpp"
 
-class CySolverResult : public std::enable_shared_from_this<CySolverResult>{
+class CySolverResult {
 
 // Attributes
 protected:

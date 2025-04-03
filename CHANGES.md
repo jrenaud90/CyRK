@@ -1,5 +1,15 @@
 # CyRK - Change Log
 
+## 2025
+
+### v0.13.0 (2025-04-03)
+
+* Fixes memory leak in CySolver (this was mostly effecting pure cython calls; python calls may not have had an issue. Also only when dense output was on).
+
+#### v0.12.2 (2025-03-27)
+
+* Re-release to trigger conda build that included dependency fixes.
+
 ## 2024
 
 #### v0.12.1 (2024-12-02)

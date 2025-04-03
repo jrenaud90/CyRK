@@ -114,6 +114,10 @@ cdef class WrapCySolverResult:
         diagnostic_str += f'\n-------------- Diagnostic Complete -----------------\n'
         print(diagnostic_str)
 
+    def __dealloc__(self):
+        # Deallocate any heap allocated memory
+        self.cyresult_shptr.reset()
+
     @property
     def success(self):
         return self.cyresult_ptr.success

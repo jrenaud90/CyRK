@@ -153,7 +153,7 @@ cdef extern from "cysolver.cpp" nogil:
         CySolverBase()
         CySolverBase(
             DiffeqFuncType diffeq_ptr,
-            shared_ptr[CySolverResult] storage_ptr,
+            CySolverResult* storage_ptr,
             const double t_start,
             const double t_end,
             const double* y0_ptr,
@@ -176,7 +176,7 @@ cdef extern from "cysolver.cpp" nogil:
         int integration_method
         size_t num_dy
         size_t num_y
-        shared_ptr[CySolverResult] storage_ptr
+        CySolverResult* storage_ptr
         size_t size_of_args
         vector[char] args_char_vec
         char* args_ptr
@@ -207,7 +207,7 @@ cdef extern from "rk.cpp" nogil:
         RKSolver()
         RKSolver(
             DiffeqFuncType diffeq_ptr,
-            shared_ptr[CySolverResult] storage_ptr,
+            CySolverResult* storage_ptr,
             const double t_start,
             const double t_end,
             const double* y0_ptr,
@@ -239,7 +239,7 @@ cdef extern from "rk.cpp" nogil:
         RK23()
         RK23(
             DiffeqFuncType diffeq_ptr,
-            shared_ptr[CySolverResult] storage_ptr,
+            CySolverResult* storage_ptr,
             const double t_start,
             const double t_end,
             const double* y0_ptr,
@@ -267,7 +267,7 @@ cdef extern from "rk.cpp" nogil:
         RK45()
         RK45(
             DiffeqFuncType diffeq_ptr,
-            shared_ptr[CySolverResult] storage_ptr,
+            CySolverResult* storage_ptr,
             const double t_start,
             const double t_end,
             const double* y0_ptr,
@@ -295,7 +295,7 @@ cdef extern from "rk.cpp" nogil:
         DOP853()
         DOP853(
             DiffeqFuncType diffeq_ptr,
-            shared_ptr[CySolverResult] storage_ptr,
+            CySolverResult* storage_ptr,
             const double t_start,
             const double t_end,
             const double* y0_ptr,
