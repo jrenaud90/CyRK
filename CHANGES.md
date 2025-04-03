@@ -4,7 +4,10 @@
 
 ### v0.13.0 (2025-04-03)
 
+Fixes:
 * Fixes memory leak in CySolver (this was mostly effecting pure cython calls; python calls may not have had an issue. Also only when dense output was on).
+  * The fix also led to a fairly big performance boost to `pysolve`.
+* Fixed error in CySolver tester that could cause crashes or incorrect results (only effected some tests and benchmarks).
 
 #### v0.12.2 (2025-03-27)
 
