@@ -710,7 +710,7 @@ public:
     RKSolver(
         // Base Class input arguments
         DiffeqFuncType diffeq_ptr,
-        std::shared_ptr<CySolverResult> storage_sptr,
+        CySolverResult* storage_ptr,
         const double t_start,
         const double t_end,
         const double* const y0_ptr,
@@ -750,6 +750,8 @@ public:
     virtual void reset() override;
 };
 
+
+
 class RK45 : public RKSolver {
 
 protected:
@@ -759,6 +761,8 @@ public:
     using RKSolver::RKSolver;
     virtual void reset() override;
 };
+
+
 
 class DOP853 : public RKSolver {
 

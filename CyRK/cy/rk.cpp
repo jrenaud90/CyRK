@@ -10,7 +10,7 @@ RKSolver::RKSolver() {}
 RKSolver::RKSolver(
     // Base Class input arguments
     DiffeqFuncType diffeq_ptr,
-    std::shared_ptr<CySolverResult> storage_sptr,
+    CySolverResult* storage_ptr,
     const double t_start,
     const double t_end,
     const double* const y0_ptr,
@@ -33,7 +33,7 @@ RKSolver::RKSolver(
     const double first_step_size) :
         CySolverBase(
             diffeq_ptr,
-            storage_sptr,
+            storage_ptr,
             t_start,
             t_end,
             y0_ptr,
@@ -55,13 +55,13 @@ RKSolver::RKSolver(
     {
         if (this->user_provided_first_step_size < 0.0) [[unlikely]]
         {
-            this->storage_sptr->error_code = -1;
-            this->storage_sptr->update_message("User-provided initial step size must be a positive number.");
+            this->storage_ptr->error_code = -1;
+            this->storage_ptr->update_message("User-provided initial step size must be a positive number.");
         }
         else if (first_step_size > (this->t_delta_abs * 0.5)) [[unlikely]]
         {
-            this->storage_sptr->error_code = -1;
-            this->storage_sptr->update_message("User-provided initial step size must be smaller than 50 % of the time span size.");
+            this->storage_ptr->error_code = -1;
+            this->storage_ptr->update_message("User-provided initial step size must be smaller than 50 % of the time span size.");
         }
     }
 
@@ -184,12 +184,6 @@ void RKSolver::p_estimate_error()
     this->error_norm = this->step_size * std::sqrt(this->error_norm) / this->num_y_sqrt;
 }
 
-
-    //     double error_norm_abs = std::fabs(error_dot) * scale_inv * this->step;
-
-    //     this->error_norm += (error_norm_abs * error_norm_abs);
-    // }
-    // this->error_norm = std::sqrt(this->error_norm) / this->num_y_sqrt;
 
 
 void RKSolver::p_step_implementation()

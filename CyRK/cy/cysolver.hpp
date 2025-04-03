@@ -55,7 +55,7 @@ public:
     CySolverBase(
         // Input variables
         DiffeqFuncType diffeq_ptr,
-        std::shared_ptr<CySolverResult> storage_sptr,
+        CySolverResult* storage_ptr,
         const double t_start,
         const double t_end,
         const double* const y0_ptr,
@@ -161,7 +161,7 @@ public:
     std::vector<double> dy_tmp = std::vector<double>();
 
     // Result storage
-    std::shared_ptr<CySolverResult> storage_sptr = nullptr;
+    CySolverResult* storage_ptr = nullptr;
 
     // State attributes
     size_t len_t       = 0;

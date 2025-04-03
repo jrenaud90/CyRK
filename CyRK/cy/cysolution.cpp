@@ -202,7 +202,7 @@ void CySolverResult::build_solver(
         // RK23
         this->solver_uptr = std::make_unique<RK23>(
             // Common Inputs
-            diffeq_ptr, this->shared_from_this(), t_start, t_end, y0_ptr,
+            diffeq_ptr, this, t_start, t_end, y0_ptr,
             this->num_y, this->num_extra, args_ptr, size_of_args, max_num_steps, max_ram_MB,
             this->capture_dense_output, t_eval, len_t_eval, pre_eval_func,
             // RK Inputs
@@ -213,7 +213,7 @@ void CySolverResult::build_solver(
         // RK45
         this->solver_uptr = std::make_unique<RK45>(
             // Common Inputs
-            diffeq_ptr, this->shared_from_this(), t_start, t_end, y0_ptr,
+            diffeq_ptr, this, t_start, t_end, y0_ptr,
             this->num_y, this->num_extra, args_ptr, size_of_args, max_num_steps, max_ram_MB,
             this->capture_dense_output, t_eval, len_t_eval, pre_eval_func,
             // RK Inputs
@@ -224,7 +224,7 @@ void CySolverResult::build_solver(
         // DOP853
         this->solver_uptr = std::make_unique<DOP853>(
             // Common Inputs
-            diffeq_ptr, this->shared_from_this(), t_start, t_end, y0_ptr,
+            diffeq_ptr, this, t_start, t_end, y0_ptr,
             this->num_y, this->num_extra, args_ptr, size_of_args, max_num_steps, max_ram_MB,
             this->capture_dense_output, t_eval, len_t_eval, pre_eval_func,
             // RK Inputs

@@ -401,6 +401,7 @@ def cytester(
             args_ptr_dbl[0] = 10.0
             args_ptr_dbl[1] = 28.0
             args_ptr_dbl[2] = 8.0 / 3.0
+            size_of_args = 8 * 3
             cast_arg_dbl = True
             
         elif diffeq_number == 4:
@@ -413,6 +414,7 @@ def cytester(
             args_ptr_dbl[0] = 10.0
             args_ptr_dbl[1] = 28.0
             args_ptr_dbl[2] = 8.0 / 3.0
+            size_of_args = 8 * 3
             cast_arg_dbl = True
 
         elif diffeq_number == 5:
@@ -425,6 +427,7 @@ def cytester(
             args_ptr_dbl[1] = 1.0
             args_ptr_dbl[2] = 3.0
             args_ptr_dbl[3] = 1.0
+            size_of_args = 8 * 4
             cast_arg_dbl = True
 
         elif diffeq_number == 6:
@@ -436,6 +439,7 @@ def cytester(
             args_ptr_dbl[0] = 1.0
             args_ptr_dbl[1] = 1.0
             args_ptr_dbl[2] = 9.81
+            size_of_args = 8 * 3
             cast_arg_dbl = True
 
         elif diffeq_number == 7:
@@ -446,7 +450,7 @@ def cytester(
             t_span_ptr[1] = 10.0
             # Set args pointer to our arb args struct variable's address and cast it to a void pointer
             args_ptr = <char*>&arb_arg_struct
-            size_of_args = sizeof(arb_arg_struct)
+            size_of_args = sizeof(ArbitraryArgStruct)
             cast_arg_dbl = False
         
         elif diffeq_number == 8:
@@ -458,6 +462,7 @@ def cytester(
             args_ptr_dbl[0] = 1.0
             args_ptr_dbl[1] = 1.0
             args_ptr_dbl[2] = 9.81
+            size_of_args = 8 * 3
             cast_arg_dbl = True
 
         else:
@@ -471,14 +476,15 @@ def cytester(
         t_span_ptr[1] = t_span[1]
         if args is not None:
             args_ptr     = <char*>&args[0]
-            size_of_args = sizeof(double) # * args.size
+            size_of_args = sizeof(double) * args.size
         else:
             args_ptr     = NULL
             size_of_args = 0
 
     if cast_arg_dbl:
         args_ptr     = <char*>args_ptr_dbl
-        size_of_args = sizeof(args_arr)
+        if size_of_args == 0:
+            size_of_args = sizeof(args_arr)
 
     # Parse rtol
     cdef double* rtols_ptr = NULL
@@ -513,6 +519,7 @@ def cytester(
         first_step = first_step,
         expected_size = expected_size
         )
+
     cdef WrapCySolverResult pysafe_result = WrapCySolverResult()
     pysafe_result.set_cyresult_pointer(result)
 

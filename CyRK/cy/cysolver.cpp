@@ -29,7 +29,7 @@ void Py_XDECREF(PyObject* x)
 CySolverBase::CySolverBase() {}
 CySolverBase::CySolverBase(
         DiffeqFuncType diffeq_ptr,
-        std::shared_ptr<CySolverResult> storage_sptr,
+        CySolverResult* storage_ptr,
         const double t_start,
         const double t_end,
         const double* const y0_ptr,
@@ -51,7 +51,7 @@ CySolverBase::CySolverBase(
             status(0),
             num_y(num_y),
             num_extra(num_extra),
-            storage_sptr(storage_sptr),
+            storage_ptr(storage_ptr),
             t_start(t_start),
             t_end(t_end)
 {
@@ -59,7 +59,7 @@ CySolverBase::CySolverBase(
     this->capture_extra = num_extra > 0;
 
     // Setup storage
-    this->storage_sptr->update_message("CySolverBase Initializing.");
+    this->storage_ptr->update_message("CySolverBase Initializing.");
 
     // Build storage for args
     if (args_ptr && (this->size_of_args > 0))
@@ -81,8 +81,8 @@ CySolverBase::CySolverBase(
     if (this->num_y == 0)
     {
         this->status = -9;
-        this->storage_sptr->error_code = -1;
-        this->storage_sptr->update_message("CySolverBase Attribute Error: `num_y` = 0 so nothing to integrate.");
+        this->storage_ptr->error_code = -1;
+        this->storage_ptr->update_message("CySolverBase Attribute Error: `num_y` = 0 so nothing to integrate.");
     }
 
     // Parse y values
@@ -170,10 +170,10 @@ CySolverBase::~CySolverBase()
         Py_XDECREF(this->cython_extension_class_instance);
     }
 
-    // Reset shared pointers
-    if (this->storage_sptr)
+    // Set storage pointer to null
+    if (this->storage_ptr)
     {
-        this->storage_sptr.reset();
+        this->storage_ptr = nullptr;
     }
 }
 
@@ -234,9 +234,9 @@ bool CySolverBase::check_status() const
     }
 
     // Otherwise, check if the solution storage is in an error state.
-    if (this->storage_sptr) [[likely]]
+    if (this->storage_ptr) [[likely]]
     {
-        if (this->storage_sptr->error_code != 0)
+        if (this->storage_ptr->error_code != 0)
         {
             return false;
         }
@@ -284,13 +284,13 @@ void CySolverBase::reset()
     if (!this->use_t_eval)
     {
         // Store initial conditions
-        this->storage_sptr->save_data(this->t_now, &this->y_now[0], &this->dy_now[0]);
+        this->storage_ptr->save_data(this->t_now, &this->y_now[0], &this->dy_now[0]);
     }
     
     // Construct interpolator using t0 and y0 as its data point
     if (this->use_dense_output)
     {
-        int built_dense = this->storage_sptr->build_dense(true);
+        int built_dense = this->storage_ptr->build_dense(true);
         if (built_dense < 0)
         {
             this->status = -100;
@@ -347,14 +347,14 @@ void CySolverBase::take_step()
 
             this->p_step_implementation();
             this->len_t++;
-            this->storage_sptr->steps_taken++;
+            this->storage_ptr->steps_taken++;
 
             // Take care of dense output and t_eval
             int dense_built = 0;
             if (this->use_dense_output)
             {
                 // We need to save many dense interpolators to storage. So let's heap allocate them (that is what "true" indicates)
-                dense_built = this->storage_sptr->build_dense(true);
+                dense_built = this->storage_ptr->build_dense(true);
                 if (dense_built < 0)
                 {
                     this->status = -100;
@@ -417,7 +417,7 @@ void CySolverBase::take_step()
                     {
                         // We are not saving interpolators to storage but we still need one to work on t_eval. 
                         // We will only ever need 1 interpolator per step. So let's just stack allocate that one.
-                        dense_built = this->storage_sptr->build_dense(false);
+                        dense_built = this->storage_ptr->build_dense(false);
                     }
 
                     // There are steps we need to interpolate over.
@@ -453,7 +453,7 @@ void CySolverBase::take_step()
                         }
 
                         // Call the interpolator using this new time value.
-                        this->storage_sptr->dense_vec.back().call(t_interp, this->y_interp.data());
+                        this->storage_ptr->dense_vec.back().call(t_interp, this->y_interp.data());
 
                         if (this->capture_extra)
                         {
@@ -470,7 +470,7 @@ void CySolverBase::take_step()
                             this->diffeq(this);
                         }
                         // Save interpolated data to storage. If capture extra is true then dy_now holds those extra values. If it is false then it won't hurt to pass dy_now to storage.
-                        this->storage_sptr->save_data(t_interp, this->y_interp.data(), &this->dy_now[0]);
+                        this->storage_ptr->save_data(t_interp, this->y_interp.data(), &this->dy_now[0]);
                     }
                 }
                 // Update the old index for the next step
@@ -479,7 +479,7 @@ void CySolverBase::take_step()
             if (save_data)
             {
                 // No data has been saved from the current step. Save the integrator data for this step as the solution.
-                this->storage_sptr->save_data(this->t_now, &this->y_now[0], &this->dy_now[0]);
+                this->storage_ptr->save_data(this->t_now, &this->y_now[0], &this->dy_now[0]);
             }
 
             if (prepare_for_next_step)
@@ -497,34 +497,34 @@ void CySolverBase::take_step()
     if (this->status != 0)
     {
         // Update integration message
-        this->storage_sptr->error_code = this->status;
-        this->storage_sptr->success    = false;
+        this->storage_ptr->error_code = this->status;
+        this->storage_ptr->success    = false;
         switch (this->status)
         {
         case 2:
-            this->storage_sptr->update_message("Integration storage changed but integrator was not reset. Call `.reset()` before integrating after change.");
+            this->storage_ptr->update_message("Integration storage changed but integrator was not reset. Call `.reset()` before integrating after change.");
             break;
         case 1:
-            this->storage_sptr->update_message("Integration completed without issue.");
-            this->storage_sptr->success = true;
+            this->storage_ptr->update_message("Integration completed without issue.");
+            this->storage_ptr->success = true;
             break;
         case -1:
-            this->storage_sptr->update_message("Error in step size calculation:\n\tRequired step size is less than spacing between numbers.");
+            this->storage_ptr->update_message("Error in step size calculation:\n\tRequired step size is less than spacing between numbers.");
             break;
         case -2:
-            this->storage_sptr->update_message("Maximum number of steps (set by user) exceeded during integration.");
+            this->storage_ptr->update_message("Maximum number of steps (set by user) exceeded during integration.");
             break;
         case -3:
-            this->storage_sptr->update_message("Maximum number of steps (set by system architecture) exceeded during integration.");
+            this->storage_ptr->update_message("Maximum number of steps (set by system architecture) exceeded during integration.");
             break;
         case -4:
-            this->storage_sptr->update_message("Error in step size calculation:\n\tError in step size acceptance.");
+            this->storage_ptr->update_message("Error in step size calculation:\n\tError in step size acceptance.");
             break;
         case -9:
-            this->storage_sptr->update_message("Error in CySolver initialization.");
+            this->storage_ptr->update_message("Error in CySolver initialization.");
             break;
         default:
-            this->storage_sptr->update_message("Unknown status encountered during integration.");
+            this->storage_ptr->update_message("Unknown status encountered during integration.");
             break;
         }
     }
@@ -559,8 +559,8 @@ void CySolverBase::set_cython_extension_instance(PyObject* cython_extension_clas
         {
             this->use_pysolver = false;
             this->status = -1;
-            this->storage_sptr->error_code = -51;
-            this->storage_sptr->update_message("Error encountered importing python hooks.\n");
+            this->storage_ptr->error_code = -51;
+            this->storage_ptr->update_message("Error encountered importing python hooks.\n");
         }
         else
         {
