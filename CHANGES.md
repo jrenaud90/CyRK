@@ -4,6 +4,9 @@
 
 ### v0.13.0 (2025-04-03)
 
+New & Changes:
+* Added support for Python 3.13 and Numpy 2.x
+
 Fixes:
 * Fixes memory leak in CySolver (this was mostly effecting pure cython calls; python calls may not have had an issue. Also only when dense output was on).
   * The fix also led to a fairly big performance boost to `pysolve`.
