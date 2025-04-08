@@ -31,7 +31,6 @@ jobs:
       fail-fast: false
       matrix:
         python:
-          - "3.8"
           - "3.9"
           - "3.10"
           - "3.11"
@@ -85,7 +84,6 @@ jobs:
       fail-fast: false
       matrix:
         python:
-          - "3.8"
           - "3.9"
           - "3.10"
           - "3.11"
@@ -140,6 +138,7 @@ jobs:
         platform:
           #              - macos-12  ## macos is not playing nice with cibuildwheel with openmp from cython.
           - windows-latest
+          - ubuntu-latest
           - ubuntu-20.04
 
     steps:
