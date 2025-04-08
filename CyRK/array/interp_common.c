@@ -2,7 +2,7 @@
 #include "Python.h"
 
 
-Py_ssize_t c_binary_search_with_guess(double key, const double* array, Py_ssize_t length, Py_ssize_t guess){
+Py_ssize_t c_binary_search_with_guess(double key, double* array, Py_ssize_t length, Py_ssize_t guess){
     Py_ssize_t LIKELY_IN_CACHE_SIZE = 8;
 
     Py_ssize_t imin = 0;

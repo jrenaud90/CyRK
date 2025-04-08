@@ -2,6 +2,14 @@
 
 ## 2025
 
+#### v0.13.1 (2025-04-08)
+
+Changes:
+* Added more debug info during installation.
+
+Fixes:
+* Fixed const errors at compile time.
+
 ### v0.13.0 (2025-04-03)
 
 New & Changes:

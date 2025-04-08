@@ -9,6 +9,7 @@ from setuptools.command.build_py import build_py as _build_py
 from setuptools.command.build_ext import build_ext as _build_ext
 
 import numpy as np
+import Cython
 
 num_procs = os.cpu_count()
 num_threads = max(1, num_procs - 1)
@@ -74,8 +75,8 @@ class build_cyrk(_build_py):
     def initialize_options(self):
         super().initialize_options()
         from Cython.Build import cythonize
-        print('!-- Cythonizing CyRK')
-        if self.distribution.ext_modules == None:
+        print(f'!-- Cythonizing CyRK (Python v{sys.version}; NumPy v{np.__version__}; Cython v{Cython.__version__})')
+        if self.distribution.ext_modules is None:
             self.distribution.ext_modules = []
 
         # Add cython extensions to ext_modules list
