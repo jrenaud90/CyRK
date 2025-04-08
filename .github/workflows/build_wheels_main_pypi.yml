@@ -139,7 +139,6 @@ jobs:
           #              - macos-12  ## macos is not playing nice with cibuildwheel with openmp from cython.
           - windows-latest
           - ubuntu-latest
-          - ubuntu-20.04
 
     steps:
       - uses: actions/checkout@v4
