@@ -476,9 +476,9 @@ cpdef (double complex, Py_ssize_t) interp_complexj(
 
 
 cdef void interp_array_ptr(
-        const double* desired_x_array,
-        const double* x_domain,
-        const double* dependent_values,
+        double* desired_x_array,
+        double* x_domain,
+        double* dependent_values,
         double* desired_dependent_array,
         Py_ssize_t len_x,
         Py_ssize_t desired_len
@@ -517,9 +517,9 @@ cdef void interp_array_ptr(
 
 
 cpdef void interp_array(
-        const double[::1] desired_x_array,
-        const double[::1] x_domain,
-        const double[::1] dependent_values,
+        double[::1] desired_x_array,
+        double[::1] x_domain,
+        double[::1] dependent_values,
         double[::1] desired_dependent_array
         ) noexcept nogil:
 
@@ -533,9 +533,9 @@ cpdef void interp_array(
 
 
 cdef void interp_complex_array_ptr(
-        const double* desired_x_array,
-        const double* x_domain,
-        const  double complex* dependent_values,
+        double* desired_x_array,
+        double* x_domain,
+         double complex* dependent_values,
         double complex* desired_dependent_array,
         Py_ssize_t len_x,
         Py_ssize_t desired_len
@@ -572,9 +572,9 @@ cdef void interp_complex_array_ptr(
 
 
 cpdef void interp_complex_array(
-        const double[::1] desired_x_array,
-        const double[::1] x_domain,
-        const double complex[::1] dependent_values,
+        double[::1] desired_x_array,
+        double[::1] x_domain,
+        double complex[::1] dependent_values,
         double complex[::1] desired_dependent_array
         ) noexcept nogil:
 
