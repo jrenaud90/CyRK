@@ -1,11 +1,20 @@
 # MANIFEST.in
 
+# Exclude all c++ and c files; we will manually add back in some custom ones.
+# This avoids shipping already cythonized c files that need to be cythonized locally.
+exclude **/*.c
+exclude **/*.cpp
+exclude **/*.h
+exclude **/*.hpp
+
 # Include Cython pyx and pxd files
 global-include *.pxd
 global-include *.pyx
 include cython_extensions.json
 
 # Include required hpp and cpp files
+include CyRK/array/interp_common.c.
+
 include CyRK/cy/common.cpp
 include CyRK/cy/common.hpp
 include CyRK/cy/cysolver.cpp
@@ -20,5 +29,10 @@ include CyRK/cy/dense.cpp
 include CyRK/cy/dense.hpp
 include CyRK/cy/cysolution.cpp
 include CyRK/cy/cysolution.hpp
-include CyRK/cy/pysolver_cyhook_api.h
-include CyRK/cy/pysolver_cyhook.h
+
+# Exclude the whole Tests folder
+prune Tests
+prune Demos
+prune Benchmarks
+prune Documentation
+prune Performance

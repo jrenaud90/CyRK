@@ -26,7 +26,7 @@ elif install_platform.lower() == 'darwin':
 else:
     extra_compile_args = ['-fopenmp', '-O3']
     extra_link_args = ['-fopenmp', '-O3']
-macro_list = [("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")]
+macro_list = [("NPY_NO_DEPRECATED_API", "NPY_1_9_API_VERSION")]
 
 # Load CyRK's cython extensions
 absolute_path = os.path.dirname(__file__)
@@ -63,7 +63,6 @@ class build_ext(_build_ext):
         # Compile in parallel
         self.parallel = num_threads
         return super().run()
-
 
 class build_cyrk(_build_py):
 

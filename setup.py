@@ -4,8 +4,6 @@ import json
 import sys
 from setuptools import Extension, setup
 
-import numpy as np
-
 install_platform = platform.system()
 
 if install_platform.lower() == 'windows':
@@ -18,7 +16,7 @@ elif install_platform.lower() == 'darwin':
 else:
     extra_compile_args = ['-fopenmp', '-O3']
     extra_link_args = ['-fopenmp', '-O3']
-macro_list = [("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")]
+macro_list = [("NPY_NO_DEPRECATED_API", "NPY_1_9_API_VERSION")]
 
 # Load CyRK's cython extensions
 absolute_path = os.path.dirname(__file__)
@@ -27,6 +25,7 @@ with open(cython_ext_path, 'r') as cython_ext_file:
     cython_ext_dict = json.load(cython_ext_file)
 
 cython_extensions = list()
+import numpy as np
 for cython_ext, ext_data in cython_ext_dict.items():
 
     if ext_data['is_cpp']:
