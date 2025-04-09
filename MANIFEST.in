@@ -13,7 +13,7 @@ global-include *.pyx
 include cython_extensions.json
 
 # Include required hpp and cpp files
-include CyRK/array/interp_common.c.
+include CyRK/array/interp_common.c
 
 include CyRK/cy/common.cpp
 include CyRK/cy/common.hpp
