@@ -1,6 +1,6 @@
 [project]
 name='CyRK'
-version = '0.13.3'
+version = '0.13.4'
 description='Runge-Kutta ODE Integrator Implemented in Cython and Numba.'
 authors= [
     {name = 'Joe P. Renaud', email = 'joe.p.renaud@gmail.com'}
@@ -70,7 +70,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 py-modules = ["_build_cyrk"]
-include-package-data = false
+include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]

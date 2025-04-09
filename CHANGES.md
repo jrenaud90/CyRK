@@ -2,6 +2,17 @@
 
 ## 2025
 
+
+#### v0.13.4 (2025-04-09)
+
+Fixes:
+* Fixed *.pyx and *.pxd files not being included in distributions.
+
+#### v0.13.3 (2025-04-09)
+
+Fixes:
+* Fixed issue in manifest.
+
 #### v0.13.2 (2025-04-09)
 
 Changes:
