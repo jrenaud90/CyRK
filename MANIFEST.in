@@ -31,8 +31,8 @@ include CyRK/cy/cysolution.cpp
 include CyRK/cy/cysolution.hpp
 
 # Exclude the whole Tests folder
-prune Tests
-prune Demos
-prune Benchmarks
-prune Documentation
-prune Performance
+exclude Tests/*
+exclude Demos/*
+exclude Benchmarks/*
+exclude Documentation/*
+exclude Performance/*

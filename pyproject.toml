@@ -74,6 +74,7 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
+exclude = ["Tests", "Demos", "Benchmarks", "Documentation", "Performance"]
 
 [tool.setuptools.cmdclass]
 build_py = "_build_cyrk.build_cyrk"
