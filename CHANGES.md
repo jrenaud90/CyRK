@@ -2,6 +2,11 @@
 
 ## 2025
 
+#### v0.13.2 (2025-04-09)
+
+Fixes:
+* Fixed cythonized files that were being included with sdist, causing problems with conda-forge.
+
 #### v0.13.1 (2025-04-08)
 
 Changes:
