@@ -29,6 +29,8 @@ include CyRK/cy/dense.cpp
 include CyRK/cy/dense.hpp
 include CyRK/cy/cysolution.cpp
 include CyRK/cy/cysolution.hpp
+include CyRK/cy/pysolver_cyhook.h
+include CyRK/cy/pysolver_cyhook_api.h
 
 # Exclude the whole Tests folder
 exclude Tests/*

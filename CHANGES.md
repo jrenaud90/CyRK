@@ -3,6 +3,11 @@
 ## 2025
 
 
+#### v0.13.5 (2025-04-09)
+
+Fixes:
+* Missing files in manifest.
+
 #### v0.13.4 (2025-04-09)
 
 Fixes:
