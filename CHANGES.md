@@ -2,6 +2,30 @@
 
 ## 2025
 
+#### v0.14.0 (2025-07-XX)
+
+Changes:
+* C++ Backend:
+  * Moved to ErrorCodes enum for tracking error codes.
+  * Changed how CySolverResult works:
+    * Transitioned away from using shared pointers.
+    * Instantiating classes requires less arguments. Moving more of the loading on to resets so that memory does not need
+  * Added more checks to look out for memory allocation problems.
+  * Added more checks and error catches to avoid other problems.
+  * Optimized solution storage, solver, and dense output to better fit in typical cache sizes.
+  * Vectors are now pre-allocated with guesstimated sizes at objection creation to reduce the need for subsequent reallocations.
+to be reallocated for simple re-runs of the same ODE.
+
+Fixes:
+- CySolver Backend:
+  - Fixed potential issue where provided t-eval pointer could stop pointing to correct block of memory.
+  - Fixed issue where extra outputs were not getting saved on the first time step.
+  - Fixed potential problem where t_eval indices were being converted to ints. For very large arrays there could be a wrap around bug.
+  - Moved to one vector for dependent y arrays storage and one vector for dy arrays. Pointers added to respective sections of each vector.
+  - Most vectors are now resized and values are changed via assignment rather than being cleared and appended to. This allows for resets to retain the original memory and avoid memory allocations unless absolutely necessary. 
+- PySolver Backend:
+  - Fixed potential issue where the python module may not have gotten decremented. 
+  - Removed the PySolver methods from the C++ codebase. Don't see any reason they can't live in pure python land.
 
 #### v0.13.5 (2025-04-09)
 

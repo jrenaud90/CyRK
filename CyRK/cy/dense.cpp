@@ -3,31 +3,31 @@
 
 // Constructors
 CySolverDense::CySolverDense(
-        int integrator_int,
-        CySolverBase* solver_ptr,
-        bool set_state
-        ) :
-            integrator_int(integrator_int),
-            num_y(solver_ptr->num_y),
-            solver_ptr(solver_ptr)
+            CySolverBase* solver_ptr_,
+            bool set_state) :
+        solver_ptr(solver_ptr_)
 {
-    // Allocate memory for state vectors (memory allocation should not change since num_y does not change)
-    this->num_y = this->solver_ptr->num_y;
-    this->solver_ptr->set_Q_order(&this->Q_order);
-
-    // Resize state vector based on dimensions. The state vector is a combination of the current y-values and Q
-    // Q is a matrix of solver-specific parameters at the current time.
-    // Q is defined by Q = K.T.dot(self.P)  K has shape of (n_stages + 1, num_y) so K.T has shape of (num_y, n_stages + 1)
-    // P has shape of (4, 3) for RK23; (7, 4) for RK45.. So (n_stages + 1, Q_order)
-    // So Q has shape of (num_y, q_order)
-    // The max size of Q is (7) * num_y for DOP853
-    // state vector is laid out as [y_vector, Q_matrix]
-    this->state_data_vec.resize(this->num_y * (this->Q_order + 1));  // +1 is so we can store y_values in the first spot.
-
-    // Populate values with current state
-    if (set_state)
+    if (this->solver_ptr)
     {
-        this->set_state();
+        // Allocate memory for state vectors (memory allocation should not change since num_y does not change)
+            
+        this->solver_ptr->set_Q_order(&this->Q_order);
+
+        // Resize state vector based on dimensions. The state vector is a combination of the current y-values and Q
+        // Q is a matrix of solver-specific parameters at the current time.
+        // Q is defined by Q = K.T.dot(self.P)  K has shape of (n_stages + 1, num_y) so K.T has shape of (num_y, n_stages + 1)
+        // P has shape of (4, 3) for RK23; (7, 4) for RK45.. So (n_stages + 1, Q_order)
+        // So Q has shape of (num_y, q_order)
+        // The max size of Q is (7) * num_y for DOP853
+        // state vector is laid out as [y_vector, Q_matrix]
+        this->num_y = this->solver_ptr->num_y;
+        this->state_data_vec.resize(this->num_y * (this->Q_order + 1));  // +1 is so we can store y_values in the first spot.
+
+        // Populate values with current state
+        if (set_state)
+        {
+            this->set_state();
+        }
     }
 }
 
@@ -39,15 +39,16 @@ CySolverDense::~CySolverDense()
 
 void CySolverDense::set_state()
 {
+
     // Store time information
-    this->t_old = solver_ptr->t_old;
-    this->t_now = solver_ptr->t_now;
+    this->t_old = this->solver_ptr->t_old;
+    this->t_now = this->solver_ptr->t_now;
     
     // Calculate step
     this->step = this->t_now - this->t_old;
 
     // Make a copy of the y_in pointer in the state vector storage
-    std::memcpy(&this->state_data_vec[0], &this->solver_ptr->y_old[0], sizeof(double) * this->num_y);
+    std::memcpy(this->state_data_vec.data(), this->solver_ptr->y_old_ptr, sizeof(double) * this->num_y);
 
     // Tell the solver to populate the values of the Q matrix. 
     // Q starts at the num_y location of the state vector
@@ -65,10 +66,9 @@ void CySolverDense::call(double t_interp, double* y_interp_ptr)
 
     // Q has shape of (n_stages + 1, num_y)
     // y = y_old + Q dot p.
-    switch (this->integrator_int)
+    switch (this->solver_ptr->integration_method)
     {
-    case 0:
-        // RK23
+    case ODEMethod::RK23:
         for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
             const size_t Q_stride = this->Q_order * y_i;
@@ -90,8 +90,7 @@ void CySolverDense::call(double t_interp, double* y_interp_ptr)
         }
         break;
 
-    case 1:
-        // RK45
+    case ODEMethod::RK45:
         for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
             const size_t Q_stride = this->Q_order * y_i;
@@ -115,8 +114,7 @@ void CySolverDense::call(double t_interp, double* y_interp_ptr)
         }
         break;
 
-    case 2:
-        // DOP853
+    case ODEMethod::DOP853:
         for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
             const size_t Q_stride = this->Q_order * y_i;
@@ -174,7 +172,7 @@ void CySolverDense::call(double t_interp, double* y_interp_ptr)
             this->solver_ptr->offload_to_temp();
 
             // Load new values into t and y
-            std::memcpy(&this->solver_ptr->y_now[0], y_interp_ptr, sizeof(double) * this->num_y);
+            std::memcpy(this->solver_ptr->y_now_ptr, y_interp_ptr, sizeof(double) * this->num_y);
             this->solver_ptr->t_now = t_interp;
             
             // Call diffeq to update dy_now pointer
@@ -184,7 +182,7 @@ void CySolverDense::call(double t_interp, double* y_interp_ptr)
             // We already have y interpolated from above so start at num_y
             for (size_t i = this->num_y; i < num_dy; i++)
             {
-                y_interp_ptr[i] = this->solver_ptr->dy_now[i];
+                y_interp_ptr[i] = this->solver_ptr->dy_now_ptr[i];
             }
 
             // Reset CySolver state to what it was before
