@@ -1,4 +1,5 @@
 #include <numeric> 
+#include <algorithm>
 
 #include "rk.hpp"
 #include "dense.hpp"
@@ -103,32 +104,32 @@ CyrkErrorCodes RKSolver::p_additional_setup() noexcept
 
 void RKSolver::p_estimate_error() noexcept
 {
+    // Reset error norm
+    this->error_norm = 0.0;
+
     // Initialize rtol and atol
     double rtol = this->rtols_ptr[0];
     double atol = this->atols_ptr[0];
 
-    this->error_norm = 0.0;
+    // Cache values thate used multiple times
+    double* const y_old_ptr_ = this->y_old_ptr;
+    double* const y_now_ptr_ = this->y_now_ptr;
+    const double* const E_start_ptr = this->E_ptr;
+    const double* const E_end_ptr   = this->E_ptr + this->n_stages_p1;
 
     for (size_t y_i = 0; y_i < this->num_y; y_i++)
     {
-        if (this->use_array_rtols)
-        {
-            rtol = this->rtols_ptr[y_i];
-        }
-
-        if (this->use_array_atols)
-        {
-            atol = this->atols_ptr[y_i];
-        }
+        rtol = this->use_array_rtols ? this->rtols_ptr[y_i] : rtol;
+        atol = this->use_array_atols ? this->atols_ptr[y_i] : atol;
 
         // Dot product between K and E
         const size_t stride_K = y_i * this->n_stages_p1;
         double* const K_ptr_yi  = &this->K_ptr[stride_K];
 
-        const double error_dot = std::inner_product(this->E_ptr, this->E_ptr + this->n_stages + 1, K_ptr_yi, 0.0);
+        const double error_dot = std::inner_product(this->E_ptr, E_end_ptr, K_ptr_yi, 0.0);
 
         // Find scale of y for error calculations
-        const double scale_inv = 1.0 / (atol + std::fmax(std::fabs(this->y_old_ptr[y_i]), std::fabs(this->y_now_ptr[y_i])) * rtol);
+        const double scale_inv = 1.0 / (atol + std::fmax(std::fabs(y_old_ptr_[y_i]), std::fabs(y_now_ptr_[y_i])) * rtol);
 
         // We need the absolute value but since we are taking the square, it is guaranteed to be positive.
         // TODO: This will need to change if CySolver ever accepts complex numbers
@@ -243,6 +244,7 @@ void RKSolver::p_step_implementation() noexcept
     double* const l_K_ptr       = this->K_ptr;
     const double* const l_A_ptr = this->A_ptr;
     const double* const l_B_ptr = this->B_ptr;
+    const double* const l_B_end_ptr = this->B_ptr + this->n_stages;
     const double* const l_C_ptr = this->C_ptr;
     double* const l_y_now_ptr   = this->y_now_ptr;
     double* const l_y_old_ptr   = this->y_old_ptr;
@@ -253,8 +255,7 @@ void RKSolver::p_step_implementation() noexcept
     // Find minimum step size based on the value of t (less floating point numbers between numbers when t is large)
     const double min_step_size = 10. * std::fabs(std::nextafter(this->t_old, this->direction_inf) - this->t_old);
     // Look for over/undershoots in previous step size
-    this->step_size = std::min<double>(this->step_size, this->max_step_size);
-    this->step_size = std::max<double>(this->step_size, min_step_size);
+    this->step_size = std::clamp<double>(this->step_size, min_step_size, this->max_step_size);
 
     // Optimization variables
     // Define a very specific A (Row 1; Col 0) now since it is called consistently and does not change.
@@ -312,14 +313,16 @@ void RKSolver::p_step_implementation() noexcept
         for (size_t s = 1; s < this->len_C; s++) {
             // Find the current time based on the old time and the step size.
             this->t_now = this->t_old + l_C_ptr[s] * this->step;
-            const size_t stride_A         = s * this->len_Acols;
-            const double* const l_A_ptr_s = &l_A_ptr[stride_A];
+            const size_t stride_A             = s * this->len_Acols;
+            const double* const l_A_ptr_s     = &l_A_ptr[stride_A];
+            const double* const l_A_ptr_s_end = l_A_ptr_s + s;
 
             for (size_t y_i = 0; y_i < this->num_y; y_i++)
             {
                 double temp_double;
-                const size_t stride_K         = y_i * this->n_stages_p1;
-                const double* const l_K_ptr_s = &l_K_ptr[stride_K];
+                const size_t stride_K             = y_i * this->n_stages_p1;
+                const double* const l_K_ptr_yi     = &l_K_ptr[stride_K];
+                const double* const l_A_ptr_s_end = l_A_ptr_s + s;
 
                 // Dot Product (K, a) * step
                 switch (s)
@@ -333,7 +336,7 @@ void RKSolver::p_step_implementation() noexcept
 
                 [[likely]] default:
                     // Dot product of A and K arrays up to s
-                    temp_double = std::inner_product(l_A_ptr_s, l_A_ptr_s + s, l_K_ptr_s, 0.0);
+                    temp_double = std::inner_product(l_A_ptr_s, l_A_ptr_s_end, l_K_ptr_yi, 0.0);
                     break;
                 }
 
@@ -345,9 +348,14 @@ void RKSolver::p_step_implementation() noexcept
             this->diffeq(this);
 
             // Update K based on the new dy values.
-            for (size_t y_i = 0; y_i < this->num_y; y_i++) {
-                const size_t stride_K = y_i * this->n_stages_p1;
-                l_K_ptr[stride_K + s] = l_dy_now_ptr[y_i];
+            double* K_col_ptr = l_K_ptr + s;
+            double* dy_ptr = l_dy_now_ptr;
+            size_t stride = this->n_stages_p1;
+
+            for (size_t y_i = 0; y_i < this->num_y; ++y_i) {
+                *K_col_ptr = *dy_ptr;
+                K_col_ptr += stride;
+                ++dy_ptr;
             }
         }
 
@@ -362,7 +370,7 @@ void RKSolver::p_step_implementation() noexcept
             const double* const l_K_ptr_yi = &l_K_ptr[stride_K];
 
             // Update y_now
-            const double temp_double = std::inner_product(l_B_ptr, l_B_ptr + this->n_stages, l_K_ptr_yi, 0.0);
+            const double temp_double = std::inner_product(l_B_ptr, l_B_end_ptr, l_K_ptr_yi, 0.0);
             l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + (this->step * temp_double);
         }
 
