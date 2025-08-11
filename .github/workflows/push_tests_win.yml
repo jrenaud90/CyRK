@@ -44,7 +44,7 @@ jobs:
       - name: Manual Test
         run: |
           cd Tests/E_CySolver_Tests/
-          python -c "from test_a_cysolve_ivp import test_cysolve_ivp; print('Import Success!'); test_cysolve_ivp(True, False, False, False, False, 1, 0.0, 10_000, True); print('DONE!')"
+          python -c "from test_a_cysolve_ivp import test_cysolve_ivp; print('Import Success!'); test_cysolve_ivp(True, False, False, False, False, "rk45", 0.0, 10_000, True); print('DONE!')"
           cd ../..
         
       - name: Run pytest
