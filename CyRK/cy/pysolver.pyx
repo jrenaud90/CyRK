@@ -285,16 +285,18 @@ def pysolve_ivp(
         atol = 1.0e-6,
         size_t max_num_steps = 0,
         size_t max_ram_MB = 2000,
-        bint pass_dy_as_arg = False
+        bint pass_dy_as_arg = False,
+        PySolver solution_reuse = None
         ):
 
     # Build PySolver solution storage.
     # These cython extension classes are created as python objects so they have reference counting
     # so it is safe to return objects created in this function without worry of memory leaks.
-    cdef PySolver pysolver_solution = PySolver()
+    if solution_reuse is None:
+        solution_reuse = PySolver()
 
     # Load in user-provided parameters
-    pysolver_solution.set_problem_parameters(
+    solution_reuse.set_problem_parameters(
             py_diffeq,
             time_span,
             y0,
@@ -315,7 +317,7 @@ def pysolve_ivp(
     ##
     # Run the integrator!
     ##
-    pysolver_solution.solve()
+    solution_reuse.solve()
     
     # Return the results.
-    return pysolver_solution
+    return solution_reuse

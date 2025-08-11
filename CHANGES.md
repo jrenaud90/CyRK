@@ -1,5 +1,7 @@
 # CyRK - Change Log
 
+TODO: Why when passing a regular integer as ODE integrator method it will cause a crash.
+
 ## 2025
 
 #### v0.14.0 (2025-07-XX)
@@ -17,6 +19,8 @@ Changes:
 * Cython wrapper:
   * Improved how additional arguments are displayed when `WrapCySolverResult.print_diagnostics` is called.
 to be reallocated for simple re-runs of the same ODE.
+* Other:
+  * Updated benchmark plot to show the new reset results. 
 
 Fixes:
 - CySolver Backend:
