@@ -136,6 +136,7 @@ cdef class WrapCySolverResult:
     cdef void set_cyresult_pointer(self, CySolveOutput cyresult_uptr_)
     cdef set_problem_config(self, unique_ptr[ProblemConfig] new_problem_config_uptr)
     cpdef solve(self)
+    cpdef finalize(self)
 
 # =====================================================================================================================
 # Import CySolver Integrator Base Class
@@ -354,7 +355,6 @@ cdef void cysolve_ivp_noreturn(
     const double t_start,
     const double t_end,
     vector[double] y0_vec,
-    ODEMethod method = *,
     double rtol = *,
     double atol = *,
     vector[char] args_vec = *,

@@ -30,12 +30,7 @@ cdef class WrapCySolverResult:
         self.cyresult_uptr = move(cyresult_uptr_)
         cdef CySolverResult* cyresult_ptr = self.cyresult_uptr.get()
 
-        # Convert solution to pointers and views
-        if cyresult_ptr.size > 0:
-            self.time_ptr  = &cyresult_ptr.time_domain_vec[0]
-            self.y_ptr     = &cyresult_ptr.solution[0]
-            self.time_view = <double[:self.size]>self.time_ptr
-            self.y_view    = <double[:self.size * self.num_dy]>self.y_ptr
+        self.finalize()
     
     cdef set_problem_config(self, unique_ptr[ProblemConfig] new_problem_config_uptr):
         if not self.cyresult_uptr:
@@ -48,12 +43,17 @@ cdef class WrapCySolverResult:
         cdef CySolverResult* cyresult_ptr = self.cyresult_uptr.get()
         cyresult_ptr.solve()
 
+        self.finalize()
+    
+    cpdef finalize(self):
         # Convert solution to pointers and views
-        if cyresult_ptr.size > 0:
-            self.time_ptr  = &cyresult_ptr.time_domain_vec[0]
-            self.y_ptr     = &cyresult_ptr.solution[0]
-            self.time_view = <double[:self.size]>self.time_ptr
-            self.y_view    = <double[:self.size * self.num_dy]>self.y_ptr
+        cdef CySolverResult* cyresult_ptr = self.cyresult_uptr.get()
+        if cyresult_ptr:
+            if cyresult_ptr.size > 0:
+                self.time_ptr  = &cyresult_ptr.time_domain_vec[0]
+                self.y_ptr     = &cyresult_ptr.solution[0]
+                self.time_view = <double[:self.size]>self.time_ptr
+                self.y_view    = <double[:self.size * self.num_dy]>self.y_ptr
 
     def call(self, double t):
         """ Call the dense output interpolater and return y """
@@ -276,7 +276,6 @@ cdef void cysolve_ivp_noreturn(
             const double t_start,
             const double t_end,
             vector[double] y0_vec,
-            ODEMethod method = ODEMethod.RK45,
             double rtol = 1.0e-3,
             double atol = 1.0e-6,
             vector[char] args_vec = vector[char](),

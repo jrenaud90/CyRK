@@ -50,7 +50,7 @@ void baseline_cysolve_ivp_noreturn(
             max_ram_MB,
             pre_eval_func,
             capture_dense_output,
-            std::nullopt, // force_retain_solver; not currently in use.
+            true, // force_retain_solver; not currently in use.
             rtols,
             atols,
             max_step_size,
@@ -75,7 +75,7 @@ void baseline_cysolve_ivp_noreturn(
             max_ram_MB,
             pre_eval_func,
             capture_dense_output,
-            std::nullopt, // force_retain_solver; not currently in use.
+            true, // force_retain_solver; not currently in use.
             rtols,
             atols,
             max_step_size,

@@ -201,6 +201,6 @@ def test_cysolve_extra_output():
     assert cy_extra_output_tester()
 
 if __name__ == "__main__":
-    # test_cysolve_ivp(False, False, False, False, False, ODEMethod.RK45, 0.0, 100_0000.0, False)
+    test_cysolve_ivp(False, False, False, False, False, ODEMethod.RK45, 0.0, 100_0000.0, False)
     # test_cysolve_ivp_accuracy(ODEMethod.RK45, None, True)
     print("Finished.")

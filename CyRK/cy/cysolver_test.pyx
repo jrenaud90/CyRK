@@ -10,7 +10,7 @@ from libcpp.vector cimport vector
 
 cdef double d_NAN = numeric_limits[double].quiet_NaN()
 
-from CyRK.cy.cysolver_api cimport cysolve_ivp, WrapCySolverResult, DiffeqFuncType, MAX_STEP, CySolveOutput, ODEMethod
+from CyRK.cy.cysolver_api cimport cysolve_ivp_noreturn, cysolve_ivp, WrapCySolverResult, DiffeqFuncType, MAX_STEP, CySolveOutput, ODEMethod, CySolverResult
 
 import numpy as np
 cimport numpy as np
@@ -298,7 +298,8 @@ def cytester(
         double[::1] rtol_array = None,
         double[::1] atol_array = None,
         double max_step = MAX_STEP,
-        double first_step = 0.0
+        double first_step = 0.0,
+        WrapCySolverResult solution_reuse = None
         ):
     cdef size_t i
     cdef vector[double] t_eval_vec = vector[double]()
@@ -494,12 +495,28 @@ def cytester(
         for i in range(atol_array.size):
             atols_vec[i] = atol_array[i]
 
-    cdef CySolveOutput result = cysolve_ivp(
+    # Build python-safe solution storage
+    if solution_reuse is None:
+        solution_reuse = WrapCySolverResult()
+        solution_reuse.build_cyresult(method)
+    else:
+        if not solution_reuse.cyresult_uptr:
+            solution_reuse.build_cyresult(method)
+        elif method != solution_reuse.cyresult_uptr.get().integrator_method:
+            raise AttributeError("Can not reuse solution that has different integration method.")
+
+    cdef CySolverResult* solution_ptr = solution_reuse.cyresult_uptr.get()
+
+    if not solution_ptr:
+        raise AttributeError("Solution pointer not set.")
+
+    # Solve ODE
+    cysolve_ivp_noreturn(
+        solution_ptr,
         diffeq,
         t_start,
         t_end,
         y0_vec,
-        method = method,
         rtol = rtol,
         atol = atol,
         args_vec = args_vec,
@@ -515,8 +532,7 @@ def cytester(
         first_step = first_step,
         expected_size = expected_size
         )
+    
+    solution_reuse.finalize()
 
-    cdef WrapCySolverResult pysafe_result = WrapCySolverResult()
-    pysafe_result.set_cyresult_pointer(move(result))
-
-    return pysafe_result
+    return solution_reuse

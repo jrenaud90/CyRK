@@ -4,11 +4,17 @@ import json
 import sys
 from setuptools import Extension, setup
 
+DEBUG_MODE = False
+
 install_platform = platform.system()
 
 if install_platform.lower() == 'windows':
     extra_compile_args = ['/openmp']
     extra_link_args = []
+    if DEBUG_MODE:
+        extra_compile_args.append('/Ox')
+        extra_compile_args.append('/Zi')
+        extra_link_args.append("/debug:full")
 elif install_platform.lower() == 'darwin':
     # OpenMP is installed via llvm. See https://stackoverflow.com/questions/60005176/how-to-deal-with-clang-error-unsupported-option-fopenmp-on-travis
     extra_compile_args = ['-O3', '-fopenmp']
