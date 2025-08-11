@@ -12,6 +12,9 @@ cnp.import_array()
 # =====================================================================================================================
 cdef class WrapCySolverResult:
 
+    def __dealloc__(self):
+        self.cyresult_uptr.reset()
+
     cdef void build_cyresult(
             self,
             ODEMethod integrator_method):

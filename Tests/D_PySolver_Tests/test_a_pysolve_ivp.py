@@ -419,6 +419,7 @@ def test_pysolve_ivp_readonly(integration_method):
     assert type(result.message) == str
 
 if __name__ == "__main__":
-    test_pysolve_ivp(False, False, False, 
+    for i in range(100_000):
+        test_pysolve_ivp(False, False, False, 
                      False, False, False, False, "RK45", 0.0, 100_000.0, False)
     print("Finished!")

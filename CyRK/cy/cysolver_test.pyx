@@ -287,7 +287,7 @@ def cytester(
         tuple t_span = None,
         const double[::1] y0 = None,
         double[::1] args = None,
-        ODEMethod method = ODEMethod.RK45,
+        str method = 'rk45',
         size_t expected_size = 0,
         size_t max_num_steps = 0,
         size_t max_ram_MB = 2000,
@@ -312,6 +312,22 @@ def cytester(
 
     cdef double t_start = 0.0
     cdef double t_end   = 0.0
+
+    # Parse method
+    method = method.lower()
+    cdef ODEMethod integration_method = ODEMethod.RK45
+    if method == "rk23":
+        integration_method = ODEMethod.RK23
+    elif method == "rk45":
+        integration_method = ODEMethod.RK45
+    elif method == 'dop853':
+        integration_method = ODEMethod.DOP853
+    else:
+        raise NotImplementedError(
+            "ERROR: `PySolver::set_problem_parameters` - "
+            f"Unknown or unsupported integration method provided: {method}.\n"
+            f"Supported methods are: RK23, RK45, DOP853."
+            )
 
     cdef size_t num_extra = 0
     cdef DiffeqFuncType diffeq = NULL
@@ -498,11 +514,11 @@ def cytester(
     # Build python-safe solution storage
     if solution_reuse is None:
         solution_reuse = WrapCySolverResult()
-        solution_reuse.build_cyresult(method)
+        solution_reuse.build_cyresult(integration_method)
     else:
         if not solution_reuse.cyresult_uptr:
-            solution_reuse.build_cyresult(method)
-        elif method != solution_reuse.cyresult_uptr.get().integrator_method:
+            solution_reuse.build_cyresult(integration_method)
+        elif integration_method != solution_reuse.cyresult_uptr.get().integrator_method:
             raise AttributeError("Can not reuse solution that has different integration method.")
 
     cdef CySolverResult* solution_ptr = solution_reuse.cyresult_uptr.get()

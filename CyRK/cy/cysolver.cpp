@@ -147,12 +147,7 @@ CySolverBase::CySolverBase(CySolverResult* storage_ptr_) :
 CySolverBase::~CySolverBase()
 {
     // Deconstruct python-related properties
-    if (this->deconstruct_python or this->cython_extension_class_instance)
-    {
-        // Decrease reference count on the cython extension class instance
-        Py_XDECREF(this->cython_extension_class_instance);
-        this->cython_extension_class_instance = nullptr;
-    }
+    this->clear_python_refs();
 
     // Clear vectors
     this->t_eval_reverse_vec.clear();
@@ -208,6 +203,18 @@ void CySolverBase::set_Q_array(double* Q_ptr)
     // Overwritten by subclasses.
 }
 
+void CySolverBase::clear_python_refs()
+{
+    if (this->deconstruct_python or this->cython_extension_class_instance)
+    {
+        // Decrease reference count on the cython extension class instance
+        Py_XDECREF(this->cython_extension_class_instance);
+        this->cython_extension_class_instance = nullptr;
+        this->deconstruct_python              = false;
+        this->use_pysolver                    = false;
+    }
+}
+
 void CySolverBase::offload_to_temp() noexcept
 {
     /* Save "now" variables to temporary arrays so that the now array can be overwritten. */
@@ -258,15 +265,8 @@ CyrkErrorCodes CySolverBase::setup()
     this->t_eval_finished = false;
     this->setup_called    = false;
     this->error_flag      = false;
-    this->use_pysolver    = false;
     this->user_provided_max_num_steps = false;
-    if (this->deconstruct_python)
-    {
-        // Decrease reference count on the cython extension class instance
-        Py_XDECREF(this->cython_extension_class_instance);
-        this->cython_extension_class_instance = nullptr;
-        this->deconstruct_python = false;
-    }
+    this->clear_python_refs();
 
     while (setup_status == CyrkErrorCodes::NO_ERROR)
     {
@@ -663,14 +663,7 @@ CyrkErrorCodes CySolverBase::set_cython_extension_instance(
 {
     // First check to see if a python instance has already been installed in this function
     // i.e., setup is being called multiple times.
-    if (this->cython_extension_class_instance and this->deconstruct_python)
-    {
-        // Decrease reference count on the cython extension class instance
-        Py_XDECREF(this->cython_extension_class_instance);
-        this->cython_extension_class_instance = nullptr;
-        this->deconstruct_python              = false;
-        this->use_pysolver                    = false;
-    }
+    this->clear_python_refs();
 
     // Now proceed to installing python functions.
     this->use_pysolver = true;

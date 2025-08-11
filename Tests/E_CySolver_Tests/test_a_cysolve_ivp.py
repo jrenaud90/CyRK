@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from CyRK.cy.cysolver_api import WrapCySolverResult, ODEMethod
+from CyRK.cy.cysolver_api import WrapCySolverResult
 from CyRK.cy.cysolver_test import cytester, cy_extra_output_tester
 
 args = (0.01, 0.02)
@@ -20,7 +20,7 @@ atols = np.asarray((1.0e-6, 1.0e-7), dtype=np.float64, order='C')
 @pytest.mark.parametrize('capture_extra', (True, False))
 @pytest.mark.parametrize('max_step', (1.0, 100_000.0))
 @pytest.mark.parametrize('first_step', (0.0, 0.00001))
-@pytest.mark.parametrize('integration_method', (ODEMethod.RK23, ODEMethod.RK45, ODEMethod.DOP853))
+@pytest.mark.parametrize('integration_method', ('rk23', 'rk45', 'dop853'))
 @pytest.mark.parametrize('use_different_tols', (True, False))
 @pytest.mark.parametrize('use_rtol_array', (True, False))
 @pytest.mark.parametrize('use_atol_array', (True, False))
@@ -103,7 +103,7 @@ def test_cysolve_ivp(use_args,
 
 
 @pytest.mark.filterwarnings("error")  # Some exceptions get propagated via cython as warnings; we want to make sure the lead to crashes.
-@pytest.mark.parametrize('integration_method', (ODEMethod.RK23, ODEMethod.RK45, ODEMethod.DOP853))
+@pytest.mark.parametrize('integration_method', ('rk23', 'rk45', 'dop853'))
 @pytest.mark.parametrize('t_eval_end', (None, 0.5, 1.0))
 @pytest.mark.parametrize('test_dense_output', (False, True))
 def test_cysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output):
@@ -141,10 +141,10 @@ def test_cysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output)
     # Use the integrator's time domain to build a correct solution
     real_answer = correct_answer(result.t, c1, c2)
 
-    if integration_method == ODEMethod.RK23:
+    if integration_method == 'rk24':
         check_rtol = 1.0e-3
         check_atol = 1.0e-6
-    elif integration_method == ODEMethod.DOP853:
+    elif integration_method == 'dop853':
         check_rtol = 1.0e-5
         check_atol = 1.0e-8
     else:
@@ -201,6 +201,5 @@ def test_cysolve_extra_output():
     assert cy_extra_output_tester()
 
 if __name__ == "__main__":
-    test_cysolve_ivp(False, False, False, False, False, ODEMethod.RK45, 0.0, 100_0000.0, False)
-    # test_cysolve_ivp_accuracy(ODEMethod.RK45, None, True)
+    test_cysolve_ivp(False, False, False, False, False, 'rk45', 0.0, 100_0000.0, False)
     print("Finished.")

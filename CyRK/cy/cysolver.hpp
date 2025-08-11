@@ -150,6 +150,7 @@ public:
 
     virtual void set_Q_order(size_t* Q_order_ptr);
     virtual void set_Q_array(double* Q_ptr);
+    void clear_python_refs();
     void offload_to_temp() noexcept;
     void load_back_from_temp() noexcept;
     CyrkErrorCodes resize_num_y(size_t num_y_, size_t num_dy_);

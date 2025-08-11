@@ -55,12 +55,11 @@ def test_pysolver():
 def test_cysolver():
 
     from CyRK.cy.cysolver_test import cytester
-    from CyRK import ODEMethod
     result = cytester(0,
                       time_span,
                       initial_conds_float,
                       args=None,
-                      method=ODEMethod.RK45,
+                      method='rk45',
                       expected_size=0,
                       max_num_steps=0,
                       max_ram_MB=2000,

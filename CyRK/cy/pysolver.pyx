@@ -112,7 +112,7 @@ cdef class PySolver(WrapCySolverResult):
         cdef vector[double] y0_vec = vector[double](num_y)
         for i in range(num_y):
             y0_vec[i] = y0[i]
-
+        
         # We need to set the number of ys now because we need the now state pointers. 
         # These pointers could change which memory they are pointing to if by setting the num_y later 
         # causes a realloc of the underlying vectors.
