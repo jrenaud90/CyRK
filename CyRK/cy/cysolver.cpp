@@ -205,12 +205,9 @@ void CySolverBase::set_Q_array(double* Q_ptr)
 
 void CySolverBase::clear_python_refs()
 {
-    if (this->deconstruct_python or this->cython_extension_class_instance)
+    if (this->cython_extension_class_instance)
     {
-        // Decrease reference count on the cython extension class instance
-        Py_XDECREF(this->cython_extension_class_instance);
         this->cython_extension_class_instance = nullptr;
-        this->deconstruct_python              = false;
         this->use_pysolver                    = false;
     }
 }
@@ -679,11 +676,6 @@ CyrkErrorCodes CySolverBase::set_cython_extension_instance(
             this->use_pysolver = false;
             this->storage_ptr->update_status(CyrkErrorCodes::ERROR_IMPORTING_PYTHON_MODULE);
             return this->storage_ptr->status;
-        }
-        else
-        {
-            Py_XINCREF(this->cython_extension_class_instance);
-            this->deconstruct_python = true;
         }
     }
     return this->storage_ptr->status;

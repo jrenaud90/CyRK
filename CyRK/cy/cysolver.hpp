@@ -237,9 +237,6 @@ protected:
     double t_tmp = 0.0;
     size_t len_t = 0;
 
-    // More flags
-    bool deconstruct_python          = false;
-
 public:
     bool use_dense_output            = false;
     bool user_provided_max_num_steps = false;
