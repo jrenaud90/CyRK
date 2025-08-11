@@ -50,6 +50,12 @@ CyrkErrorCodes CySolverResult::p_build_solver()
         this->solver_uptr.reset();
     }
 
+    if (this->config_uptr)
+    {
+        // Delete old config.
+        this->config_uptr.reset();
+    }
+
     // The result constructor's only job is to build the solver object and allocate its memory.
     try
     {
@@ -58,17 +64,21 @@ CyrkErrorCodes CySolverResult::p_build_solver()
         case ODEMethod::RK23:
             // RK23
             this->solver_uptr = std::make_unique<RK23>(this);
+            this->config_uptr = std::make_unique<RKConfig>();
             break;
         case ODEMethod::RK45:
             // RK45
             this->solver_uptr = std::make_unique<RK45>(this);
+            this->config_uptr = std::make_unique<RKConfig>();
             break;
         case ODEMethod::DOP853:
             // DOP853
             this->solver_uptr = std::make_unique<DOP853>(this);
+            this->config_uptr = std::make_unique<RKConfig>();
             break;
         [[unlikely]] default:
             this->solver_uptr = nullptr;
+            this->config_uptr = std::make_unique<RKConfig>();
             build_status = CyrkErrorCodes::UNSUPPORTED_UNKNOWN_MODEL;
             break;
         }
@@ -197,7 +207,12 @@ void CySolverResult::update_status(CyrkErrorCodes status_code)
     }
 }
 
-CyrkErrorCodes CySolverResult::setup(std::unique_ptr<ProblemConfig> provided_config_uptr)
+CyrkErrorCodes CySolverResult::setup()
+{
+    return this->setup(nullptr);
+}
+
+CyrkErrorCodes CySolverResult::setup(ProblemConfig* provided_config_ptr)
 {
     this->update_status(CyrkErrorCodes::INITIALIZING);
     CyrkErrorCodes setup_status = CyrkErrorCodes::NO_ERROR;
@@ -226,7 +241,7 @@ CyrkErrorCodes CySolverResult::setup(std::unique_ptr<ProblemConfig> provided_con
         }
 
         if ((not this->solver_uptr) or 
-            ((not provided_config_uptr) and (not this->config_uptr))) // User may have manually updated the current config so the argument may be null.
+            ((not provided_config_ptr) and (not this->config_uptr))) // User may have manually updated the current config so the argument may be null.
         {
             setup_status = CyrkErrorCodes::UNINITIALIZED_CLASS;
             break;
@@ -241,21 +256,15 @@ CyrkErrorCodes CySolverResult::setup(std::unique_ptr<ProblemConfig> provided_con
         this->dense_vec.resize(0);
 
         // Store properties
-        if (provided_config_uptr)
+        if (provided_config_ptr)
         {
             // Check if config is properly setup.
-            if (provided_config_uptr->y0_vec.size() == 0)
+            if (provided_config_ptr->y0_vec.size() == 0)
             {
                 setup_status = CyrkErrorCodes::BAD_CONFIG_DATA;
                 break;
             }
-            if (this->config_uptr)
-            {
-                // Replacing the current config pointer
-                this->config_uptr.reset();
-            }
-            // Take ownership of the configuration unique pointer.
-            this->config_uptr = std::move(provided_config_uptr);
+            this->config_uptr->update_properties_from_config(provided_config_ptr);
         }
         // Update parameters based on configurations.
         this->config_uptr->capture_extra   = this->config_uptr->num_extra > 0;

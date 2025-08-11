@@ -30,19 +30,14 @@ void baseline_cysolve_ivp_noreturn(
     if (not solution_ptr->config_uptr)
     {
         // For now we are only ever using RK methods so it is safe to assume RK Config.
-        solution_ptr->config_uptr = std::make_unique<RKConfig>(
-            diffeq_ptr,
-            t_start,
-            t_end,
-            y0_vec
-        );
+        solution_ptr->config_uptr = std::make_unique<RKConfig>();
         rk_config_ptr = static_cast<RKConfig*>(solution_ptr->config_uptr.get());
         rk_config_ptr->update_properties(
-            std::nullopt, // diffeq_ptr Already set during construction.
+            diffeq_ptr, // diffeq_ptr Already set during construction.
             num_extra,
-            std::nullopt, // t_start Already set during construction.
-            std::nullopt, // t_end Already set during construction.
-            std::nullopt, // y0_vec Already set during construction.
+            t_start,    // t_start Already set during construction.
+            t_end,      // t_end Already set during construction.
+            y0_vec,     // y0_vec Already set during construction.
             args_vec,
             t_eval_vec,
             expected_size,

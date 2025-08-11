@@ -97,6 +97,7 @@ cdef class PySolver(WrapCySolverResult):
         else:
             self.build_cyresult(integration_method)
         cyresult_ptr = self.cyresult_uptr.get()
+        cdef ProblemConfig* base_config_ptr = cyresult_ptr.config_uptr.get()
         
         if not cyresult_ptr:
             raise RuntimeError("ERROR: `PySolver::set_problem_parameters` - CySolverResult was not constructed.")
@@ -136,13 +137,8 @@ cdef class PySolver(WrapCySolverResult):
         cdef double t_start = time_span[0]
         cdef double t_end   = time_span[1]
 
-        # Cython does not like doing things like cdef unique_ptr[ProblemConfig] = make_unique[RKConfig](...)
-        # So instead we need to do a hard alloc of the specific type of config
-        # And then pass ownership to a unique pointer of the right type.
-        cdef ProblemConfig* problem_specific_config_ptr = new RKConfig()
-        cdef unique_ptr[ProblemConfig] problem_config_uptr
-        problem_config_uptr.reset(problem_specific_config_ptr)
-        cdef RKConfig* problem_config_ptr = <RKConfig*>problem_config_uptr.get()
+        # Update configurations
+        cdef RKConfig* problem_config_ptr = <RKConfig*>base_config_ptr
 
         # Pass python pointers to C++ classes.
         problem_config_ptr.cython_extension_class_instance = <cpy_ref.PyObject*>self
@@ -216,7 +212,7 @@ cdef class PySolver(WrapCySolverResult):
         problem_config_ptr.max_ram_MB           = max_ram_MB
 
         # Load config into cysolution
-        status_code = cyresult_ptr.setup(move(problem_config_uptr))
+        status_code = cyresult_ptr.setup()
 
         if status_code != CyrkErrorCodes.NO_ERROR:
             raise Exception(

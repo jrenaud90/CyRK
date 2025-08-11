@@ -35,6 +35,7 @@ struct RKConfig : public ProblemConfig {
         std::optional<double> max_step_size_           = std::nullopt,
         std::optional<double> first_step_size_         = std::nullopt
     );
+    virtual void update_properties_from_config(RKConfig* new_config_ptr);
 };
 
 // ####################################################################################################################

@@ -60,6 +60,29 @@ void RKConfig::update_properties(
     if (first_step_size_) this->first_step_size = *first_step_size_;
 }
 
+void RKConfig::update_properties_from_config(RKConfig* new_config_ptr)
+{
+    this->update_properties(
+        new_config_ptr->diffeq_ptr,
+        new_config_ptr->num_extra,
+        new_config_ptr->t_start,
+        new_config_ptr->t_end,
+        new_config_ptr->y0_vec,
+        new_config_ptr->args_vec,
+        new_config_ptr->t_eval_vec,
+        new_config_ptr->expected_size,
+        new_config_ptr->max_num_steps,
+        new_config_ptr->max_ram_MB,
+        new_config_ptr->pre_eval_func,
+        new_config_ptr->capture_dense_output,
+        new_config_ptr->force_retain_solver,
+        new_config_ptr->rtols,
+        new_config_ptr->atols,
+        new_config_ptr->max_step_size,
+        new_config_ptr->first_step_size
+    );
+}
+
 // ########################################################################################################################
 // RKSolver (Base)
 // ########################################################################################################################

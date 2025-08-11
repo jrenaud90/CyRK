@@ -32,10 +32,10 @@ cdef class WrapCySolverResult:
 
         self.finalize()
     
-    cdef set_problem_config(self, unique_ptr[ProblemConfig] new_problem_config_uptr):
+    cdef set_problem_config(self, ProblemConfig* new_problem_config_ptr):
         if not self.cyresult_uptr:
             raise AttributeError("ERROR: `WrapCySolverResult::set_problem_config` - CySolverResult not set.")
-        self.cyresult_uptr.get().setup(move(new_problem_config_uptr))
+        self.cyresult_uptr.get().setup(new_problem_config_ptr)
     
     cpdef solve(self):
         if not self.cyresult_uptr:

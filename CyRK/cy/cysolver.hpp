@@ -117,6 +117,7 @@ struct ProblemConfig {
         std::optional<bool> capture_dense_output_      = std::nullopt,
         std::optional<bool> force_retain_solver_       = std::nullopt
     );
+    virtual void update_properties_from_config(ProblemConfig* new_config_ptr);
 };
 
 struct NowStatePointers 

@@ -77,7 +77,8 @@ public:
     CySolverResult(ODEMethod integration_method_);
     
     void update_status(CyrkErrorCodes status_code);
-    CyrkErrorCodes setup(std::unique_ptr<ProblemConfig> config_uptr);
+    CyrkErrorCodes setup();
+    CyrkErrorCodes setup(ProblemConfig* config_ptr);
     void save_data(
         const double new_t,
         double* const new_solution_y_ptr,

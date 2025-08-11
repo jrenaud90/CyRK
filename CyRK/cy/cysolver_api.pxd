@@ -114,7 +114,8 @@ cdef extern from "cysolution.cpp" nogil:
             vector[double] interp_time_vec
 
             void update_status(CyrkErrorCodes status_code)
-            CyrkErrorCodes setup(unique_ptr[ProblemConfig] config_uptr)
+            CyrkErrorCodes setup()
+            CyrkErrorCodes setup(ProblemConfig* config_ptr)
             void save_data(double new_t, double* new_solution_y, double* new_solution_dy) noexcept
             int build_dense(cpp_bool save) noexcept
             CyrkErrorCodes solve()
@@ -134,7 +135,7 @@ cdef class WrapCySolverResult:
 
     cdef void build_cyresult(self, ODEMethod integrator_method)
     cdef void set_cyresult_pointer(self, CySolveOutput cyresult_uptr_)
-    cdef set_problem_config(self, unique_ptr[ProblemConfig] new_problem_config_uptr)
+    cdef set_problem_config(self, ProblemConfig* new_problem_config_ptr)
     cpdef solve(self)
     cpdef finalize(self)
 

@@ -106,6 +106,24 @@ void ProblemConfig::update_properties(
     if (force_retain_solver_)  this->force_retain_solver  = *force_retain_solver_;
 }
 
+void ProblemConfig::update_properties_from_config(ProblemConfig* new_config_ptr)
+{
+    this->update_properties(
+        new_config_ptr->diffeq_ptr,
+        new_config_ptr->num_extra,
+        new_config_ptr->t_start,
+        new_config_ptr->t_end,
+        new_config_ptr->y0_vec,
+        new_config_ptr->args_vec,
+        new_config_ptr->t_eval_vec,
+        new_config_ptr->expected_size,
+        new_config_ptr->max_num_steps,
+        new_config_ptr->max_ram_MB,
+        new_config_ptr->pre_eval_func,
+        new_config_ptr->capture_dense_output,
+        new_config_ptr->force_retain_solver
+    );
+}
 
 /* ========================================================================= */
 /* =========================  Constructors  ================================ */
@@ -247,7 +265,7 @@ CyrkErrorCodes CySolverBase::setup()
         // Decrease reference count on the cython extension class instance
         Py_XDECREF(this->cython_extension_class_instance);
         this->cython_extension_class_instance = nullptr;
-        this->deconstruct_python = true;
+        this->deconstruct_python = false;
     }
 
     while (setup_status == CyrkErrorCodes::NO_ERROR)
