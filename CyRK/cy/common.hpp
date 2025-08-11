@@ -6,7 +6,6 @@
 #include <limits>
 
 // Pre-processor constants
-static const int MESSAGE_SIZE       = 128;
 static const size_t BUFFER_SIZE     = 16;
 static const size_t PRE_ALLOC_STEPS = 256;
 static const size_t PRE_ALLOC_NUMY  = 16;
@@ -121,7 +120,7 @@ inline const std::map<CyrkErrorCodes, std::string> CyrkErrorMessages = {
       "Maximum number of steps (set by user) exceeded during integration." },
 
     { CyrkErrorCodes::MAX_STEPS_SYSARCH_EXCEEDED,
-      "Maximum number of steps (set by user) exceeded during integration." },
+      "Maximum number of steps (set by system architecture) exceeded during integration." },
 
     { CyrkErrorCodes::STEP_SIZE_ERROR_SPACING,
       "Error in step size calculation: Required step size is less than spacing between numbers." },
@@ -195,7 +194,7 @@ struct MaxNumStepsOutput
 };
 
 
-void round_to_2(size_t& initial_value);
+void round_to_2(size_t& initial_value) noexcept;
 
 MaxNumStepsOutput find_max_num_steps(
     const size_t num_y,

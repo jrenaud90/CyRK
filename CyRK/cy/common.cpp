@@ -3,7 +3,7 @@
 #include "common.hpp"
 
 
-void round_to_2(size_t &initial_value)
+void round_to_2(size_t &initial_value) noexcept
 {
     /* Rounds the initial value to the nearest power of 2 */
     // Method is the fastest for 64-bit numbers

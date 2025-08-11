@@ -1,14 +1,16 @@
 # distutils: language = c++
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
+from libc.math cimport sin, cos
+from libc.string cimport memcpy
 
 from libcpp cimport bool as cpp_bool
+from libcpp.utility cimport move
 from libcpp.limits cimport numeric_limits
-from libc.math cimport sin, cos
-from libc.stdlib cimport malloc, free, realloc
+from libcpp.vector cimport vector
 
 cdef double d_NAN = numeric_limits[double].quiet_NaN()
 
-from CyRK.cy.cysolver_api cimport cysolve_ivp, WrapCySolverResult, DiffeqFuncType,MAX_STEP, CySolveOutput
+from CyRK.cy.cysolver_api cimport cysolve_ivp, WrapCySolverResult, DiffeqFuncType, MAX_STEP, CySolveOutput, ODEMethod
 
 import numpy as np
 cimport numpy as np
@@ -220,32 +222,34 @@ cdef void pendulum_preeval_diffeq(double* dy_ptr, double t, double* y_ptr, char*
 
 def cy_extra_output_tester():
 
-    cdef double[2] t_span = [0., 10.]
-    cdef double* t_span_ptr = &t_span[0]
+    cdef double t_start = 0.0
+    cdef double t_end = 10.0
 
-    cdef double[3] y0 = [1., 0., 0]
-    cdef double* y0_ptr = &y0[0]
+    cdef vector[double] y0_vec = vector[double](3)
+    y0_vec[0] = 1.0
+    y0_vec[1] = 0.0
+    y0_vec[2] = 0.0
     
     cdef size_t num_y     = 3
     cdef size_t num_extra = 3
-    cdef int int_method   = 1
+    cdef ODEMethod int_method = ODEMethod.RK45
 
     cdef size_t arg_size = sizeof(double) * 3
-    cdef double* args_ptr = <double*>malloc(arg_size)
+    cdef vector[char] args_vec = vector[char](arg_size)
+    cdef double* args_ptr = <double*>args_vec.data()
     args_ptr[0] = 10.0
     args_ptr[1] = 28.0
     args_ptr[2] = 8.0 / 3.0
 
     cdef CySolveOutput result = cysolve_ivp(
         lorenz_extraoutput_diffeq,
-        t_span_ptr,
-        y0_ptr,
-        num_y,
+        t_start,
+        t_end,
+        y0_vec,
         method=int_method,
         rtol=1.0e-4,
         atol=1.0e-5,
-        args_ptr=<char*>args_ptr,
-        size_of_args=arg_size,
+        args_vec=args_vec,
         num_extra=num_extra,
         max_num_steps=0,
         max_ram_MB=2000,
@@ -266,17 +270,6 @@ def cy_extra_output_tester():
     cdef double e2  = y_interp_ptr[4]
     cdef double e3  = y_interp_ptr[5]
 
-
-    # Corrupt or otherwise change up the arg pointer
-    args_ptr[0] = -99.0
-    args_ptr[1] = -99.0
-    args_ptr[2] = -99.0
-    args_ptr = <double*>realloc(args_ptr, sizeof(double) * 50)
-    cdef size_t i 
-    for i in range(50):
-        args_ptr[i] = -99.0
-    
-
     # Recall the solution to see if it still produces the expected values
     result.get().call(check_t, y_interp_ptr)
 
@@ -287,8 +280,6 @@ def cy_extra_output_tester():
     np.testing.assert_allclose(e2, y_interp_ptr[4])
     np.testing.assert_allclose(e3, y_interp_ptr[5])
 
-    free(args_ptr)
-
     return True
 
 def cytester(
@@ -296,7 +287,7 @@ def cytester(
         tuple t_span = None,
         const double[::1] y0 = None,
         double[::1] args = None,
-        int method = 1,
+        ODEMethod method = ODEMethod.RK45,
         size_t expected_size = 0,
         size_t max_num_steps = 0,
         size_t max_ram_MB = 2000,
@@ -310,18 +301,16 @@ def cytester(
         double first_step = 0.0
         ):
     cdef size_t i
-    cdef double* t_eval_ptr = NULL
-    cdef size_t len_t_eval = 0
+    cdef vector[double] t_eval_vec = vector[double]()
     if t_eval is not None:
-        len_t_eval = len(t_eval)
-        t_eval_ptr = &t_eval[0]
+        for i in range(t_eval.size):
+            t_eval_vec.push_back(t_eval[i])
 
     cdef size_t num_y
-    cdef double[10] y0_arr
-    cdef double* y0_ptr = &y0_arr[0]
+    cdef vector[double] y0_vec = vector[double]()
 
-    cdef double[2] t_span_arr
-    cdef double* t_span_ptr = &t_span_arr[0]
+    cdef double t_start = 0.0
+    cdef double t_end   = 0.0
 
     cdef size_t num_extra = 0
     cdef DiffeqFuncType diffeq = NULL
@@ -351,13 +340,9 @@ def cytester(
         raise NotImplementedError
 
     # Set up additional argument information
-    cdef char* args_ptr = NULL
+    cdef vector[char] args_vec = vector[char]()
     cdef size_t size_of_args = 0
-
-    # Arg double array for the diffeq's that use it
-    cdef bint cast_arg_dbl   = False
-    cdef double[10] args_arr
-    cdef double* args_ptr_dbl = &args_arr[0]
+    cdef double* args_dbl_ptr = NULL
     # Abitrary arg test requires a ArbitraryArgStruct class instance to be passed in
     cdef ArbitraryArgStruct arb_arg_struct = ArbitraryArgStruct(1.0, False, True, 1.0, 9.81)
     
@@ -372,155 +357,166 @@ def cytester(
         # Get inputs for requested functions
         if diffeq_number == 0:
             num_y = 2
-            y0_ptr[0] = 20.0
-            y0_ptr[1] = 20.0
-            t_span_ptr[0] = 0.0
-            t_span_ptr[1] = 20.0
+            y0_vec.resize(num_y)
+            y0_vec[0] = 20.0
+            y0_vec[1] = 20.0
+            t_start = 0.0
+            t_end = 20.0
 
         elif diffeq_number == 1:
             num_y = 2
-            y0_ptr[0] = 0.0
-            y0_ptr[1] = 1.0
-            t_span_ptr[0] = 0.0
-            t_span_ptr[1] = 10.0
+            y0_vec.resize(num_y)
+            y0_vec[0] = 0.0
+            y0_vec[1] = 1.0
+            t_start = 0.0
+            t_end = 10.0
 
         elif diffeq_number == 2:
             num_y = 2
-            y0_ptr[0] = 20.0
-            y0_ptr[1] = 20.0
-            t_span_ptr[0] = 0.0
-            t_span_ptr[1] = 20.0
+            y0_vec.resize(num_y)
+            y0_vec[0] = 20.0
+            y0_vec[1] = 20.0
+            t_start = 0.0
+            t_end = 20.0
 
         elif diffeq_number == 3:
             num_y = 3
-            y0_ptr[0] = 1.0
-            y0_ptr[1] = 0.0
-            y0_ptr[2] = 0.0
-            t_span_ptr[0] = 0.0
-            t_span_ptr[1] = 10.0
-            args_ptr_dbl[0] = 10.0
-            args_ptr_dbl[1] = 28.0
-            args_ptr_dbl[2] = 8.0 / 3.0
-            size_of_args = 8 * 3
-            cast_arg_dbl = True
+            y0_vec.resize(num_y)
+            y0_vec[0] = 1.0
+            y0_vec[1] = 0.0
+            y0_vec[2] = 0.0
+            t_start = 0.0
+            t_end = 10.0
+            args_vec.resize(3 * sizeof(double))
+            args_dbl_ptr = <double*>args_vec.data()
+            args_dbl_ptr[0] = 10.0
+            args_dbl_ptr[1] = 28.0
+            args_dbl_ptr[2] = 8.0 / 3.0
             
         elif diffeq_number == 4:
             num_y = 3
-            y0_ptr[0] = 1.0
-            y0_ptr[1] = 0.0
-            y0_ptr[2] = 0.0
-            t_span_ptr[0] = 0.0
-            t_span_ptr[1] = 10.0
-            args_ptr_dbl[0] = 10.0
-            args_ptr_dbl[1] = 28.0
-            args_ptr_dbl[2] = 8.0 / 3.0
-            size_of_args = 8 * 3
-            cast_arg_dbl = True
+            y0_vec.resize(num_y)
+            y0_vec[0] = 1.0
+            y0_vec[1] = 0.0
+            y0_vec[2] = 0.0
+            t_start = 0.0
+            t_end = 10.0
+            args_vec.resize(3 * sizeof(double))
+            args_dbl_ptr = <double*>args_vec.data()
+            args_dbl_ptr[0] = 10.0
+            args_dbl_ptr[1] = 28.0
+            args_dbl_ptr[2] = 8.0 / 3.0
 
         elif diffeq_number == 5:
             num_y = 2
-            y0_ptr[0] = 10.0
-            y0_ptr[1] = 5.0
-            t_span_ptr[0] = 0.0
-            t_span_ptr[1] = 15.0
-            args_ptr_dbl[0] = 1.5
-            args_ptr_dbl[1] = 1.0
-            args_ptr_dbl[2] = 3.0
-            args_ptr_dbl[3] = 1.0
-            size_of_args = 8 * 4
-            cast_arg_dbl = True
+            y0_vec.resize(num_y)
+            y0_vec[0] = 10.0
+            y0_vec[1] = 5.0
+            t_start = 0.0
+            t_end = 15.0
+            args_vec.resize(4 * sizeof(double))
+            args_dbl_ptr = <double*>args_vec.data()
+            args_dbl_ptr[0] = 1.5
+            args_dbl_ptr[1] = 1.0
+            args_dbl_ptr[2] = 3.0
+            args_dbl_ptr[3] = 1.0
 
         elif diffeq_number == 6:
             num_y = 2
-            y0_ptr[0] = 0.01
-            y0_ptr[1] = 0.0
-            t_span_ptr[0] = 0.0
-            t_span_ptr[1] = 10.0
-            args_ptr_dbl[0] = 1.0
-            args_ptr_dbl[1] = 1.0
-            args_ptr_dbl[2] = 9.81
-            size_of_args = 8 * 3
-            cast_arg_dbl = True
+            y0_vec.resize(num_y)
+            y0_vec[0] = 0.01
+            y0_vec[1] = 0.0
+            t_start = 0.0
+            t_end = 10.0
+            args_vec.resize(3 * sizeof(double))
+            args_dbl_ptr = <double*>args_vec.data()
+            args_dbl_ptr[0] = 1.0
+            args_dbl_ptr[1] = 1.0
+            args_dbl_ptr[2] = 9.81
 
         elif diffeq_number == 7:
             num_y = 2
-            y0_ptr[0] = 0.01
-            y0_ptr[1] = 0.0
-            t_span_ptr[0] = 0.0
-            t_span_ptr[1] = 10.0
+            y0_vec.resize(num_y)
+            y0_vec[0] = 0.01
+            y0_vec[1] = 0.0
+            t_start = 0.0
+            t_end = 10.0
             # Set args pointer to our arb args struct variable's address and cast it to a void pointer
-            args_ptr = <char*>&arb_arg_struct
-            size_of_args = sizeof(ArbitraryArgStruct)
-            cast_arg_dbl = False
+            args_vec.resize(sizeof(ArbitraryArgStruct))
+            memcpy(args_vec.data(), &arb_arg_struct, sizeof(ArbitraryArgStruct))
         
         elif diffeq_number == 8:
             num_y = 2
-            y0_ptr[0] = 0.01
-            y0_ptr[1] = 0.0
-            t_span_ptr[0] = 0.0
-            t_span_ptr[1] = 10.0
-            args_ptr_dbl[0] = 1.0
-            args_ptr_dbl[1] = 1.0
-            args_ptr_dbl[2] = 9.81
-            size_of_args = 8 * 3
-            cast_arg_dbl = True
+            y0_vec.resize(num_y)
+            y0_vec[0] = 0.01
+            y0_vec[1] = 0.0
+            t_start = 0.0
+            t_end = 10.0
+            args_vec.resize(3 * sizeof(double))
+            args_dbl_ptr = <double*>args_vec.data()
+            args_dbl_ptr[0] = 1.0
+            args_dbl_ptr[1] = 1.0
+            args_dbl_ptr[2] = 9.81
 
         else:
             raise NotImplementedError
     else:
         # Regular testing requested.
         num_y = len(y0)
+        y0_vec.resize(num_y)
         for i in range(num_y):
-            y0_ptr[i] = y0[i]
-        t_span_ptr[0] = t_span[0]
-        t_span_ptr[1] = t_span[1]
+            y0_vec[i] = y0[i]
+        if t_span is not None:
+            t_start = t_span[0]
+            t_end   = t_span[1]
+        else:
+            raise AttributeError("ERROR: `cytester`: t_span not provided.")
         if args is not None:
+            # This tester assumes that the args input is an array of doubles.
+            args_vec.resize(args.size * sizeof(double))
+            memcpy(args_vec.data(), &args[0], sizeof(double) * args.size)
             args_ptr     = <char*>&args[0]
             size_of_args = sizeof(double) * args.size
         else:
-            args_ptr     = NULL
-            size_of_args = 0
-
-    if cast_arg_dbl:
-        args_ptr     = <char*>args_ptr_dbl
-        if size_of_args == 0:
-            size_of_args = sizeof(args_arr)
+            args_vec.resize(0)
 
     # Parse rtol
-    cdef double* rtols_ptr = NULL
+    cdef vector[double] rtols_vec = vector[double]()
     if rtol_array is not None:
-        rtols_ptr = &rtol_array[0]
+        rtols_vec.resize(rtol_array.size)
+        for i in range(rtol_array.size):
+            rtols_vec[i] = rtol_array[i]
     
     # Parse atol
-    cdef double* atols_ptr = NULL
+    cdef vector[double] atols_vec = vector[double]()
     if atol_array is not None:
-        atols_ptr = &atol_array[0]
+        atols_vec.resize(atol_array.size)
+        for i in range(atol_array.size):
+            atols_vec[i] = atol_array[i]
 
     cdef CySolveOutput result = cysolve_ivp(
         diffeq,
-        t_span_ptr,
-        y0_ptr,
-        num_y,
+        t_start,
+        t_end,
+        y0_vec,
         method = method,
         rtol = rtol,
         atol = atol,
-        args_ptr = args_ptr,
-        size_of_args = size_of_args,
+        args_vec = args_vec,
         num_extra = num_extra,
         max_num_steps = max_num_steps,
         max_ram_MB = max_ram_MB,
         dense_output = dense_output,
-        t_eval = t_eval_ptr,
-        len_t_eval = len_t_eval,
+        t_eval_vec = t_eval_vec,
         pre_eval_func = pre_eval_func,
-        rtols_ptr = rtols_ptr,
-        atols_ptr = atols_ptr,
+        rtols_vec = rtols_vec,
+        atols_vec = atols_vec,
         max_step = max_step,
         first_step = first_step,
         expected_size = expected_size
         )
 
     cdef WrapCySolverResult pysafe_result = WrapCySolverResult()
-    pysafe_result.set_cyresult_pointer(result)
+    pysafe_result.set_cyresult_pointer(move(result))
 
     return pysafe_result

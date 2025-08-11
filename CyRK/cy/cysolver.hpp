@@ -39,6 +39,26 @@ enum class ODEMethod : int {
     DOP853
 };
 
+inline const std::map<ODEMethod, std::string> CyrkODEMethods = {
+    { ODEMethod::NO_METHOD_SET,
+      "An integration method has not been set." },
+
+    { ODEMethod::BASE_METHOD,
+      "Integration method set to base class (you should not see this)." },
+
+    { ODEMethod::RK_BASE_METHOD,
+      "Integration method set to base class for generalized RK (you should not see this)." },
+
+    { ODEMethod::RK23,
+      "Explicit Runge-Kutta method of order 3(2)." },
+
+    { ODEMethod::RK45,
+      "Explicit Runge-Kutta method of order 5(4)" },
+
+    { ODEMethod::DOP853,
+      "Explicit Runge-Kutta method of order 8. Error is controlled using a combination of 5th and 3rd order interpolators." }
+};
+
 struct ProblemConfig {
     // Required configurations
     DiffeqFuncType diffeq_ptr;   // Pointer to the differential equation function
@@ -65,6 +85,10 @@ struct ProblemConfig {
     double num_y_sqrt    = 0.0;   // Square root of the number of dependent variables
     size_t num_dy        = 0;     // Total number of dependent variables including extra outputs
     double num_dy_dbl    = 0.0;   // Total number of dependent variables as a double
+
+    // PySolver Specifics
+    PyObject* cython_extension_class_instance = nullptr;  // Pointer to Python instance which holds the diffeq.
+    DiffeqMethod py_diffeq_method             = nullptr;  // Said python diffeq.
 
     // Solver specific configurations can be added below via overloading the class.
 
@@ -127,6 +151,7 @@ public:
     virtual void set_Q_array(double* Q_ptr);
     void offload_to_temp() noexcept;
     void load_back_from_temp() noexcept;
+    CyrkErrorCodes resize_num_y(size_t num_y_, size_t num_dy_);
     virtual CyrkErrorCodes setup();
     inline bool check_status() const;
     void take_step();
@@ -149,11 +174,18 @@ protected:
     // Diffeq
     DiffeqFuncType diffeq_ptr = nullptr;
 
+    // Function to send to diffeq which is called before dy is calculated
+    PreEvalFunc pre_eval_func = nullptr;
+
+    // Python hooks
+    DiffeqMethod py_diffeq_method = nullptr;
+    PyObject* cython_extension_class_instance = nullptr;
+
     // Dependent variables properties
-    size_t sizeof_dbl_Ny = 0;
+    size_t sizeof_dbl_Ny  = 0;
     size_t sizeof_dbl_Ndy = 0;
-    double num_y_dbl  = 0.0;
-    double num_y_sqrt = 0.0;
+    double num_y_dbl      = 0.0;
+    double num_y_sqrt     = 0.0;
 
     // Time properties
     double t_start       = 0.0;
@@ -203,20 +235,14 @@ protected:
     double t_tmp = 0.0;
     size_t len_t = 0;
 
-    // Function to send to diffeq which is called before dy is calculated
-    PreEvalFunc pre_eval_func = nullptr;
-
-    // Python hooks
-    DiffeqMethod py_diffeq_method = nullptr;
-    PyObject* cython_extension_class_instance = nullptr;
-
     // More flags
-    bool use_dense_output            = false;
-    bool user_provided_max_num_steps = false;
-    bool use_pysolver                = false;
     bool deconstruct_python          = false;
 
 public:
+    bool use_dense_output            = false;
+    bool user_provided_max_num_steps = false;
+    bool use_pysolver                = false;
+
     ODEMethod integration_method = ODEMethod::NO_METHOD_SET;
 
     // State properties that need to be public mostly so that

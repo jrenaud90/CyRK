@@ -13,8 +13,8 @@ from .helper import nb2cy, cy2nb
 from ._test import test_nbrk, test_cysolver, test_pysolver
 
 # Import python solver
-from CyRK.cy.cysolver_api import WrapCySolverResult
-from CyRK.cy.pysolver import pysolve_ivp
+from CyRK.cy.cysolver_api import WrapCySolverResult, CyrkErrorCodes, ODEMethod
+from CyRK.cy.pysolver import pysolve_ivp, PySolver
 
 # Helper function that provides directories to CyRK c++ headers
 def get_include():

@@ -38,7 +38,7 @@ public:
     bool setup_called = false;
     bool success      = false;
 
-    // Problem-specifc flags
+    // Problem-specific flags
     bool retain_solver        = false;
     bool capture_dense_output = false;
     bool capture_extra        = false;

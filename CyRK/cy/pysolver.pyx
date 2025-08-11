@@ -1,11 +1,15 @@
 # distutils: language = c++
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
-
 from libc.string cimport memcpy
+from libcpp cimport nullptr
 from libcpp.cmath cimport fmin, fabs
+from libcpp.vector cimport vector
+from libcpp.utility cimport move
 
 from CyRK.utils.memory cimport make_shared
-from CyRK.cy.cysolver_api cimport find_expected_size, WrapCySolverResult, INF, EPS_100
+from CyRK.cy.cysolver_api cimport (
+    find_expected_size, INF, EPS_100, CyrkErrorCodes, CyrkErrorMessages,
+    ProblemConfig, RKConfig, CySolverBase)
 
 import numpy as np
 cimport numpy as cnp
@@ -14,9 +18,9 @@ cnp.import_array()
 # =====================================================================================================================
 # PySolver Class (holds the intergrator class and reference to the python diffeq function)
 # =====================================================================================================================
-cdef class WrapPyDiffeq:
+cdef class PySolver(WrapCySolverResult):
 
-    def __cinit__(
+    def set_pydiffeq(
             self,
             object diffeq_func,
             tuple args,
@@ -47,6 +51,177 @@ cdef class WrapPyDiffeq:
             self.pass_dy_as_arg = True
         else:
             self.pass_dy_as_arg = False
+
+    def set_problem_parameters(
+            self,
+            object py_diffeq,
+            tuple time_span,
+            const double[::1] y0,
+            str method = 'RK45',
+            const double[::1] t_eval = None,
+            bint dense_output = False,
+            tuple args = None,
+            size_t expected_size = 0,
+            size_t num_extra = 0,
+            double first_step = 0.0,
+            double max_step = INF,
+            rtol = 1.0e-3,
+            atol = 1.0e-6,
+            size_t max_num_steps = 0,
+            size_t max_ram_MB = 2000,
+            bint pass_dy_as_arg = False
+            ):
+        # Parse method
+        method = method.lower()
+        cdef ODEMethod integration_method = ODEMethod.RK45
+        if method == "rk23":
+            integration_method = ODEMethod.RK23
+        elif method == "rk45":
+            integration_method = ODEMethod.RK45
+        elif method == 'dop853':
+            integration_method = ODEMethod.DOP853
+        else:
+            raise NotImplementedError(
+                "ERROR: `PySolver::set_problem_parameters` - "
+                f"Unknown or unsupported integration method provided: {method}.\n"
+                f"Supported methods are: RK23, RK45, DOP853."
+                )
+
+        cdef CySolverResult* cyresult_ptr = self.cyresult_uptr.get()
+        if self.cyresult_uptr:
+            # Already have a solution class created.
+            # Is this the same integration method? If it is then we can reuse the solution class.
+            if integration_method != cyresult_ptr.integrator_method:
+                # Need to make a new cysolver object
+                self.build_cyresult(integration_method)
+        else:
+            self.build_cyresult(integration_method)
+        cyresult_ptr = self.cyresult_uptr.get()
+        
+        if not cyresult_ptr:
+            raise RuntimeError("ERROR: `PySolver::set_problem_parameters` - CySolverResult was not constructed.")
+        cdef CySolverBase* cysolver_ptr = cyresult_ptr.solver_uptr.get()
+        if not cysolver_ptr:
+            raise AttributeError("ERROR: `PySolver::set_problem_parameters` - CySolver not set within CySolverResult object.")
+
+        # Parse y0
+        cdef size_t i
+        cdef size_t num_y  = y0.size
+        cdef size_t num_dy = num_y + num_extra  
+        cdef vector[double] y0_vec = vector[double](num_y)
+        for i in range(num_y):
+            y0_vec[i] = y0[i]
+
+        # We need to set the number of ys now because we need the now state pointers. 
+        # These pointers could change which memory they are pointing to if by setting the num_y later 
+        # causes a realloc of the underlying vectors.
+        cdef CyrkErrorCodes setup_status = cysolver_ptr.resize_num_y(num_y, num_dy)
+        if setup_status != CyrkErrorCodes.NO_ERROR:
+            raise Exception("ERROR: `PySolver::set_problem_parameters` - Error raised while setting number of ys: {setup_status}.")
+
+        # Setup python diffeq
+        self.set_pydiffeq(py_diffeq, args, num_y, num_dy, pass_dy_as_arg)
+
+        # Pass python pointers to C++ classes.
+        cdef DiffeqMethod diffeq_func = <DiffeqMethod>self.diffeq
+        cysolver_ptr.set_cython_extension_instance(<cpy_ref.PyObject*>self, diffeq_func)
+
+        # Pull in current state pointers from CySolver C++ object to this object so that `self.diffeq` can update the "now" attributes.
+        cdef NowStatePointers solver_state = cysolver_ptr.get_now_state()
+        self.set_state(&solver_state)
+
+        # Update other configurations now
+        if len(time_span) != 2:
+            raise AttributeError("ERROR: `PySolver::set_problem_parameters` - Unexpected size found for the provided `time_span`.")
+        cdef double t_start = time_span[0]
+        cdef double t_end   = time_span[1]
+
+        # Cython does not like doing things like cdef unique_ptr[ProblemConfig] = make_unique[RKConfig](...)
+        # So instead we need to do a hard alloc of the specific type of config
+        # And then pass ownership to a unique pointer of the right type.
+        cdef ProblemConfig* problem_specific_config_ptr = new RKConfig()
+        cdef unique_ptr[ProblemConfig] problem_config_uptr
+        problem_config_uptr.reset(problem_specific_config_ptr)
+        cdef RKConfig* problem_config_ptr = <RKConfig*>problem_config_uptr.get()
+
+        # Pass python pointers to C++ classes.
+        problem_config_ptr.cython_extension_class_instance = <cpy_ref.PyObject*>self
+        problem_config_ptr.py_diffeq_method                = <DiffeqMethod>self.diffeq
+        
+        # Set required arguments.
+        # diffeq_ptr - unused for PySolver.
+        problem_config_ptr.t_start = t_start
+        problem_config_ptr.t_end = t_end
+        problem_config_ptr.y0_vec = y0_vec
+
+        # Parse t_eval
+        problem_config_ptr.t_eval_provided = False
+        cdef vector[double] t_eval_vec = vector[double](0)
+        if t_eval is not None:
+            t_eval_vec.resize(t_eval.size)
+            for i in range(t_eval.size):
+                t_eval_vec[i] = t_eval[i]
+            problem_config_ptr.t_eval_vec = t_eval_vec
+            problem_config_ptr.t_eval_provided = True
+        
+        # Parse rtol
+        cdef vector[double] rtols_vec = vector[double](1)
+        if type(rtol) == float:
+            rtols_vec[0] = rtol
+        else:
+            rtols_vec.resize(rtol.size)
+            for y_i in range(rtol.size):
+                rtols_vec[y_i] = rtol[y_i]
+        problem_config_ptr.rtols = rtols_vec
+        
+        # Parse atol
+        cdef vector[double] atols_vec = vector[double](1)
+        if type(atol) == float:
+            atols_vec[0] = atol
+        else:
+            atols_vec.resize(atol.size)
+            for y_i in range(atol.size):
+                atols_vec[y_i] = atol[y_i]
+        problem_config_ptr.atols = atols_vec
+        
+        # Parse expected size
+        cdef size_t expected_size_touse = expected_size
+        cdef double rtol_tmp
+        cdef double min_rtol = INF
+        if expected_size_touse == 0:
+            for i in range(rtols_vec.size()):
+                rtol_tmp = rtols_vec[i]
+                if rtol_tmp < EPS_100:
+                    rtol_tmp = EPS_100
+                min_rtol = fmin(min_rtol, rtol_tmp)
+            expected_size_touse = find_expected_size(num_y, num_extra, fabs(t_end - t_start), min_rtol)
+        problem_config_ptr.expected_size = expected_size_touse
+
+        # Parse first step size
+        if first_step < 0.0:
+            raise AttributeError("ERROR: `PySolver::set_problem_parameters` - First step size must be a postive float (or 0.0 to use automatic finder).")
+        problem_config_ptr.first_step_size = first_step
+    
+        # Parse maximum step size
+        if max_step <= 0.0:
+            raise AttributeError("ERROR: `PySolver::set_problem_parameters` - Maximum step size must be a postive float.")
+        problem_config_ptr.max_step_size = max_step
+
+        # Parse other flags
+        problem_config_ptr.capture_dense_output = dense_output
+        problem_config_ptr.force_retain_solver  = True # For now we are going to keep solvers it is a small memory hit but makes everything much easier to debug and avoids crashes.
+        problem_config_ptr.num_extra            = num_extra
+        problem_config_ptr.capture_extra        = num_extra > 0
+        problem_config_ptr.max_num_steps        = max_num_steps
+        problem_config_ptr.max_ram_MB           = max_ram_MB
+
+        # Load config into cysolution
+        status_code = cyresult_ptr.setup(move(problem_config_uptr))
+
+        if status_code != CyrkErrorCodes.NO_ERROR:
+            raise Exception(
+                f"ERROR: `PySolver::set_problem_parameters` - Error during config setup. Error Code: {status_code}. "
+                f"Message: {CyrkErrorMessages.at(status_code).decode('utf-8')}")
     
     cdef void set_state(self, NowStatePointers* solver_state_ptr) noexcept:
         
@@ -94,7 +269,6 @@ cdef class WrapPyDiffeq:
 # =====================================================================================================================
 # PySolver wrapper function
 # =====================================================================================================================
-
 def pysolve_ivp(
         object py_diffeq,
         tuple time_span,
@@ -114,149 +288,34 @@ def pysolve_ivp(
         bint pass_dy_as_arg = False
         ):
 
-    # Parse method
-    method = method.lower()
-    cdef int integration_method = 1
-    if method == "rk23":
-        integration_method = 0
-    elif method == "rk45":
-        integration_method = 1
-    elif method == 'dop853':
-        integration_method = 2
-    else:
-        raise NotImplementedError(
-            f"Unknown or unsupported integration method provided: {method}.\n"
-            f"Supported methods are: RK23, RK45, DOP853."
-            )
-    
-    # Parse time_span
-    cdef double t_start = time_span[0]
-    cdef double t_end   = time_span[1]
-    cdef cpp_bool direction_flag = (t_end - t_start) >= 0
+    # Build PySolver solution storage.
+    # These cython extension classes are created as python objects so they have reference counting
+    # so it is safe to return objects created in this function without worry of memory leaks.
+    cdef PySolver pysolver_solution = PySolver()
 
-    # Parse y0
-    cdef size_t num_y   = len(y0)
-    cdef const double* y0_ptr = &y0[0]
-    
-    # Parse t_eval
-    cdef const double* t_eval_ptr = NULL
-    cdef cpp_bool t_eval_provided = False
-    cdef size_t len_t_eval = 0
-    if t_eval is not None:
-        t_eval_provided = True
-        len_t_eval = len(t_eval)
-        t_eval_ptr = &t_eval[0]
-    
-    # Parse num_extra
-    cdef size_t num_dy = num_y + num_extra
-    
-    # Parse rtol
-    cdef double* rtols_ptr = NULL
-    cdef double[::1] rtols_view
-    cdef double rtol_float = 0.0
-    if type(rtol) == float:
-        rtol_float = rtol
-        rtol_float = fabs(rtol_float)
-    else:
-        rtols_view = np.abs(np.asarray(rtol, dtype=np.float64, order='C'))
-        rtols_ptr = &rtols_view[0]
-    
-    # Parse atol
-    cdef double* atols_ptr = NULL
-    cdef double[::1] atols_view
-    cdef double atol_float = 0.0
-    if type(atol) == float:
-        atol_float = atol
-        atol_float = fabs(atol_float)
-    else:
-        atols_view = np.abs(np.asarray(atol, dtype=np.float64, order='C'))
-        atols_ptr = &atols_view[0]
-    
-    # Parse expected size
-    cdef size_t expected_size_touse = expected_size
-    cdef double rtol_tmp
-    cdef double min_rtol = INF
-    if expected_size_touse == 0:
-        if rtols_ptr:
-            # rtol for each y
-            for y_i in range(num_y):
-                rtol_tmp = rtols_ptr[y_i]
-                if rtol_tmp < EPS_100:
-                    rtol_tmp = EPS_100
-                min_rtol = fmin(min_rtol, rtol_tmp)
-        else:
-            # Only one rtol
-            rtol_tmp = rtol
-            if rtol_tmp < EPS_100:
-                rtol_tmp = EPS_100
-            min_rtol = rtol_tmp
-        expected_size_touse = find_expected_size(num_y, num_extra, fabs(t_end - t_start), min_rtol)
-    
-    # Parse first step size
-    if first_step < 0.0:
-        raise AttributeError("First step size must be a postive float (or 0.0 to use automatic finder).")
-
-    # Parse maximum step size
-    if max_step <= 0.0:
-        raise AttributeError("Maximum step size must be a postive float.")
-
-    # Build solution storage
-    cdef shared_ptr[CySolverResult] solution_sptr = make_shared[CySolverResult](
-        num_y,
-        num_extra,
-        expected_size,
-        t_end,
-        direction_flag,
-        dense_output,
-        t_eval_provided)
-
-    # Build diffeq wrapper
-    cdef WrapPyDiffeq diffeq_wrap = WrapPyDiffeq(py_diffeq, args, num_y, num_dy, pass_dy_as_arg=pass_dy_as_arg)
-    cdef DiffeqMethod diffeq_func = <DiffeqMethod>diffeq_wrap.diffeq
-
-    # Finally we can actually run the integrator!
-    # The following effectively copies the functionality of cysolve_ivp. We can not directly use that function
-    # because we need to tie in the python-based diffeq function (via its wrapper)
-
-    # We need to heap allocate the PySolver class instance otherwise it can get garbage collected while the solver
-    # is running.
-    cdef PySolver* solver = new PySolver(
-            integration_method,
-            <cpy_ref.PyObject*>diffeq_wrap,
-            diffeq_func,
-            solution_sptr,
-            t_start,
-            t_end,
-            y0_ptr,
-            num_y,
+    # Load in user-provided parameters
+    pysolver_solution.set_problem_parameters(
+            py_diffeq,
+            time_span,
+            y0,
+            method,
+            t_eval,
+            dense_output,
+            args,
             expected_size,
             num_extra,
+            first_step,
+            max_step,
+            rtol,
+            atol,
             max_num_steps,
             max_ram_MB,
-            dense_output,
-            t_eval_ptr,
-            len_t_eval,
-            rtol_float,
-            atol_float,
-            rtols_ptr,
-            atols_ptr,
-            max_step,
-            first_step
-        )
-
-    # Get pointers to the solver so that the Python differential equation can use and update its state variables (t_now, y_now, dy_now).
-    cdef NowStatePointers solver_state = solution_sptr.get().solver_uptr.get().get_now_state()
-    diffeq_wrap.set_state(&solver_state)
+            pass_dy_as_arg)
     
     ##
     # Run the integrator!
     ##
-    solver.solve()
+    pysolver_solution.solve()
     
-    # Wrap the solution in a python-safe wrapper class
-    cdef WrapCySolverResult pyresult = WrapCySolverResult()
-    pyresult.set_cyresult_pointer(solution_sptr)
-
-    del solver
-
-    return pyresult
+    # Return the results.
+    return pysolver_solution

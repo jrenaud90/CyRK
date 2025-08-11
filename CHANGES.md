@@ -14,6 +14,8 @@ Changes:
   * Added more checks and error catches to avoid other problems.
   * Optimized solution storage, solver, and dense output to better fit in typical cache sizes.
   * Vectors are now pre-allocated with guesstimated sizes at objection creation to reduce the need for subsequent reallocations.
+* Cython wrapper:
+  * Improved how additional arguments are displayed when `WrapCySolverResult.print_diagnostics` is called.
 to be reallocated for simple re-runs of the same ODE.
 
 Fixes:

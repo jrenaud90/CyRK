@@ -1,5 +1,4 @@
 /* Methods to store and retrieve data saved by CySolver */
-
 #include "cysolution.hpp"
 
 /* ========================================================================= */
@@ -245,8 +244,7 @@ CyrkErrorCodes CySolverResult::setup(std::unique_ptr<ProblemConfig> provided_con
         if (provided_config_uptr)
         {
             // Check if config is properly setup.
-            if ((not provided_config_uptr->diffeq_ptr) or
-                (provided_config_uptr->y0_vec.size() == 0))
+            if (provided_config_uptr->y0_vec.size() == 0)
             {
                 setup_status = CyrkErrorCodes::BAD_CONFIG_DATA;
                 break;
