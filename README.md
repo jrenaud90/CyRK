@@ -14,7 +14,7 @@
 
 ---
 
-<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.13.5 Alpha-orange" alt="CyRK Version 0.13.5 Alpha" /></a>
+<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.14.0 Alpha-orange" alt="CyRK Version 0.14.0 Alpha" /></a>
 
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
@@ -234,7 +234,8 @@ def pysolve_ivp(
         atol = 1.0e-6,               # Absolute tolerance (near 0) used to control integration error. This can be provided as a numpy array if you'd like a different atol for each y.
         size_t max_num_steps = 0,    # Maximum number of steps allowed. If exceeded then integration will fail. 0 (the default) turns this off.
         size_t max_ram_MB = 2000,    # Maximum amount of system memory the integrator is allowed to use. If this is exceeded then integration will fail.
-        bint pass_dy_as_arg = False  # Flag if differential equation returns dy (False) or is passed dy as the _first_ argument (True).
+        bint pass_dy_as_arg = False,  # Flag if differential equation returns dy (False) or is passed dy as the _first_ argument (True).
+        PySolver solution_reuse = None # Allows the user to pass in a previously instantiated pysolver `result`. This can reduce overhead on repeated short integration runs.
         ):
 ```
 
@@ -248,7 +249,10 @@ First a pure Cython file (written as a Jupyter notebook).
 ```cython
 %%cython --force 
 # distutils: language = c++
+# distutils: language = /std:c++20
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
+from libcpp.utility cimport move
+from libcpp.vector cimport vector
 
 import numpy as np
 cimport numpy as np
@@ -290,7 +294,7 @@ cdef void cython_diffeq(double* dy, double t, double* y, char* args, PreEvalFunc
 from CyRK cimport cysolve_ivp, DiffeqFuncType, WrapCySolverResult, CySolveOutput
 
 # Let's get the integration number for the RK45 method
-from CyRK cimport RK45_METHOD_INT
+from CyRK cimport ODEMethod
 
 # Now let's import cysolve_ivp and build a function that runs it. We will not make this function `cdef` like the diffeq was. That way we can run it from python (this is not a requirement. If you want you can do everything within Cython).
 # Since this function is not `cdef` we can use Python types for its input. We just need to clean them up and convert them to pure C before we call cysolve_ivp.
@@ -300,38 +304,40 @@ def run_cysolver(tuple t_span, double[::1] y0):
     cdef DiffeqFuncType diffeq = cython_diffeq
     
     # Convert the python user input to pure C types
-    cdef double* y0_ptr       = &y0[0]
-    cdef size_t num_y         = len(y0)
-    cdef double[2] t_span_arr = [t_span[0], t_span[1]]
-    cdef double* t_span_ptr   = &t_span_arr[0]
+    cdef size_t num_y          = len(y0)
+    cdef double t_start        = t_span[0]
+    cdef double t_end          = t_span[1]
+    cdef vector[double] y0_vec = vector[double](num_y)
+    cdef size_t yi
+    for yi in range(num_y):
+        y0_vec[yi] = y0[yi]
 
-    # Assume constant args
-    cdef double[2] args   = [0.01, 0.02]
-    cdef double* args_dbl_ptr = &args[0]
-    # Need to cast the arg double pointer to void
-    cdef char* args_ptr = <char*>args_dbl_ptr
+    # Assume constant additional arguments
+    # These args are stored in a vector<char>
+    cdef vector[char] args_vec = vector[char](2 * sizeof(double)) # Size of vector is size of arg datatype x number of args.
 
-    # CySolver makes a copy of the arg structure so that it can retain the values for later computation.
-    # In order to make this copy, it needs to know the size of the structure.
-    cdef size_t size_of_args = 2 * sizeof(double)
+    # Convert to double pointer to more easily populate the vector.
+    cdef double* args_as_dbl = <double*>args_vec.data()
+    args_as_dbl[0] = 0.01
+    args_as_dbl[1] = 0.02
+    # Keep in mind these args could be any arbitrary C/C++ structure.
 
     # Run the integrator!
     cdef CySolveOutput result = cysolve_ivp(
         diffeq,
-        t_span_ptr,
-        y0_ptr,
-        num_y,
-        method = RK45_METHOD_INT, # Integration method
+        t_start,
+        t_end,
+        y0_vec,
+        method = ODEMethod.RK45, # Integration method
         rtol = 1.0e-7,
         atol = 1.0e-8,
-        args_ptr = args_ptr,
-        size_of_args = size_of_args,
+        args_vec = args_vec,
         num_extra = 2
     )
 
     # The CySolveOutput is not accesible via Python. We need to wrap it first
     cdef WrapCySolverResult pysafe_result = WrapCySolverResult()
-    pysafe_result.set_cyresult_pointer(result)
+    pysafe_result.set_cyresult_pointer(move(result))
 
     return pysafe_result
 ```
@@ -361,10 +367,10 @@ ax.plot(result.t, 100*result.y[2], c='green', ls=':')
 ax.plot(result.t, 100*result.y[3], c='purple', ls=':')
 ```
 
-There is a lot more you can do to interface with CyRK's C++ backend and fully optimize the integrators to your needs. These details will be documented in "Documentation/Advanced CySolver.md".
+There is a lot more you can do to interface with CyRK's C++ backend and fully optimize the integrators to your needs. These details are documented in "Documentation/Advanced CySolver.md".
 
 #### No Return `cysolve_ivp_noreturn`
-The example above shows using `cysolve_ivp` functions that return an output (which is a c++ shared pointer): `cdef CySolveOutput result = cysolve_ivp(...)`. CyRK also provides a function that takes the output as an input if you prefer to manage your own memory:
+The example above shows using `cysolve_ivp` functions that return an output (which is a c++ unique pointer): `cdef CySolveOutput result = cysolve_ivp(...)`. CyRK also provides a function that takes the output as an input if you prefer to manage your own memory:
 ```cython
 
 from libcpp.memory cimport make_shared, shared_ptr
@@ -372,15 +378,8 @@ from libcpp.memory cimport make_shared, shared_ptr
 from CyRK cimport CySolverResult, cysolve_ivp_noreturn
 
 # Make our own storage
-cdef shared_ptr[CySolverResult] solution_sptr =
-    make_shared[CySolverResult](
-        num_y,
-        num_extra,
-        expected_size,
-        t_end,
-        direction_flag,
-        dense_output,
-        t_eval_provided);
+cdef unique[CySolverResult] solution_sptr =
+    make_unique[CySolverResult](integration_method);
 
 # Pass it to the noreturn version of the solver for it to update.
 cysolve_ivp_noreturn(solution_sptr, <other inputs>)
@@ -390,25 +389,23 @@ cysolve_ivp_noreturn(solution_sptr, <other inputs>)
 #### `cysolve_ivp` and `cysolve_ivp_gil` Arguments
 
 ```cython
-cdef shared_ptr[CySolverResult] cysolve_ivp(
-    DiffeqFuncType diffeq_ptr,        # Differential equation defined as a cython function
-    double* t_span_ptr,               # Pointer to array (size 2) of floats defining the start and stop points for integration
-    double* y0_ptr,                   # Pointer to array defining initial y0 conditions.
-    size_t num_y,                     # Size of y0_ptr array.
-    int method = 1,                   # Integration method. Current options: 0 == RK23, 1 == RK45, 2 == DOP853
-    double rtol = 1.0e-3,             # Relative tolerance used to control integration error.
-    double atol = 1.0e-6,             # Absolute tolerance (near 0) used to control integration error.
-    char* args_ptr = NULL,            # Pointer to array of additional arguments passed to the diffeq. See "Advanced CySolver.md" for more details.
-    size_t size_of_args = 0,          # Size of the structure that `args_ptr` is pointing to. 
-    size_t num_extra = 0,             # Number of extra outputs you want to capture during integration. There is a performance hit if this is used in conjunction with t_eval or dense_output.
-    size_t max_num_steps = 0,         # Maximum number of steps allowed. If exceeded then integration will fail. 0 (the default) turns this off.
-    size_t max_ram_MB = 2000,         # Maximum amount of system memory the integrator is allowed to use. If this is exceeded then integration will fail.
-    bint dense_output = False,        # If True, then dense interpolators will be saved to the solution. This allows a user to call solution as if a function (in time).
-    double* t_eval = NULL,            # Pointer to an array of time steps at which to save data. If not provided then all adaptive time steps will be saved. There is a slight performance hit using this feature.
-    size_t len_t_eval = 0,            # Size of t_eval.
+cdef unique_ptr[CySolverResult] cysolve_ivp(
+    DiffeqFuncType diffeq_ptr,                    # Differential equation defined as a cython function
+    double t_start,                               # Start of integration
+    double t_end,                                 # End of integration
+    vector[double] y0_vec,                        # Vector of doubles defining initial y0 conditions.
+    ODEMethod method = ODEMethod.RK45,            # Integration method. Current options: ODEMethod.RK23, ODEMethod.RK45, ODEMethod.DOP853
+    double rtol = 1.0e-3,                         # Relative tolerance used to control integration error.
+    double atol = 1.0e-6,                         # Absolute tolerance (near 0) used to control integration error.
+    vector[char] args_vec = vector[char](),       # Vector of char memory that stores any additional arguments passed to the diffeq. See "Advanced CySolver.md" for more details.
+    size_t num_extra = 0,                         # Number of extra outputs you want to capture during integration. There is a performance hit if this is used in conjunction with t_eval or dense_output.
+    size_t max_num_steps = 0,                     # Maximum number of steps allowed. If exceeded then integration will fail. 0 (the default) turns this off.
+    size_t max_ram_MB = 2000,                     # Maximum amount of system memory the integrator is allowed to use. If this is exceeded then integration will fail.
+    bint dense_output = False,                    # If True, then dense interpolators will be saved to the solution. This allows a user to call solution as if a function (in time).
+    vector[double] t_eval_vec,                    # Vector of doubles for time steps at which to save data. If not provided then all adaptive time steps will be saved. There is a slight performance hit using this feature.
     PreEvalFunc pre_eval_func = NULL  # Optional additional function that is called within `diffeq_ptr` using current `t` and `y`. See "Advanced CySolver.md" for more details.
-    double* rtols_ptr = NULL,         # Overrides rtol if provided. Pointer to array of floats of rtols if you'd like a different rtol for each y.
-    double* atols_ptr = NULL,         # Overrides atol if provided. Pointer to array of floats of atols if you'd like a different atol for each y.
+    vector[double] rtols_vec = vector[double](),  # Overrides rtol if provided. Pointer to array of floats of rtols if you'd like a different rtol for each y.
+    vector[double] atols_vec = vector[double](),  # Overrides atol if provided. Pointer to array of floats of atols if you'd like a different atol for each y.
     double max_step = MAX_STEP,       # Maximum allowed step size.
     double first_step = 0.0           # Initial step size. If set to 0.0 then CyRK will guess a good step size.
     size_t expected_size = 0,         # Expected size of the solution. There is a slight performance improvement if selecting the the exact or slightly more time steps than the adaptive stepper will require (if you happen to know this ahead of time).
@@ -421,13 +418,24 @@ cdef shared_ptr[CySolverResult] cysolve_ivp(
 
 ## Citing CyRK
 
-It is great to see CyRK used in other software or in scientific studies. We ask that you cite back to CyRK's [GitHub](https://github.com/jrenaud90/CyRK) website so interested parties can learn about this package. It would also be great to hear about the work being done with CyRK, so get in touch!
+It is great to see CyRK used in other software or in scientific studies. We ask that you cite back to CyRK's [GitHub](https://github.com/jrenaud90/CyRK) website so interested parties can learn about this package.
+
+It would also be great to hear about the work being done with CyRK and add your project to the list below, so get in touch!
 
 Renaud, Joe P. (2022). CyRK - ODE Integrator Implemented in Cython and Numba. Zenodo. https://doi.org/10.5281/zenodo.7093266
 
 In addition to citing CyRK, please consider citing SciPy and its references for the specific Runge-Kutta model that was used in your work. CyRK is largely an adaptation of SciPy's functionality. Find more details [here](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html).
 
 Pauli Virtanen, Ralf Gommers, Travis E. Oliphant, Matt Haberland, Tyler Reddy, David Cournapeau, Evgeni Burovski, Pearu Peterson, Warren Weckesser, Jonathan Bright, Stéfan J. van der Walt, Matthew Brett, Joshua Wilson, K. Jarrod Millman, Nikolay Mayorov, Andrew R. J. Nelson, Eric Jones, Robert Kern, Eric Larson, CJ Carey, İlhan Polat, Yu Feng, Eric W. Moore, Jake VanderPlas, Denis Laxalde, Josef Perktold, Robert Cimrman, Ian Henriksen, E.A. Quintero, Charles R Harris, Anne M. Archibald, Antônio H. Ribeiro, Fabian Pedregosa, Paul van Mulbregt, and SciPy 1.0 Contributors. (2020) SciPy 1.0: Fundamental Algorithms for Scientific Computing in Python. Nature Methods, 17(3), 261-272.
+
+## Projects using CyRK
+_Don't see your project here? Create a GitHub issue or otherwise get in touch!_
+- [TidalPy](https://github.com/jrenaud90/TidalPy)
+- [Rydiqule](https://github.com/QTC-UMD/rydiqule)
+- [KG-simulation](https://github.com/w-smialek/KG-simulation)
+- [twpaSolver](https://github.com/twpalab/twpasolver)
+- [NOrbit](https://github.com/curritod/norbit)
+- [APPS-ODE](https://github.com/jiangnanhugo/APPS-ODE)
 
 ## Contribute to CyRK
 _Please look [here](https://github.com/jrenaud90/CyRK/graphs/contributors) for an up-to-date list of contributors to the CyRK package._

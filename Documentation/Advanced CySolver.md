@@ -1,10 +1,12 @@
+# Advanced CySolver 
+_See the demos in "2 - Advanced Examples" jupyter notebook._
 _TODO: This document needs expansion. There are currently many ways to interface with CyRK's C++ backend as well as other features and gotchas. This document will be expanded in the future to highlight all of these. In the mean time, please feel free to post questions as GitHub Issues._
 
 _Many of the examples below can be found in the interactive "Demos/Advanced CySolver Examples.ipynb" jupyter notebook._
 
-# Arbitrary Additional Arguments
+## Arbitrary Additional Arguments
 
-`cysolve_ivp` allows users to specify arbitrary additional arguments which are passed to the differential equation function at each evaluation. Many problems require additional arguments that often take the form of numerical parameters (double precision floating point numbers). However, occasionally more advanced information may be required such as: boolean flags, complex numbers, and perhaps even strings or whole other classes and structs. Below we outline how to utilize arbitrary types in CySolver's additional arguments and discuss any limitations.
+`cysolve_ivp` allows users to specify arbitrary additional arguments which are passed to the differential equation function at each evaluation. Many problems require additional arguments that often take the form of numerical parameters (e.g., double precision floating point numbers). However, occasionally more advanced information may be required such as: boolean flags, complex numbers, and perhaps even strings or whole other classes and structs. Below we outline how to utilize arbitrary types in CySolver's additional arguments and discuss any limitations.
 
 Before we describe arbitrary arguments, first we will outline basic argument usage assuming a user has a differential equation that requires an array of floating point numbers.
 
@@ -15,14 +17,17 @@ _Note: This assumes you are working in a Jupyter notebook. If you are not then y
 ```cython
 %%cython --force 
 # distutils: language = c++
+# distutils: extra_compile_args = /std:c++20
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 import numpy as np
 cimport numpy as np
 np.import_array()
 
 from libc.math cimport sin
+from libcpp.utility cimport move
+from libcpp.vector cimport vector
 
-from CyRK cimport cysolve_ivp, WrapCySolverResult, DiffeqFuncType, MAX_STEP, CySolveOutput, PreEvalFunc
+from CyRK cimport cysolve_ivp, WrapCySolverResult, DiffeqFuncType, MAX_STEP, CySolveOutput, PreEvalFunc, ODEMethod
 
 cdef void pendulum_diffeq(double* dy_ptr, double t, double* y_ptr, char* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
     # Arguments are passed in as char pointers.
@@ -55,38 +60,37 @@ def run():
     cdef DiffeqFuncType diffeq = pendulum_diffeq
 
     # Define time domain
-    cdef double[2] time_span_arr = [0.0, 10.0]
-    cdef double* t_span_ptr = &time_span_arr[0]
+    cdef double t_start = 0.0
+    cdef double t_end = 10.0
     
     # Define initial conditions
-    cdef double[2] y0_arr = [0.01, 0.0]
-    cdef double* y0_ptr = &y0_arr[0]
+    cdef vector[double] y0_vec = vector[double](2)
+    y0_vec[0] = 0.01
+    y0_vec[1] = 0.0
     
-    # Define our arguments.
-    cdef double[3] args_arr = [1.0, 1.0, 9.81]
-    cdef double* args_dbl_ptr = &args_arr[0]
-
-    # We need to tell CySolver the size of the additional argument structure so that it can make a copy.
-    cdef size_t size_of_args = sizeof(double) * 3
-
-    # To work with cysolve_ivp, we must cast the args ptr to a char pointer
-    cdef char* args_ptr = <char*>args_dbl_ptr
+    # Define our arguments in a char vector
+    # The size of the vector is the size of the underlying object(s) x number of them.
+    cdef vector[char] args_vec = vector[char](sizeof(double) * 3)
+    # To make it easier to populate the args_vec we recast it as a double pointer.
+    cdef double* args_dbl_ptr = <double*>args_vec.data()
+    args_dbl_ptr[0] = 1.0
+    args_dbl_ptr[1] = 1.0
+    args_dbl_ptr[2] = 9.81
 
     cdef CySolveOutput result = cysolve_ivp(
         diffeq,
-        t_span_ptr,
-        y0_ptr,
-        2,  # Number of dependent variables
-        method = 1, # Integration method
+        t_start,
+        t_end,
+        y0_vec,
+        method = ODEMethod.RK45, # Integration method
         rtol = 1.0e-6,
         atol = 1.0e-8,
-        args_ptr = args_ptr,
-        size_of_args = size_of_args
+        args_vec = args_vec
         )
 
     # If we want to pass the solution back to python we need to wrap it in a CyRK `WrapCySolverResult` class.
     cdef WrapCySolverResult pysafe_result = WrapCySolverResult()
-    pysafe_result.set_cyresult_pointer(result)
+    pysafe_result.set_cyresult_pointer(move(result))
 
     return pysafe_result
 
@@ -99,16 +103,19 @@ Now assume that we have a new diffeq that is similar to before but it allows for
 
 ```cython
 %%cython --force 
-# distutils: language = c++
+# distutils: extra_compile_args = /std:c++20
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 import numpy as np
 cimport numpy as np
 np.import_array()
 
+from libc.string cimport memcpy
 from libc.math cimport sin
 from libcpp cimport bool as cpp_bool
+from libcpp.utility cimport move
+from libcpp.vector cimport vector
 
-from CyRK cimport cysolve_ivp, WrapCySolverResult, DiffeqFuncType,MAX_STEP, CySolveOutput, PreEvalFunc
+from CyRK cimport cysolve_ivp, WrapCySolverResult, DiffeqFuncType,MAX_STEP, CySolveOutput, PreEvalFunc, ODEMethod
 
 cdef struct PendulumArgs:
     # Structure that contains heterogeneous types
@@ -149,38 +156,37 @@ def run():
     cdef DiffeqFuncType diffeq = pendulum_diffeq
 
     # Define time domain
-    cdef double[2] time_span_arr = [0.0, 10.0]
-    cdef double* t_span_ptr      = &time_span_arr[0]
+    cdef double t_start = 0.0
+    cdef double t_end = 10.0
     
     # Define initial conditions
-    cdef double[2] y0_arr = [0.01, 0.0]
-    cdef double* y0_ptr   = &y0_arr[0]
+    cdef vector[double] y0_vec = vector[double](2)
+    y0_vec[0] = 0.01
+    y0_vec[1] = 0.0
     
     # Define our arguments.
     # We now have a a structure that we need to allocate memory for.
     # For this example, let's do it on the stack. 
     cdef PendulumArgs pendulum_args = PendulumArgs(True, 9.81, 1.0, 1.0)
-    # We need to pass in a char pointer to cysolve_ivp, so let's cast the address of the struct to char*
-    cdef char* args_ptr = <char*>&pendulum_args
-
-    # It is important that you take the size of the underlying structure and _not_ the `args_ptr` which would just be the size of the pointer PendulumArgs*
-    cdef size_t size_of_args = sizeof(pendulum_args)
+    # We need to pass in a char vector to cysolve_ivp, so let's create a vector of the correct size
+    cdef vector[char] args_vec = vector[char](sizeof(PendulumArgs))
+    # Then we need to copy over the contents to this vector.
+    memcpy(args_vec.data(), &pendulum_args, sizeof(PendulumArgs))
 
     cdef CySolveOutput result = cysolve_ivp(
         diffeq,
-        t_span_ptr,
-        y0_ptr,
-        2,  # Number of dependent variables
-        method = 1, # Integration method
+        t_start,
+        t_end,
+        y0_vec,
+        method = ODEMethod.RK45,
         rtol = 1.0e-6,
         atol = 1.0e-8,
-        args_ptr = args_ptr,
-        size_of_args = size_of_args
+        args_vec = args_vec
         )
 
     # If we want to pass the solution back to python we need to wrap it in a CyRK `WrapCySolverResult` class.
     cdef WrapCySolverResult pysafe_result = WrapCySolverResult()
-    pysafe_result.set_cyresult_pointer(result)
+    pysafe_result.set_cyresult_pointer(move(result))
 
     return pysafe_result
 
@@ -189,7 +195,7 @@ print("\n\nIntegration success =", result_drag.success, "\n\tNumber of adaptive 
 print("Integration message:", result_drag.message)
 ```
 
-# Pre-Evaluation Function
+# Pre-Evaluation Functions
 
 It is occasionally advantageous for users to define differential equation functions that utilize a "pre-evaluation" function that will use the current state to perform calculations that are then used by the diffeq function to find dydt. While this functionality could be hard coded into the diffeq, having a pre-eval function allows for different models to be defined without changing the rest of the differential equation. A large set of different pre-eval functions could then be passed in to subsequent runs of the solver to compare various models. 
 
@@ -204,10 +210,12 @@ cimport numpy as np
 np.import_array()
 
 from libc.math cimport sin
+from libcpp.utility cimport move
+from libcpp.vector cimport vector
 
-from CyRK cimport cysolve_ivp, WrapCySolverResult, DiffeqFuncType,MAX_STEP, CySolveOutput, PreEvalFunc
+from CyRK cimport cysolve_ivp, WrapCySolverResult, DiffeqFuncType, MAX_STEP, CySolveOutput, PreEvalFunc, ODEMethod
 
-cdef void pendulum_preeval_nodrag(char* output_ptr, double time, double* y_ptr, const char* args_ptr) noexcept nogil:
+cdef void pendulum_preeval_nodrag(char* output_ptr, double time, double* y_ptr, char* args_ptr) noexcept nogil:
     # Unpack args (in this example we do not need these but they follow the same rules as the Arbitrary Args section discussed above)
     cdef double* args_dbl_ptr = <double*>args_ptr
 
@@ -219,7 +227,7 @@ cdef void pendulum_preeval_nodrag(char* output_ptr, double time, double* y_ptr, 
     output_dbl_ptr[0] = torque
     output_dbl_ptr[1] = 0.0  # No Drag
 
-cdef void pendulum_preeval_withdrag(char* output_ptr, double time, double* y_ptr, const char* args_ptr) noexcept nogil:
+cdef void pendulum_preeval_withdrag(char* output_ptr, double time, double* y_ptr, char* args_ptr) noexcept nogil:
     # Unpack args (in this example we do not need these but they follow the same rules as the Arbitrary Args section discussed above)
     cdef double* args_dbl_ptr = <double*>args_ptr
 
@@ -277,43 +285,41 @@ def run():
         pre_eval_func = pendulum_preeval_nodrag
     
     # Define time domain
-    cdef double[2] time_span_arr = [0.0, 10.0]
-    cdef double* t_span_ptr = &time_span_arr[0]
+    cdef double t_start = 0.0
+    cdef double t_end   = 10.0
     
     # Define initial conditions
-    cdef double[2] y0_arr = [0.01, 0.0]
-    cdef double* y0_ptr = &y0_arr[0]
-    
-    # Define our arguments.
-    cdef double[3] args_arr = [1.0, 1.0, 9.81]
-    cdef double* args_dbl_ptr = &args_arr[0]
-    cdef size_t size_of_args = sizeof(double) * 3
+    cdef vector[double] y0_vec = vector[double](2)
+    y0_vec[0] = 0.01
+    y0_vec[1] = 0.0
 
-    # To work with cysolve_ivp, we must cast the args ptr to a char pointer
-    cdef char* args_ptr = <char*>args_dbl_ptr
+    # Define our arguments.
+    cdef vector[char] args_vec = vector[char](sizeof(double) * 3)
+    cdef double* args_dbl_ptr = <double*>args_vec.data()
+    args_dbl_ptr[0] = 1.0
+    args_dbl_ptr[1] = 1.0
+    args_dbl_ptr[2] = 9.81
 
     cdef CySolveOutput result = cysolve_ivp(
         diffeq,
-        t_span_ptr,
-        y0_ptr,
-        2,  # Number of dependent variables
-        method = 1, # Integration method
+        t_start,
+        t_end,
+        y0_vec,
+        method = ODEMethod.RK45, # Integration method
         rtol = 1.0e-6,
         atol = 1.0e-8,
-        args_ptr = args_ptr,
-        size_of_args = size_of_args,
+        args_vec = args_vec,
         num_extra = 0,
         max_num_steps = 100_000_000,
         max_ram_MB = 2000,
         dense_output = False,
-        t_eval = NULL,
-        len_t_eval = 0,
+        t_eval_vec = vector[double](), # C++ / Cython require you to provide args in order even if they unused like t_eval_vec here.
         pre_eval_func = pre_eval_func
         )
 
     # If we want to pass the solution back to python we need to wrap it in a CyRK `WrapCySolverResult` class.
     cdef WrapCySolverResult pysafe_result = WrapCySolverResult()
-    pysafe_result.set_cyresult_pointer(result)
+    pysafe_result.set_cyresult_pointer(move(result))
 
     return pysafe_result
 

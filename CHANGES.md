@@ -6,19 +6,31 @@ TODO: Why when passing a regular integer as ODE integrator method it will cause 
 
 #### v0.14.0 (2025-07-XX)
 
+##### New
+* Reuse mechanism
+  * The major change with this version is a "reuse" functionality that allows users to reuse previous ODE result structures to avoid memory allocations. 
+  * Added demos and documentation to showcase how this new reuse functionality works.
+* Added a demo cell in "1 - Getting Started" notebook to showcase the various functionality of the `WrapCySolverResult` object.
+
 Changes:
 * C++ Backend:
   * Moved to ErrorCodes enum for tracking error codes.
   * Changed how CySolverResult works:
     * Transitioned away from using shared pointers.
-    * Instantiating classes requires less arguments. Moving more of the loading on to resets so that memory does not need
+    * Instantiating classes requires less arguments. Moving more of the initializations to `setup`s so that these setup methods can be called later on to change parameters without reallocating the entire object.
   * Added more checks to look out for memory allocation problems.
   * Added more checks and error catches to avoid other problems.
   * Optimized solution storage, solver, and dense output to better fit in typical cache sizes.
   * Vectors are now pre-allocated with guesstimated sizes at objection creation to reduce the need for subsequent reallocations.
-* Cython wrapper:
+* CySolver:
+  * `WarpCySolverResult.call` now reshapes the output array.
+  * Other arrays are now passed to `cysolve_ivp` as vectors. These changes remove the need to pass the size of the vectors to cysolve_ivp.
+    * Additional arguments are now passed to `cysolve_ivp` as vector[char] now. 
+    * Former `y0_ptr` is now `y0_vec` and expects a vector[double].
+    * Former `t_eval_ptr` is now `t_eval_vec` and expects a vector[double].
+    * Former `r_tols_ptr` is now `rtols_vec` and expects a vector[double].
+    * Former `a_tols_ptr` is now `atols_vec` and expects a vector[double].
   * Improved how additional arguments are displayed when `WrapCySolverResult.print_diagnostics` is called.
-to be reallocated for simple re-runs of the same ODE.
 * Other:
   * Updated benchmark plot to show the new reset results. 
 

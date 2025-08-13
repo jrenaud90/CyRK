@@ -73,7 +73,7 @@ cdef class WrapCySolverResult:
 
         cyresult_ptr.call(t, y_interp_ptr)
         
-        return y_interp_array
+        return y_interp_array.reshape(self.num_dy, 1)
     
     def call_vectorize(self, double[::1] t_view):
         """ Call the dense output interpolater and return y """
@@ -106,15 +106,16 @@ cdef class WrapCySolverResult:
         if cyresult_ptr.direction_flag == 0:
             direction_str = 'Backward'
         
+        diagnostic_str += f'----------------------------------------------------\n'
         diagnostic_str += f'CyRK v{__version__} - WrapCySolverResult Diagnostic.\n'
-        diagnostic_str += f'\n----------------------------------------------------\n'
+        diagnostic_str += f'----------------------------------------------------\n'
         diagnostic_str += f'# of y:      {self.num_y}.\n'
         diagnostic_str += f'# of dy:     {self.num_dy}.\n'
         diagnostic_str += f'Success:     {self.success}.\n'
         diagnostic_str += f'Error Code:  {self.error_code}.\n'
         diagnostic_str += f'Size:        {self.size}.\n'
         diagnostic_str += f'Steps Taken: {self.steps_taken}.\n'
-        diagnostic_str += f'Integrator Message:\n\t{self.message.decode("utf-8")}\n'
+        diagnostic_str += f'Integrator Message:\n\t{self.message}\n'
         diagnostic_str += f'\n----------------- CySolverResult -------------------\n'
         diagnostic_str += f'Capture Extra:         {cyresult_ptr.capture_extra}.\n'
         diagnostic_str += f'Capture Dense Output:  {cyresult_ptr.capture_dense_output}.\n'
@@ -160,7 +161,7 @@ cdef class WrapCySolverResult:
             diagnostic_str += f'args size (bytes):   {args_size}.\n'
             diagnostic_str += f'args size (doubles): {args_size_dbls}.\n'
             if not args_char_ptr:
-                diagnostic_str += 'Args Pointer is Null.'
+                diagnostic_str += 'Args Pointer is Null.\n'
             else:
                 dbl_i = 0
                 if args_size > 0:
@@ -267,7 +268,7 @@ cdef class WrapCySolverResult:
         if type(t) == cnp.ndarray:
             return self.call_vectorize(t)
         else:
-            return self.call(t).reshape(self.num_dy, 1)
+            return self.call(t)
 
 
 # =====================================================================================================================
