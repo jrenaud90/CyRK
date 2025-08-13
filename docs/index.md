@@ -12,6 +12,7 @@ Also check out the GitHub page to see the code.
 :caption: Contents
 
 index
+Installing.md
 Getting Started.md
 Advanced CySolver.md
 Dense Output and t_eval.md
@@ -20,4 +21,5 @@ Status and Error Codes.md
 CySolver & PySolver Reuses.md
 C++ API.md
 Deprecations.md
+../CHANGES.md
 ```

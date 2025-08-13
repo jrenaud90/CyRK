@@ -47,6 +47,8 @@ classifiers = [
 [project.urls]
 "Homepage" = "https://github.com/jrenaud90/CyRK"
 "Bug Tracker" = "https://github.com/jrenaud90/CyRK/issues"
+"Documentation" = "https://cyrk.readthedocs.io/en/latest/"
+
 
 [project.optional-dependencies]
 # As of August, 2023 - the latest version of line_profiler does not track cython functions. Using older vers.

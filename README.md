@@ -7,6 +7,8 @@
 <a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml/badge.svg?branch=main" alt="Windows Tests" /></a>
 <a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_mac.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_mac.yml/badge.svg?branch=main" alt="MacOS Tests" /></a>
 <a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_ubun.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_ubun.yml/badge.svg?branch=main" alt="Ubuntu Tests" /></a>
+<a href="https://app.readthedocs.org/projects/cyrk/builds/?version__slug=latest"><img src="https://app.readthedocs.org/projects/cyrk/badge/?version=latest&style=flat" alt="Ubuntu Tests" /></a>
+
 
 <br />
 <a href="https://pypi.org/project/CyRK/"><img alt="PyPI - Downloads" src="https://img.shields.io/pypi/dm/CyRK?label=PyPI%20Downloads" /></a>
@@ -16,8 +18,9 @@
 
 <a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.14.0 Alpha-orange" alt="CyRK Version 0.14.0 Alpha" /></a>
 
-
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
+
+_[Read CyRK's Documentation Here!](https://cyrk.readthedocs.io/en/latest/)_
 
 CyRK provides fast integration tools to solve systems of ODEs using an adaptive time stepping scheme. CyRK can accept differential equations that are written in pure Python, njited numba, or cython-based cdef functions. These kinds of functions are generally easier to implement than pure c functions and can be used in existing Python software. Using CyRK can speed up development time while avoiding the slow performance that comes with using pure Python-based solvers like SciPy's `solve_ivp`.
 
