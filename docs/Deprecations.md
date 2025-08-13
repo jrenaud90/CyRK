@@ -3,7 +3,7 @@ The functions discussed in this document were packaged in previous version of Cy
 
 Documentation is retained for comparison purposes to the new methods. This documentation will be removed in a future version of CyRK.
 
-### Cython-based `cyrk_ode`
+## Cython-based `cyrk_ode`
 **Deprecation Warning:** cyrk_ode was a previous version of CyRK's cython solver that could take in python functions. It is no longer supported and will be removed in a future version of CyRK.
 To call the cython version of the integrator you need to slightly edit the differential equation so that it does not
 return the derivative. Instead, the output is passed as an input argument (a `np.ndarray`) to the function. 
@@ -39,7 +39,7 @@ time_domain, y_results, success, message = \
     cyrk_ode(diffeq_cy, time_span, initial_conds, rk_method=1, rtol=rtol, atol=atol)
 ```
 
-### Cython-based `CySolver`
+## Cython-based `CySolver`
 **Deprecation Warning:** CySolverc class based method was a previous version of CyRK's cython solver for cython-only functions. It has been replaced by `from CyRK cimport cysolve_ivp`. `CySolver` is no longer supported and will be removed in a future version of CyRK.
 The cython-based `CySolver` class requires writing a new cython cdef class. This is done in a new cython .pyx file which must then be cythonized and compiled before it can be used.
 
@@ -100,5 +100,5 @@ MyCyRKDiffeqInst.message     # Note about integration
 MyCyRKDiffeqInst.t           # Time domain
 MyCyRKDiffeqInst.y           # y dependent variables
 MyCyRKDiffeqInst.extra       # Extra output that was captured during integration.
-# See Documentation/Extra Output.md for more information on `extra`
+# See docs/Extra Output.md for more information on `extra`
 ```

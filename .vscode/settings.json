@@ -70,9 +70,27 @@
         "unordered_map": "cpp",
         "xhash": "cpp",
         "xtree": "cpp",
-        "numeric": "cpp"
+        "numeric": "cpp",
+        "deque": "cpp",
+        "filesystem": "cpp",
+        "valarray": "cpp",
+        "bitset": "cpp",
+        "cinttypes": "cpp",
+        "condition_variable": "cpp",
+        "csignal": "cpp",
+        "future": "cpp",
+        "queue": "cpp",
+        "random": "cpp",
+        "ranges": "cpp",
+        "regex": "cpp",
+        "set": "cpp",
+        "span": "cpp",
+        "stdfloat": "cpp",
+        "unordered_set": "cpp",
+        "variant": "cpp"
     },
     "cSpell.words": [
+        "Cyrk",
         "pysolve"
     ]
 }

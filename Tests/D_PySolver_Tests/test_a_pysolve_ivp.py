@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from numba import njit
 
-from CyRK import pysolve_ivp, WrapCySolverResult
+from CyRK import pysolve_ivp, WrapCySolverResult, CyrkErrorCodes
 
 
 # To reduce number of tests, only test RK23 once since RK45 should capture all its functionality
@@ -258,7 +258,7 @@ def test_pysolve_ivp_errors():
                         pass_dy_as_arg=False)
 
     assert not result.success
-    assert result.error_code == -2
+    assert result.error_code == CyrkErrorCodes.MAX_STEPS_USER_EXCEEDED
     assert result.message == "Maximum number of steps (set by user) exceeded during integration."
 
     # Do the same thing but now for max ram
@@ -269,7 +269,7 @@ def test_pysolve_ivp_errors():
                         pass_dy_as_arg=False)
     
     assert not result.success
-    assert result.error_code == -3
+    assert result.error_code == CyrkErrorCodes.MAX_STEPS_SYSARCH_EXCEEDED
     assert result.message == "Maximum number of steps (set by system architecture) exceeded during integration."
 
     # Do an integration with tolerances that are just way too small for the method
@@ -279,8 +279,8 @@ def test_pysolve_ivp_errors():
                         pass_dy_as_arg=False)
     
     assert not result.success
-    assert result.error_code == -1
-    assert result.message == "Error in step size calculation:\n\tRequired step size is less than spacing between numbers."
+    assert result.error_code == CyrkErrorCodes.STEP_SIZE_ERROR_SPACING
+    assert result.message == "Error in step size calculation: Required step size is less than spacing between numbers."
 
 @pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853"))
 @pytest.mark.parametrize('t_eval_end', (None, 0.5, 1.0))
@@ -417,3 +417,8 @@ def test_pysolve_ivp_readonly(integration_method):
     assert result.y[0].size == result.size
     assert result.y.shape[0] == 2
     assert type(result.message) == str
+
+if __name__ == "__main__":
+    test_pysolve_ivp(False, False, False, 
+                    False, False, False, False, "RK45", 0.0, 100_000.0, False)
+    print("Finished!")

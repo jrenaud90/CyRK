@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <functional>
 #include <memory>
+#include <optional>
 
 #include "common.hpp"
 #include "cy_array.hpp"
@@ -29,6 +30,96 @@ class CySolverDense;
 struct _object;
 typedef _object PyObject;
 
+enum class ODEMethod : int {
+    NO_METHOD_SET,
+    BASE_METHOD,
+    RK_BASE_METHOD,
+    RK23,
+    RK45,
+    DOP853
+};
+
+inline const std::map<ODEMethod, std::string> CyrkODEMethods = {
+    { ODEMethod::NO_METHOD_SET,
+      "An integration method has not been set." },
+
+    { ODEMethod::BASE_METHOD,
+      "Integration method set to base class (you should not see this)." },
+
+    { ODEMethod::RK_BASE_METHOD,
+      "Integration method set to base class for generalized RK (you should not see this)." },
+
+    { ODEMethod::RK23,
+      "Explicit Runge-Kutta method of order 3(2)." },
+
+    { ODEMethod::RK45,
+      "Explicit Runge-Kutta method of order 5(4)" },
+
+    { ODEMethod::DOP853,
+      "Explicit Runge-Kutta method of order 8. Error is controlled using a combination of 5th and 3rd order interpolators." }
+};
+
+struct ProblemConfig {
+    // Required configurations
+    DiffeqFuncType diffeq_ptr;   // Pointer to the differential equation function
+    double t_start;              // Start time of the integration
+    double t_end;                // End time of the integration
+    std::vector<double> y0_vec     = std::vector<double>(PRE_ALLOC_NUMY);  // Initial conditions for the dependent variables
+
+    // Optional configurations
+    std::vector<char> args_vec     = std::vector<char>(0);    // Additional arguments for the solver
+    std::vector<double> t_eval_vec = std::vector<double>(0);  // User-provided time evaluation points
+    size_t num_extra               = 0;                       // Number of extra variables (if any)
+    size_t expected_size           = 512;                     // Expected size of the solution storage
+    size_t max_num_steps           = 0;                       // Default maximum number of steps
+    size_t max_ram_MB              = 2048;                    // Default maximum RAM in MB
+    PreEvalFunc pre_eval_func      = nullptr;                 // Pre-evaluation function for the differential equation
+    bool capture_dense_output      = false;                   // Whether to capture dense output
+    bool force_retain_solver       = true;                    // Whether to retain the solver after solving
+
+    // Parameters that will be updated during setup.
+    bool capture_extra   = false; // Whether to capture extra outputs
+    bool t_eval_provided = false; // Whether t_eval was provided by the user
+    size_t num_y         = 0;     // Number of dependent variables
+    double num_y_dbl     = 0.0;   // Number of dependent variables as a double
+    double num_y_sqrt    = 0.0;   // Square root of the number of dependent variables
+    size_t num_dy        = 0;     // Total number of dependent variables including extra outputs
+    double num_dy_dbl    = 0.0;   // Total number of dependent variables as a double
+
+    // PySolver Specifics
+    PyObject* cython_extension_class_instance = nullptr;  // Pointer to Python instance which holds the diffeq.
+    DiffeqMethod py_diffeq_method             = nullptr;  // Said python diffeq.
+
+    // Solver specific configurations can be added below via overloading the class.
+
+    // Constructors
+    ProblemConfig();
+    ProblemConfig(
+        DiffeqFuncType diffeq_ptr_,
+        double t_start_,
+        double t_end_,
+        std::vector<double>& y0_vec_);
+
+    // Other setups
+    void update_y0(std::vector<double>& y0_vec_);
+    void update_properties(
+        std::optional<DiffeqFuncType> diffeq_ptr_      = std::nullopt,
+        std::optional<size_t> num_extra_               = std::nullopt,
+        std::optional<double> t_start_                 = std::nullopt,
+        std::optional<double> t_end_                   = std::nullopt,
+        std::optional<std::vector<double>> y0_vec_     = std::nullopt,
+        std::optional<std::vector<char>> args_vec_     = std::nullopt,
+        std::optional<std::vector<double>> t_eval_vec_ = std::nullopt,
+        std::optional<size_t> expected_size_           = std::nullopt,
+        std::optional<size_t> max_num_steps_           = std::nullopt,
+        std::optional<size_t> max_ram_MB_              = std::nullopt,
+        std::optional<PreEvalFunc> pre_eval_func_      = std::nullopt,
+        std::optional<bool> capture_dense_output_      = std::nullopt,
+        std::optional<bool> force_retain_solver_       = std::nullopt
+    );
+    virtual void update_properties_from_config(ProblemConfig* new_config_ptr);
+};
+
 struct NowStatePointers 
 {
     double* t_now_ptr;
@@ -46,127 +137,121 @@ class CySolverBase {
 
 // Methods
 protected:
-    virtual void p_estimate_error();
-    virtual void p_step_implementation();
+    virtual CyrkErrorCodes p_additional_setup() noexcept;
+    virtual void p_estimate_error() noexcept;
+    virtual void p_step_implementation() noexcept;
+    inline void p_cy_diffeq() noexcept;
+    virtual void p_calc_first_step_size() noexcept;
 
 public:
     CySolverBase();
     virtual ~CySolverBase();
-    CySolverBase(
-        // Input variables
-        DiffeqFuncType diffeq_ptr,
-        CySolverResult* storage_ptr,
-        const double t_start,
-        const double t_end,
-        const double* const y0_ptr,
-        const size_t num_y,
-        const size_t num_extra,
-        const char* args_ptr,
-        const size_t size_of_args,
-        const size_t max_num_steps,
-        const size_t max_ram_MB,
-        const bool use_dense_output,
-        const double* t_eval,
-        const size_t len_t_eval,
-        PreEvalFunc pre_eval_func
-    );
+    CySolverBase(CySolverResult* storage_ptr_);
 
-    bool check_status() const;
-    virtual void reset();
-    void offload_to_temp();
-    void load_back_from_temp();
     virtual void set_Q_order(size_t* Q_order_ptr);
     virtual void set_Q_array(double* Q_ptr);
-    virtual void calc_first_step_size();
+    void clear_python_refs();
+    void offload_to_temp() noexcept;
+    void load_back_from_temp() noexcept;
+    CyrkErrorCodes resize_num_y(size_t num_y_, size_t num_dy_);
+    virtual CyrkErrorCodes setup();
+    inline bool check_status() const;
     void take_step();
     void solve();
     // Diffeq can either be the C++ class method or the python hook diffeq. By default set to C++ version.
-    void cy_diffeq() noexcept;
     std::function<void(CySolverBase*)> diffeq;
     NowStatePointers get_now_state();
 
     // PySolver methods
-    void set_cython_extension_instance(PyObject* cython_extension_class_instance, DiffeqMethod py_diffeq_method);
+    CyrkErrorCodes set_cython_extension_instance(
+        PyObject* cython_extension_class_instance,
+        DiffeqMethod py_diffeq_method);
     void py_diffeq();
 
 // Attributes
 protected:
-    // Time variables
-    double t_tmp         = 0.0;
+    // Result storage
+    CySolverResult* storage_ptr = nullptr;
+
+    // Diffeq
+    DiffeqFuncType diffeq_ptr = nullptr;
+
+    // Function to send to diffeq which is called before dy is calculated
+    PreEvalFunc pre_eval_func = nullptr;
+
+    // Python hooks
+    DiffeqMethod py_diffeq_method = nullptr;
+    PyObject* cython_extension_class_instance = nullptr;
+
+    // Dependent variables properties
+    size_t sizeof_dbl_Ny  = 0;
+    size_t sizeof_dbl_Ndy = 0;
+    double num_y_dbl      = 0.0;
+    double num_y_sqrt     = 0.0;
+
+    // Time properties
+    double t_start       = 0.0;
+    double t_end         = 0.0;
     double t_delta       = 0.0;
     double t_delta_abs   = 0.0;
     double direction_inf = 0.0;
 
-    // Dependent variables
-    double num_y_dbl  = 0.0;
-    double num_y_sqrt = 0.0;
+    // Additional arguments for the diffeq
+    size_t size_of_args = 0;
+    char* args_ptr      = nullptr;
+    
+    // t_eval information
+    std::vector<double> t_eval_reverse_vec = std::vector<double>(); // Used if t_eval is provided and doing backwards integration
+    double* t_eval_ptr      = nullptr;
+    size_t t_eval_index_old = 0;
+    size_t len_t_eval       = 0;
+    bool t_eval_finished    = false;
+    bool use_t_eval         = false;
 
+    // Flags
+    bool direction_flag    = false;
+    bool setup_called      = false;
+    bool error_flag        = false;
+    bool capture_extra     = false;
 
-public:
-    // Differential equation information
-    DiffeqFuncType diffeq_ptr = nullptr;
+    // Dependent variable pointers
+    double* y0_ptr = nullptr;
+    // y arrays are stored in vectors of size num_y
+    // To initialize the memory pick a value that is probably larger than the expected number of variables.
+    // It can always be resized later.
+    std::vector<double> y_holder_vec = std::vector<double>(PRE_ALLOC_NUMY * 4);
+    //double* y_old_ptr    = nullptr; // This needs to be public
+    //double* y_now_ptr    = nullptr; // This needs to be public
+    double* y_tmp_ptr    = nullptr;
+    double* y_interp_ptr = nullptr;
+    // For dy, both the dy/dt and any extra outputs are stored. So the maximum size is `num_y` + `num_extra`
+    std::vector<double> dy_holder_vec = std::vector<double>(PRE_ALLOC_NUMY * 3);
+    double* dy_old_ptr = nullptr;
+    //double* dy_now_ptr = nullptr; // This needs to be public
+    double* dy_tmp_ptr = nullptr;
 
     // Integration step information
     size_t max_num_steps = 0;
 
-    // Additional arguments for the diffeq are stored locally in a char dynamic vector. 
-    size_t size_of_args = 0;
-    std::vector<char> args_char_vec = std::vector<char>();
-    char* args_ptr = nullptr;
-    
-    // t_eval information
-    std::vector<double> t_eval_vec = std::vector<double>();
-    double* t_eval_ptr       = t_eval_vec.data();
-    size_t t_eval_index_old  = 0;
-    size_t len_t_eval        = 0;
-    bool skip_t_eval         = false;
-    bool use_t_eval          = false;
+    // Current state properties
+    double t_tmp = 0.0;
+    size_t len_t = 0;
 
-    // Keep bools together to reduce size
-    bool direction_flag = false;
-    bool reset_called   = false;
-    bool capture_extra  = false;
+public:
+    bool use_dense_output            = false;
     bool user_provided_max_num_steps = false;
-    bool deconstruct_python = false;
+    bool use_pysolver                = false;
 
-    // Dense (Interpolation) Attributes
-    bool use_dense_output = false;
-    
-    // Function to send to diffeq which is called before dy is calculated
-    PreEvalFunc pre_eval_func = nullptr;
+    ODEMethod integration_method = ODEMethod::NO_METHOD_SET;
 
-    // PySolver Attributes
-    bool use_pysolver = false;
-    DiffeqMethod py_diffeq_method = nullptr;
-    PyObject* cython_extension_class_instance = nullptr;
-
-    // Status attributes
-    int status = -999;
-    int integration_method = -1;
-
-    // Meta data
-    size_t num_dy    = 0;
-    size_t num_y     = 0;
-    size_t num_extra = 0;
-
-    // The size of the stack allocated tracking arrays is equal to the maximum allowed `num_y` (25).
-    std::vector<double> y0       = std::vector<double>();
-    std::vector<double> y_old    = std::vector<double>();
-    std::vector<double> y_now    = std::vector<double>();
-    std::vector<double> y_tmp    = std::vector<double>();
-    std::vector<double> y_interp = std::vector<double>();
-    // For dy, both the dy/dt and any extra outputs are stored. So the maximum size is `num_y` (25) + `num_extra` (25)
-    std::vector<double> dy_old = std::vector<double>();
-    std::vector<double> dy_now = std::vector<double>();
-    std::vector<double> dy_tmp = std::vector<double>();
-
-    // Result storage
-    CySolverResult* storage_ptr = nullptr;
-
-    // State attributes
-    size_t len_t       = 0;
-    double t_now       = 0.0;
-    double t_start     = 0.0;
-    double t_end       = 0.0;
+    // State properties that need to be public mostly so that
+    // the dense output object can access them.
+    size_t num_y       = 0;
+    size_t num_extra   = 0;
+    size_t num_dy      = 0;
     double t_old       = 0.0;
+    double t_now       = 0.0;
+    double* y_old_ptr  = nullptr;
+    double* y_now_ptr  = nullptr;
+    double* dy_now_ptr = nullptr;
 };

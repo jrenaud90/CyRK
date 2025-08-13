@@ -1,278 +1,136 @@
-#include "cysolve.hpp"
-#include <exception>
+#include <stdexcept>
 
+#include "cysolve.hpp"
+#include "cysolver.hpp"
 
 void baseline_cysolve_ivp_noreturn(
-        std::shared_ptr<CySolverResult> solution_sptr,
+        CySolverResult* solution_ptr,
         DiffeqFuncType diffeq_ptr,
-        const double* t_span_ptr,
-        const double* y0_ptr,
-        const size_t num_y,
-        const int method,
+        double t_start,
+        double t_end,
+        std::vector<double> y0_vec,
         // General optional arguments
-        const size_t expected_size,
-        const size_t num_extra,
-        const char* args_ptr,
-        const size_t size_of_args,
-        const size_t max_num_steps,
-        const size_t max_ram_MB,
-        const bool dense_output,
-        const double* t_eval,
-        const size_t len_t_eval,
-        PreEvalFunc pre_eval_func,
+        std::optional<size_t> expected_size,
+        std::optional<size_t> num_extra,
+        std::optional<std::vector<char>> args_vec,
+        std::optional<size_t> max_num_steps,
+        std::optional<size_t> max_ram_MB,
+        std::optional<bool> capture_dense_output,
+        std::optional<std::vector<double>> t_eval_vec,
+        std::optional<PreEvalFunc> pre_eval_func,
         // rk optional arguments
-        const double rtol,
-        const double atol,
-        const double* rtols_ptr,
-        const double* atols_ptr,
-        const double max_step_size,
-        const double first_step_size
+        std::optional<std::vector<double>> rtols,
+        std::optional<std::vector<double>> atols,
+        std::optional<double> max_step_size,
+        std::optional<double> first_step_size
     )
 {
-    // Parse input
-    const double t_start       = t_span_ptr[0];
-    const double t_end         = t_span_ptr[1];
-    const bool direction_flag  = t_start <= t_end ? true : false;
-    const bool forward = direction_flag == true;
-    const bool t_eval_provided = t_eval ? true : false;
-
-    // Get new expected size
-    size_t expected_size_touse = expected_size;
-    if (expected_size_touse == 0)
+    // Make sure there is a configuration in the solution.
+    RKConfig* rk_config_ptr = nullptr;
+    if (not solution_ptr->config_uptr)
     {
-        double min_rtol = INF;
-        if (rtols_ptr)
-        {
-            // rtol for each y
-            for (size_t y_i = 0; y_i < num_y; y_i++)
-            {
-                double rtol_tmp = rtols_ptr[y_i];
-                if (rtol_tmp < EPS_100)
-                {
-                    rtol_tmp = EPS_100;
-                }
-                min_rtol = std::fmin(min_rtol, rtol_tmp);
-            }
-        }
-        else {
-            // only one rtol
-            double rtol_tmp = rtol;
-            if (rtol_tmp < EPS_100)
-            {
-                rtol_tmp = EPS_100;
-            }
-            min_rtol = rtol_tmp;
-        }
-        expected_size_touse = find_expected_size(num_y, num_extra, std::fabs(t_end - t_start), min_rtol);
+        // For now we are only ever using RK methods so it is safe to assume RK Config.
+        solution_ptr->config_uptr = std::make_unique<RKConfig>();
+        rk_config_ptr = static_cast<RKConfig*>(solution_ptr->config_uptr.get());
+        rk_config_ptr->update_properties(
+            diffeq_ptr, // diffeq_ptr Already set during construction.
+            num_extra,
+            t_start,    // t_start Already set during construction.
+            t_end,      // t_end Already set during construction.
+            y0_vec,     // y0_vec Already set during construction.
+            args_vec,
+            t_eval_vec,
+            expected_size,
+            max_num_steps,
+            max_ram_MB,
+            pre_eval_func,
+            capture_dense_output,
+            true, // force_retain_solver; not currently in use.
+            rtols,
+            atols,
+            max_step_size,
+            first_step_size
+        );
     }
+    else
+    {
+        // For now we are only ever using RK methods so it is safe to assume RK Config.
+        rk_config_ptr = static_cast<RKConfig*>(solution_ptr->config_uptr.get());
+        // Change the configurations of the solver.
+        rk_config_ptr->update_properties(
+            diffeq_ptr,
+            num_extra,
+            t_start,
+            t_end,
+            y0_vec,
+            args_vec,
+            t_eval_vec,
+            expected_size,
+            max_num_steps,
+            max_ram_MB,
+            pre_eval_func,
+            capture_dense_output,
+            true, // force_retain_solver; not currently in use.
+            rtols,
+            atols,
+            max_step_size,
+            first_step_size
+        );
+    }
+    // Initialize the solution and solver given the new configurations
+    solution_ptr->setup(nullptr);
 
-    // Set the expected size of the arrays
-    solution_sptr->set_expected_size(expected_size_touse);
-
-    // Setup solver class
-    solution_sptr->build_solver(
-        diffeq_ptr,
-        t_start,
-        t_end,
-        y0_ptr,
-        method,
-        // General optional arguments
-        expected_size,
-        args_ptr,
-        size_of_args,
-        max_num_steps,
-        max_ram_MB,
-        t_eval,
-        len_t_eval,
-        pre_eval_func,
-        // rk optional arguments
-        rtol,
-        atol,
-        rtols_ptr,
-        atols_ptr,
-        max_step_size,
-        first_step_size
-    );
     // Run integrator
-    solution_sptr->solve();
+    solution_ptr->solve();
 }
 
-std::shared_ptr<CySolverResult> baseline_cysolve_ivp(
+std::unique_ptr<CySolverResult> baseline_cysolve_ivp(
         DiffeqFuncType diffeq_ptr,
-        const double* t_span_ptr,
-        const double* y0_ptr,
-        const size_t num_y,
-        const int method,
+        double t_start,
+        double t_end,
+        std::vector<double> y0_vec,
+        ODEMethod integration_method,
         // General optional arguments
-        const size_t expected_size,
-        const size_t num_extra,
-        const char* args_ptr,
-        const size_t size_of_args,
-        const size_t max_num_steps,
-        const size_t max_ram_MB,
-        const bool dense_output,
-        const double* t_eval,
-        const size_t len_t_eval,
-        PreEvalFunc pre_eval_func,
+        std::optional<size_t> expected_size,
+        std::optional<size_t> num_extra,
+        std::optional<std::vector<char>> args_vec,
+        std::optional<size_t> max_num_steps,
+        std::optional<size_t> max_ram_MB,
+        std::optional<bool> capture_dense_output,
+        std::optional<std::vector<double>> t_eval_vec,
+        std::optional<PreEvalFunc> pre_eval_func,
         // rk optional arguments
-        const double rtol,
-        const double atol,
-        const double* rtols_ptr,
-        const double* atols_ptr,
-        const double max_step_size,
-        const double first_step_size
+        std::optional<std::vector<double>> rtols,
+        std::optional<std::vector<double>> atols,
+        std::optional<double> max_step_size,
+        std::optional<double> first_step_size
     )
 {
-    const double t_start       = t_span_ptr[0];
-    const double t_end         = t_span_ptr[1];
-    const bool direction_flag  = t_start <= t_end ? true : false;
-    const bool t_eval_provided = t_eval ? true : false;
-
     // Build storage class
-    std::shared_ptr<CySolverResult> solution_sptr =
-        std::make_shared<CySolverResult>(
-            num_y,
-            num_extra,
-            expected_size,
-            t_end,
-            direction_flag,
-            dense_output,
-            t_eval_provided);
+    std::unique_ptr<CySolverResult> solution_uptr =
+        std::make_unique<CySolverResult>(integration_method);
 
     // Run
     baseline_cysolve_ivp_noreturn(
-        solution_sptr,
+        solution_uptr.get(),
         diffeq_ptr,
-        t_span_ptr,
-        y0_ptr,
-        num_y,
-        method,
-        // General optional arguments
+        t_start,
+        t_end,
+        y0_vec,
         expected_size,
         num_extra,
-        args_ptr,
-        size_of_args,
+        args_vec,
         max_num_steps,
         max_ram_MB,
-        dense_output,
-        t_eval,
-        len_t_eval,
+        capture_dense_output,
+        t_eval_vec,
         pre_eval_func,
-        // rk optional arguments
-        rtol,
-        atol,
-        rtols_ptr,
-        atols_ptr,
+        rtols,
+        atols,
         max_step_size,
         first_step_size
     );
 
     // Return the results
-    return solution_sptr;
-}
-
-
-/* Pure Python hook solvers and helpers */
-PySolver::PySolver()
-{
-
-}
-
-PySolver::~PySolver()
-{
-
-}
-
-
-PySolver::PySolver(
-        int integration_method,
-        // Cython class instance used for pyhook
-        PyObject* cython_extension_class_instance,
-        DiffeqMethod cython_extension_class_diffeq_method,
-        // Regular integrator inputs
-        std::shared_ptr<CySolverResult> solution_sptr,
-        const double t_start,
-        const double t_end,
-        const double* y0_ptr,
-        const size_t num_y,
-        // General optional arguments
-        const size_t expected_size,
-        const size_t num_extra,
-        const size_t max_num_steps,
-        const size_t max_ram_MB,
-        const bool dense_output,
-        const double* t_eval,
-        const size_t len_t_eval,
-        // rk optional arguments
-        const double rtol,
-        const double atol,
-        const double* rtols_ptr,
-        const double* atols_ptr,
-        const double max_step_size,
-        const double first_step_size) :
-            status(0),
-            integration_method(integration_method),
-            solution_sptr(solution_sptr)
-
-{ 
-    // We need to pass a fake diffeq pointer (diffeq ptr is unused in python-based solver)
-    DiffeqFuncType diffeq_ptr = nullptr;
-
-    // We also need to pass a fake pre-eval function
-    PreEvalFunc pre_eval_func = nullptr;
-
-    // Args are handled by the python class too.
-    const char* args_ptr      = nullptr;
-    const size_t size_of_args = 0;
-
-    // Build the solver class. This must be heap allocated to take advantage of polymorphism.
-    // Setup solver class
-    if (this->solution_sptr) [[likely]]
-    {
-        this->solution_sptr->build_solver(
-            diffeq_ptr,  // not used when using pysolver
-            t_start,
-            t_end,
-            y0_ptr,
-            integration_method,
-            // General optional arguments
-            expected_size,
-            args_ptr,
-            size_of_args,
-            max_num_steps,
-            max_ram_MB,
-            t_eval,
-            len_t_eval,
-            pre_eval_func,  // not used when using pysolver
-            // rk optional arguments
-            rtol,
-            atol,
-            rtols_ptr,
-            atols_ptr,
-            max_step_size,
-            first_step_size
-        );
-
-        // Add in python hooks
-        this->solution_sptr->solver_uptr->set_cython_extension_instance(cython_extension_class_instance, cython_extension_class_diffeq_method);
-    }
-    else
-    {
-        throw std::exception(); // "Solution storage not created. Perhaps memory issue or bad alloc."
-    }
-};
-
-
-void PySolver::solve()
-{
-    // Run integrator
-    if (this->solution_sptr)
-    {
-        // Reset solver to t0
-        this->solution_sptr->solve();
-    }
-    else
-    {
-        throw std::exception(); // Solution storage pointer no longer valid
-    }
+    return std::move(solution_uptr);
 }
