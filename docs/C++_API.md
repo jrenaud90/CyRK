@@ -3,10 +3,10 @@ CyRK uses a C++ backend for most of its functionality. These files are described
 
 This backend can be found in a dedicated repository [here](https://github.com/jrenaud90/CyRK_CPP).
 
-## "CyRK/cy/common.hpp(cpp)"
+## "common.hpp(cpp)"
 Contains common functions and global constants.
 
-## "CyRK/cy/cysolution.hpp(cpp)"
+## "cysolution.hpp(cpp)"
 Contains the `CySolverResult` class definition. The purpose of this structure is to store the results of CyRK's CySolver
 integrator.
 
@@ -15,7 +15,7 @@ It also stores the CySolver itself and any required data the solver needs to per
 Integration results are stored as C++ vectors which are dynamically resized if required. The CySolverResult class
 must be instantiated (using a shared smart pointer) and passed to CySolver functions and class instances.
 
-## "CyRK/cy/cysolver.hpp(cpp)"
+## "cysolver.hpp(cpp)"
 Contains the `CySolverBase` class definition. This is the main building block for CyRK's integrators. It contains
 state variables that track the progress and current state of the integration. Methods to perform integration steps or
 a complete integration. Methods to provide hooks so that Python functions can be called from within C++
@@ -23,7 +23,7 @@ a complete integration. Methods to provide hooks so that Python functions can be
 `CySolverResult` instance with each successful integration step. It also has the responsibility of updating error or
 info messages to the CySolverResult instance.
 
-## "CyRK/cy/cysolve.hpp(cpp)"
+## "cysolve.hpp(cpp)"
 Contains helper functions that handle a lot of the boilerplate initialization of classes and memory allocation in a
 user-friendly format.
 

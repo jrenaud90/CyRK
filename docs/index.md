@@ -11,15 +11,15 @@ Also check out the GitHub page to see the code.
 :maxdepth: 2
 :caption: Contents
 
-index.md
 Installing.md
 Getting_Started.md
 Advanced_CySolver.md
+Status_and_Error_Codes.md
+CySolverResult_Reuses.md
 Dense_Output_and_t_eval.md
 Extra_Output.md
-Status_and Error_Codes.md
-CySolver_PySolver_Reuses.md
 C++_API.md
 Deprecations.md
 Changes.md
+License.md
 ```
