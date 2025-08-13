@@ -11,8 +11,7 @@ Also check out the GitHub page to see the code.
 :maxdepth: 2
 :caption: Contents
 
-Installing.md
-Getting_Started.md
+Getting Started <Getting Started.md>
 Advanced_CySolver.md
 Status_and_Error_Codes.md
 CySolverResult_Reuses.md

@@ -12,6 +12,7 @@
 
 <br />
 <a href="https://pypi.org/project/CyRK/"><img alt="PyPI - Downloads" src="https://img.shields.io/pypi/dm/CyRK?label=PyPI%20Downloads" /></a>
+<a href="https://anaconda.org/conda-forge/cyrk"> <img alt="Conda Downloads" src="https://img.shields.io/conda/d/conda-forge/cyrk" /> </a>
 </div>
 
 ---
