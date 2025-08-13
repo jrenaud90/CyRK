@@ -100,5 +100,5 @@ MyCyRKDiffeqInst.message     # Note about integration
 MyCyRKDiffeqInst.t           # Time domain
 MyCyRKDiffeqInst.y           # y dependent variables
 MyCyRKDiffeqInst.extra       # Extra output that was captured during integration.
-# See Documentation/Extra Output.md for more information on `extra`
+# See docs/Extra Output.md for more information on `extra`
 ```
