@@ -16,7 +16,7 @@
 </div>
 
 ---
-[Documentation](https://cyrk.readthedocs.io/en/latest/) | [GitHub](https://github.com/youruser/cyrk)
+[Documentation](https://cyrk.readthedocs.io/en/latest/) | [GitHub](https://github.com/jrenaud90/cyrk)
 
 <a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.14.0 Alpha-orange" alt="CyRK Version 0.14.0 Alpha" /></a>
 
