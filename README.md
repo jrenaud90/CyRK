@@ -16,12 +16,11 @@
 </div>
 
 ---
+[Documentation](https://cyrk.readthedocs.io/en/latest/) | [GitHub](https://github.com/youruser/cyrk)
 
 <a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.14.0 Alpha-orange" alt="CyRK Version 0.14.0 Alpha" /></a>
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
-
-_[Read CyRK's Documentation Here!](https://cyrk.readthedocs.io/en/latest/)_
 
 CyRK provides fast integration tools to solve systems of ODEs using an adaptive time stepping scheme. CyRK can accept differential equations that are written in pure Python, njited numba, or cython-based cdef functions. These kinds of functions are generally easier to implement than pure c functions and can be used in existing Python software. Using CyRK can speed up development time while avoiding the slow performance that comes with using pure Python-based solvers like SciPy's `solve_ivp`.
 
@@ -108,6 +107,11 @@ If you intend to work on CyRK's code base you will want to install the following
 `conda install pytest scipy matplotlib jupyter`
 
 `conda install` can be replaced with `pip install` if you prefer.
+
+## Using CyRK
+To learn how to use CyRK, please reference our detailed documentation on Read the Docs!
+
+[Read the Docs: CyRK Documentation](https://cyrk.readthedocs.io/en/latest/)
 
 ## Limitations and Known Issues
 
