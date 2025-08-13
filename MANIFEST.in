@@ -36,5 +36,5 @@ include CyRK/cy/pysolver_cyhook_api.h
 exclude Tests/*
 exclude Demos/*
 exclude Benchmarks/*
-exclude Documentation/*
+exclude docs/*
 exclude Performance/*
