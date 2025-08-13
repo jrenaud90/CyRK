@@ -1,12 +1,17 @@
 # CyRK Documentation
 
-Welcome to the CyRK documentation!
+**Welcome to the CyRK documentation!**
 
+Please click on a page below to learn more about the package. 
+
+Also check out the GitHub page to see the code.
+[GitHub](https://github.com/jrenaud90/CyRK)
 
 ```{toctree}
 :maxdepth: 2
 :caption: Contents
 
+index
 Getting Started.md
 Advanced CySolver.md
 Dense Output and t_eval.md
