@@ -18,7 +18,7 @@ dst = os.path.abspath(os.path.join(os.path.dirname(__file__), "Changes.md"))
 shutil.copyfile(src, dst)
 
 src = os.path.abspath(os.path.join("..", "README.md"))
-dst = os.path.abspath(os.path.join(os.path.dirname(__file__), "Getting_Started.md"))
+dst = os.path.abspath(os.path.join(os.path.dirname(__file__), "Readme.md"))
 shutil.copyfile(src, dst)
 
 src = os.path.abspath(os.path.join("..", "LICENSE.md"))
