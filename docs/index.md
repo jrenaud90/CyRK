@@ -11,15 +11,15 @@ Also check out the GitHub page to see the code.
 :maxdepth: 2
 :caption: Contents
 
-index
+index.md
 Installing.md
-Getting Started.md
-Advanced CySolver.md
-Dense Output and t_eval.md
-Extra Output.md
-Status and Error Codes.md
-CySolver & PySolver Reuses.md
-C++ API.md
+Getting_Started.md
+Advanced_CySolver.md
+Dense_Output_and_t_eval.md
+Extra_Output.md
+Status_and Error_Codes.md
+CySolver_PySolver_Reuses.md
+C++_API.md
 Deprecations.md
-../CHANGES.md
+Changes.md
 ```
