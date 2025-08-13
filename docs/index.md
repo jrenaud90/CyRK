@@ -3,6 +3,14 @@
 Welcome to the CyRK documentation!
 
 ## Contents
+
+```{toctree}
+:maxdepth: 2
+:glob:
+
+*.md
+```
+
 - [Getting Started](Getting%20Started.md)
 - [Advanced CySolver](Advanced%20CySolver.md)
 - [Dense Output and t_eval](Dense%20Output%20and%20t_eval.md)
@@ -11,5 +19,3 @@ Welcome to the CyRK documentation!
 - [Reuse Result Structures](CySolver%20&amp;%20PySolver%20Reuses.md)
 - [C++ API](C++%20API.md)
 - [Deprecations](Deprecations.md)
-- [Extra Output](Extra Output.md)
-- [Status and Error Codes](Status and Error Codes.md)
