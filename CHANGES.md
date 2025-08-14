@@ -2,13 +2,14 @@
 
 ## 2025
 
-### v0.15.0 (2025-08-X)
+### v0.15.0 (2025-08-13)
 
 #### Changes
-- Moved away from using std::optional in integrator configs. It is just not currently by cython enough. Causing more headaches than its worth.
+* Moved away from using std::optional in integrator configs. It is just not currently by cython enough. Causing more headaches than its worth.
+  * This led to a small performance improvement for cysolve_ivp for problems with a low number of integration steps.
 
 #### Tests
-- Added tests to check on the reuse functionality introduced in v0.14.0.
+* Added tests to check on the reuse functionality introduced in v0.14.0.
 
 ### v0.14.1 (2025-08-13)
 

@@ -18,7 +18,7 @@
 ---
 [Documentation](https://cyrk.readthedocs.io/en/latest/) | [GitHub](https://github.com/jrenaud90/cyrk)
 
-<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.14.0 Alpha-orange" alt="CyRK Version 0.14.0 Alpha" /></a>
+<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.15.0 Alpha-orange" alt="CyRK Version 0.15.0 Alpha" /></a>
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
 
@@ -27,14 +27,14 @@ CyRK provides fast integration tools to solve systems of ODEs using an adaptive 
 The purpose of this package is to provide some 
 functionality of [scipy's solve_ivp](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html) with greatly improved performance.
 
-Currently, CyRK's [numba-based](https://numba.discourse.group/) (njit-safe) implementation is **10-140x faster** than scipy's solve_ivp function.
-The [cython-based](https://cython.org/) `pysolve_ivp` function that works with python (or njit'd) functions is **20-50x faster** than scipy.
-The [cython-based](https://cython.org/) `cysolver_ivp` function that works with cython-based cdef functions is **50-700+x faster** than scipy.
+Currently, CyRK's [numba-based](https://numba.discourse.group/) (njit-safe) implementation is **8--60x faster** than scipy's solve_ivp function.
+The [cython-based](https://cython.org/) `pysolve_ivp` function that works with python (or njit'd) functions is **10-40x faster** than scipy.
+The [cython-based](https://cython.org/) `cysolver_ivp` function that works with cython-based cdef functions is **40-300+x faster** than scipy.
 
 An additional benefit of the two cython implementations is that they are pre-compiled. This avoids most of the start-up performance hit experienced by just-in-time compilers like numba.
 
 
-<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_predprey_v0-14-0.png" alt="CyRK Performance Graphic" />
+<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_predprey_v0-15-0.png" alt="CyRK Performance Graphic" />
 
 ## Installation
 
