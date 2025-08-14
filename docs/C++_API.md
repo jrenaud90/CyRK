@@ -36,19 +36,19 @@ void baseline_cysolve_ivp_noreturn(
         double t_end,
         std::vector<double> y0_vec,
         // General optional arguments
-        std::optional<size_t> expected_size,
-        std::optional<size_t> num_extra,
-        std::optional<std::vector<char>> args_vec,
-        std::optional<size_t> max_num_steps,
-        std::optional<size_t> max_ram_MB,
-        std::optional<bool> capture_dense_output,
-        std::optional<std::vector<double>> t_eval_vec,
-        std::optional<PreEvalFunc> pre_eval_func,
+        size_t> expected_size,
+        size_t> num_extra,
+        std::vector<char> args_vec,
+        size_t> max_num_steps,
+        size_t> max_ram_MB,
+        bool> capture_dense_output,
+        std::vector<double> t_eval_vec,
+        PreEvalFunc> pre_eval_func,
         // rk optional arguments
-        std::optional<std::vector<double>> rtols,
-        std::optional<std::vector<double>> atols,
-        std::optional<double> max_step_size,
-        std::optional<double> first_step_size
+        std::vector<double> rtols,
+        std::vector<double> atols,
+        double max_step_size,
+        double first_step_size
     )
 
 std::unique_ptr<CySolverResult> baseline_cysolve_ivp(
@@ -58,19 +58,19 @@ std::unique_ptr<CySolverResult> baseline_cysolve_ivp(
     std::vector<double> y0_vec,
     ODEMethod integration_method,
     // General optional arguments
-    std::optional<size_t> expected_size,
-    std::optional<size_t> num_extra,
-    std::optional<std::vector<char>> args_vec,
-    std::optional<size_t> max_num_steps,
-    std::optional<size_t> max_ram_MB,
-    std::optional<bool> capture_dense_output,
-    std::optional<std::vector<double>> t_eval_vec,
-    std::optional<PreEvalFunc> pre_eval_func,
+    size_t> expected_size,
+    size_t> num_extra,
+    std::vector<char> args_vec,
+    size_t> max_num_steps,
+    size_t> max_ram_MB,
+    bool> capture_dense_output,
+    std::vector<double> t_eval_vec,
+    PreEvalFunc> pre_eval_func,
     // rk optional arguments
-    std::optional<std::vector<double>> rtols,
-    std::optional<std::vector<double>> atols,
-    std::optional<double> max_step_size,
-    std::optional<double> first_step_size
+    std::vector<double> rtols,
+    std::vector<double> atols,
+    double max_step_size,
+    double first_step_size
 )
 ```
 

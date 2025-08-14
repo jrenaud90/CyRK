@@ -1,9 +1,8 @@
 from libcpp cimport bool as cpp_bool
 from libcpp.vector cimport vector
-from libcpp.memory cimport shared_ptr, unique_ptr, make_unique
+from libcpp.memory cimport unique_ptr, make_unique
 from libcpp.map cimport map as cpp_map
 from libcpp.string cimport string as cpp_string
-from libcpp.optional cimport optional
 
 cimport cpython.ref as cpy_ref
 from CyRK.cy.pysolver_cyhook cimport DiffeqMethod
@@ -154,12 +153,25 @@ cdef extern from "cysolver.cpp" nogil:
 
     cdef cppclass ProblemConfig:
         ProblemConfig()
-        ProblemConfig(            
+        ProblemConfig(
             DiffeqFuncType diffeq_ptr_,
             double t_start_,
             double t_end_,
-            vector[double]& y0_vec_
-        )
+            vector[double]& y0_vec_)
+        ProblemConfig(
+            DiffeqFuncType diffeq_ptr_,
+            double t_start_,
+            double t_end_,
+            vector[double]& y0_vec_,
+            vector[char]& args_vec_,
+            vector[double]& t_eval_vec_,
+            size_t num_extra_,
+            size_t expected_size_,
+            size_t max_num_steps_,
+            size_t max_ram_MB_,
+            PreEvalFunc pre_eval_func_,
+            cpp_bool capture_dense_output_,
+            cpp_bool force_retain_solver_)
         
         DiffeqFuncType diffeq_ptr
         double t_start
@@ -183,23 +195,31 @@ cdef extern from "cysolver.cpp" nogil:
         double num_dy_dbl
         cpy_ref.PyObject* cython_extension_class_instance
         DiffeqMethod py_diffeq_method
+        cpp_bool initialized
 
-        void update_y0(vector[double]& y0_vec_)
         void update_properties(
-            optional[DiffeqFuncType] diffeq_ptr_,
-            optional[size_t] num_extra_,
-            optional[double] t_start_,
-            optional[double] t_end_,
-            optional[vector[double]] y0_vec_,
-            optional[vector[char]] args_vec_,
-            optional[vector[double]] t_eval_vec_,
-            optional[size_t] expected_size_,
-            optional[size_t] max_num_steps_,
-            optional[size_t] max_ram_MB_,
-            optional[PreEvalFunc] pre_eval_func_,
-            optional[cpp_bool] capture_dense_output_,
-            optional[cpp_bool] force_retain_solver_
+            DiffeqFuncType diffeq_ptr_,
+            double t_start_,
+            double t_end_,
+            vector[double]& y0_vec_
         )
+        void update_properties(
+            DiffeqFuncType diffeq_ptr_,
+            double t_start_,
+            double t_end_,
+            vector[double]& y0_vec_,
+            vector[char]& args_vec_,
+            vector[double]& t_eval_vec_,
+            size_t num_extra_,
+            size_t expected_size_,
+            size_t max_num_steps_,
+            size_t max_ram_MB_,
+            PreEvalFunc pre_eval_func_,
+            cpp_bool capture_dense_output_,
+            cpp_bool force_retain_solver_
+        )
+        void initialize()
+        void update_properties_from_config(ProblemConfig* new_config_ptr)
 
     struct NowStatePointers:
         double* t_now_ptr
@@ -248,13 +268,24 @@ cdef extern from "cysolver.cpp" nogil:
 cdef extern from "rk.cpp" nogil:
 
     cdef cppclass RKConfig(ProblemConfig):
-        RKConfig()
-        RKConfig(            
+        RKConfig(
             DiffeqFuncType diffeq_ptr_,
             double t_start_,
             double t_end_,
-            vector[double]& y0_vec_
-        )
+            vector[double]& y0_vec_,
+            vector[char]& args_vec_,
+            vector[double]& t_eval_vec_,
+            size_t num_extra_,
+            size_t expected_size_,
+            size_t max_num_steps_,
+            size_t max_ram_MB_,
+            PreEvalFunc pre_eval_func_,
+            cpp_bool capture_dense_output_,
+            cpp_bool force_retain_solver_,
+            vector[double]& rtols_,
+            vector[double]& atols_,
+            double max_step_size_,
+            double first_step_size_)
         
         vector[double] rtols
         vector[double] atols
@@ -262,24 +293,25 @@ cdef extern from "rk.cpp" nogil:
         double first_step_size
 
         void update_properties(
-            optional[DiffeqFuncType] diffeq_ptr_,
-            optional[size_t] num_extra_,
-            optional[double] t_start_,
-            optional[double] t_end_,
-            optional[vector[double]] y0_vec_,
-            optional[vector[char]] args_vec_,
-            optional[vector[double]] t_eval_vec_,
-            optional[size_t] expected_size_,
-            optional[size_t] max_num_steps_,
-            optional[size_t] max_ram_MB_,
-            optional[PreEvalFunc] pre_eval_func_,
-            optional[cpp_bool] capture_dense_output_,
-            optional[cpp_bool] force_retain_solver_,
-            optional[vector[double]] rtols_,
-            optional[vector[double]] atols_,
-            optional[double] max_step_size_,
-            optional[double] first_step_size_
-        )
+            DiffeqFuncType diffeq_ptr_,
+            double t_start_,
+            double t_end_,
+            vector[double]& y0_vec_,
+            vector[char]& args_vec_,
+            vector[double]& t_eval_vec_,
+            size_t num_extra_,
+            size_t expected_size_,
+            size_t max_num_steps_,
+            size_t max_ram_MB_,
+            PreEvalFunc pre_eval_func_,
+            cpp_bool capture_dense_output_,
+            cpp_bool force_retain_solver_,
+            vector[double]& rtols_,
+            vector[double]& atols_,
+            double max_step_size_,
+            double first_step_size_)
+        void initialize()
+        void update_properties_from_config(RKConfig* new_config_ptr)
 
 
     cdef cppclass RKSolver(CySolverBase):
@@ -312,39 +344,39 @@ cdef extern from "cysolve.cpp" nogil:
         DiffeqFuncType diffeq_ptr,
         double t_start,
         double t_end,
-        vector[double] y0_vec,
-        optional[size_t] expected_size,
-        optional[size_t] num_extra,
-        optional[vector[char]] args_vec,
-        optional[size_t] max_num_steps,
-        optional[size_t] max_ram_MB,
-        optional[cpp_bool] capture_dense_output,
-        optional[vector[double]] t_eval_vec,
-        optional[PreEvalFunc] pre_eval_func,
-        optional[vector[double]] rtols,
-        optional[vector[double]] atols,
-        optional[double] max_step_size,
-        optional[double] first_step_size
+        vector[double]& y0_vec,
+        size_t expected_size,
+        size_t num_extra,
+        vector[char]& args_vec,
+        size_t max_num_steps,
+        size_t max_ram_MB,
+        cpp_bool capture_dense_output,
+        vector[double]& t_eval_vec,
+        PreEvalFunc pre_eval_func,
+        vector[double]& rtols,
+        vector[double]& atols,
+        double max_step_size,
+        double first_step_size
         )
 
     cdef unique_ptr[CySolverResult] baseline_cysolve_ivp(
         DiffeqFuncType diffeq_ptr,
         double t_start,
         double t_end,
-        vector[double] y0_vec,
+        vector[double]& y0_vec,
         ODEMethod integration_method,
-        optional[size_t] expected_size,
-        optional[size_t] num_extra,
-        optional[vector[char]] args_vec,
-        optional[size_t] max_num_steps,
-        optional[size_t] max_ram_MB,
-        optional[cpp_bool] capture_dense_output,
-        optional[vector[double]] t_eval_vec,
-        optional[PreEvalFunc] pre_eval_func,
-        optional[vector[double]] rtols,
-        optional[vector[double]] atols,
-        optional[double] max_step_size,
-        optional[double] first_step_size
+        size_t expected_size,
+        size_t num_extra,
+        vector[char]& args_vec,
+        size_t max_num_steps,
+        size_t max_ram_MB,
+        cpp_bool capture_dense_output,
+        vector[double]& t_eval_vec,
+        PreEvalFunc pre_eval_func,
+        vector[double]& rtols,
+        vector[double]& atols,
+        double max_step_size,
+        double first_step_size
         )
 
 

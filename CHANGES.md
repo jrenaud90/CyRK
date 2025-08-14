@@ -2,6 +2,14 @@
 
 ## 2025
 
+### v0.15.0 (2025-08-X)
+
+#### Changes
+- Moved away from using std::optional in integrator configs. It is just not currently by cython enough. Causing more headaches than its worth.
+
+#### Tests
+- Added tests to check on the reuse functionality introduced in v0.14.0.
+
 ### v0.14.1 (2025-08-13)
 
 * Minor documentation fix.

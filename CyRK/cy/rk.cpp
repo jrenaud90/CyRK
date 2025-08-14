@@ -1,4 +1,5 @@
-#include <numeric> 
+#include <stdexcept>
+#include <numeric>
 #include <algorithm>
 
 #include "rk.hpp"
@@ -8,69 +9,111 @@
 // ########################################################################################################################
 // RKConfig
 // ########################################################################################################################
-void RKConfig::update_properties(
-    std::optional<DiffeqFuncType> diffeq_ptr_,
-    std::optional<size_t> num_extra_,
-    std::optional<double> t_start_,
-    std::optional<double> t_end_,
-    std::optional<std::vector<double>> y0_vec_,
-    std::optional<std::vector<char>> args_vec_,
-    std::optional<std::vector<double>> t_eval_vec_,
-    std::optional<size_t> expected_size_,
-    std::optional<size_t> max_num_steps_,
-    std::optional<size_t> max_ram_MB_,
-    std::optional<PreEvalFunc> pre_eval_func_,
-    std::optional<bool> capture_dense_output_,
-    std::optional<bool> force_retain_solver_,
-    std::optional<std::vector<double>> rtols_,
-    std::optional<std::vector<double>> atols_,
-    std::optional<double> max_step_size_,
-    std::optional<double> first_step_size_)
+RKConfig::RKConfig(
+        DiffeqFuncType diffeq_ptr_,
+        double t_start_,
+        double t_end_,
+        std::vector<double>& y0_vec_,
+        std::vector<char>& args_vec_,
+        std::vector<double>& t_eval_vec_,
+        size_t num_extra_,
+        size_t expected_size_,
+        size_t max_num_steps_,
+        size_t max_ram_MB_,
+        PreEvalFunc pre_eval_func_,
+        bool capture_dense_output_,
+        bool force_retain_solver_,
+        std::vector<double>& rtols_,
+        std::vector<double>& atols_,
+        double max_step_size_,
+        double first_step_size_):
+            rtols(rtols_),
+            atols(atols_),
+            max_step_size(max_step_size_),
+            first_step_size(first_step_size_)
 {
-    ProblemConfig::update_properties(
+    ProblemConfig::ProblemConfig(
         diffeq_ptr_,
-        num_extra_,
         t_start_,
         t_end_,
         y0_vec_,
         args_vec_,
         t_eval_vec_,
+        num_extra_,
+        expected_size_,
+        max_num_steps_,
+        max_ram_MB_,
+        pre_eval_func_,
+        capture_dense_output_,
+        force_retain_solver_);
+}
+
+void RKConfig::update_properties(
+        DiffeqFuncType diffeq_ptr_,
+        double t_start_,
+        double t_end_,
+        std::vector<double>& y0_vec_,
+        std::vector<char>& args_vec_,
+        std::vector<double>& t_eval_vec_,
+        size_t num_extra_,
+        size_t expected_size_,
+        size_t max_num_steps_,
+        size_t max_ram_MB_,
+        PreEvalFunc pre_eval_func_,
+        bool capture_dense_output_,
+        bool force_retain_solver_,
+        std::vector<double>& rtols_,
+        std::vector<double>& atols_,
+        double max_step_size_,
+        double first_step_size_)
+{
+    this->rtols           = rtols_;
+    this->atols           = atols_;
+    this->max_step_size   = max_step_size_;
+    this->first_step_size = first_step_size_;
+
+    ProblemConfig::update_properties(
+        diffeq_ptr_,
+        t_start_,
+        t_end_,
+        y0_vec_,
+        args_vec_,
+        t_eval_vec_,
+        num_extra_,
         expected_size_,
         max_num_steps_,
         max_ram_MB_,
         pre_eval_func_,
         capture_dense_output_,
         force_retain_solver_
-    );
+        );
+}
 
-    if (rtols_)
+void RKConfig::initialize()
+{
+    ProblemConfig::initialize();
+    this->initialized = false;
+    if ((this->rtols.size() != 1) and (this->rtols.size() != this->num_y))
     {
-        // Copy over the dependent variable initial conditions
-        // We want to copy so we don't mess with the user's original data.
-        this->rtols.resize((*rtols_).size());
-        std::copy((*rtols_).begin(), (*rtols_).end(), this->rtols.begin());
+        throw std::length_error("Unexpected size of rtols; must be the same as y_vec or 1.");
     }
-    if (atols_)
+    if ((this->atols.size() != 1) and (this->atols.size() != this->num_y))
     {
-        // Copy over the dependent variable initial conditions
-        // We want to copy so we don't mess with the user's original data.
-        this->atols.resize((*atols_).size());
-        std::copy((*atols_).begin(), (*atols_).end(), this->atols.begin());
+        throw std::length_error("Unexpected size of rtols; must be the same as y_vec or 1.");
     }
-    if (max_step_size_)   this->max_step_size   = *max_step_size_;
-    if (first_step_size_) this->first_step_size = *first_step_size_;
+    this->initialized = true;
 }
 
 void RKConfig::update_properties_from_config(RKConfig* new_config_ptr)
 {
     this->update_properties(
         new_config_ptr->diffeq_ptr,
-        new_config_ptr->num_extra,
         new_config_ptr->t_start,
         new_config_ptr->t_end,
         new_config_ptr->y0_vec,
         new_config_ptr->args_vec,
         new_config_ptr->t_eval_vec,
+        new_config_ptr->num_extra,
         new_config_ptr->expected_size,
         new_config_ptr->max_num_steps,
         new_config_ptr->max_ram_MB,
