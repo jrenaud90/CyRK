@@ -50,12 +50,6 @@ CyrkErrorCodes CySolverResult::p_build_solver()
         this->solver_uptr.reset();
     }
 
-    if (this->config_uptr)
-    {
-        // Delete old config.
-        this->config_uptr.reset();
-    }
-
     // The result constructor's only job is to build the solver object and allocate its memory.
     try
     {
@@ -64,21 +58,21 @@ CyrkErrorCodes CySolverResult::p_build_solver()
         case ODEMethod::RK23:
             // RK23
             this->solver_uptr = std::make_unique<RK23>(this);
-            this->config_uptr = std::make_unique<RKConfig>();
+            // this->config_uptr = std::make_unique<RKConfig>(); // We do not currently need to do this since by default we initialize to a RKConfig.
             break;
         case ODEMethod::RK45:
             // RK45
             this->solver_uptr = std::make_unique<RK45>(this);
-            this->config_uptr = std::make_unique<RKConfig>();
+            // this->config_uptr = std::make_unique<RKConfig>(); // We do not currently need to do this since by default we initialize to a RKConfig.
             break;
         case ODEMethod::DOP853:
             // DOP853
             this->solver_uptr = std::make_unique<DOP853>(this);
-            this->config_uptr = std::make_unique<RKConfig>();
+            // this->config_uptr = std::make_unique<RKConfig>(); // We do not currently need to do this since by default we initialize to a RKConfig.
             break;
         [[unlikely]] default:
             this->solver_uptr = nullptr;
-            this->config_uptr = std::make_unique<RKConfig>();
+            this->config_uptr = std::make_unique<ProblemConfig>();
             build_status = CyrkErrorCodes::UNSUPPORTED_UNKNOWN_MODEL;
             break;
         }
@@ -229,24 +223,6 @@ CyrkErrorCodes CySolverResult::setup(ProblemConfig* provided_config_ptr)
         this->success        = false;
         this->retain_solver  = false;
 
-        // Solver may have been cleared if not forced to retain it.
-        if (not this->solver_uptr)
-        {
-            setup_status = this->p_build_solver();
-        }
-        // Check if the solver was built successfully.
-        if (setup_status != CyrkErrorCodes::NO_ERROR)
-        {
-            break;
-        }
-
-        if ((not this->solver_uptr) or 
-            ((not provided_config_ptr) and (not this->config_uptr))) // User may have manually updated the current config so the argument may be null.
-        {
-            setup_status = CyrkErrorCodes::UNINITIALIZED_CLASS;
-            break;
-        }
-
         // Reset all vectors
         // We resize these to zero so that we can retain any capacity they had from previous runs.
         this->time_domain_vec.resize(0);
@@ -266,15 +242,32 @@ CyrkErrorCodes CySolverResult::setup(ProblemConfig* provided_config_ptr)
             }
             this->config_uptr->update_properties_from_config(provided_config_ptr);
         }
-        // Update parameters based on configurations.
-        this->config_uptr->capture_extra   = this->config_uptr->num_extra > 0;
-        this->config_uptr->num_y           = this->config_uptr->y0_vec.size();
-        this->config_uptr->num_y_dbl       = (double)(this->config_uptr->num_y);
-        this->config_uptr->num_y_sqrt      = std::sqrt(this->config_uptr->num_y_dbl);
-        this->config_uptr->num_dy          = this->config_uptr->num_y + this->config_uptr->num_extra;
-        this->config_uptr->num_dy_dbl      = (double)this->config_uptr->num_dy;
-        this->config_uptr->t_eval_provided = (this->config_uptr->t_eval_vec.size() > 0);
-        round_to_2(this->config_uptr->expected_size);
+        
+        // Ensure the configuration file is properly initialized.
+        this->config_uptr->initialize();
+
+        // Solver may have been cleared if not forced to retain it.
+        if (not this->solver_uptr)
+        {
+            setup_status = this->p_build_solver();
+        }
+        // Check if the solver was built successfully.
+        if (setup_status != CyrkErrorCodes::NO_ERROR)
+        {
+            break;
+        }
+        
+        if (not this->solver_uptr)
+        {
+            setup_status = CyrkErrorCodes::UNINITIALIZED_CLASS;
+            break;
+        }
+        if (not this->config_uptr->initialized)
+        {
+            // User may have manually updated the current config so the argument may be null
+            setup_status = CyrkErrorCodes::UNINITIALIZED_CLASS;
+            break;
+        }
 
         // Store some bools in this class for optimization purposes.
         this->capture_dense_output = this->config_uptr->capture_dense_output;

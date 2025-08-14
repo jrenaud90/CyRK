@@ -10,6 +10,26 @@
 struct RKConfig : public ProblemConfig {
     using ProblemConfig::ProblemConfig;
 
+    virtual ~RKConfig() {};
+    RKConfig(
+        DiffeqFuncType diffeq_ptr_,
+        double t_start_,
+        double t_end_,
+        std::vector<double>& y0_vec_,
+        std::vector<char>& args_vec_,
+        std::vector<double>& t_eval_vec_,
+        size_t num_extra_,
+        size_t expected_size_,
+        size_t max_num_steps_,
+        size_t max_ram_MB_,
+        PreEvalFunc pre_eval_func_,
+        bool capture_dense_output_,
+        bool force_retain_solver_,
+        std::vector<double>& rtols_,
+        std::vector<double>& atols_,
+        double max_step_size_,
+        double first_step_size_);
+
     // RK-specific configurations
     std::vector<double> rtols = std::vector<double>(1); // Relative tolerances for each dependent variable; if only 1 is provided then it will be used for every dependent variable.
     std::vector<double> atols = std::vector<double>(1); // Absolute tolerances for each dependent variable; if only 1 is provided then it will be used for every dependent variable.
@@ -17,24 +37,24 @@ struct RKConfig : public ProblemConfig {
     double first_step_size    = 0.0;                   // Default first step size (0 means auto-calculate)
 
     void update_properties(
-        std::optional<DiffeqFuncType> diffeq_ptr_      = std::nullopt,
-        std::optional<size_t> num_extra_               = std::nullopt,
-        std::optional<double> t_start_                 = std::nullopt,
-        std::optional<double> t_end_                   = std::nullopt,
-        std::optional<std::vector<double>> y0_vec_     = std::nullopt,
-        std::optional<std::vector<char>> args_vec_     = std::nullopt,
-        std::optional<std::vector<double>> t_eval_vec_ = std::nullopt,
-        std::optional<size_t> expected_size_           = std::nullopt,
-        std::optional<size_t> max_num_steps_           = std::nullopt,
-        std::optional<size_t> max_ram_MB_              = std::nullopt,
-        std::optional<PreEvalFunc> pre_eval_func_      = std::nullopt,
-        std::optional<bool> capture_dense_output_      = std::nullopt,
-        std::optional<bool> force_retain_solver_       = std::nullopt,
-        std::optional<std::vector<double>> rtols_      = std::nullopt,
-        std::optional<std::vector<double>> atols_      = std::nullopt,
-        std::optional<double> max_step_size_           = std::nullopt,
-        std::optional<double> first_step_size_         = std::nullopt
-    );
+        DiffeqFuncType diffeq_ptr_,
+        double t_start_,
+        double t_end_,
+        std::vector<double>& y0_vec_,
+        std::vector<char>& args_vec_,
+        std::vector<double>& t_eval_vec_,
+        size_t num_extra_,
+        size_t expected_size_,
+        size_t max_num_steps_,
+        size_t max_ram_MB_,
+        PreEvalFunc pre_eval_func_,
+        bool capture_dense_output_,
+        bool force_retain_solver_,
+        std::vector<double>& rtols_,
+        std::vector<double>& atols_,
+        double max_step_size_,
+        double first_step_size_);
+    void initialize() override;
     virtual void update_properties_from_config(RKConfig* new_config_ptr);
 };
 

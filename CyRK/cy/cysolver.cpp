@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <numeric>
 
 #include "cysolver.hpp"
 #include "dense.hpp"
@@ -30,10 +31,7 @@ void Py_XDECREF(PyObject* x)
 /* ========================================================================= */
 /* ========================  Configurations  =============================== */
 /* ========================================================================= */
-ProblemConfig::ProblemConfig() :
-    diffeq_ptr(nullptr),
-    t_start(0.0),
-    t_end(0.0)
+ProblemConfig::ProblemConfig()
 {
 }
 
@@ -41,81 +39,121 @@ ProblemConfig::ProblemConfig(
         DiffeqFuncType diffeq_ptr_,
         double t_start_,
         double t_end_,
-        std::vector<double>& y0_vec_) :
-    diffeq_ptr(diffeq_ptr_),
-    t_start(t_start_),
-    t_end(t_end_)
+        std::vector<double>& y0_vec_): 
+            diffeq_ptr(diffeq_ptr_),
+            t_start(t_start_),
+            t_end(t_end_),
+            y0_vec(y0_vec_)
 {
-    this->update_y0(y0_vec_);
+    this->initialize();
 }
 
-void ProblemConfig::update_y0(std::vector<double>& y0_vec_)
+ProblemConfig::ProblemConfig(
+        DiffeqFuncType diffeq_ptr_,
+        double t_start_,
+        double t_end_,
+        std::vector<double>& y0_vec_,
+        std::vector<char>& args_vec_,
+        std::vector<double>& t_eval_vec_,
+        size_t num_extra_,
+        size_t expected_size_,
+        size_t max_num_steps_,
+        size_t max_ram_MB_,
+        PreEvalFunc pre_eval_func_,
+        bool capture_dense_output_,
+        bool force_retain_solver_): 
+            diffeq_ptr(diffeq_ptr_),
+            t_start(t_start_),
+            t_end(t_end_),
+            y0_vec(y0_vec_),
+            args_vec(args_vec_),
+            t_eval_vec(t_eval_vec_),
+            num_extra(num_extra_),
+            expected_size(expected_size_),
+            max_num_steps(max_num_steps_),
+            max_ram_MB(max_ram_MB_),
+            pre_eval_func(pre_eval_func_),
+            capture_dense_output(capture_dense_output_),
+            force_retain_solver(force_retain_solver_)
 {
-    if (y0_vec_.size() == 0) [[unlikely]]
-    {
-        throw std::length_error("Unexpected size of y0_vec; at least one dependent variable is required.");
-    }
-    // Copy over the dependent variable initial conditions
-    // We want to copy so we don't mess with the user's original data.
-    this->y0_vec.resize(y0_vec_.size());
-    std::copy(y0_vec_.begin(), y0_vec_.end(), this->y0_vec.begin());
+    this->initialize();
 }
 
 void ProblemConfig::update_properties(
-        std::optional<DiffeqFuncType> diffeq_ptr_,
-        std::optional<size_t> num_extra_,
-        std::optional<double> t_start_,
-        std::optional<double> t_end_,
-        std::optional<std::vector<double>> y0_vec_,
-        std::optional<std::vector<char>> args_vec_,
-        std::optional<std::vector<double>> t_eval_vec_,
-        std::optional<size_t> expected_size_,
-        std::optional<size_t> max_num_steps_,
-        std::optional<size_t> max_ram_MB_,
-        std::optional<PreEvalFunc> pre_eval_func_,
-        std::optional<bool> capture_dense_output_,
-        std::optional<bool> force_retain_solver_
-) {
-    if (diffeq_ptr_) this->diffeq_ptr = *diffeq_ptr_;
-    if (num_extra_)  this->num_extra  = *num_extra_;
-    if (t_start_)    this->t_start    = *t_start_;
-    if (t_end_)      this->t_end      = *t_end_;
-    if (y0_vec_)     this->update_y0(*y0_vec_);
+        DiffeqFuncType diffeq_ptr_,
+        double t_start_,
+        double t_end_,
+        std::vector<double>& y0_vec_)
+{
+    this->diffeq_ptr = diffeq_ptr_;
+    this->t_start    = t_start_;
+    this->t_end      = t_end_;
+    this->y0_vec     = y0_vec_;
 
-    if (args_vec_)
+    this->initialize();
+}
+
+void ProblemConfig::update_properties(
+        DiffeqFuncType diffeq_ptr_,
+        double t_start_,
+        double t_end_,
+        std::vector<double>& y0_vec_,
+        std::vector<char>& args_vec_,
+        std::vector<double>& t_eval_vec_,
+        size_t num_extra_,
+        size_t expected_size_,
+        size_t max_num_steps_,
+        size_t max_ram_MB_,
+        PreEvalFunc pre_eval_func_,
+        bool capture_dense_output_,
+        bool force_retain_solver_)
+{
+    this->diffeq_ptr    = diffeq_ptr_;
+    this->t_start       = t_start_;
+    this->t_end         = t_end_;
+    this->y0_vec        = y0_vec_;
+    this->args_vec      = args_vec_;
+    this->t_eval_vec    = t_eval_vec_;
+    this->num_extra     = num_extra_;
+    this->expected_size = expected_size_;
+    this->max_num_steps = max_num_steps_;
+    this->max_ram_MB    = max_ram_MB_;
+    this->pre_eval_func = pre_eval_func_;
+    this->capture_dense_output = capture_dense_output_;
+    this->force_retain_solver  = force_retain_solver_;
+
+    this->initialize();
+}
+
+void ProblemConfig::initialize()
+{
+    this->initialized = false;
+    if (this->y0_vec.size() == 0) [[unlikely]]
     {
-        // Copy over the dependent variable initial conditions
-        // We want to copy so we don't mess with the user's original data.
-        this->args_vec.resize((*args_vec_).size());
-        std::copy((*args_vec_).begin(), (*args_vec_).end(), this->args_vec.begin());
+        throw std::length_error("Unexpected size of y0_vec; at least one dependent variable is required.");
     }
 
-    if (t_eval_vec_)
-    {
-        // Copy over the dependent variable initial conditions
-        // We want to copy so we don't mess with the user's original data.
-        this->t_eval_vec.resize((*t_eval_vec_).size());
-        std::copy((*t_eval_vec_).begin(), (*t_eval_vec_).end(), this->t_eval_vec.begin());
-    }
-
-    if (expected_size_) this->expected_size = *expected_size_;
-    if (max_num_steps_) this->max_num_steps = *max_num_steps_;
-    if (max_ram_MB_)    this->max_ram_MB    = *max_ram_MB_;
-    if (pre_eval_func_) this->pre_eval_func = *pre_eval_func_;
-    if (capture_dense_output_) this->capture_dense_output = *capture_dense_output_;
-    if (force_retain_solver_)  this->force_retain_solver  = *force_retain_solver_;
+    round_to_2(this->expected_size);
+    this->capture_extra   = this->num_extra > 0;
+    this->t_eval_provided = this->t_eval_vec.size() > 0;
+    this->num_y           = this->y0_vec.size();
+    this->num_dy          = this->num_y + this->num_extra;
+    this->num_y_dbl       = (double)this->num_y;
+    this->num_y_sqrt      = std::sqrt(this->num_y_dbl);
+    this->num_dy_dbl      = (double)this->num_dy;
+    this->initialized     = true;
 }
 
 void ProblemConfig::update_properties_from_config(ProblemConfig* new_config_ptr)
 {
     this->update_properties(
         new_config_ptr->diffeq_ptr,
-        new_config_ptr->num_extra,
         new_config_ptr->t_start,
         new_config_ptr->t_end,
         new_config_ptr->y0_vec,
         new_config_ptr->args_vec,
         new_config_ptr->t_eval_vec,
+        new_config_ptr->num_extra,
         new_config_ptr->expected_size,
         new_config_ptr->max_num_steps,
         new_config_ptr->max_ram_MB,
@@ -135,8 +173,8 @@ CySolverBase::CySolverBase() :
 }
 
 CySolverBase::CySolverBase(CySolverResult* storage_ptr_) : 
-        integration_method(ODEMethod::BASE_METHOD),
-        storage_ptr(storage_ptr_)
+        storage_ptr(storage_ptr_),
+        integration_method(ODEMethod::BASE_METHOD)
 {
     // Base constructor does not do much.
 }
@@ -579,7 +617,7 @@ void CySolverBase::take_step()
 
                 if ((not this->error_flag) and dense_built) [[likely]]
                 {
-                    for (int i = 0; i < t_eval_index_delta; i++)
+                    for (size_t i = 0; i < t_eval_index_delta; i++)
                     {
                         double t_interp;
                         if (this->direction_flag)

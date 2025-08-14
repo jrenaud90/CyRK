@@ -1,12 +1,9 @@
 # distutils: language = c++
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 from libc.string cimport memcpy
-from libcpp cimport nullptr
 from libcpp.cmath cimport fmin, fabs
 from libcpp.vector cimport vector
-from libcpp.utility cimport move
 
-from CyRK.utils.memory cimport make_shared
 from CyRK.cy.cysolver_api cimport (
     find_expected_size, INF, EPS_100, CyrkErrorCodes, CyrkErrorMessages,
     ProblemConfig, RKConfig, CySolverBase)

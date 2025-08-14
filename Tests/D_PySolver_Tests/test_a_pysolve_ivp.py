@@ -188,39 +188,43 @@ def test_pysolve_ivp(use_scipy_style, use_args, use_njit_always,
     else:
         num_extra = 0
 
-    result = \
-        pysolve_ivp(diffeq_to_use, time_span_touse, initial_conds,
-                    method=integration_method,
-                    args=args_touse, rtol=rtols_use, atol=atols_use,
-                    num_extra=num_extra, first_step=first_step, max_step=max_step,
-                    pass_dy_as_arg=(not use_scipy_style))
+    result = None
+    reuses = 0
+    while reuses < 4:
+        result = \
+            pysolve_ivp(diffeq_to_use, time_span_touse, initial_conds,
+                        method=integration_method,
+                        args=args_touse, rtol=rtols_use, atol=atols_use,
+                        num_extra=num_extra, first_step=first_step, max_step=max_step,
+                        pass_dy_as_arg=(not use_scipy_style),
+                        solution_reuse=result)
 
-    assert isinstance(result, WrapCySolverResult)
-    assert result.success
-    assert result.error_code == 1
-    assert result.size > 1
-    assert result.steps_taken > 1
-    assert result.message == "Integration completed without issue."
-    # Check that the ndarrays make sense
-    assert type(result.t) == np.ndarray
-    assert result.t.dtype == np.float64
-    assert result.y.dtype == np.float64
-    assert result.t.size > 1
-    assert result.t.size == result.y[0].size
-    assert len(result.y.shape) == 2
-    assert result.y[0].size == result.y[1].size
-    assert result.t.size == result.size
-    assert result.y[0].size == result.size
+        assert isinstance(result, WrapCySolverResult)
+        assert result.success
+        assert result.error_code == 1
+        assert result.size > 1
+        assert result.steps_taken > 1
+        assert result.message == "Integration completed without issue."
+        # Check that the ndarrays make sense
+        assert type(result.t) == np.ndarray
+        assert result.t.dtype == np.float64
+        assert result.y.dtype == np.float64
+        assert result.t.size > 1
+        assert result.t.size == result.y[0].size
+        assert len(result.y.shape) == 2
+        assert result.y[0].size == result.y[1].size
+        assert result.t.size == result.size
+        assert result.y[0].size == result.size
 
-    if capture_extra:
-        assert result.y.shape[0] == 4
-        assert result.y[2].size == result.y[1].size
-        assert result.y[3].size == result.y[1].size
-    else:
-        assert result.y.shape[0] == 2
+        if capture_extra:
+            assert result.y.shape[0] == 4
+            assert result.y[2].size == result.y[1].size
+            assert result.y[3].size == result.y[1].size
+        else:
+            assert result.y.shape[0] == 2
 
-    assert type(result.message) == str
-
+        assert type(result.message) == str
+        reuses += 1
 
 
 def test_pysolve_ivp_errors():
