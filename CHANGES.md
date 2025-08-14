@@ -11,6 +11,10 @@
 #### Tests
 * Added tests to check on the reuse functionality introduced in v0.14.0.
 
+#### Fixes
+* Fixed some initialization of C++ object properties to be more efficient.
+* Other compile warnings were resolved.
+
 ### v0.14.1 (2025-08-13)
 
 * Minor documentation fix.

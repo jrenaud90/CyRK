@@ -101,5 +101,5 @@ std::unique_ptr<CySolverResult> baseline_cysolve_ivp(
     );
 
     // Return the results
-    return std::move(solution_uptr);
+    return solution_uptr;
 }

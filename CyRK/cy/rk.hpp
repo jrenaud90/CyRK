@@ -10,6 +10,7 @@
 struct RKConfig : public ProblemConfig {
     using ProblemConfig::ProblemConfig;
 
+    virtual ~RKConfig() {};
     RKConfig(
         DiffeqFuncType diffeq_ptr_,
         double t_start_,

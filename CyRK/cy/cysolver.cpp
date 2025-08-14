@@ -173,8 +173,8 @@ CySolverBase::CySolverBase() :
 }
 
 CySolverBase::CySolverBase(CySolverResult* storage_ptr_) : 
-        integration_method(ODEMethod::BASE_METHOD),
-        storage_ptr(storage_ptr_)
+        storage_ptr(storage_ptr_),
+        integration_method(ODEMethod::BASE_METHOD)
 {
     // Base constructor does not do much.
 }
@@ -617,7 +617,7 @@ void CySolverBase::take_step()
 
                 if ((not this->error_flag) and dense_built) [[likely]]
                 {
-                    for (int i = 0; i < t_eval_index_delta; i++)
+                    for (size_t i = 0; i < t_eval_index_delta; i++)
                     {
                         double t_interp;
                         if (this->direction_flag)

@@ -94,6 +94,7 @@ struct ProblemConfig {
 
     // Solver specific configurations can be added below via overloading the class.
 
+    virtual ~ProblemConfig() {};
     // Constructors
     ProblemConfig();
     ProblemConfig(

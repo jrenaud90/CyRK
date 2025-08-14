@@ -30,22 +30,22 @@ RKConfig::RKConfig(
             rtols(rtols_),
             atols(atols_),
             max_step_size(max_step_size_),
-            first_step_size(first_step_size_)
+            first_step_size(first_step_size_),
+            ProblemConfig(
+                diffeq_ptr_,
+                t_start_,
+                t_end_,
+                y0_vec_,
+                args_vec_,
+                t_eval_vec_,
+                num_extra_,
+                expected_size_,
+                max_num_steps_,
+                max_ram_MB_,
+                pre_eval_func_,
+                capture_dense_output_,
+                force_retain_solver_)
 {
-    ProblemConfig::ProblemConfig(
-        diffeq_ptr_,
-        t_start_,
-        t_end_,
-        y0_vec_,
-        args_vec_,
-        t_eval_vec_,
-        num_extra_,
-        expected_size_,
-        max_num_steps_,
-        max_ram_MB_,
-        pre_eval_func_,
-        capture_dense_output_,
-        force_retain_solver_);
 }
 
 void RKConfig::update_properties(
