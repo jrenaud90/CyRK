@@ -2,7 +2,7 @@
 
 ## 2025
 
-### v0.15.0 (2025-08-X)
+### v0.15.0 (2025-08-15)
 
 #### Fixes
 * Fixed issue where cysolver would not properly reset in-between reuse runs unless `setup` was explicitly called.
