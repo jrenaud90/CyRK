@@ -187,6 +187,9 @@ void CySolverResult::p_finalize()
         // Reset the cysolver smart pointer in this class.
         this->solver_uptr.reset();
     }
+
+    // Set the setup variable to false so that subsequent calls will reset the solution.
+    this->setup_called = false;
 }
 
 /* ========================================================================= */
@@ -411,10 +414,13 @@ CyrkErrorCodes CySolverResult::solve()
         // Solver is not initialized or the status is not NO_ERROR.
         solve_status = CyrkErrorCodes::UNINITIALIZED_CLASS;
     }
-    else
-    {
 
+    if (not this->setup_called)
+    {
+        // Setup has not been called; we need to reset the integrator to a base state so try calling setup.
+        this->setup(nullptr);
     }
+
     if (this->solver_uptr and (this->status == CyrkErrorCodes::NO_ERROR))
     {    
         // Tell the solver to starting solving the problem!
