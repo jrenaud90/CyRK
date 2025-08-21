@@ -74,5 +74,29 @@
     "compile_args": [],
     "link_args": [],
     "is_cpp": true
+  },
+  "cysolver_events": {
+    "name": "CyRK.cy.events",
+    "sources": [["CyRK", "cy", "events.pyx"]],
+    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
+    "compile_args": [],
+    "link_args": [],
+    "is_cpp": true
+  },
+  "optimize_brentq": {
+    "name": "CyRK.optimize.brentq",
+    "sources": [["CyRK", "optimize", "brentq.pyx"]],
+    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
+    "compile_args": [],
+    "link_args": [],
+    "is_cpp": true
+  },
+  "optimize_test": {
+    "name": "CyRK.optimize.optimize_test",
+    "sources": [["CyRK", "optimize", "optimize_test.pyx"]],
+    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
+    "compile_args": [],
+    "link_args": [],
+    "is_cpp": true
   }
 }

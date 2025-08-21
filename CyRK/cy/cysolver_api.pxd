@@ -16,6 +16,7 @@ cnp.import_array()
 # =====================================================================================================================
 cdef extern from "common.cpp" nogil:
     cpdef enum class CyrkErrorCodes(int):
+        CONVERGED,
         INITIALIZING,
         SUCCESSFUL_INTEGRATION,
         NO_ERROR,
@@ -32,8 +33,10 @@ cdef extern from "common.cpp" nogil:
         SETUP_NOT_CALLED,
         DENSE_OUTPUT_NOT_SAVED,
         BAD_CONFIG_DATA,
-        VECTOR_SIZE_EXCEEDS_LIMITS,
+        OPTIMIZE_SIGN_ERROR,
+        OPTIMIZE_CONVERGENCE_ERROR,
         MEMORY_ALLOCATION_ERROR,
+        VECTOR_SIZE_EXCEEDS_LIMITS,
         NUMBER_OF_EQUATIONS_IS_ZERO,
         MAX_ITERATIONS_HIT,
         MAX_STEPS_USER_EXCEEDED,

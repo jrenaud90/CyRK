@@ -29,5 +29,8 @@ def get_include():
     cyrk_dirs.append(
         os.path.join(cyrk_dir, 'array')  # Array headers
     )
+    cyrk_dirs.append(
+        os.path.join(cyrk_dir, 'optimize')  # Array headers
+    )
 
     return cyrk_dirs
