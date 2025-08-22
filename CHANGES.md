@@ -4,7 +4,11 @@
 
 ### v0.16.0 (2025-XXX)
 
-#### New
+#### CyRK now supports Events!
+* New C++ `Event` class which wraps Cython functions and is integrated into `CySolver`.
+* Added tests and documentation for these new features.
+
+#### Other New Features
 * Added new `CyRK.optimize` package with will house various numerical/scientific optimizations tools.
   * To this package, added a Cython wrapped `brentq` method based off of SciPy's implementation. (Note this is not properly exposed to python (don't need to for CyRK but might be a nice thing to add in the future)
 

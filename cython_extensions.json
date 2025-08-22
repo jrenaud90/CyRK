@@ -83,6 +83,14 @@
     "link_args": [],
     "is_cpp": true
   },
+  "cysolver_events": {
+    "name": "CyRK.cy.events_test",
+    "sources": [["CyRK", "cy", "events_test.pyx"]],
+    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
+    "compile_args": [],
+    "link_args": [],
+    "is_cpp": true
+  },
   "optimize_brentq": {
     "name": "CyRK.optimize.brentq",
     "sources": [["CyRK", "optimize", "brentq.pyx"]],

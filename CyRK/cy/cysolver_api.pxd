@@ -45,6 +45,7 @@ cdef extern from "common.cpp" nogil:
         STEP_SIZE_ERROR_ACCEPTANCE,
         DENSE_BUILD_FAILED,
         INTEGRATION_NOT_SUCCESSFUL,
+        EVENT_SETUP_FAILED,
         ERROR_IMPORTING_PYTHON_MODULE,
         BAD_INITIAL_STEP_SIZE,
         OTHER_ERROR,

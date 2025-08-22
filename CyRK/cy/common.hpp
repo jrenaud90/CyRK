@@ -51,6 +51,9 @@ enum class CyrkErrorCodes : int {
     DENSE_BUILD_FAILED = -56,
     INTEGRATION_NOT_SUCCESSFUL = -57,
 
+    // Problems related to events start at -60
+    EVENT_SETUP_FAILED = -60,
+
     // Python related problems start at -70
     ERROR_IMPORTING_PYTHON_MODULE = -70,
 

@@ -20,6 +20,8 @@
 !CyRK/cy/cy_array.hpp
 !CyRK/cy/rk.cpp
 !CyRK/cy/rk.hpp
+!CyRK/cy/c_events.cpp
+!CyRK/cy/c_events.hpp
 
 !CyRK/optimize/c_brentq.cpp
 !CyRK/optimize/c_brentq.hpp

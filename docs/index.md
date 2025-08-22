@@ -12,11 +12,12 @@ Also check out the GitHub page to see the code.
 :caption: Contents
 
 Getting Started <Readme.md>
+Events.md
+Dense_Output_and_t_eval.md
+Extra_Output.md
 Advanced_CySolver.md
 Status_and_Error_Codes.md
 CySolverResult_Reuses.md
-Dense_Output_and_t_eval.md
-Extra_Output.md
 Optimize.md
 C++_API.md
 Deprecations.md

@@ -46,7 +46,8 @@ double c_brentq(
         double rtol,
         size_t iter,
         std::vector<char>& func_data_vec,
-        OptimizeInfo* solver_stats)
+        OptimizeInfo* solver_stats,
+        CySolverDense* dense_func)
 {
     double xpre = xa, xcur = xb;
     double xblk = 0., fblk = 0., spre = 0., scur = 0.;
@@ -57,8 +58,27 @@ double c_brentq(
     solver_stats->error_num = CyrkErrorCodes::INITIALIZING;
     char* func_data_ptr = func_data_vec.data();
 
-    double fpre = (*func)(xpre, func_data_ptr);
-    double fcur = (*func)(xcur, func_data_ptr);
+    // Variables related to dense function
+    bool dense_provided = dense_func != nullptr;
+    size_t num_y = 0;
+    std::vector<double> y_vec = std::vector<double>();
+    double* y1_ptr = nullptr;
+    double* y2_ptr = nullptr;
+    if (dense_provided)
+    {
+        // Resize to the correct y size and set pointers
+        y_vec.resize(2 * dense_func->num_y);
+        y1_ptr = &y_vec[0];
+        y2_ptr = &y_vec[num_y];
+
+        // Call dense function for the two bounds
+        dense_func->call(xpre, y1_ptr);
+        dense_func->call(xcur, y2_ptr);
+    }
+
+    // Call event function for the two bounds.
+    double fpre = (*func)(xpre, y1_ptr, func_data_ptr);
+    double fcur = (*func)(xcur, y2_ptr, func_data_ptr);
 
     solver_stats->funcalls = 2;
     if (fpre == 0) {
@@ -136,7 +156,11 @@ double c_brentq(
             xcur += (sbis > 0 ? delta : -delta);
         }
 
-        fcur = (*func)(xcur, func_data_ptr);
+        if (dense_provided)
+        {
+            dense_func->call(xcur, y1_ptr);
+        }
+        fcur = (*func)(xcur, y1_ptr, func_data_ptr);
         solver_stats->funcalls++;
     }
     solver_stats->error_num = CyrkErrorCodes::OPTIMIZE_CONVERGENCE_ERROR;

@@ -1,7 +1,8 @@
 #pragma once
 #include <vector>
 #include "common.hpp"
-#include "events.hpp"
+#include "c_events.hpp"
+#include "dense.hpp"
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
@@ -19,4 +20,5 @@ double c_brentq(
         double rtol,
         size_t iter,
         std::vector<char>& func_data_vec,
-        OptimizeInfo* solver_stats);
+        OptimizeInfo* solver_stats,
+        CySolverDense* dense_func = nullptr);
