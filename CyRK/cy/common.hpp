@@ -11,6 +11,7 @@ static const size_t PRE_ALLOC_STEPS = 256;
 static const size_t PRE_ALLOC_NUMY  = 16;
 
 enum class CyrkErrorCodes : int {
+    CONVERGED = 20,
     INITIALIZING = 10,
     SUCCESSFUL_INTEGRATION = 1,
     NO_ERROR = 0,
@@ -32,11 +33,13 @@ enum class CyrkErrorCodes : int {
     DENSE_OUTPUT_NOT_SAVED = -21,
     BAD_CONFIG_DATA = -22,
 
-    // Problem with vectors start at -30
-    VECTOR_SIZE_EXCEEDS_LIMITS = -30,
+    // Problem with CyRK.optimize start at -30
+    OPTIMIZE_SIGN_ERROR = -30,
+    OPTIMIZE_CONVERGENCE_ERROR = -31,
 
     // Memory allocation starts at -40
     MEMORY_ALLOCATION_ERROR = -40,
+    VECTOR_SIZE_EXCEEDS_LIMITS = -41,
 
     // Problems with integration start at -50
     NUMBER_OF_EQUATIONS_IS_ZERO = -50,

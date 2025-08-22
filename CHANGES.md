@@ -2,6 +2,13 @@
 
 ## 2025
 
+### v0.16.0 (2025-XXX)
+
+#### New
+* Added new `CyRK.optimize` package with will house various numerical/scientific optimizations tools.
+  * To this package, added a Cython wrapped `brentq` method based off of SciPy's implementation. (Note this is not properly exposed to python (don't need to for CyRK but might be a nice thing to add in the future)
+
+
 ### v0.15.1 (2025-08-15)
 
 #### Fixes
