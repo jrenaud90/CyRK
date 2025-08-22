@@ -17,6 +17,7 @@ Status_and_Error_Codes.md
 CySolverResult_Reuses.md
 Dense_Output_and_t_eval.md
 Extra_Output.md
+Optimize.md
 C++_API.md
 Deprecations.md
 Changes.md
