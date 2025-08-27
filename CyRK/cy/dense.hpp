@@ -5,7 +5,7 @@
 #include <vector>
 #include <cstring>
 
-#include "common.hpp"
+#include "c_common.hpp"
 #include "cysolver.hpp"
 
 

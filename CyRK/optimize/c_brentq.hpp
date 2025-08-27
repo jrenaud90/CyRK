@@ -1,6 +1,6 @@
 #pragma once
 #include <vector>
-#include "common.hpp"
+#include "c_common.hpp"
 #include "c_events.hpp"
 #include "dense.hpp"
 

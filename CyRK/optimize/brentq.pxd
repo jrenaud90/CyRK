@@ -3,7 +3,7 @@ from libcpp.vector cimport vector
 from CyRK.cy.cysolver_api cimport CySolverDense, CyrkErrorCodes
 from CyRK.cy.events cimport EventFunc
 
-cdef extern from "common.cpp" nogil:
+cdef extern from "c_common.cpp" nogil:
     pass
 
 cdef extern from "c_events.cpp" nogil:

@@ -12,6 +12,8 @@
 * Added new `CyRK.optimize` package with will house various numerical/scientific optimizations tools.
   * To this package, added a Cython wrapped `brentq` method based off of SciPy's implementation. (Note this is not properly exposed to python (don't need to for CyRK but might be a nice thing to add in the future)
 
+#### Changes
+- Moved Cython wrappers for "common.cpp" to its own file "common.pyx/pxd"; refactored previous "common.cpp/hpp" to "c_common.cpp/hpp"
 
 ### v0.15.1 (2025-08-15)
 

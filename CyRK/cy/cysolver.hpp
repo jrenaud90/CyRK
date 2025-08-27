@@ -7,8 +7,9 @@
 #include <functional>
 #include <memory>
 
-#include "common.hpp"
+#include "c_common.hpp"
 #include "cy_array.hpp"
+#include "c_events.hpp"
 
 // !!!
 // Comment the following 
@@ -92,6 +93,10 @@ struct ProblemConfig {
     // Flags
     bool initialized = false;
 
+    // Event data
+    bool check_events = false;
+    std::vector<Event> events_vec = std::vector<Event>();
+
     // Solver specific configurations can be added below via overloading the class.
 
     virtual ~ProblemConfig() {};
@@ -115,7 +120,8 @@ struct ProblemConfig {
         size_t max_ram_MB_,
         PreEvalFunc pre_eval_func_,
         bool capture_dense_output_,
-        bool force_retain_solver_);
+        bool force_retain_solver_,
+        std::vector<Event>& events_vec_);
 
     // Helper functions
     void update_properties(
@@ -137,7 +143,8 @@ struct ProblemConfig {
         size_t max_ram_MB_,
         PreEvalFunc pre_eval_func_,
         bool capture_dense_output_,
-        bool force_retain_solver_
+        bool force_retain_solver_,
+        std::vector<Event>& events_vec_
     );
     virtual void initialize();
     virtual void update_properties_from_config(ProblemConfig* new_config_ptr);

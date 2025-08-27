@@ -1,73 +1,17 @@
 from libcpp cimport bool as cpp_bool
 from libcpp.vector cimport vector
 from libcpp.memory cimport unique_ptr, make_unique
-from libcpp.map cimport map as cpp_map
 from libcpp.string cimport string as cpp_string
+from libcpp.map cimport map as cpp_map
 
 cimport cpython.ref as cpy_ref
+from CyRK.cy.common cimport CyrkErrorCodes, CyrkErrorMessages, INF, EPS_100, BUFFER_SIZE, MAX_STEP, PreEvalFunc, DiffeqFuncType, round_to_2, find_expected_size
+
 from CyRK.cy.pysolver_cyhook cimport DiffeqMethod
+from CyRK.cy.events cimport Event
 
 cimport numpy as cnp
 cnp.import_array()
-
-
-# =====================================================================================================================
-# Import common functions and constants
-# =====================================================================================================================
-cdef extern from "common.cpp" nogil:
-    cpdef enum class CyrkErrorCodes(int):
-        CONVERGED,
-        INITIALIZING,
-        SUCCESSFUL_INTEGRATION,
-        NO_ERROR,
-        GENERAL_ERROR,
-        PROPERTY_NOT_SET,
-        UNSUPPORTED_UNKNOWN_MODEL,
-        UNINITIALIZED_CLASS,
-        CYSOLVER_INITIALIZATION_ERROR,
-        INCOMPATIBLE_INPUT,
-        ATTRIBUTE_ERROR,
-        BOUNDS_ERROR,
-        ARGUMENT_NOT_SET,
-        ARGUMENT_ERROR,
-        SETUP_NOT_CALLED,
-        DENSE_OUTPUT_NOT_SAVED,
-        BAD_CONFIG_DATA,
-        OPTIMIZE_SIGN_ERROR,
-        OPTIMIZE_CONVERGENCE_ERROR,
-        MEMORY_ALLOCATION_ERROR,
-        VECTOR_SIZE_EXCEEDS_LIMITS,
-        NUMBER_OF_EQUATIONS_IS_ZERO,
-        MAX_ITERATIONS_HIT,
-        MAX_STEPS_USER_EXCEEDED,
-        MAX_STEPS_SYSARCH_EXCEEDED,
-        STEP_SIZE_ERROR_SPACING,
-        STEP_SIZE_ERROR_ACCEPTANCE,
-        DENSE_BUILD_FAILED,
-        INTEGRATION_NOT_SUCCESSFUL,
-        EVENT_SETUP_FAILED,
-        ERROR_IMPORTING_PYTHON_MODULE,
-        BAD_INITIAL_STEP_SIZE,
-        OTHER_ERROR,
-        UNSET_ERROR_CODE
-    const cpp_map[CyrkErrorCodes, cpp_string] CyrkErrorMessages
-    
-    const double INF
-    const double EPS_100
-    const size_t BUFFER_SIZE
-    const double MAX_STEP
-
-    ctypedef void (*PreEvalFunc)(char*, double, double*, char*)
-    ctypedef void (*DiffeqFuncType)(double*, double, double*, char*, PreEvalFunc)
-
-    cdef void round_to_2(size_t& initial_value) noexcept
-
-    cdef size_t find_expected_size(
-        size_t num_y,
-        size_t num_extra,
-        double t_delta_abs,
-        double rtol_min)
-
 
 cdef extern from "cy_array.cpp" nogil:
     size_t binary_search_with_guess(double key, const double* array, size_t length, size_t guess)
@@ -175,7 +119,8 @@ cdef extern from "cysolver.cpp" nogil:
             size_t max_ram_MB_,
             PreEvalFunc pre_eval_func_,
             cpp_bool capture_dense_output_,
-            cpp_bool force_retain_solver_)
+            cpp_bool force_retain_solver_,
+            vector[Event]& events_vec_)
         
         DiffeqFuncType diffeq_ptr
         double t_start
@@ -200,6 +145,8 @@ cdef extern from "cysolver.cpp" nogil:
         cpy_ref.PyObject* cython_extension_class_instance
         DiffeqMethod py_diffeq_method
         cpp_bool initialized
+        cpp_bool check_events
+        vector[Event] events_vec
 
         void update_properties(
             DiffeqFuncType diffeq_ptr_,
@@ -220,7 +167,8 @@ cdef extern from "cysolver.cpp" nogil:
             size_t max_ram_MB_,
             PreEvalFunc pre_eval_func_,
             cpp_bool capture_dense_output_,
-            cpp_bool force_retain_solver_
+            cpp_bool force_retain_solver_,
+            vector[Event]& events_vec_
         )
         void initialize()
         void update_properties_from_config(ProblemConfig* new_config_ptr)
@@ -286,6 +234,7 @@ cdef extern from "rk.cpp" nogil:
             PreEvalFunc pre_eval_func_,
             cpp_bool capture_dense_output_,
             cpp_bool force_retain_solver_,
+            vector[Event]& events_vec_,
             vector[double]& rtols_,
             vector[double]& atols_,
             double max_step_size_,
@@ -310,6 +259,7 @@ cdef extern from "rk.cpp" nogil:
             PreEvalFunc pre_eval_func_,
             cpp_bool capture_dense_output_,
             cpp_bool force_retain_solver_,
+            vector[Event]& events_vec_,
             vector[double]& rtols_,
             vector[double]& atols_,
             double max_step_size_,
@@ -357,6 +307,7 @@ cdef extern from "cysolve.cpp" nogil:
         cpp_bool capture_dense_output,
         vector[double]& t_eval_vec,
         PreEvalFunc pre_eval_func,
+        vector[Event]& events_vec,
         vector[double]& rtols,
         vector[double]& atols,
         double max_step_size,
@@ -377,6 +328,7 @@ cdef extern from "cysolve.cpp" nogil:
         cpp_bool capture_dense_output,
         vector[double]& t_eval_vec,
         PreEvalFunc pre_eval_func,
+        vector[Event]& events_vec,
         vector[double]& rtols,
         vector[double]& atols,
         double max_step_size,
@@ -402,6 +354,7 @@ cdef void cysolve_ivp_noreturn(
     bint dense_output = *,
     vector[double] t_eval_vec = *,
     PreEvalFunc pre_eval_func = *,
+    vector[Event] events_vec = *,
     vector[double] rtols_vec = *,
     vector[double] atols_vec = *,
     double max_step = *,
@@ -424,6 +377,7 @@ cdef CySolveOutput cysolve_ivp(
     bint dense_output = *,
     vector[double] t_eval_vec = *,
     PreEvalFunc pre_eval_func = *,
+    vector[Event] events_vec = *,
     vector[double] rtols_vec = *,
     vector[double] atols_vec = *,
     double max_step = *,
@@ -446,6 +400,7 @@ cdef CySolveOutput cysolve_ivp_gil(
     bint dense_output = *,
     vector[double] t_eval_vec = *,
     PreEvalFunc pre_eval_func = *,
+    vector[Event] events_vec = *,
     vector[double] rtols_vec = *,
     vector[double] atols_vec = *,
     double max_step = *,

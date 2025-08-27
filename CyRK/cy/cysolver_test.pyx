@@ -10,7 +10,9 @@ from libcpp.vector cimport vector
 
 cdef double d_NAN = numeric_limits[double].quiet_NaN()
 
-from CyRK.cy.cysolver_api cimport cysolve_ivp_noreturn, cysolve_ivp, WrapCySolverResult, DiffeqFuncType, MAX_STEP, CySolveOutput, ODEMethod, CySolverResult
+from CyRK.cy.common cimport DiffeqFuncType, MAX_STEP
+from CyRK.cy.cysolver_api cimport cysolve_ivp_noreturn, cysolve_ivp, WrapCySolverResult, CySolveOutput, ODEMethod, CySolverResult
+from CyRK.cy.events cimport Event
 
 import numpy as np
 cimport numpy as np
@@ -218,7 +220,6 @@ cdef void pendulum_preeval_diffeq(double* dy_ptr, double t, double* y_ptr, char*
 
     dy_ptr[0] = y1
     dy_ptr[1] = pre_eval_storage_ptr[1] * sin(y0) + pre_eval_storage_ptr[2] * pre_eval_storage_ptr[0]
-
 
 def cy_extra_output_tester():
 
@@ -492,8 +493,6 @@ def cytester(
             # This tester assumes that the args input is an array of doubles.
             args_vec.resize(args.size * sizeof(double))
             memcpy(args_vec.data(), &args[0], sizeof(double) * args.size)
-            args_ptr     = <char*>&args[0]
-            size_of_args = sizeof(double) * args.size
         else:
             args_vec.resize(0)
 
@@ -526,6 +525,9 @@ def cytester(
     if not solution_ptr:
         raise AttributeError("Solution pointer not set.")
 
+    # Setup empty events vector for these tests.
+    cdef vector[Event] events_vec = vector[Event]()
+
     # Solve ODE
     cysolve_ivp_noreturn(
         solution_ptr,
@@ -542,6 +544,7 @@ def cytester(
         dense_output = dense_output,
         t_eval_vec = t_eval_vec,
         pre_eval_func = pre_eval_func,
+        events_vec = events_vec,
         rtols_vec = rtols_vec,
         atols_vec = atols_vec,
         max_step = max_step,

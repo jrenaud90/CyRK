@@ -61,7 +61,8 @@ ProblemConfig::ProblemConfig(
         size_t max_ram_MB_,
         PreEvalFunc pre_eval_func_,
         bool capture_dense_output_,
-        bool force_retain_solver_): 
+        bool force_retain_solver_,
+        std::vector<Event>& events_vec_): 
             diffeq_ptr(diffeq_ptr_),
             t_start(t_start_),
             t_end(t_end_),
@@ -74,7 +75,8 @@ ProblemConfig::ProblemConfig(
             max_ram_MB(max_ram_MB_),
             pre_eval_func(pre_eval_func_),
             capture_dense_output(capture_dense_output_),
-            force_retain_solver(force_retain_solver_)
+            force_retain_solver(force_retain_solver_),
+            events_vec(events_vec_)
 {
     this->initialize();
 }
@@ -106,7 +108,8 @@ void ProblemConfig::update_properties(
         size_t max_ram_MB_,
         PreEvalFunc pre_eval_func_,
         bool capture_dense_output_,
-        bool force_retain_solver_)
+        bool force_retain_solver_,
+        std::vector<Event>& events_vec_)
 {
     this->diffeq_ptr    = diffeq_ptr_;
     this->t_start       = t_start_;
@@ -121,6 +124,7 @@ void ProblemConfig::update_properties(
     this->pre_eval_func = pre_eval_func_;
     this->capture_dense_output = capture_dense_output_;
     this->force_retain_solver  = force_retain_solver_;
+    this->events_vec = events_vec_;
 
     this->initialize();
 }
@@ -141,6 +145,7 @@ void ProblemConfig::initialize()
     this->num_y_dbl       = (double)this->num_y;
     this->num_y_sqrt      = std::sqrt(this->num_y_dbl);
     this->num_dy_dbl      = (double)this->num_dy;
+    this->check_events    = this->events_vec.size() > 0;
     this->initialized     = true;
 }
 
@@ -159,7 +164,8 @@ void ProblemConfig::update_properties_from_config(ProblemConfig* new_config_ptr)
         new_config_ptr->max_ram_MB,
         new_config_ptr->pre_eval_func,
         new_config_ptr->capture_dense_output,
-        new_config_ptr->force_retain_solver
+        new_config_ptr->force_retain_solver,
+        new_config_ptr->events_vec
     );
 }
 

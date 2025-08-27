@@ -6,7 +6,7 @@
 #include <memory>
 #include <algorithm>
 
-#include "common.hpp"
+#include "c_common.hpp"
 #include "cy_array.hpp"
 #include "dense.hpp"
 #include "cysolver.hpp"

@@ -4,9 +4,9 @@ from libc.string cimport memcpy
 from libcpp.cmath cimport fmin, fabs
 from libcpp.vector cimport vector
 
-from CyRK.cy.cysolver_api cimport (
-    find_expected_size, INF, EPS_100, CyrkErrorCodes, CyrkErrorMessages,
-    ProblemConfig, RKConfig, CySolverBase)
+from CyRK.cy.common cimport INF, EPS_100, CyrkErrorCodes, CyrkErrorMessages, find_expected_size
+from CyRK.cy.cysolver_api cimport ProblemConfig, RKConfig, CySolverBase
+from CyRK.cy.events cimport Event
 
 import numpy as np
 cimport numpy as cnp
@@ -57,6 +57,7 @@ cdef class PySolver(WrapCySolverResult):
             str method = 'RK45',
             const double[::1] t_eval = None,
             bint dense_output = False,
+            object events = None,
             tuple args = None,
             size_t expected_size = 0,
             size_t num_extra = 0,
@@ -147,6 +148,13 @@ cdef class PySolver(WrapCySolverResult):
         problem_config_ptr.t_end = t_end
         problem_config_ptr.y0_vec = y0_vec
 
+        # Parse Events
+        problem_config_ptr.check_events = False
+        problem_config_ptr.events_vec = vector[Event]()
+        if events is not None:
+            # TODO For now don't do anything.
+            pass
+        
         # Parse t_eval
         problem_config_ptr.t_eval_provided = False
         cdef vector[double] t_eval_vec = vector[double](0)
@@ -269,6 +277,7 @@ def pysolve_ivp(
         str method = 'RK45',
         const double[::1] t_eval = None,
         bint dense_output = False,
+        object events = None,
         tuple args = None,
         size_t expected_size = 0,
         size_t num_extra = 0,
@@ -296,6 +305,7 @@ def pysolve_ivp(
             method,
             t_eval,
             dense_output,
+            events,
             args,
             expected_size,
             num_extra,

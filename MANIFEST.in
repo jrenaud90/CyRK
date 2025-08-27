@@ -15,8 +15,8 @@ include cython_extensions.json
 # Include required hpp and cpp files
 include CyRK/array/interp_common.c
 
-include CyRK/cy/common.cpp
-include CyRK/cy/common.hpp
+include CyRK/cy/c_common.cpp
+include CyRK/cy/c_common.hpp
 include CyRK/cy/cysolver.cpp
 include CyRK/cy/cysolver.hpp
 include CyRK/cy/rk.cpp

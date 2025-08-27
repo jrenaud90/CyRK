@@ -1,6 +1,6 @@
 from libcpp cimport bool as cpp_bool
 
-from CyRK cimport CyrkErrorCodes
+from CyRK.cy.common cimport CyrkErrorCodes
 
 cdef extern from "c_events.cpp" nogil:
     ctypedef double (*EventFunc)(double, double*, char*)

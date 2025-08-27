@@ -31,6 +31,48 @@
     "link_args": [],
     "is_cpp": false
   },
+  "cy_common": {
+    "name": "CyRK.cy.common",
+    "sources": [
+      ["CyRK", "cy", "common.pyx"]
+    ],
+    "include_dirs": [["CyRK", "cy"]],
+    "compile_args": [],
+    "link_args": [],
+    "is_cpp": true
+  },
+  "cysolver_events": {
+    "name": "CyRK.cy.events",
+    "sources": [["CyRK", "cy", "events.pyx"]],
+    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
+    "compile_args": [],
+    "link_args": [],
+    "is_cpp": true
+  },
+  "cysolver_events_test": {
+    "name": "CyRK.cy.events_test",
+    "sources": [["CyRK", "cy", "events_test.pyx"]],
+    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
+    "compile_args": [],
+    "link_args": [],
+    "is_cpp": true
+  },
+  "optimize_brentq": {
+    "name": "CyRK.optimize.brentq",
+    "sources": [["CyRK", "optimize", "brentq.pyx"]],
+    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
+    "compile_args": [],
+    "link_args": [],
+    "is_cpp": true
+  },
+  "optimize_test": {
+    "name": "CyRK.optimize.optimize_test",
+    "sources": [["CyRK", "optimize", "optimize_test.pyx"]],
+    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
+    "compile_args": [],
+    "link_args": [],
+    "is_cpp": true
+  },
   "pysolver_cyhook": {
     "name": "CyRK.cy.pysolver_cyhook",
     "sources": [["CyRK", "cy", "pysolver_cyhook.pyx"]],
@@ -71,38 +113,6 @@
     "name": "CyRK.cy.helpers",
     "sources": [["CyRK", "cy", "helpers.pyx"]],
     "include_dirs": [["CyRK", "cy"]],
-    "compile_args": [],
-    "link_args": [],
-    "is_cpp": true
-  },
-  "cysolver_events": {
-    "name": "CyRK.cy.events",
-    "sources": [["CyRK", "cy", "events.pyx"]],
-    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
-    "compile_args": [],
-    "link_args": [],
-    "is_cpp": true
-  },
-  "cysolver_events": {
-    "name": "CyRK.cy.events_test",
-    "sources": [["CyRK", "cy", "events_test.pyx"]],
-    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
-    "compile_args": [],
-    "link_args": [],
-    "is_cpp": true
-  },
-  "optimize_brentq": {
-    "name": "CyRK.optimize.brentq",
-    "sources": [["CyRK", "optimize", "brentq.pyx"]],
-    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
-    "compile_args": [],
-    "link_args": [],
-    "is_cpp": true
-  },
-  "optimize_test": {
-    "name": "CyRK.optimize.optimize_test",
-    "sources": [["CyRK", "optimize", "optimize_test.pyx"]],
-    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
     "compile_args": [],
     "link_args": [],
     "is_cpp": true

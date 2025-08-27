@@ -2,7 +2,7 @@
 
 #include <limits>
 
-#include "common.hpp"
+#include "c_common.hpp"
 
 typedef double (*EventFunc)(double, double*, char*);
 
