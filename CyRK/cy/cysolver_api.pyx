@@ -111,10 +111,14 @@ cdef class WrapCySolverResult:
         diagnostic_str += f'----------------------------------------------------\n'
         diagnostic_str += f'# of y:      {self.num_y}.\n'
         diagnostic_str += f'# of dy:     {self.num_dy}.\n'
+        diagnostic_str += f'# of events: {self.num_events}.\n'
         diagnostic_str += f'Success:     {self.success}.\n'
         diagnostic_str += f'Error Code:  {self.error_code}.\n'
         diagnostic_str += f'Size:        {self.size}.\n'
         diagnostic_str += f'Steps Taken: {self.steps_taken}.\n'
+        diagnostic_str += f'Event Termination:       {self.event_terminated}.\n'
+        if self.event_terminated:
+            diagnostic_str += f'Termination Event Index: {self.event_terminate_index}.\n'
         diagnostic_str += f'Integrator Message:\n\t{self.message}\n'
         diagnostic_str += f'\n----------------- CySolverResult -------------------\n'
         diagnostic_str += f'Capture Extra:         {cyresult_ptr.capture_extra}.\n'
@@ -245,6 +249,24 @@ cdef class WrapCySolverResult:
         if not self.cyresult_uptr:
             return None
         return self.cyresult_uptr.get().num_dy
+    
+    @property
+    def num_events(self):
+        if not self.cyresult_uptr:
+            return None
+        return self.cyresult_uptr.get().num_events
+    
+    @property
+    def event_terminated(self):
+        if not self.cyresult_uptr:
+            return None
+        return self.cyresult_uptr.get().event_terminated
+    
+    @property
+    def event_terminate_index(self):
+        if not self.cyresult_uptr:
+            return None
+        return self.cyresult_uptr.get().event_terminate_index
     
     @property
     def status(self):

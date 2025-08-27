@@ -204,6 +204,16 @@ def run_cysolver_with_events(
         printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_states.size() != 3 (use_dense = %d; t_eval_provided = %d).\n", use_dense, t_eval_provided)
         tests_passed = False
 
+    # Check Solution event data
+    if solution.num_events != 3:
+        printf("TEST FAILED: `run_cysolver_with_events` - solution.num_events != 3 (use_dense = %d; t_eval_provided = %d).\n", use_dense, t_eval_provided)
+        tests_passed = False
+    if solution.event_terminate_index is None:
+        printf("TEST FAILED: `run_cysolver_with_events` - solution.event_terminate_index is None (use_dense = %d; t_eval_provided = %d).\n", use_dense, t_eval_provided)
+        tests_passed = False
+    if solution.event_terminated is None:
+        printf("TEST FAILED: `run_cysolver_with_events` - solution.event_terminated is None (use_dense = %d; t_eval_provided = %d).\n", use_dense, t_eval_provided)
+        tests_passed = False
     
     # TODO Don't currently check if events executed correctly.
     

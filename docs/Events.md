@@ -27,6 +27,25 @@ _The above is copied out of SciPy's documentation [here](https://docs.scipy.org/
 
 #### Example Usage
 
+## Event Data and Diagnostics in CySolution
+CyRK provides several event-related data that can be used to diagnose issues or just learn about the integration results.
+
+```python
+solution = pysolve_ivp(... events=(my_event_fuc1, my_event_func2), ...)
+
+# Number of event functions provided, in this case 2.
+solution.num_events
+
+# Boolean flag if the integration was terminated by an event.
+solution.event_terminated
+
+# If the integration was terminated, then the index of the function the first triggered the termination is provided by the following:
+solution.event_terminate_index
+
+# All of this information (plus a lot more!) will be printed if you print the solution diagnostics
+solution.print_diagnostics()
+```
+
 ## Citation
 Use of CyRK's integrators with "events" on should cite [SciPy](https://scipy.org/citing-scipy/) since this implementation is based on their work.
 
