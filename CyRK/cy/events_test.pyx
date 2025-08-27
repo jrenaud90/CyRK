@@ -54,7 +54,7 @@ def build_event_wrapper_test():
     cdef int build_method = -1
     cdef int[2] build_methods = [0, 1]
 
-    cdef int termination_int = 0
+    cdef int direction = 0
     cdef size_t max_allowed = numeric_limits[size_t].max()
 
     cdef CyrkErrorCodes setup_code = CyrkErrorCodes.NO_ERROR
@@ -66,11 +66,11 @@ def build_event_wrapper_test():
         for valid_func in event_func_array:                
             if build_method == 0:
                 # Use constructor with all args
-                event = Event(valid_func, max_allowed, termination_int)
+                event = Event(valid_func, max_allowed, direction)
             else:
                 # Build empty event and use setup
                 event = Event()
-                setup_code = event.setup(valid_func, max_allowed, termination_int)
+                setup_code = event.setup(valid_func, max_allowed, direction)
                 current_check = current_check and (setup_code == CyrkErrorCodes.NO_ERROR)
             current_check = current_check and event.initialized and (event.status == CyrkErrorCodes.NO_ERROR)
             if not current_check:
@@ -155,9 +155,11 @@ def run_cysolver_with_events(
     
     # Build events
     cdef vector[Event] events_vec = vector[Event]()
-    events_vec.emplace_back(lorenz_event_func_1, numeric_limits[size_t].max(), 0)
-    events_vec.emplace_back(lorenz_event_func_2, numeric_limits[size_t].max(), 0)
-    events_vec.emplace_back(lorenz_event_func_3, numeric_limits[size_t].max(), 0)
+    cdef size_t max_allowed = numeric_limits[size_t].max()
+    cdef int direction = 0
+    events_vec.emplace_back(lorenz_event_func_1, max_allowed, direction)
+    events_vec.emplace_back(lorenz_event_func_2, max_allowed, direction)
+    events_vec.emplace_back(lorenz_event_func_3, max_allowed, direction)
 
     cdef ODEMethod integration_method = ODEMethod.RK45
     cdef WrapCySolverResult solution = WrapCySolverResult()

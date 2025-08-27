@@ -9,12 +9,17 @@ cdef extern from "c_common.cpp" nogil:
 cdef extern from "c_events.cpp" nogil:
     pass
 
+cdef extern from "dense.cpp" nogil:
+    pass
+
 cdef extern from "c_brentq.cpp" nogil:
 
     cdef struct OptimizeInfo:
         size_t funcalls
         size_t iterations
         CyrkErrorCodes error_num
+        vector[double] y_vec
+        double* y_at_root_ptr
 
     cdef double c_brentq(
         EventFunc func,

@@ -21,3 +21,9 @@ def test_run_cysolver_with_events(use_dense, use_t_eval):
 
     # Run cysolver with events
     assert run_cysolver_with_events(use_dense, t_eval)
+
+
+if __name__ == "__main__":
+    for i in range(100_000):
+        print(i)
+        test_run_cysolver_with_events(False, False)

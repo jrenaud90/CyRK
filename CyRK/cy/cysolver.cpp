@@ -278,7 +278,7 @@ CyrkErrorCodes CySolverBase::resize_num_y(size_t num_y_, size_t num_dy_)
     try
     {
         this->y_holder_vec.resize(num_y_ * 4); // 4 is the number of subarrays held in this vector.
-        this->dy_holder_vec.resize(num_dy_ * 3); // 3 is the number of subarrays held in this vector.
+        this->dy_holder_vec.resize(num_dy_ * 4); // 4 is the number of subarrays held in this vector.
     }
     catch (const std::bad_alloc&)
     {
@@ -294,6 +294,7 @@ CyrkErrorCodes CySolverBase::resize_num_y(size_t num_y_, size_t num_dy_)
     this->dy_old_ptr      = &dy_holder_ptr[0];
     this->dy_now_ptr      = &dy_holder_ptr[num_dy_];
     this->dy_tmp_ptr      = &dy_holder_ptr[num_dy_ * 2];
+    this->dy_tmp2_ptr     = &dy_holder_ptr[num_dy_ * 3];
 
     return CyrkErrorCodes::NO_ERROR;
 }
@@ -303,11 +304,15 @@ CyrkErrorCodes CySolverBase::setup()
     CyrkErrorCodes setup_status = CyrkErrorCodes::NO_ERROR;
 
     // Reset flags
-    this->t_eval_finished = false;
-    this->setup_called    = false;
-    this->error_flag      = false;
+    this->t_eval_finished   = false;
+    this->setup_called      = false;
+    this->error_flag        = false;
+    this->check_events_flag = false;
+    this->num_events        = 0;
     this->user_provided_max_num_steps = false;
     this->clear_python_refs();
+    this->event_data_vec.resize(0);
+    this->active_event_indices_vec.resize(0);
 
     while (setup_status == CyrkErrorCodes::NO_ERROR)
     {
@@ -334,26 +339,27 @@ CyrkErrorCodes CySolverBase::setup()
         }
 
         // For performance reasons we will store a few parameters from the config into this object. 
-        this->num_y            = this->storage_ptr->config_uptr->num_y;
-        this->num_extra        = this->storage_ptr->config_uptr->num_extra;
-        this->num_dy           = this->storage_ptr->config_uptr->num_dy;
-        this->sizeof_dbl_Ny    = sizeof(double) * this->num_y;
-        this->sizeof_dbl_Ndy   = sizeof(double) * this->num_dy;
-        this->num_y_dbl        = this->storage_ptr->config_uptr->num_y_dbl;
-        this->num_y_sqrt       = this->storage_ptr->config_uptr->num_y_sqrt;
-        this->capture_extra    = this->num_extra > 0;
-        this->use_dense_output = this->storage_ptr->config_uptr->capture_dense_output;
-        this->check_events     = this->storage_ptr->config_uptr->check_events;
-        this->num_events       = this->storage_ptr->config_uptr->events_vec.size();
+        this->num_y             = this->storage_ptr->config_uptr->num_y;
+        this->num_extra         = this->storage_ptr->config_uptr->num_extra;
+        this->num_dy            = this->storage_ptr->config_uptr->num_dy;
+        this->sizeof_dbl_Ny     = sizeof(double) * this->num_y;
+        this->sizeof_dbl_Ndy    = sizeof(double) * this->num_dy;
+        this->num_y_dbl         = this->storage_ptr->config_uptr->num_y_dbl;
+        this->num_y_sqrt        = this->storage_ptr->config_uptr->num_y_sqrt;
+        this->capture_extra     = this->num_extra > 0;
+        this->use_dense_output  = this->storage_ptr->config_uptr->capture_dense_output;
+        this->check_events_flag = this->storage_ptr->config_uptr->check_events;
+        this->num_events        = this->storage_ptr->config_uptr->events_vec.size();
 
         // Setup time information
-        this->len_t          = 0;
-        this->t_start        = this->storage_ptr->config_uptr->t_start;
-        this->t_end          = this->storage_ptr->config_uptr->t_end;
-        this->t_delta        = this->t_end - this->t_start;
-        this->t_delta_abs    = std::fabs(this->t_delta);
-        this->direction_flag = this->t_delta >= 0.0;
-        this->direction_inf  = (this->direction_flag) ? INF : -INF;
+        this->len_t            = 0;
+        this->t_start          = this->storage_ptr->config_uptr->t_start;
+        this->t_end            = this->storage_ptr->config_uptr->t_end;
+        this->t_delta          = this->t_end - this->t_start;
+        this->t_delta_abs      = std::fabs(this->t_delta);
+        this->direction_flag   = this->t_delta >= 0.0;
+        this->direction_inf    = (this->direction_flag) ? INF : -INF;
+        this->termination_root = this->direction_inf;
 
         // Pull out pointers to other data storage.
         this->diffeq_ptr    = this->storage_ptr->config_uptr->diffeq_ptr;
@@ -413,6 +419,34 @@ CyrkErrorCodes CySolverBase::setup()
             this->diffeq = &CySolverBase::p_cy_diffeq;
         }
 
+        // Setup event storage
+        if (this->check_events_flag)
+        {
+            try
+            {
+                this->root_finder_data.y_vec.resize(2 * this->num_dy);
+                this->event_data_vec.resize(this->num_events);
+                this->active_event_indices_vec.reserve(this->num_events);
+            }
+            catch (const std::bad_alloc&)
+            {
+                setup_status = CyrkErrorCodes::MEMORY_ALLOCATION_ERROR;
+                break;
+            }
+            this->event_checks_old_ptr = this->event_data_vec.data();
+
+            // Reset the event counters on each event.
+            for (size_t event_i = 0; event_i < this->num_events; event_i++)
+            {
+                Event& current_event = this->storage_ptr->config_uptr->events_vec[event_i];
+                current_event.current_count = 0;
+                current_event.last_root     = NAN;
+                current_event.is_active     = false;
+                // Setup event storages
+                current_event.y_at_root_vec.resize(this->num_dy);
+            }
+        }
+
         // Some methods require additional setup before the current state is set.
         setup_status = this->p_additional_setup();
         if (setup_status != CyrkErrorCodes::NO_ERROR)
@@ -441,6 +475,37 @@ CyrkErrorCodes CySolverBase::setup()
 
         // Update dys
         std::memcpy(this->dy_old_ptr, this->dy_now_ptr, this->sizeof_dbl_Ndy);
+
+        // Initialize event check data
+        if (this->check_events_flag)
+        {
+            double* event_y_now_use_ptr = this->y_now_ptr;
+            if (this->capture_extra)
+            {
+                // If we are capturing extra variables then we want to pass those
+                // to the event functions as well.
+
+                // We will use dy_tmp2_ptr to hold the combined y and extra values.
+                // dy_tmp_ptr is used during dense calls so do not want to rely on that memory not being overwritten
+                // during the event loop. 
+                // dy_tmp2_ptr is the correct size. But the first num_y values need to be copied over from y_now_ptr.
+                std::memcpy(this->dy_tmp2_ptr, this->y_now_ptr, this->sizeof_dbl_Ny);
+                // The rest come from dy_now_ptr.
+                std::memcpy(&this->dy_tmp2_ptr[this->num_y], &this->dy_now_ptr[this->num_y], sizeof(double) * this->num_extra);
+                event_y_now_use_ptr = this->dy_tmp2_ptr;
+            }
+
+            for (size_t event_i = 0; event_i < this->num_events; event_i++)
+            {
+                Event& current_event = this->storage_ptr->config_uptr.get()->events_vec[event_i];
+    
+                // Find new event state array
+                this->event_checks_old_ptr[event_i] = current_event.check(
+                    this->t_now,
+                    event_y_now_use_ptr,
+                    this->args_ptr);
+            }
+        }        
 
         // If t_eval is set then don't save initial conditions. They will be captured during stepping.
         if (not this->use_t_eval)
@@ -485,9 +550,204 @@ inline bool CySolverBase::check_status() const
     if (this->storage_ptr) [[likely]]
     {
         // We want to return false for any non-error status, even successful integration.
-        return (this->storage_ptr->status == CyrkErrorCodes::NO_ERROR) and (not this->error_flag) and this->setup_called;
+        return 
+                (this->storage_ptr->status == CyrkErrorCodes::NO_ERROR) // This will be false if there is an error or if integration is complete.
+            and (not this->error_flag)
+            and this->setup_called;
     }
     return false;
+}
+
+CyrkErrorCodes CySolverBase::p_check_events() noexcept
+{
+    // Pull out event vector and dense reference
+    Event* event_ptr = this->storage_ptr->config_uptr.get()->events_vec.data();
+    CySolverDense* const dense_func_ptr = &this->storage_ptr->dense_vec.back();
+
+    // Root finding parameters
+    const double BRENTQ_ATOL     = 4.0 * EPS;
+    const double BRENTQ_RTOL     = 4.0 * EPS;
+    const size_t MAX_BRENTQ_ITER = 100;
+
+    double* event_y_now_use_ptr = this->y_now_ptr;
+    if (this->capture_extra)
+    {
+        // If we are capturing extra variables then we want to pass those
+        // to the event functions as well.
+
+        // We will use dy_tmp2_ptr to hold the combined y and extra values.
+        // dy_tmp_ptr is used during dense calls so do not want to rely on that memory not being overwritten
+        // during the event loop. 
+        // dy_tmp2_ptr is the correct size. But the first num_y values need to be copied over from y_now_ptr.
+        std::memcpy(this->dy_tmp2_ptr, this->y_now_ptr, this->sizeof_dbl_Ny);
+        // The rest come from dy_now_ptr.
+        std::memcpy(&this->dy_tmp2_ptr[this->num_y], &this->dy_now_ptr[this->num_y], sizeof(double) * this->num_extra);
+        event_y_now_use_ptr = this->dy_tmp2_ptr;
+    }
+    
+    // Reset any previously active events and find if any are active now.
+    this->active_event_indices_vec.resize(0);
+
+    // We want to stop storing data at the root of a triggered termination event (if there are any).
+    // If we are doing forward integration we want the smallest root. 
+    // If we are doing backward integration we want the largest root.
+    this->termination_root = this->direction_inf;
+
+    for (size_t event_i = 0; event_i < this->num_events; event_i++)
+    {
+        Event& current_event = event_ptr[event_i];
+    
+        // Find new event state array
+        double g_now = current_event.check(
+            this->t_now,
+            event_y_now_use_ptr,
+            this->args_ptr);
+        
+        // Check if event was triggered
+        // This section mimics scipy's `find_active_events` function.
+        double g_old = this->event_checks_old_ptr[event_i];
+        bool event_triggered = false;
+        
+        // Check if event was triggered by looking at the past and current event results.
+        // User can specify if they only want an event to trigger when approaching zero from
+        // above (direction > 0) or below (direction < 0) or either (direction == 0).
+        bool up     = (g_old <= 0.0) and (g_now >= 0.0);
+        bool down   = (g_old >= 0.0) and (g_now <= 0.0);
+        bool either = up or down;
+        if ((current_event.direction == 0) and either)
+        {
+            event_triggered = true;
+        }
+        else if ((current_event.direction > 0) and up)
+        {
+            event_triggered = true;
+        }
+        else if ((current_event.direction < 0) and down)
+        {
+            event_triggered = true;
+        }
+
+        // update old event check value
+        this->event_checks_old_ptr[event_i] = g_now;
+
+        if (not event_triggered)
+        {
+            // If event was not triggered then continue to next event.
+            current_event.is_active = false;
+            continue;
+        }
+
+        // Event was triggered
+        current_event.is_active = true;
+        current_event.current_count++;
+        this->active_event_indices_vec.push_back(event_i);
+        // Reset root data from any previous calls.
+        this->root_finder_data.funcalls   = 0;
+        this->root_finder_data.iterations = 0;
+        this->root_finder_data.error_num  = CyrkErrorCodes::NO_ERROR;
+        
+        // Below mimics scipy's event `handle_events` function.
+        // Find the root of the event function using the BrentQ method.
+        current_event.last_root = c_brentq(
+            current_event.check,
+            this->t_old,
+            this->t_now,
+            BRENTQ_ATOL,
+            BRENTQ_RTOL,
+            MAX_BRENTQ_ITER,
+            this->storage_ptr->config_uptr->args_vec,
+            &this->root_finder_data,
+            dense_func_ptr);
+        
+        if (root_finder_data.error_num != CyrkErrorCodes::CONVERGED)
+        {
+            // Root finding failed.
+            current_event.status = root_finder_data.error_num;
+            this->error_flag = true;
+            return root_finder_data.error_num;
+        }
+
+        // The root finder also finds the y values (both dependent and extra if applicable) at the root.
+        // Store these values in the event structure.
+        if (root_finder_data.y_at_root_ptr == nullptr) [[unlikely]]
+        {
+            this->error_flag = true;
+            return CyrkErrorCodes::ATTRIBUTE_ERROR;
+        }
+        std::memcpy(
+            current_event.y_at_root_vec.data(),
+            root_finder_data.y_at_root_ptr,
+            this->sizeof_dbl_Ndy);
+        
+        if (current_event.current_count >= current_event.max_allowed)
+        {
+            // Termination condition met.
+            this->storage_ptr->event_terminated = true;
+            current_event.status = CyrkErrorCodes::EVENT_TERMINATED;
+            // Find the smallest/largest root depending on integration direction.
+            if (this->direction_flag)
+            {
+                // Forward integration
+                if (current_event.last_root < this->termination_root)
+                {
+                    this->termination_root = current_event.last_root;
+                }
+            }
+            else
+            {
+                // Backward integration
+                if (current_event.last_root > this->termination_root)
+                {
+                    this->termination_root = current_event.last_root;
+                }
+            }
+        }
+    }
+
+    // Loop through active events and disable any that are beyond the termination root.
+    if (this->storage_ptr->event_terminated)
+    {
+        // We are using this convoluted looping so we can erase active events as we go.
+        for (auto iter = this->active_event_indices_vec.begin(); iter != this->active_event_indices_vec.end(); )
+        {
+            size_t event_i = *iter;
+            Event& current_event = event_ptr[event_i];
+            
+            if (current_event.last_root == this->termination_root)
+            {
+                // This was the event (or one of the events) that caused the termination. Record its index.
+                this->storage_ptr->event_terminate_index = event_i;
+            }
+
+            if (this->direction_flag)
+            {
+                // Forward integration
+                if (current_event.last_root > this->termination_root)
+                {
+                    current_event.is_active = false;
+                    iter = this->active_event_indices_vec.erase(iter);
+                }
+                else
+                {
+                    ++iter;
+                }
+            }
+            else
+            {
+                // Backward integration
+                if (current_event.last_root < this->termination_root)
+                {
+                    current_event.is_active = false;
+                    iter = this->active_event_indices_vec.erase(iter);
+                }
+                else
+                {
+                    ++iter;
+                }
+            }
+        }
+    }
+    return CyrkErrorCodes::NO_ERROR;
 }
 
 void CySolverBase::take_step()
@@ -532,6 +792,47 @@ void CySolverBase::take_step()
             // We need to save many dense interpolators to storage. So let's heap allocate them (that is what "true" indicates)
             this->storage_ptr->build_dense(true);
             dense_built = true;
+        }
+
+        if (this->check_events_flag)
+        {
+            if (not dense_built)
+            {
+                // We need an interpolator to check events. If it is not built already then build it now.
+                // The `false` flag tells the storage to not to append the interpolator. 
+                // One interpolated will be overwritten at each step.
+                this->storage_ptr->build_dense(false);
+                dense_built = true;
+            }
+
+            // Check events
+            this->storage_ptr->update_status(this->p_check_events());
+
+            // Save event data
+            this->storage_ptr->record_event_data();
+
+            // Check for termination condition
+            if (this->storage_ptr->event_terminated and (not this->error_flag))
+            {
+                // Update integration status since we are now done.
+                this->storage_ptr->update_status(CyrkErrorCodes::EVENT_TERMINATED);
+
+                // We want to set t_now to the termination root so all data is saved up until termination.
+                if (this->t_now != this->termination_root)
+                {
+                    this->t_now = this->termination_root;
+
+                    // Also need to update y_now and dy_now to reflect this new time.
+                    // Dense output is guaranteed to be built since its needed by event checker.
+                    this->storage_ptr->dense_vec.back().call(this->t_now, this->y_now_ptr);
+
+                    if (this->capture_extra)
+                    {
+                        // Call diffeq to get new dy_now values where extra output is stored.
+                        this->diffeq(this);
+                    }
+                }
+            }
         }
 
         // Check if we are saving data at intermediate steps pulled from t_eval.
@@ -681,7 +982,10 @@ void CySolverBase::take_step()
     }
 
     // Check if the integration is finished and successful.
-    if (this->storage_ptr->status == CyrkErrorCodes::SUCCESSFUL_INTEGRATION)
+    if (
+           (this->storage_ptr->status == CyrkErrorCodes::SUCCESSFUL_INTEGRATION)
+        or (this->storage_ptr->status == CyrkErrorCodes::EVENT_TERMINATED)
+       )
     {
         this->storage_ptr->success = true;
     }

@@ -18,14 +18,14 @@
         ],
         "include_dirs": [
             "CyRK\\cy",
-            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-xcz6ox_3\\overlay\\Lib\\site-packages\\numpy\\_core\\include",
-            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-xcz6ox_3\\site",
+            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-xgs52719\\overlay\\Lib\\site-packages\\numpy\\_core\\include",
+            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-xgs52719\\site",
             "C:\\Users\\joepr\\miniforge3\\envs\\cyrk313\\python313.zip",
             "C:\\Users\\joepr\\miniforge3\\envs\\cyrk313\\DLLs",
             "C:\\Users\\joepr\\miniforge3\\envs\\cyrk313\\Lib",
-            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-xcz6ox_3\\overlay\\Lib\\site-packages",
-            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-xcz6ox_3\\normal\\Lib\\site-packages",
-            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-xcz6ox_3\\overlay\\Lib\\site-packages\\setuptools\\_vendor"
+            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-xgs52719\\overlay\\Lib\\site-packages",
+            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-xgs52719\\normal\\Lib\\site-packages",
+            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-xgs52719\\overlay\\Lib\\site-packages\\setuptools\\_vendor"
         ],
         "language": "c++",
         "name": "CyRK.cy.common",
@@ -2080,6 +2080,7 @@ static const char __pyx_k_CyrkErrorCodes[] = "CyrkErrorCodes";
 static const char __pyx_k_ATTRIBUTE_ERROR[] = "ATTRIBUTE_ERROR";
 static const char __pyx_k_BAD_CONFIG_DATA[] = "BAD_CONFIG_DATA";
 static const char __pyx_k_ARGUMENT_NOT_SET[] = "ARGUMENT_NOT_SET";
+static const char __pyx_k_EVENT_TERMINATED[] = "EVENT_TERMINATED";
 static const char __pyx_k_PROPERTY_NOT_SET[] = "PROPERTY_NOT_SET";
 static const char __pyx_k_SETUP_NOT_CALLED[] = "SETUP_NOT_CALLED";
 static const char __pyx_k_UNSET_ERROR_CODE[] = "UNSET_ERROR_CODE";
@@ -2145,7 +2146,7 @@ typedef struct {
   PyTypeObject *__pyx_CoroutineType;
   #endif
   __Pyx_CachedCFunction __pyx_umethod_PyDict_Type_get;
-  PyObject *__pyx_string_tab[49];
+  PyObject *__pyx_string_tab[50];
 /* #### Code section: module_state_contents ### */
 /* CodeObjectCache.module_state_decls */
 struct __Pyx_CodeObjectCache __pyx_code_cache;
@@ -2190,40 +2191,41 @@ static __pyx_mstatetype * const __pyx_mstate_global = &__pyx_mstate_global_stati
 #define __pyx_n_u_DENSE_OUTPUT_NOT_SAVED __pyx_string_tab[12]
 #define __pyx_n_u_ERROR_IMPORTING_PYTHON_MODULE __pyx_string_tab[13]
 #define __pyx_n_u_EVENT_SETUP_FAILED __pyx_string_tab[14]
-#define __pyx_n_u_GENERAL_ERROR __pyx_string_tab[15]
-#define __pyx_n_u_INCOMPATIBLE_INPUT __pyx_string_tab[16]
-#define __pyx_n_u_INITIALIZING __pyx_string_tab[17]
-#define __pyx_n_u_INTEGRATION_NOT_SUCCESSFUL __pyx_string_tab[18]
-#define __pyx_n_u_IntEnum __pyx_string_tab[19]
-#define __pyx_n_u_IntFlag __pyx_string_tab[20]
-#define __pyx_n_u_MAX_ITERATIONS_HIT __pyx_string_tab[21]
-#define __pyx_n_u_MAX_STEPS_SYSARCH_EXCEEDED __pyx_string_tab[22]
-#define __pyx_n_u_MAX_STEPS_USER_EXCEEDED __pyx_string_tab[23]
-#define __pyx_n_u_MEMORY_ALLOCATION_ERROR __pyx_string_tab[24]
-#define __pyx_n_u_NO_ERROR __pyx_string_tab[25]
-#define __pyx_n_u_NUMBER_OF_EQUATIONS_IS_ZERO __pyx_string_tab[26]
-#define __pyx_n_u_OPTIMIZE_CONVERGENCE_ERROR __pyx_string_tab[27]
-#define __pyx_n_u_OPTIMIZE_SIGN_ERROR __pyx_string_tab[28]
-#define __pyx_n_u_OTHER_ERROR __pyx_string_tab[29]
-#define __pyx_n_u_PROPERTY_NOT_SET __pyx_string_tab[30]
-#define __pyx_n_u_SETUP_NOT_CALLED __pyx_string_tab[31]
-#define __pyx_n_u_STEP_SIZE_ERROR_ACCEPTANCE __pyx_string_tab[32]
-#define __pyx_n_u_STEP_SIZE_ERROR_SPACING __pyx_string_tab[33]
-#define __pyx_n_u_SUCCESSFUL_INTEGRATION __pyx_string_tab[34]
-#define __pyx_n_u_UNINITIALIZED_CLASS __pyx_string_tab[35]
-#define __pyx_n_u_UNSET_ERROR_CODE __pyx_string_tab[36]
-#define __pyx_n_u_UNSUPPORTED_UNKNOWN_MODEL __pyx_string_tab[37]
-#define __pyx_n_u_VECTOR_SIZE_EXCEEDS_LIMITS __pyx_string_tab[38]
-#define __pyx_kp_u__2 __pyx_string_tab[39]
-#define __pyx_n_u_cline_in_traceback __pyx_string_tab[40]
-#define __pyx_n_u_enum __pyx_string_tab[41]
-#define __pyx_n_u_get __pyx_string_tab[42]
-#define __pyx_n_u_main __pyx_string_tab[43]
-#define __pyx_n_u_module __pyx_string_tab[44]
-#define __pyx_n_u_module_2 __pyx_string_tab[45]
-#define __pyx_n_u_name __pyx_string_tab[46]
-#define __pyx_n_u_qualname __pyx_string_tab[47]
-#define __pyx_n_u_test __pyx_string_tab[48]
+#define __pyx_n_u_EVENT_TERMINATED __pyx_string_tab[15]
+#define __pyx_n_u_GENERAL_ERROR __pyx_string_tab[16]
+#define __pyx_n_u_INCOMPATIBLE_INPUT __pyx_string_tab[17]
+#define __pyx_n_u_INITIALIZING __pyx_string_tab[18]
+#define __pyx_n_u_INTEGRATION_NOT_SUCCESSFUL __pyx_string_tab[19]
+#define __pyx_n_u_IntEnum __pyx_string_tab[20]
+#define __pyx_n_u_IntFlag __pyx_string_tab[21]
+#define __pyx_n_u_MAX_ITERATIONS_HIT __pyx_string_tab[22]
+#define __pyx_n_u_MAX_STEPS_SYSARCH_EXCEEDED __pyx_string_tab[23]
+#define __pyx_n_u_MAX_STEPS_USER_EXCEEDED __pyx_string_tab[24]
+#define __pyx_n_u_MEMORY_ALLOCATION_ERROR __pyx_string_tab[25]
+#define __pyx_n_u_NO_ERROR __pyx_string_tab[26]
+#define __pyx_n_u_NUMBER_OF_EQUATIONS_IS_ZERO __pyx_string_tab[27]
+#define __pyx_n_u_OPTIMIZE_CONVERGENCE_ERROR __pyx_string_tab[28]
+#define __pyx_n_u_OPTIMIZE_SIGN_ERROR __pyx_string_tab[29]
+#define __pyx_n_u_OTHER_ERROR __pyx_string_tab[30]
+#define __pyx_n_u_PROPERTY_NOT_SET __pyx_string_tab[31]
+#define __pyx_n_u_SETUP_NOT_CALLED __pyx_string_tab[32]
+#define __pyx_n_u_STEP_SIZE_ERROR_ACCEPTANCE __pyx_string_tab[33]
+#define __pyx_n_u_STEP_SIZE_ERROR_SPACING __pyx_string_tab[34]
+#define __pyx_n_u_SUCCESSFUL_INTEGRATION __pyx_string_tab[35]
+#define __pyx_n_u_UNINITIALIZED_CLASS __pyx_string_tab[36]
+#define __pyx_n_u_UNSET_ERROR_CODE __pyx_string_tab[37]
+#define __pyx_n_u_UNSUPPORTED_UNKNOWN_MODEL __pyx_string_tab[38]
+#define __pyx_n_u_VECTOR_SIZE_EXCEEDS_LIMITS __pyx_string_tab[39]
+#define __pyx_kp_u__2 __pyx_string_tab[40]
+#define __pyx_n_u_cline_in_traceback __pyx_string_tab[41]
+#define __pyx_n_u_enum __pyx_string_tab[42]
+#define __pyx_n_u_get __pyx_string_tab[43]
+#define __pyx_n_u_main __pyx_string_tab[44]
+#define __pyx_n_u_module __pyx_string_tab[45]
+#define __pyx_n_u_module_2 __pyx_string_tab[46]
+#define __pyx_n_u_name __pyx_string_tab[47]
+#define __pyx_n_u_qualname __pyx_string_tab[48]
+#define __pyx_n_u_test __pyx_string_tab[49]
 /* #### Code section: module_state_clear ### */
 #if CYTHON_USE_MODULE_STATE
 static CYTHON_SMALL_CODE int __pyx_m_clear(PyObject *m) {
@@ -2244,7 +2246,7 @@ static CYTHON_SMALL_CODE int __pyx_m_clear(PyObject *m) {
   #if CYTHON_PEP489_MULTI_PHASE_INIT
   __Pyx_State_RemoveModule(NULL);
   #endif
-  for (int i=0; i<49; ++i) { Py_CLEAR(clear_module_state->__pyx_string_tab[i]); }
+  for (int i=0; i<50; ++i) { Py_CLEAR(clear_module_state->__pyx_string_tab[i]); }
   return 0;
 }
 #endif
@@ -2265,7 +2267,7 @@ static CYTHON_SMALL_CODE int __pyx_m_traverse(PyObject *m, visitproc visit, void
   #ifdef __Pyx_FusedFunction_USED
   Py_VISIT(traverse_module_state->__pyx_FusedFunctionType);
   #endif
-  for (int i=0; i<49; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_string_tab[i]); }
+  for (int i=0; i<50; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_string_tab[i]); }
   return 0;
 }
 #endif
@@ -2569,7 +2571,8 @@ static CYTHON_SMALL_CODE int __pyx_pymod_exec_common(PyObject *__pyx_pyinit_modu
   PyObject *__pyx_t_37 = NULL;
   PyObject *__pyx_t_38 = NULL;
   PyObject *__pyx_t_39 = NULL;
-  size_t __pyx_t_40;
+  PyObject *__pyx_t_40 = NULL;
+  size_t __pyx_t_41;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
@@ -2748,7 +2751,7 @@ __Pyx_RefNannySetupContext("PyInit_common", 0);
  * __Pyx_globals["CyrkErrorCodes"] = __Pyx_EnumBase('CyrkErrorCodes', [
  *     ('CONVERGED', <int>(CyrkErrorCodes.CONVERGED)),             # <<<<<<<<<<<<<<
  *     ('INITIALIZING', <int>(CyrkErrorCodes.INITIALIZING)),
- *     ('SUCCESSFUL_INTEGRATION', <int>(CyrkErrorCodes.SUCCESSFUL_INTEGRATION)),
+ *     ('EVENT_TERMINATED', <int>(CyrkErrorCodes.EVENT_TERMINATED)),
 */
   __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::CONVERGED)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 47, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
@@ -2760,8 +2763,8 @@ __Pyx_RefNannySetupContext("PyInit_common", 0);
  * __Pyx_globals["CyrkErrorCodes"] = __Pyx_EnumBase('CyrkErrorCodes', [
  *     ('CONVERGED', <int>(CyrkErrorCodes.CONVERGED)),
  *     ('INITIALIZING', <int>(CyrkErrorCodes.INITIALIZING)),             # <<<<<<<<<<<<<<
+ *     ('EVENT_TERMINATED', <int>(CyrkErrorCodes.EVENT_TERMINATED)),
  *     ('SUCCESSFUL_INTEGRATION', <int>(CyrkErrorCodes.SUCCESSFUL_INTEGRATION)),
- *     ('NO_ERROR', <int>(CyrkErrorCodes.NO_ERROR)),
 */
   __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::INITIALIZING)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 48, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
@@ -2772,417 +2775,430 @@ __Pyx_RefNannySetupContext("PyInit_common", 0);
   /* "CppScopedEnumType":49
  *     ('CONVERGED', <int>(CyrkErrorCodes.CONVERGED)),
  *     ('INITIALIZING', <int>(CyrkErrorCodes.INITIALIZING)),
- *     ('SUCCESSFUL_INTEGRATION', <int>(CyrkErrorCodes.SUCCESSFUL_INTEGRATION)),             # <<<<<<<<<<<<<<
+ *     ('EVENT_TERMINATED', <int>(CyrkErrorCodes.EVENT_TERMINATED)),             # <<<<<<<<<<<<<<
+ *     ('SUCCESSFUL_INTEGRATION', <int>(CyrkErrorCodes.SUCCESSFUL_INTEGRATION)),
  *     ('NO_ERROR', <int>(CyrkErrorCodes.NO_ERROR)),
- *     ('GENERAL_ERROR', <int>(CyrkErrorCodes.GENERAL_ERROR)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::SUCCESSFUL_INTEGRATION)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 49, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::EVENT_TERMINATED)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 49, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_8 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_SUCCESSFUL_INTEGRATION, __pyx_t_5); if (unlikely(!__pyx_t_8)) __PYX_ERR(1, 49, __pyx_L1_error)
+  __pyx_t_8 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_EVENT_TERMINATED, __pyx_t_5); if (unlikely(!__pyx_t_8)) __PYX_ERR(1, 49, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_8);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
   /* "CppScopedEnumType":50
  *     ('INITIALIZING', <int>(CyrkErrorCodes.INITIALIZING)),
+ *     ('EVENT_TERMINATED', <int>(CyrkErrorCodes.EVENT_TERMINATED)),
+ *     ('SUCCESSFUL_INTEGRATION', <int>(CyrkErrorCodes.SUCCESSFUL_INTEGRATION)),             # <<<<<<<<<<<<<<
+ *     ('NO_ERROR', <int>(CyrkErrorCodes.NO_ERROR)),
+ *     ('GENERAL_ERROR', <int>(CyrkErrorCodes.GENERAL_ERROR)),
+*/
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::SUCCESSFUL_INTEGRATION)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 50, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_5);
+  __pyx_t_9 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_SUCCESSFUL_INTEGRATION, __pyx_t_5); if (unlikely(!__pyx_t_9)) __PYX_ERR(1, 50, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_9);
+  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+
+  /* "CppScopedEnumType":51
+ *     ('EVENT_TERMINATED', <int>(CyrkErrorCodes.EVENT_TERMINATED)),
  *     ('SUCCESSFUL_INTEGRATION', <int>(CyrkErrorCodes.SUCCESSFUL_INTEGRATION)),
  *     ('NO_ERROR', <int>(CyrkErrorCodes.NO_ERROR)),             # <<<<<<<<<<<<<<
  *     ('GENERAL_ERROR', <int>(CyrkErrorCodes.GENERAL_ERROR)),
  *     ('PROPERTY_NOT_SET', <int>(CyrkErrorCodes.PROPERTY_NOT_SET)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::NO_ERROR)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 50, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::NO_ERROR)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 51, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_9 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_NO_ERROR, __pyx_t_5); if (unlikely(!__pyx_t_9)) __PYX_ERR(1, 50, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_9);
+  __pyx_t_10 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_NO_ERROR, __pyx_t_5); if (unlikely(!__pyx_t_10)) __PYX_ERR(1, 51, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_10);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":51
+  /* "CppScopedEnumType":52
  *     ('SUCCESSFUL_INTEGRATION', <int>(CyrkErrorCodes.SUCCESSFUL_INTEGRATION)),
  *     ('NO_ERROR', <int>(CyrkErrorCodes.NO_ERROR)),
  *     ('GENERAL_ERROR', <int>(CyrkErrorCodes.GENERAL_ERROR)),             # <<<<<<<<<<<<<<
  *     ('PROPERTY_NOT_SET', <int>(CyrkErrorCodes.PROPERTY_NOT_SET)),
  *     ('UNSUPPORTED_UNKNOWN_MODEL', <int>(CyrkErrorCodes.UNSUPPORTED_UNKNOWN_MODEL)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::GENERAL_ERROR)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 51, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::GENERAL_ERROR)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 52, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_10 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_GENERAL_ERROR, __pyx_t_5); if (unlikely(!__pyx_t_10)) __PYX_ERR(1, 51, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_10);
+  __pyx_t_11 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_GENERAL_ERROR, __pyx_t_5); if (unlikely(!__pyx_t_11)) __PYX_ERR(1, 52, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_11);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":52
+  /* "CppScopedEnumType":53
  *     ('NO_ERROR', <int>(CyrkErrorCodes.NO_ERROR)),
  *     ('GENERAL_ERROR', <int>(CyrkErrorCodes.GENERAL_ERROR)),
  *     ('PROPERTY_NOT_SET', <int>(CyrkErrorCodes.PROPERTY_NOT_SET)),             # <<<<<<<<<<<<<<
  *     ('UNSUPPORTED_UNKNOWN_MODEL', <int>(CyrkErrorCodes.UNSUPPORTED_UNKNOWN_MODEL)),
  *     ('UNINITIALIZED_CLASS', <int>(CyrkErrorCodes.UNINITIALIZED_CLASS)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::PROPERTY_NOT_SET)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 52, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::PROPERTY_NOT_SET)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 53, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_11 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_PROPERTY_NOT_SET, __pyx_t_5); if (unlikely(!__pyx_t_11)) __PYX_ERR(1, 52, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_11);
+  __pyx_t_12 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_PROPERTY_NOT_SET, __pyx_t_5); if (unlikely(!__pyx_t_12)) __PYX_ERR(1, 53, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_12);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":53
+  /* "CppScopedEnumType":54
  *     ('GENERAL_ERROR', <int>(CyrkErrorCodes.GENERAL_ERROR)),
  *     ('PROPERTY_NOT_SET', <int>(CyrkErrorCodes.PROPERTY_NOT_SET)),
  *     ('UNSUPPORTED_UNKNOWN_MODEL', <int>(CyrkErrorCodes.UNSUPPORTED_UNKNOWN_MODEL)),             # <<<<<<<<<<<<<<
  *     ('UNINITIALIZED_CLASS', <int>(CyrkErrorCodes.UNINITIALIZED_CLASS)),
  *     ('CYSOLVER_INITIALIZATION_ERROR', <int>(CyrkErrorCodes.CYSOLVER_INITIALIZATION_ERROR)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::UNSUPPORTED_UNKNOWN_MODEL)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 53, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::UNSUPPORTED_UNKNOWN_MODEL)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 54, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_12 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_UNSUPPORTED_UNKNOWN_MODEL, __pyx_t_5); if (unlikely(!__pyx_t_12)) __PYX_ERR(1, 53, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_12);
+  __pyx_t_13 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_UNSUPPORTED_UNKNOWN_MODEL, __pyx_t_5); if (unlikely(!__pyx_t_13)) __PYX_ERR(1, 54, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_13);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":54
+  /* "CppScopedEnumType":55
  *     ('PROPERTY_NOT_SET', <int>(CyrkErrorCodes.PROPERTY_NOT_SET)),
  *     ('UNSUPPORTED_UNKNOWN_MODEL', <int>(CyrkErrorCodes.UNSUPPORTED_UNKNOWN_MODEL)),
  *     ('UNINITIALIZED_CLASS', <int>(CyrkErrorCodes.UNINITIALIZED_CLASS)),             # <<<<<<<<<<<<<<
  *     ('CYSOLVER_INITIALIZATION_ERROR', <int>(CyrkErrorCodes.CYSOLVER_INITIALIZATION_ERROR)),
  *     ('INCOMPATIBLE_INPUT', <int>(CyrkErrorCodes.INCOMPATIBLE_INPUT)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::UNINITIALIZED_CLASS)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 54, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::UNINITIALIZED_CLASS)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 55, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_13 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_UNINITIALIZED_CLASS, __pyx_t_5); if (unlikely(!__pyx_t_13)) __PYX_ERR(1, 54, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_13);
+  __pyx_t_14 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_UNINITIALIZED_CLASS, __pyx_t_5); if (unlikely(!__pyx_t_14)) __PYX_ERR(1, 55, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_14);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":55
+  /* "CppScopedEnumType":56
  *     ('UNSUPPORTED_UNKNOWN_MODEL', <int>(CyrkErrorCodes.UNSUPPORTED_UNKNOWN_MODEL)),
  *     ('UNINITIALIZED_CLASS', <int>(CyrkErrorCodes.UNINITIALIZED_CLASS)),
  *     ('CYSOLVER_INITIALIZATION_ERROR', <int>(CyrkErrorCodes.CYSOLVER_INITIALIZATION_ERROR)),             # <<<<<<<<<<<<<<
  *     ('INCOMPATIBLE_INPUT', <int>(CyrkErrorCodes.INCOMPATIBLE_INPUT)),
  *     ('ATTRIBUTE_ERROR', <int>(CyrkErrorCodes.ATTRIBUTE_ERROR)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::CYSOLVER_INITIALIZATION_ERROR)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 55, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::CYSOLVER_INITIALIZATION_ERROR)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 56, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_14 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_CYSOLVER_INITIALIZATION_ERROR, __pyx_t_5); if (unlikely(!__pyx_t_14)) __PYX_ERR(1, 55, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_14);
+  __pyx_t_15 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_CYSOLVER_INITIALIZATION_ERROR, __pyx_t_5); if (unlikely(!__pyx_t_15)) __PYX_ERR(1, 56, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_15);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":56
+  /* "CppScopedEnumType":57
  *     ('UNINITIALIZED_CLASS', <int>(CyrkErrorCodes.UNINITIALIZED_CLASS)),
  *     ('CYSOLVER_INITIALIZATION_ERROR', <int>(CyrkErrorCodes.CYSOLVER_INITIALIZATION_ERROR)),
  *     ('INCOMPATIBLE_INPUT', <int>(CyrkErrorCodes.INCOMPATIBLE_INPUT)),             # <<<<<<<<<<<<<<
  *     ('ATTRIBUTE_ERROR', <int>(CyrkErrorCodes.ATTRIBUTE_ERROR)),
  *     ('BOUNDS_ERROR', <int>(CyrkErrorCodes.BOUNDS_ERROR)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::INCOMPATIBLE_INPUT)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 56, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::INCOMPATIBLE_INPUT)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 57, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_15 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_INCOMPATIBLE_INPUT, __pyx_t_5); if (unlikely(!__pyx_t_15)) __PYX_ERR(1, 56, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_15);
+  __pyx_t_16 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_INCOMPATIBLE_INPUT, __pyx_t_5); if (unlikely(!__pyx_t_16)) __PYX_ERR(1, 57, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_16);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":57
+  /* "CppScopedEnumType":58
  *     ('CYSOLVER_INITIALIZATION_ERROR', <int>(CyrkErrorCodes.CYSOLVER_INITIALIZATION_ERROR)),
  *     ('INCOMPATIBLE_INPUT', <int>(CyrkErrorCodes.INCOMPATIBLE_INPUT)),
  *     ('ATTRIBUTE_ERROR', <int>(CyrkErrorCodes.ATTRIBUTE_ERROR)),             # <<<<<<<<<<<<<<
  *     ('BOUNDS_ERROR', <int>(CyrkErrorCodes.BOUNDS_ERROR)),
  *     ('ARGUMENT_NOT_SET', <int>(CyrkErrorCodes.ARGUMENT_NOT_SET)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::ATTRIBUTE_ERROR)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 57, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::ATTRIBUTE_ERROR)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 58, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_16 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_ATTRIBUTE_ERROR, __pyx_t_5); if (unlikely(!__pyx_t_16)) __PYX_ERR(1, 57, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_16);
+  __pyx_t_17 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_ATTRIBUTE_ERROR, __pyx_t_5); if (unlikely(!__pyx_t_17)) __PYX_ERR(1, 58, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_17);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":58
+  /* "CppScopedEnumType":59
  *     ('INCOMPATIBLE_INPUT', <int>(CyrkErrorCodes.INCOMPATIBLE_INPUT)),
  *     ('ATTRIBUTE_ERROR', <int>(CyrkErrorCodes.ATTRIBUTE_ERROR)),
  *     ('BOUNDS_ERROR', <int>(CyrkErrorCodes.BOUNDS_ERROR)),             # <<<<<<<<<<<<<<
  *     ('ARGUMENT_NOT_SET', <int>(CyrkErrorCodes.ARGUMENT_NOT_SET)),
  *     ('ARGUMENT_ERROR', <int>(CyrkErrorCodes.ARGUMENT_ERROR)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::BOUNDS_ERROR)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 58, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::BOUNDS_ERROR)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 59, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_17 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_BOUNDS_ERROR, __pyx_t_5); if (unlikely(!__pyx_t_17)) __PYX_ERR(1, 58, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_17);
+  __pyx_t_18 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_BOUNDS_ERROR, __pyx_t_5); if (unlikely(!__pyx_t_18)) __PYX_ERR(1, 59, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_18);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":59
+  /* "CppScopedEnumType":60
  *     ('ATTRIBUTE_ERROR', <int>(CyrkErrorCodes.ATTRIBUTE_ERROR)),
  *     ('BOUNDS_ERROR', <int>(CyrkErrorCodes.BOUNDS_ERROR)),
  *     ('ARGUMENT_NOT_SET', <int>(CyrkErrorCodes.ARGUMENT_NOT_SET)),             # <<<<<<<<<<<<<<
  *     ('ARGUMENT_ERROR', <int>(CyrkErrorCodes.ARGUMENT_ERROR)),
  *     ('SETUP_NOT_CALLED', <int>(CyrkErrorCodes.SETUP_NOT_CALLED)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::ARGUMENT_NOT_SET)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 59, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::ARGUMENT_NOT_SET)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 60, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_18 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_ARGUMENT_NOT_SET, __pyx_t_5); if (unlikely(!__pyx_t_18)) __PYX_ERR(1, 59, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_18);
+  __pyx_t_19 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_ARGUMENT_NOT_SET, __pyx_t_5); if (unlikely(!__pyx_t_19)) __PYX_ERR(1, 60, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_19);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":60
+  /* "CppScopedEnumType":61
  *     ('BOUNDS_ERROR', <int>(CyrkErrorCodes.BOUNDS_ERROR)),
  *     ('ARGUMENT_NOT_SET', <int>(CyrkErrorCodes.ARGUMENT_NOT_SET)),
  *     ('ARGUMENT_ERROR', <int>(CyrkErrorCodes.ARGUMENT_ERROR)),             # <<<<<<<<<<<<<<
  *     ('SETUP_NOT_CALLED', <int>(CyrkErrorCodes.SETUP_NOT_CALLED)),
  *     ('DENSE_OUTPUT_NOT_SAVED', <int>(CyrkErrorCodes.DENSE_OUTPUT_NOT_SAVED)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::ARGUMENT_ERROR)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 60, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::ARGUMENT_ERROR)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 61, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_19 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_ARGUMENT_ERROR, __pyx_t_5); if (unlikely(!__pyx_t_19)) __PYX_ERR(1, 60, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_19);
+  __pyx_t_20 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_ARGUMENT_ERROR, __pyx_t_5); if (unlikely(!__pyx_t_20)) __PYX_ERR(1, 61, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_20);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":61
+  /* "CppScopedEnumType":62
  *     ('ARGUMENT_NOT_SET', <int>(CyrkErrorCodes.ARGUMENT_NOT_SET)),
  *     ('ARGUMENT_ERROR', <int>(CyrkErrorCodes.ARGUMENT_ERROR)),
  *     ('SETUP_NOT_CALLED', <int>(CyrkErrorCodes.SETUP_NOT_CALLED)),             # <<<<<<<<<<<<<<
  *     ('DENSE_OUTPUT_NOT_SAVED', <int>(CyrkErrorCodes.DENSE_OUTPUT_NOT_SAVED)),
  *     ('BAD_CONFIG_DATA', <int>(CyrkErrorCodes.BAD_CONFIG_DATA)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::SETUP_NOT_CALLED)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 61, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::SETUP_NOT_CALLED)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 62, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_20 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_SETUP_NOT_CALLED, __pyx_t_5); if (unlikely(!__pyx_t_20)) __PYX_ERR(1, 61, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_20);
+  __pyx_t_21 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_SETUP_NOT_CALLED, __pyx_t_5); if (unlikely(!__pyx_t_21)) __PYX_ERR(1, 62, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_21);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":62
+  /* "CppScopedEnumType":63
  *     ('ARGUMENT_ERROR', <int>(CyrkErrorCodes.ARGUMENT_ERROR)),
  *     ('SETUP_NOT_CALLED', <int>(CyrkErrorCodes.SETUP_NOT_CALLED)),
  *     ('DENSE_OUTPUT_NOT_SAVED', <int>(CyrkErrorCodes.DENSE_OUTPUT_NOT_SAVED)),             # <<<<<<<<<<<<<<
  *     ('BAD_CONFIG_DATA', <int>(CyrkErrorCodes.BAD_CONFIG_DATA)),
  *     ('OPTIMIZE_SIGN_ERROR', <int>(CyrkErrorCodes.OPTIMIZE_SIGN_ERROR)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::DENSE_OUTPUT_NOT_SAVED)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 62, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::DENSE_OUTPUT_NOT_SAVED)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 63, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_21 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_DENSE_OUTPUT_NOT_SAVED, __pyx_t_5); if (unlikely(!__pyx_t_21)) __PYX_ERR(1, 62, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_21);
+  __pyx_t_22 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_DENSE_OUTPUT_NOT_SAVED, __pyx_t_5); if (unlikely(!__pyx_t_22)) __PYX_ERR(1, 63, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_22);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":63
+  /* "CppScopedEnumType":64
  *     ('SETUP_NOT_CALLED', <int>(CyrkErrorCodes.SETUP_NOT_CALLED)),
  *     ('DENSE_OUTPUT_NOT_SAVED', <int>(CyrkErrorCodes.DENSE_OUTPUT_NOT_SAVED)),
  *     ('BAD_CONFIG_DATA', <int>(CyrkErrorCodes.BAD_CONFIG_DATA)),             # <<<<<<<<<<<<<<
  *     ('OPTIMIZE_SIGN_ERROR', <int>(CyrkErrorCodes.OPTIMIZE_SIGN_ERROR)),
  *     ('OPTIMIZE_CONVERGENCE_ERROR', <int>(CyrkErrorCodes.OPTIMIZE_CONVERGENCE_ERROR)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::BAD_CONFIG_DATA)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 63, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::BAD_CONFIG_DATA)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 64, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_22 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_BAD_CONFIG_DATA, __pyx_t_5); if (unlikely(!__pyx_t_22)) __PYX_ERR(1, 63, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_22);
+  __pyx_t_23 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_BAD_CONFIG_DATA, __pyx_t_5); if (unlikely(!__pyx_t_23)) __PYX_ERR(1, 64, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_23);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":64
+  /* "CppScopedEnumType":65
  *     ('DENSE_OUTPUT_NOT_SAVED', <int>(CyrkErrorCodes.DENSE_OUTPUT_NOT_SAVED)),
  *     ('BAD_CONFIG_DATA', <int>(CyrkErrorCodes.BAD_CONFIG_DATA)),
  *     ('OPTIMIZE_SIGN_ERROR', <int>(CyrkErrorCodes.OPTIMIZE_SIGN_ERROR)),             # <<<<<<<<<<<<<<
  *     ('OPTIMIZE_CONVERGENCE_ERROR', <int>(CyrkErrorCodes.OPTIMIZE_CONVERGENCE_ERROR)),
  *     ('MEMORY_ALLOCATION_ERROR', <int>(CyrkErrorCodes.MEMORY_ALLOCATION_ERROR)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::OPTIMIZE_SIGN_ERROR)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 64, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::OPTIMIZE_SIGN_ERROR)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 65, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_23 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_OPTIMIZE_SIGN_ERROR, __pyx_t_5); if (unlikely(!__pyx_t_23)) __PYX_ERR(1, 64, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_23);
+  __pyx_t_24 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_OPTIMIZE_SIGN_ERROR, __pyx_t_5); if (unlikely(!__pyx_t_24)) __PYX_ERR(1, 65, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_24);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":65
+  /* "CppScopedEnumType":66
  *     ('BAD_CONFIG_DATA', <int>(CyrkErrorCodes.BAD_CONFIG_DATA)),
  *     ('OPTIMIZE_SIGN_ERROR', <int>(CyrkErrorCodes.OPTIMIZE_SIGN_ERROR)),
  *     ('OPTIMIZE_CONVERGENCE_ERROR', <int>(CyrkErrorCodes.OPTIMIZE_CONVERGENCE_ERROR)),             # <<<<<<<<<<<<<<
  *     ('MEMORY_ALLOCATION_ERROR', <int>(CyrkErrorCodes.MEMORY_ALLOCATION_ERROR)),
  *     ('VECTOR_SIZE_EXCEEDS_LIMITS', <int>(CyrkErrorCodes.VECTOR_SIZE_EXCEEDS_LIMITS)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::OPTIMIZE_CONVERGENCE_ERROR)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 65, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::OPTIMIZE_CONVERGENCE_ERROR)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 66, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_24 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_OPTIMIZE_CONVERGENCE_ERROR, __pyx_t_5); if (unlikely(!__pyx_t_24)) __PYX_ERR(1, 65, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_24);
+  __pyx_t_25 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_OPTIMIZE_CONVERGENCE_ERROR, __pyx_t_5); if (unlikely(!__pyx_t_25)) __PYX_ERR(1, 66, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_25);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":66
+  /* "CppScopedEnumType":67
  *     ('OPTIMIZE_SIGN_ERROR', <int>(CyrkErrorCodes.OPTIMIZE_SIGN_ERROR)),
  *     ('OPTIMIZE_CONVERGENCE_ERROR', <int>(CyrkErrorCodes.OPTIMIZE_CONVERGENCE_ERROR)),
  *     ('MEMORY_ALLOCATION_ERROR', <int>(CyrkErrorCodes.MEMORY_ALLOCATION_ERROR)),             # <<<<<<<<<<<<<<
  *     ('VECTOR_SIZE_EXCEEDS_LIMITS', <int>(CyrkErrorCodes.VECTOR_SIZE_EXCEEDS_LIMITS)),
  *     ('NUMBER_OF_EQUATIONS_IS_ZERO', <int>(CyrkErrorCodes.NUMBER_OF_EQUATIONS_IS_ZERO)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::MEMORY_ALLOCATION_ERROR)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 66, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::MEMORY_ALLOCATION_ERROR)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 67, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_25 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_MEMORY_ALLOCATION_ERROR, __pyx_t_5); if (unlikely(!__pyx_t_25)) __PYX_ERR(1, 66, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_25);
+  __pyx_t_26 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_MEMORY_ALLOCATION_ERROR, __pyx_t_5); if (unlikely(!__pyx_t_26)) __PYX_ERR(1, 67, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_26);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":67
+  /* "CppScopedEnumType":68
  *     ('OPTIMIZE_CONVERGENCE_ERROR', <int>(CyrkErrorCodes.OPTIMIZE_CONVERGENCE_ERROR)),
  *     ('MEMORY_ALLOCATION_ERROR', <int>(CyrkErrorCodes.MEMORY_ALLOCATION_ERROR)),
  *     ('VECTOR_SIZE_EXCEEDS_LIMITS', <int>(CyrkErrorCodes.VECTOR_SIZE_EXCEEDS_LIMITS)),             # <<<<<<<<<<<<<<
  *     ('NUMBER_OF_EQUATIONS_IS_ZERO', <int>(CyrkErrorCodes.NUMBER_OF_EQUATIONS_IS_ZERO)),
  *     ('MAX_ITERATIONS_HIT', <int>(CyrkErrorCodes.MAX_ITERATIONS_HIT)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::VECTOR_SIZE_EXCEEDS_LIMITS)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 67, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::VECTOR_SIZE_EXCEEDS_LIMITS)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 68, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_26 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_VECTOR_SIZE_EXCEEDS_LIMITS, __pyx_t_5); if (unlikely(!__pyx_t_26)) __PYX_ERR(1, 67, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_26);
+  __pyx_t_27 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_VECTOR_SIZE_EXCEEDS_LIMITS, __pyx_t_5); if (unlikely(!__pyx_t_27)) __PYX_ERR(1, 68, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_27);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":68
+  /* "CppScopedEnumType":69
  *     ('MEMORY_ALLOCATION_ERROR', <int>(CyrkErrorCodes.MEMORY_ALLOCATION_ERROR)),
  *     ('VECTOR_SIZE_EXCEEDS_LIMITS', <int>(CyrkErrorCodes.VECTOR_SIZE_EXCEEDS_LIMITS)),
  *     ('NUMBER_OF_EQUATIONS_IS_ZERO', <int>(CyrkErrorCodes.NUMBER_OF_EQUATIONS_IS_ZERO)),             # <<<<<<<<<<<<<<
  *     ('MAX_ITERATIONS_HIT', <int>(CyrkErrorCodes.MAX_ITERATIONS_HIT)),
  *     ('MAX_STEPS_USER_EXCEEDED', <int>(CyrkErrorCodes.MAX_STEPS_USER_EXCEEDED)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::NUMBER_OF_EQUATIONS_IS_ZERO)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 68, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::NUMBER_OF_EQUATIONS_IS_ZERO)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 69, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_27 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_NUMBER_OF_EQUATIONS_IS_ZERO, __pyx_t_5); if (unlikely(!__pyx_t_27)) __PYX_ERR(1, 68, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_27);
+  __pyx_t_28 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_NUMBER_OF_EQUATIONS_IS_ZERO, __pyx_t_5); if (unlikely(!__pyx_t_28)) __PYX_ERR(1, 69, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_28);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":69
+  /* "CppScopedEnumType":70
  *     ('VECTOR_SIZE_EXCEEDS_LIMITS', <int>(CyrkErrorCodes.VECTOR_SIZE_EXCEEDS_LIMITS)),
  *     ('NUMBER_OF_EQUATIONS_IS_ZERO', <int>(CyrkErrorCodes.NUMBER_OF_EQUATIONS_IS_ZERO)),
  *     ('MAX_ITERATIONS_HIT', <int>(CyrkErrorCodes.MAX_ITERATIONS_HIT)),             # <<<<<<<<<<<<<<
  *     ('MAX_STEPS_USER_EXCEEDED', <int>(CyrkErrorCodes.MAX_STEPS_USER_EXCEEDED)),
  *     ('MAX_STEPS_SYSARCH_EXCEEDED', <int>(CyrkErrorCodes.MAX_STEPS_SYSARCH_EXCEEDED)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::MAX_ITERATIONS_HIT)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 69, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::MAX_ITERATIONS_HIT)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 70, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_28 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_MAX_ITERATIONS_HIT, __pyx_t_5); if (unlikely(!__pyx_t_28)) __PYX_ERR(1, 69, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_28);
+  __pyx_t_29 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_MAX_ITERATIONS_HIT, __pyx_t_5); if (unlikely(!__pyx_t_29)) __PYX_ERR(1, 70, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_29);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":70
+  /* "CppScopedEnumType":71
  *     ('NUMBER_OF_EQUATIONS_IS_ZERO', <int>(CyrkErrorCodes.NUMBER_OF_EQUATIONS_IS_ZERO)),
  *     ('MAX_ITERATIONS_HIT', <int>(CyrkErrorCodes.MAX_ITERATIONS_HIT)),
  *     ('MAX_STEPS_USER_EXCEEDED', <int>(CyrkErrorCodes.MAX_STEPS_USER_EXCEEDED)),             # <<<<<<<<<<<<<<
  *     ('MAX_STEPS_SYSARCH_EXCEEDED', <int>(CyrkErrorCodes.MAX_STEPS_SYSARCH_EXCEEDED)),
  *     ('STEP_SIZE_ERROR_SPACING', <int>(CyrkErrorCodes.STEP_SIZE_ERROR_SPACING)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::MAX_STEPS_USER_EXCEEDED)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 70, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::MAX_STEPS_USER_EXCEEDED)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 71, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_29 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_MAX_STEPS_USER_EXCEEDED, __pyx_t_5); if (unlikely(!__pyx_t_29)) __PYX_ERR(1, 70, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_29);
+  __pyx_t_30 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_MAX_STEPS_USER_EXCEEDED, __pyx_t_5); if (unlikely(!__pyx_t_30)) __PYX_ERR(1, 71, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_30);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":71
+  /* "CppScopedEnumType":72
  *     ('MAX_ITERATIONS_HIT', <int>(CyrkErrorCodes.MAX_ITERATIONS_HIT)),
  *     ('MAX_STEPS_USER_EXCEEDED', <int>(CyrkErrorCodes.MAX_STEPS_USER_EXCEEDED)),
  *     ('MAX_STEPS_SYSARCH_EXCEEDED', <int>(CyrkErrorCodes.MAX_STEPS_SYSARCH_EXCEEDED)),             # <<<<<<<<<<<<<<
  *     ('STEP_SIZE_ERROR_SPACING', <int>(CyrkErrorCodes.STEP_SIZE_ERROR_SPACING)),
  *     ('STEP_SIZE_ERROR_ACCEPTANCE', <int>(CyrkErrorCodes.STEP_SIZE_ERROR_ACCEPTANCE)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::MAX_STEPS_SYSARCH_EXCEEDED)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 71, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::MAX_STEPS_SYSARCH_EXCEEDED)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 72, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_30 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_MAX_STEPS_SYSARCH_EXCEEDED, __pyx_t_5); if (unlikely(!__pyx_t_30)) __PYX_ERR(1, 71, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_30);
+  __pyx_t_31 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_MAX_STEPS_SYSARCH_EXCEEDED, __pyx_t_5); if (unlikely(!__pyx_t_31)) __PYX_ERR(1, 72, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_31);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":72
+  /* "CppScopedEnumType":73
  *     ('MAX_STEPS_USER_EXCEEDED', <int>(CyrkErrorCodes.MAX_STEPS_USER_EXCEEDED)),
  *     ('MAX_STEPS_SYSARCH_EXCEEDED', <int>(CyrkErrorCodes.MAX_STEPS_SYSARCH_EXCEEDED)),
  *     ('STEP_SIZE_ERROR_SPACING', <int>(CyrkErrorCodes.STEP_SIZE_ERROR_SPACING)),             # <<<<<<<<<<<<<<
  *     ('STEP_SIZE_ERROR_ACCEPTANCE', <int>(CyrkErrorCodes.STEP_SIZE_ERROR_ACCEPTANCE)),
  *     ('DENSE_BUILD_FAILED', <int>(CyrkErrorCodes.DENSE_BUILD_FAILED)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::STEP_SIZE_ERROR_SPACING)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 72, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::STEP_SIZE_ERROR_SPACING)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 73, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_31 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_STEP_SIZE_ERROR_SPACING, __pyx_t_5); if (unlikely(!__pyx_t_31)) __PYX_ERR(1, 72, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_31);
+  __pyx_t_32 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_STEP_SIZE_ERROR_SPACING, __pyx_t_5); if (unlikely(!__pyx_t_32)) __PYX_ERR(1, 73, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_32);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":73
+  /* "CppScopedEnumType":74
  *     ('MAX_STEPS_SYSARCH_EXCEEDED', <int>(CyrkErrorCodes.MAX_STEPS_SYSARCH_EXCEEDED)),
  *     ('STEP_SIZE_ERROR_SPACING', <int>(CyrkErrorCodes.STEP_SIZE_ERROR_SPACING)),
  *     ('STEP_SIZE_ERROR_ACCEPTANCE', <int>(CyrkErrorCodes.STEP_SIZE_ERROR_ACCEPTANCE)),             # <<<<<<<<<<<<<<
  *     ('DENSE_BUILD_FAILED', <int>(CyrkErrorCodes.DENSE_BUILD_FAILED)),
  *     ('INTEGRATION_NOT_SUCCESSFUL', <int>(CyrkErrorCodes.INTEGRATION_NOT_SUCCESSFUL)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::STEP_SIZE_ERROR_ACCEPTANCE)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 73, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::STEP_SIZE_ERROR_ACCEPTANCE)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 74, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_32 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_STEP_SIZE_ERROR_ACCEPTANCE, __pyx_t_5); if (unlikely(!__pyx_t_32)) __PYX_ERR(1, 73, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_32);
+  __pyx_t_33 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_STEP_SIZE_ERROR_ACCEPTANCE, __pyx_t_5); if (unlikely(!__pyx_t_33)) __PYX_ERR(1, 74, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_33);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":74
+  /* "CppScopedEnumType":75
  *     ('STEP_SIZE_ERROR_SPACING', <int>(CyrkErrorCodes.STEP_SIZE_ERROR_SPACING)),
  *     ('STEP_SIZE_ERROR_ACCEPTANCE', <int>(CyrkErrorCodes.STEP_SIZE_ERROR_ACCEPTANCE)),
  *     ('DENSE_BUILD_FAILED', <int>(CyrkErrorCodes.DENSE_BUILD_FAILED)),             # <<<<<<<<<<<<<<
  *     ('INTEGRATION_NOT_SUCCESSFUL', <int>(CyrkErrorCodes.INTEGRATION_NOT_SUCCESSFUL)),
  *     ('EVENT_SETUP_FAILED', <int>(CyrkErrorCodes.EVENT_SETUP_FAILED)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::DENSE_BUILD_FAILED)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 74, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::DENSE_BUILD_FAILED)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 75, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_33 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_DENSE_BUILD_FAILED, __pyx_t_5); if (unlikely(!__pyx_t_33)) __PYX_ERR(1, 74, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_33);
+  __pyx_t_34 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_DENSE_BUILD_FAILED, __pyx_t_5); if (unlikely(!__pyx_t_34)) __PYX_ERR(1, 75, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_34);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":75
+  /* "CppScopedEnumType":76
  *     ('STEP_SIZE_ERROR_ACCEPTANCE', <int>(CyrkErrorCodes.STEP_SIZE_ERROR_ACCEPTANCE)),
  *     ('DENSE_BUILD_FAILED', <int>(CyrkErrorCodes.DENSE_BUILD_FAILED)),
  *     ('INTEGRATION_NOT_SUCCESSFUL', <int>(CyrkErrorCodes.INTEGRATION_NOT_SUCCESSFUL)),             # <<<<<<<<<<<<<<
  *     ('EVENT_SETUP_FAILED', <int>(CyrkErrorCodes.EVENT_SETUP_FAILED)),
  *     ('ERROR_IMPORTING_PYTHON_MODULE', <int>(CyrkErrorCodes.ERROR_IMPORTING_PYTHON_MODULE)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::INTEGRATION_NOT_SUCCESSFUL)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 75, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::INTEGRATION_NOT_SUCCESSFUL)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 76, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_34 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_INTEGRATION_NOT_SUCCESSFUL, __pyx_t_5); if (unlikely(!__pyx_t_34)) __PYX_ERR(1, 75, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_34);
+  __pyx_t_35 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_INTEGRATION_NOT_SUCCESSFUL, __pyx_t_5); if (unlikely(!__pyx_t_35)) __PYX_ERR(1, 76, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_35);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":76
+  /* "CppScopedEnumType":77
  *     ('DENSE_BUILD_FAILED', <int>(CyrkErrorCodes.DENSE_BUILD_FAILED)),
  *     ('INTEGRATION_NOT_SUCCESSFUL', <int>(CyrkErrorCodes.INTEGRATION_NOT_SUCCESSFUL)),
  *     ('EVENT_SETUP_FAILED', <int>(CyrkErrorCodes.EVENT_SETUP_FAILED)),             # <<<<<<<<<<<<<<
  *     ('ERROR_IMPORTING_PYTHON_MODULE', <int>(CyrkErrorCodes.ERROR_IMPORTING_PYTHON_MODULE)),
  *     ('BAD_INITIAL_STEP_SIZE', <int>(CyrkErrorCodes.BAD_INITIAL_STEP_SIZE)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::EVENT_SETUP_FAILED)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 76, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::EVENT_SETUP_FAILED)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 77, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_35 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_EVENT_SETUP_FAILED, __pyx_t_5); if (unlikely(!__pyx_t_35)) __PYX_ERR(1, 76, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_35);
+  __pyx_t_36 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_EVENT_SETUP_FAILED, __pyx_t_5); if (unlikely(!__pyx_t_36)) __PYX_ERR(1, 77, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_36);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":77
+  /* "CppScopedEnumType":78
  *     ('INTEGRATION_NOT_SUCCESSFUL', <int>(CyrkErrorCodes.INTEGRATION_NOT_SUCCESSFUL)),
  *     ('EVENT_SETUP_FAILED', <int>(CyrkErrorCodes.EVENT_SETUP_FAILED)),
  *     ('ERROR_IMPORTING_PYTHON_MODULE', <int>(CyrkErrorCodes.ERROR_IMPORTING_PYTHON_MODULE)),             # <<<<<<<<<<<<<<
  *     ('BAD_INITIAL_STEP_SIZE', <int>(CyrkErrorCodes.BAD_INITIAL_STEP_SIZE)),
  *     ('OTHER_ERROR', <int>(CyrkErrorCodes.OTHER_ERROR)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::ERROR_IMPORTING_PYTHON_MODULE)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 77, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::ERROR_IMPORTING_PYTHON_MODULE)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 78, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_36 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_ERROR_IMPORTING_PYTHON_MODULE, __pyx_t_5); if (unlikely(!__pyx_t_36)) __PYX_ERR(1, 77, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_36);
+  __pyx_t_37 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_ERROR_IMPORTING_PYTHON_MODULE, __pyx_t_5); if (unlikely(!__pyx_t_37)) __PYX_ERR(1, 78, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_37);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":78
+  /* "CppScopedEnumType":79
  *     ('EVENT_SETUP_FAILED', <int>(CyrkErrorCodes.EVENT_SETUP_FAILED)),
  *     ('ERROR_IMPORTING_PYTHON_MODULE', <int>(CyrkErrorCodes.ERROR_IMPORTING_PYTHON_MODULE)),
  *     ('BAD_INITIAL_STEP_SIZE', <int>(CyrkErrorCodes.BAD_INITIAL_STEP_SIZE)),             # <<<<<<<<<<<<<<
  *     ('OTHER_ERROR', <int>(CyrkErrorCodes.OTHER_ERROR)),
  *     ('UNSET_ERROR_CODE', <int>(CyrkErrorCodes.UNSET_ERROR_CODE)),
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::BAD_INITIAL_STEP_SIZE)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 78, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::BAD_INITIAL_STEP_SIZE)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 79, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_37 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_BAD_INITIAL_STEP_SIZE, __pyx_t_5); if (unlikely(!__pyx_t_37)) __PYX_ERR(1, 78, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_37);
+  __pyx_t_38 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_BAD_INITIAL_STEP_SIZE, __pyx_t_5); if (unlikely(!__pyx_t_38)) __PYX_ERR(1, 79, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_38);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":79
+  /* "CppScopedEnumType":80
  *     ('ERROR_IMPORTING_PYTHON_MODULE', <int>(CyrkErrorCodes.ERROR_IMPORTING_PYTHON_MODULE)),
  *     ('BAD_INITIAL_STEP_SIZE', <int>(CyrkErrorCodes.BAD_INITIAL_STEP_SIZE)),
  *     ('OTHER_ERROR', <int>(CyrkErrorCodes.OTHER_ERROR)),             # <<<<<<<<<<<<<<
  *     ('UNSET_ERROR_CODE', <int>(CyrkErrorCodes.UNSET_ERROR_CODE)),
  * ], module=__Pyx_globals.get("__module__", 'CyRK.cy.common'))
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::OTHER_ERROR)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 79, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::OTHER_ERROR)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 80, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_38 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_OTHER_ERROR, __pyx_t_5); if (unlikely(!__pyx_t_38)) __PYX_ERR(1, 79, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_38);
+  __pyx_t_39 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_OTHER_ERROR, __pyx_t_5); if (unlikely(!__pyx_t_39)) __PYX_ERR(1, 80, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_39);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "CppScopedEnumType":80
+  /* "CppScopedEnumType":81
  *     ('BAD_INITIAL_STEP_SIZE', <int>(CyrkErrorCodes.BAD_INITIAL_STEP_SIZE)),
  *     ('OTHER_ERROR', <int>(CyrkErrorCodes.OTHER_ERROR)),
  *     ('UNSET_ERROR_CODE', <int>(CyrkErrorCodes.UNSET_ERROR_CODE)),             # <<<<<<<<<<<<<<
  * ], module=__Pyx_globals.get("__module__", 'CyRK.cy.common'))
  * 
 */
-  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::UNSET_ERROR_CODE)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 80, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(((int)CyrkErrorCodes::UNSET_ERROR_CODE)); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 81, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_39 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_UNSET_ERROR_CODE, __pyx_t_5); if (unlikely(!__pyx_t_39)) __PYX_ERR(1, 80, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_39);
+  __pyx_t_40 = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_UNSET_ERROR_CODE, __pyx_t_5); if (unlikely(!__pyx_t_40)) __PYX_ERR(1, 81, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_40);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
   /* "CppScopedEnumType":46
@@ -3192,7 +3208,7 @@ __Pyx_RefNannySetupContext("PyInit_common", 0);
  *     ('CONVERGED', <int>(CyrkErrorCodes.CONVERGED)),
  *     ('INITIALIZING', <int>(CyrkErrorCodes.INITIALIZING)),
 */
-  __pyx_t_5 = __Pyx_PyList_Pack(34, __pyx_t_6, __pyx_t_7, __pyx_t_8, __pyx_t_9, __pyx_t_10, __pyx_t_11, __pyx_t_12, __pyx_t_13, __pyx_t_14, __pyx_t_15, __pyx_t_16, __pyx_t_17, __pyx_t_18, __pyx_t_19, __pyx_t_20, __pyx_t_21, __pyx_t_22, __pyx_t_23, __pyx_t_24, __pyx_t_25, __pyx_t_26, __pyx_t_27, __pyx_t_28, __pyx_t_29, __pyx_t_30, __pyx_t_31, __pyx_t_32, __pyx_t_33, __pyx_t_34, __pyx_t_35, __pyx_t_36, __pyx_t_37, __pyx_t_38, __pyx_t_39); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 46, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyList_Pack(35, __pyx_t_6, __pyx_t_7, __pyx_t_8, __pyx_t_9, __pyx_t_10, __pyx_t_11, __pyx_t_12, __pyx_t_13, __pyx_t_14, __pyx_t_15, __pyx_t_16, __pyx_t_17, __pyx_t_18, __pyx_t_19, __pyx_t_20, __pyx_t_21, __pyx_t_22, __pyx_t_23, __pyx_t_24, __pyx_t_25, __pyx_t_26, __pyx_t_27, __pyx_t_28, __pyx_t_29, __pyx_t_30, __pyx_t_31, __pyx_t_32, __pyx_t_33, __pyx_t_34, __pyx_t_35, __pyx_t_36, __pyx_t_37, __pyx_t_38, __pyx_t_39, __pyx_t_40); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 46, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
@@ -3228,8 +3244,9 @@ __Pyx_RefNannySetupContext("PyInit_common", 0);
   __Pyx_DECREF(__pyx_t_37); __pyx_t_37 = 0;
   __Pyx_DECREF(__pyx_t_38); __pyx_t_38 = 0;
   __Pyx_DECREF(__pyx_t_39); __pyx_t_39 = 0;
+  __Pyx_DECREF(__pyx_t_40); __pyx_t_40 = 0;
 
-  /* "CppScopedEnumType":81
+  /* "CppScopedEnumType":82
  *     ('OTHER_ERROR', <int>(CyrkErrorCodes.OTHER_ERROR)),
  *     ('UNSET_ERROR_CODE', <int>(CyrkErrorCodes.UNSET_ERROR_CODE)),
  * ], module=__Pyx_globals.get("__module__", 'CyRK.cy.common'))             # <<<<<<<<<<<<<<
@@ -3237,21 +3254,21 @@ __Pyx_RefNannySetupContext("PyInit_common", 0);
 */
   if (unlikely(__Pyx_globals == Py_None)) {
     PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%.30s'", "get");
-    __PYX_ERR(1, 81, __pyx_L1_error)
+    __PYX_ERR(1, 82, __pyx_L1_error)
   }
-  __pyx_t_39 = __Pyx_PyDict_GetItemDefault(__Pyx_globals, __pyx_mstate_global->__pyx_n_u_module_2, __pyx_mstate_global->__pyx_kp_u_CyRK_cy_common); if (unlikely(!__pyx_t_39)) __PYX_ERR(1, 81, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_39);
-  __pyx_t_40 = 1;
+  __pyx_t_40 = __Pyx_PyDict_GetItemDefault(__Pyx_globals, __pyx_mstate_global->__pyx_n_u_module_2, __pyx_mstate_global->__pyx_kp_u_CyRK_cy_common); if (unlikely(!__pyx_t_40)) __PYX_ERR(1, 82, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_40);
+  __pyx_t_41 = 1;
   {
     PyObject *__pyx_callargs[3 + ((CYTHON_VECTORCALL) ? 1 : 0)] = {__pyx_t_3, __pyx_mstate_global->__pyx_n_u_CyrkErrorCodes, __pyx_t_5};
-    __pyx_t_38 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_38)) __PYX_ERR(1, 46, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_38);
-    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_module, __pyx_t_39, __pyx_t_38, __pyx_callargs+3, 0) < 0) __PYX_ERR(1, 46, __pyx_L1_error)
-    __pyx_t_2 = __Pyx_Object_Vectorcall_CallFromBuilder(__pyx_t_4, __pyx_callargs+__pyx_t_40, (3-__pyx_t_40) | (__pyx_t_40*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET), __pyx_t_38);
+    __pyx_t_39 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_39)) __PYX_ERR(1, 46, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_39);
+    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_module, __pyx_t_40, __pyx_t_39, __pyx_callargs+3, 0) < 0) __PYX_ERR(1, 46, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_Object_Vectorcall_CallFromBuilder(__pyx_t_4, __pyx_callargs+__pyx_t_41, (3-__pyx_t_41) | (__pyx_t_41*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET), __pyx_t_39);
     __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+    __Pyx_DECREF(__pyx_t_40); __pyx_t_40 = 0;
     __Pyx_DECREF(__pyx_t_39); __pyx_t_39 = 0;
-    __Pyx_DECREF(__pyx_t_38); __pyx_t_38 = 0;
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 46, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
@@ -3322,6 +3339,7 @@ __Pyx_RefNannySetupContext("PyInit_common", 0);
   __Pyx_XDECREF(__pyx_t_37);
   __Pyx_XDECREF(__pyx_t_38);
   __Pyx_XDECREF(__pyx_t_39);
+  __Pyx_XDECREF(__pyx_t_40);
   if (__pyx_m) {
     if (__pyx_mstate->__pyx_d && stringtab_initialized) {
       __Pyx_AddTraceback("init CyRK.cy.common", __pyx_clineno, __pyx_lineno, __pyx_filename);
@@ -3390,6 +3408,7 @@ static const __Pyx_StringTabEntry __pyx_string_tab[] = {
   {__pyx_k_DENSE_OUTPUT_NOT_SAVED, sizeof(__pyx_k_DENSE_OUTPUT_NOT_SAVED), 0, 1, 1}, /* PyObject cname: __pyx_n_u_DENSE_OUTPUT_NOT_SAVED */
   {__pyx_k_ERROR_IMPORTING_PYTHON_MODULE, sizeof(__pyx_k_ERROR_IMPORTING_PYTHON_MODULE), 0, 1, 1}, /* PyObject cname: __pyx_n_u_ERROR_IMPORTING_PYTHON_MODULE */
   {__pyx_k_EVENT_SETUP_FAILED, sizeof(__pyx_k_EVENT_SETUP_FAILED), 0, 1, 1}, /* PyObject cname: __pyx_n_u_EVENT_SETUP_FAILED */
+  {__pyx_k_EVENT_TERMINATED, sizeof(__pyx_k_EVENT_TERMINATED), 0, 1, 1}, /* PyObject cname: __pyx_n_u_EVENT_TERMINATED */
   {__pyx_k_GENERAL_ERROR, sizeof(__pyx_k_GENERAL_ERROR), 0, 1, 1}, /* PyObject cname: __pyx_n_u_GENERAL_ERROR */
   {__pyx_k_INCOMPATIBLE_INPUT, sizeof(__pyx_k_INCOMPATIBLE_INPUT), 0, 1, 1}, /* PyObject cname: __pyx_n_u_INCOMPATIBLE_INPUT */
   {__pyx_k_INITIALIZING, sizeof(__pyx_k_INITIALIZING), 0, 1, 1}, /* PyObject cname: __pyx_n_u_INITIALIZING */

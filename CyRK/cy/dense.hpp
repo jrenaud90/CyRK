@@ -35,7 +35,8 @@ protected:
     std::vector<double> state_data_vec = std::vector<double>(PRE_ALLOC_NUMY * (4 + 1));
 
 public:
-    size_t num_y = 0;  // Number of dependent variables
+    size_t num_y  = 0;  // Number of dependent variables
+    size_t num_dy = 0; // Number of total outputs (dy/dt + extra outputs)
 
 /* Methods */
 protected:

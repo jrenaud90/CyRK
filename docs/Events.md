@@ -21,6 +21,37 @@ Additionally each event function might have the following attributes:"
 ```
 _The above is copied out of SciPy's documentation [here](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html#scipy.integrate.solve_ivp)._
 
+#### Differences from SciPy's Implementation
+CyRK allows you to use extra parameters that are captured during integration (see [Extra Output](Extra_Output) for more details) in your user provided event functions. 
+They are appended to the `y` array passed to the event function after the dependent variables.
+
+##### `pysolve_ivp` Example:
+```python
+def event_func(t, y, *args):
+    y0 = y[0]
+    y1 = y[1]
+    y2 = y[2]
+    # Only 3 dependent ys in this example.
+    extra0 = y[3]
+    extra1 = y[4]
+    extra2 = y[5]
+    # These extras can now be used to trigger an event!
+```
+
+##### `cysolve_ivp` Example:
+```cython
+cdef event_func(double t, double* y, char* args):
+    cdef double y0 = y[0]
+    cdef double y1 = y[1]
+    cdef double y2 = y[2]
+    # Only 3 dependent ys in this example.
+    cdef double extra0 = y[3]
+    cdef double extra1 = y[4]
+    cdef double extra2 = y[5]
+    # These extras can now be used to trigger an event!
+```
+
+
 #### Example Usage
 
 ### `cysolve_ivp` Version

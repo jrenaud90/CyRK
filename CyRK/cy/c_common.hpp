@@ -4,6 +4,7 @@
 #include <string>
 #include <cmath>
 #include <limits>
+#include <vector>
 
 // Pre-processor constants
 static const size_t BUFFER_SIZE     = 16;
@@ -11,8 +12,13 @@ static const size_t PRE_ALLOC_STEPS = 256;
 static const size_t PRE_ALLOC_NUMY  = 16;
 
 enum class CyrkErrorCodes : int {
+    
+    // Temporary statuses
     CONVERGED = 20,
     INITIALIZING = 10,
+
+    // "Success" statuses
+    EVENT_TERMINATED = 2,
     SUCCESSFUL_INTEGRATION = 1,
     NO_ERROR = 0,
 
@@ -65,8 +71,14 @@ enum class CyrkErrorCodes : int {
 };
 
 inline const std::map<CyrkErrorCodes, std::string> CyrkErrorMessages = {
+    { CyrkErrorCodes::CONVERGED,
+      "An optimization routine has successfully converged." },
+
     { CyrkErrorCodes::INITIALIZING,
       "Initializing. If you see this message then it was likely interrupted." },
+    
+    { CyrkErrorCodes::EVENT_TERMINATED,
+      "Event has been triggered and maximum number of triggers hit; This event will cause a termination." },
 
     { CyrkErrorCodes::SUCCESSFUL_INTEGRATION,
       "Integration completed without issue." },
@@ -153,6 +165,13 @@ inline const std::map<CyrkErrorCodes, std::string> CyrkErrorMessages = {
       "The error code was never set." }
 };
 
+struct OptimizeInfo {
+    size_t funcalls           = 0;
+    size_t iterations         = 0;
+    CyrkErrorCodes error_num  = CyrkErrorCodes::UNINITIALIZED_CLASS;
+    std::vector<double> y_vec = std::vector<double>();
+    double* y_at_root_ptr     = nullptr;
+};
 
 // Integration Constants
 // Multiply steps computed from asymptotic behaviour of errors by this.

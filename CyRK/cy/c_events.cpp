@@ -13,11 +13,11 @@ Event::Event()
 Event::Event(
         EventFunc event_func,
         size_t max_allowed_,
-        int termination_int_) : 
+        int direction_):
             check(event_func),
             max_allowed(max_allowed_),
-            termination_int(termination_int_),
             status(CyrkErrorCodes::NO_ERROR),
+            direction(direction_),
             initialized(true)
 {
     if (!this->check)
@@ -37,7 +37,7 @@ Event::~Event()
 CyrkErrorCodes Event::setup(
         EventFunc event_func,
         size_t max_allowed_,
-        int termination_int_)
+        int direction_)
 {
     // Reset initialized flag.
     this->initialized = false;
@@ -48,10 +48,13 @@ CyrkErrorCodes Event::setup(
         return CyrkErrorCodes::EVENT_SETUP_FAILED;
     }
     this->check = event_func;
-    this->termination_int = termination_int_;
+    this->direction = direction_;
     this->max_allowed = max_allowed_;
 
     // Everything seems good.
+    this->current_count = 0;
+    this->last_root   = 0.0;
+    this->is_active   = false;
     this->initialized = true;
     this->status = CyrkErrorCodes::NO_ERROR;
     return CyrkErrorCodes::NO_ERROR;

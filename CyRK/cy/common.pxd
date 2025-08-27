@@ -9,6 +9,7 @@ cdef extern from "c_common.cpp" nogil:
     cpdef enum class CyrkErrorCodes(int):
         CONVERGED,
         INITIALIZING,
+        EVENT_TERMINATED,
         SUCCESSFUL_INTEGRATION,
         NO_ERROR,
         GENERAL_ERROR,

@@ -10,6 +10,7 @@
 #include "c_common.hpp"
 #include "cy_array.hpp"
 #include "c_events.hpp"
+#include "c_brentq.hpp"
 
 // !!!
 // Comment the following 
@@ -172,6 +173,7 @@ protected:
     virtual void p_step_implementation() noexcept;
     inline void p_cy_diffeq() noexcept;
     virtual void p_calc_first_step_size() noexcept;
+    CyrkErrorCodes p_check_events() noexcept;
 
 public:
     CySolverBase();
@@ -243,7 +245,7 @@ protected:
     bool setup_called      = false;
     bool error_flag        = false;
     bool capture_extra     = false;
-    bool check_events      = false;
+    bool check_events_flag = false;
 
     // Dependent variable pointers
     double* y0_ptr = nullptr;
@@ -256,10 +258,17 @@ protected:
     double* y_tmp_ptr    = nullptr;
     double* y_interp_ptr = nullptr;
     // For dy, both the dy/dt and any extra outputs are stored. So the maximum size is `num_y` + `num_extra`
-    std::vector<double> dy_holder_vec = std::vector<double>(PRE_ALLOC_NUMY * 3);
+    std::vector<double> dy_holder_vec = std::vector<double>(PRE_ALLOC_NUMY * 4);
     double* dy_old_ptr = nullptr;
     //double* dy_now_ptr = nullptr; // This needs to be public
-    double* dy_tmp_ptr = nullptr;
+    double* dy_tmp_ptr  = nullptr;
+    double* dy_tmp2_ptr = nullptr;
+
+    // Event data holder
+    OptimizeInfo root_finder_data      = OptimizeInfo();
+    std::vector<double> event_data_vec = std::vector<double>();  // Equivalent to SciPy's "g" array.
+    double* event_checks_old_ptr       = nullptr;
+    double termination_root            = 0.0;
 
     // Integration step information
     size_t max_num_steps = 0;
@@ -286,4 +295,5 @@ public:
     double* y_old_ptr  = nullptr;
     double* y_now_ptr  = nullptr;
     double* dy_now_ptr = nullptr;
+    std::vector<size_t> active_event_indices_vec = std::vector<size_t>();
 };

@@ -76,7 +76,7 @@
   "pysolver_cyhook": {
     "name": "CyRK.cy.pysolver_cyhook",
     "sources": [["CyRK", "cy", "pysolver_cyhook.pyx"]],
-    "include_dirs": [["CyRK", "cy"]],
+    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
     "compile_args": [],
     "link_args": [],
     "is_cpp": true
@@ -86,7 +86,7 @@
     "sources": [
       ["CyRK", "cy", "cysolver_api.pyx"]
     ],
-    "include_dirs": [["CyRK", "cy"]],
+    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
     "compile_args": [],
     "link_args": [],
     "is_cpp": true
@@ -94,7 +94,7 @@
   "cysolver_test": {
     "name": "CyRK.cy.cysolver_test",
     "sources": [["CyRK", "cy", "cysolver_test.pyx"]],
-    "include_dirs": [["CyRK", "cy"]],
+    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
     "compile_args": [],
     "link_args": [],
     "is_cpp": true
@@ -104,7 +104,7 @@
     "sources": [
       ["CyRK", "cy", "pysolver.pyx"]
     ],
-    "include_dirs": [["CyRK", "cy"]],
+    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
     "compile_args": [],
     "link_args": [],
     "is_cpp": true
@@ -112,7 +112,7 @@
   "cysolver_helpers": {
     "name": "CyRK.cy.helpers",
     "sources": [["CyRK", "cy", "helpers.pyx"]],
-    "include_dirs": [["CyRK", "cy"]],
+    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
     "compile_args": [],
     "link_args": [],
     "is_cpp": true

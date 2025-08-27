@@ -48,7 +48,7 @@ public:
 
     // Event information
     size_t num_events = 0;
-    size_t event_terminate_index = 0;
+    size_t event_terminate_index = MAX_ALLOWED_SYS;  // Set the default to something large that is unrealistic (this is basically a size_t nan)
 
     // Dependent variable
     size_t num_y  = 0;
@@ -91,11 +91,7 @@ public:
         const double new_t,
         double* const new_solution_y_ptr,
         double* const new_solution_dy_ptr) noexcept;
-    void save_event_data(
-        const size_t event_index,
-        const double event_t,
-        double* const event_y_ptr,
-        double* const event_dy_ptr) noexcept;
+    void record_event_data() noexcept;
     void build_dense(bool save_dense) noexcept;
     CyrkErrorCodes solve();
     CyrkErrorCodes call(const double t, double* y_interp_ptr);

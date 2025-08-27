@@ -13,6 +13,10 @@ from CyRK.cy.events cimport Event
 cimport numpy as cnp
 cnp.import_array()
 
+
+cdef extern from "c_brentq.cpp" nogil:
+    pass
+
 cdef extern from "cy_array.cpp" nogil:
     size_t binary_search_with_guess(double key, const double* array, size_t length, size_t guess)
 
@@ -70,7 +74,8 @@ cdef extern from "cysolution.cpp" nogil:
             CyrkErrorCodes setup(ProblemConfig* config_ptr)
             void save_data(double new_t, double* new_solution_y, double* new_solution_dy) noexcept
             void save_event_data(size_t event_index, double event_t, double* event_y_ptr, double* event_dy_ptr) noexcept
-            int build_dense(cpp_bool save) noexcept
+            void record_event_data() noexcept
+            void build_dense(cpp_bool save) noexcept
             CyrkErrorCodes solve()
             CyrkErrorCodes call(const double t, double* y_interp)
             CyrkErrorCodes call_vectorize(const double* t_array_ptr, size_t len_t, double* y_interp)
@@ -85,6 +90,9 @@ cdef class WrapCySolverResult:
     cdef double* y_ptr
     cdef double[::1] time_view
     cdef double[::1] y_view
+
+    cdef list list_t_events
+    cdef list list_y_events
 
     cdef void build_cyresult(self, ODEMethod integrator_method)
     cdef void set_cyresult_pointer(self, CySolveOutput cyresult_uptr_)
@@ -201,6 +209,7 @@ cdef extern from "cysolver.cpp" nogil:
         double* y_old_ptr
         double* y_now_ptr
         double* dy_now_ptr
+        vector[size_t] active_event_indices_vec
 
         void set_Q_order(size_t* Q_order_ptr)
         void set_Q_array(double* Q_ptr)
