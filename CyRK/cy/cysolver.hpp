@@ -243,6 +243,7 @@ protected:
     bool setup_called      = false;
     bool error_flag        = false;
     bool capture_extra     = false;
+    bool check_events      = false;
 
     // Dependent variable pointers
     double* y0_ptr = nullptr;
@@ -279,6 +280,7 @@ public:
     size_t num_y       = 0;
     size_t num_extra   = 0;
     size_t num_dy      = 0;
+    size_t num_events  = 0;
     double t_old       = 0.0;
     double t_now       = 0.0;
     double* y_old_ptr  = nullptr;

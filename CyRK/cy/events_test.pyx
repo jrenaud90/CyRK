@@ -215,6 +215,11 @@ def run_cysolver_with_events(
         printf("TEST FAILED: `run_cysolver_with_events` - solution.event_terminated is None (use_dense = %d; t_eval_provided = %d).\n", use_dense, t_eval_provided)
         tests_passed = False
     
+    # Check CySolver for correct event data
+    if solution_ptr.solver_uptr.get().num_events != 3:
+        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.solver_uptr.get().num_events != 3 (use_dense = %d; t_eval_provided = %d).\n", use_dense, t_eval_provided)
+        tests_passed = False
+    
     # TODO Don't currently check if events executed correctly.
     
     

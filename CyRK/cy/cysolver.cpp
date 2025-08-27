@@ -343,6 +343,8 @@ CyrkErrorCodes CySolverBase::setup()
         this->num_y_sqrt       = this->storage_ptr->config_uptr->num_y_sqrt;
         this->capture_extra    = this->num_extra > 0;
         this->use_dense_output = this->storage_ptr->config_uptr->capture_dense_output;
+        this->check_events     = this->storage_ptr->config_uptr->check_events;
+        this->num_events       = this->storage_ptr->config_uptr->events_vec.size();
 
         // Setup time information
         this->len_t          = 0;

@@ -195,6 +195,7 @@ cdef extern from "cysolver.cpp" nogil:
         size_t num_y
         size_t num_extra
         size_t num_dy
+        size_t num_events
         double t_old
         double t_now
         double* y_old_ptr
