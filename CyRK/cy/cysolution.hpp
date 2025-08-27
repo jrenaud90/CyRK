@@ -35,8 +35,9 @@ public:
     size_t steps_taken      = 0; // Steps taken will be different than size if the user provided a t_eval vector.
 
     // Status information
-    bool setup_called = false;
-    bool success      = false;
+    bool setup_called     = false;
+    bool success          = false;
+    bool event_terminated = false;
 
     // Problem-specific flags
     bool retain_solver        = false;
@@ -45,11 +46,18 @@ public:
     bool t_eval_provided      = false;
     bool direction_flag       = true;
 
+    // Event information
+    size_t num_events = 0;
+    size_t event_terminate_index = 0;
+
     // Dependent variable
     size_t num_y  = 0;
     size_t num_dy = 0;
+    // Event Vectors
+    std::vector<std::vector<double>> event_times  = std::vector<std::vector<double>>();
+    std::vector<std::vector<double>> event_states = std::vector<std::vector<double>>();
 
-    // Pointer to storage arrays
+    // Storage vectors
     // Default construct them with a size of 512.
     std::vector<double> time_domain_vec        = std::vector<double>(PRE_ALLOC_STEPS);
     std::vector<double> solution               = std::vector<double>(PRE_ALLOC_STEPS * PRE_ALLOC_NUMY);
@@ -83,6 +91,11 @@ public:
         const double new_t,
         double* const new_solution_y_ptr,
         double* const new_solution_dy_ptr) noexcept;
+    void save_event_data(
+        const size_t event_index,
+        const double event_t,
+        double* const event_y_ptr,
+        double* const event_dy_ptr) noexcept;
     void build_dense(bool save_dense) noexcept;
     CyrkErrorCodes solve();
     CyrkErrorCodes call(const double t, double* y_interp_ptr);

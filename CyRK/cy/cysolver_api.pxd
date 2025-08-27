@@ -46,12 +46,17 @@ cdef extern from "cysolution.cpp" nogil:
             cpp_bool setup_called
             cpp_bool success
             cpp_bool retain_solver
+            cpp_bool event_terminated
             cpp_bool capture_dense_output
             cpp_bool capture_extra
             cpp_bool t_eval_provided
             cpp_bool direction_flag
+            size_t num_events
+            size_t event_terminate_index
             size_t num_y
             size_t num_dy
+            vector[vector[double]] event_times
+            vector[vector[double]] event_states
             vector[double] time_domain_vec
             vector[double] solution
             vector[double] time_domain_vec_sorted
@@ -64,6 +69,7 @@ cdef extern from "cysolution.cpp" nogil:
             CyrkErrorCodes setup()
             CyrkErrorCodes setup(ProblemConfig* config_ptr)
             void save_data(double new_t, double* new_solution_y, double* new_solution_dy) noexcept
+            void save_event_data(size_t event_index, double event_t, double* event_y_ptr, double* event_dy_ptr) noexcept
             int build_dense(cpp_bool save) noexcept
             CyrkErrorCodes solve()
             CyrkErrorCodes call(const double t, double* y_interp)

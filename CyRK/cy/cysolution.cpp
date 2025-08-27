@@ -233,6 +233,8 @@ CyrkErrorCodes CySolverResult::setup(ProblemConfig* provided_config_ptr)
         this->solution.resize(0);
         this->interp_time_vec.resize(0);
         this->dense_vec.resize(0);
+        this->event_times.resize(0);
+        this->event_states.resize(0);
 
         // Store properties
         if (provided_config_ptr)
@@ -279,7 +281,8 @@ CyrkErrorCodes CySolverResult::setup(ProblemConfig* provided_config_ptr)
         this->direction_flag       = (this->config_uptr->t_end - this->config_uptr->t_start) >= 0.0;
         this->num_y                = this->config_uptr->num_y;
         this->num_dy               = this->config_uptr->num_dy;
-
+        this->num_events           = this->config_uptr->events_vec.size();
+    
         // TODO STORAGE CAPACITY - use previous itereation if set or change to expected size.
         // Storage capacity from previous runs may be larger than expected size. If
         // that is the case then we will just use it instead of reallocating to a smaller size.         
@@ -301,6 +304,19 @@ CyrkErrorCodes CySolverResult::setup(ProblemConfig* provided_config_ptr)
             {
                 this->interp_time_vec.reserve(this->storage_capacity);
             }
+            
+            // Try to create event storage if needed.
+            if (this->num_events > 0)
+            {
+                this->event_times.resize(this->num_events);
+                this->event_states.resize(this->num_events);
+                for (size_t event_i = 0; event_i < this->num_events; event_i++)
+                {
+                    // Assume that we will have the same number of events as storage (this is likely a way overestimate).
+                    this->event_times[event_i].reserve(this->storage_capacity);
+                    this->event_states[event_i].reserve(this->storage_capacity * this->num_dy);
+                }
+            }            
         }
         catch (std::bad_alloc const&)
         {
@@ -369,6 +385,29 @@ void CySolverResult::save_data(
         // Save extra ouput results
         // Start at the end of y values (Dependent dys) and go to the end of the dy array
         this->solution.insert(this->solution.end(), &new_solution_dy_ptr[this->num_y], new_solution_dy_ptr + this->num_dy);
+    }
+}
+
+void CySolverResult::save_event_data(
+        const size_t event_index,
+        const double event_t,
+        double* const event_y_ptr,
+        double* const event_dy_ptr) noexcept
+{
+    if ((this->num_events > 0) and (event_index < this->num_events))
+    {
+        // Save time results
+        this->event_times[event_index].push_back(event_t);
+
+        // Save y results
+        this->event_states[event_index].insert(this->event_states[event_index].end(), event_y_ptr, event_y_ptr + this->num_y);
+
+        if (this->config_uptr->capture_extra)
+        {
+            // Save extra ouput results
+            // Start at the end of y values (Dependent dys) and go to the end of the dy array
+            this->event_states[event_index].insert(this->event_states[event_index].end(), &event_dy_ptr[this->num_y], event_dy_ptr + this->num_dy);
+        }
     }
 }
 
