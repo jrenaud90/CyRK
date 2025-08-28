@@ -12,10 +12,10 @@ from libcpp cimport bool as cpp_bool
 from libcpp.vector cimport vector
 from libcpp.limits cimport numeric_limits
 
-from CyRK.cy.common cimport CyrkErrorCodes, PreEvalFunc, MAX_STEP
+from CyRK.cy.common cimport CyrkErrorCodes, PreEvalFunc, MAX_STEP, DiffeqFuncType
 from CyRK.cy.events cimport Event, EventFunc
 from CyRK.cy.cysolver_api cimport cysolve_ivp_noreturn, WrapCySolverResult, ODEMethod, CySolverResult
-from CyRK.cy.cysolver_test cimport lorenz_diffeq
+from CyRK.cy.cysolver_test cimport lorenz_diffeq, lorenz_extraoutput_diffeq
 
 cdef double valid_func_1(double t, double* y_ptr, char* unused_args) noexcept nogil:
 
@@ -115,14 +115,17 @@ cdef double lorenz_event_func_3(double t, double* y_ptr, char* args) noexcept no
         args_correct = True
 
     # Then return events if args are correct and t greater than 8
-    if args_correct and (t >= 8.0):
+    if args_correct:
         return 0.0
     else:
         return 1.0
 
+
 def run_cysolver_with_events(
         bint use_dense,
-        double[::1] t_eval
+        double[::1] t_eval,
+        bint use_termination,
+        bint capture_extra
     ):
 
     cdef bint tests_passed = True
@@ -151,13 +154,18 @@ def run_cysolver_with_events(
     args_dbl_ptr[1] = 28.0
     args_dbl_ptr[2] = 8.0 / 3.0
 
+    cdef size_t num_dy = 3
+
     cdef PreEvalFunc pre_eval_func = NULL
     
     # Build events
     cdef vector[Event] events_vec = vector[Event]()
     cdef size_t max_allowed = numeric_limits[size_t].max()
     cdef int direction = 0
-    events_vec.emplace_back(lorenz_event_func_1, max_allowed, direction)
+    if use_termination:
+        events_vec.emplace_back(lorenz_event_func_1, 1, 0)
+    else:
+        events_vec.emplace_back(lorenz_event_func_1, max_allowed, direction)
     events_vec.emplace_back(lorenz_event_func_2, max_allowed, direction)
     events_vec.emplace_back(lorenz_event_func_3, max_allowed, direction)
 
@@ -166,17 +174,24 @@ def run_cysolver_with_events(
     solution.build_cyresult(integration_method)
     cdef CySolverResult* solution_ptr = solution.cyresult_uptr.get()
 
+    cdef DiffeqFuncType diffeq = lorenz_diffeq
+    cdef size_t num_extra = 0
+    if capture_extra:
+        diffeq = lorenz_extraoutput_diffeq
+        num_extra = 3
+        num_dy = 6
+
     # Run Solver
     cysolve_ivp_noreturn(
         solution_ptr,
-        lorenz_diffeq,
+        diffeq,
         t_start,
         t_end,
         y0_vec,
         rtol = 1.0e-3,
         atol = 1.0e-6,
         args_vec = args_vec,
-        num_extra = 0,
+        num_extra = num_extra,
         max_num_steps = 100000,
         max_ram_MB = 2000,
         dense_output = use_dense,
@@ -192,40 +207,74 @@ def run_cysolver_with_events(
     
     solution.finalize()
     if not solution_ptr.success:
-        printf("TEST FAILED: `run_cysolver_with_events` solver did not complete successfully (use_dense = %d; t_eval_provided = %d).\n", use_dense, t_eval_provided)
+        printf("TEST FAILED: `run_cysolver_with_events` solver did not complete successfully.\n")
         tests_passed = False
     
     # Check that solution storage is properly setup to handle events
     if solution_ptr.num_events != 3:
-        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.num_events != 3 (use_dense = %d; t_eval_provided = %d).\n", use_dense, t_eval_provided)
+        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.num_events != 3 (%d).\n", solution_ptr.num_events)
         tests_passed = False
     if solution_ptr.event_times.size() != 3:
-        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_times.size() != 3 (use_dense = %d; t_eval_provided = %d).\n", use_dense, t_eval_provided)
+        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_times.size() != 3 (%d).\n", solution_ptr.event_times.size())
         tests_passed = False
     if solution_ptr.event_states.size() != 3:
-        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_states.size() != 3 (use_dense = %d; t_eval_provided = %d).\n", use_dense, t_eval_provided)
+        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_states.size() != 3 (%d).\n", solution_ptr.event_states.size())
         tests_passed = False
 
     # Check Solution event data
-    if solution.num_events != 3:
-        printf("TEST FAILED: `run_cysolver_with_events` - solution.num_events != 3 (use_dense = %d; t_eval_provided = %d).\n", use_dense, t_eval_provided)
-        tests_passed = False
-    if solution.event_terminate_index is None:
-        printf("TEST FAILED: `run_cysolver_with_events` - solution.event_terminate_index is None (use_dense = %d; t_eval_provided = %d).\n", use_dense, t_eval_provided)
-        tests_passed = False
-    if solution.event_terminated is None:
-        printf("TEST FAILED: `run_cysolver_with_events` - solution.event_terminated is None (use_dense = %d; t_eval_provided = %d).\n", use_dense, t_eval_provided)
+    if solution_ptr.num_events != 3:
+        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.num_events != 3 (%d).\n", solution_ptr.num_events)
         tests_passed = False
     
     # Check CySolver for correct event data
     if solution_ptr.solver_uptr.get().num_events != 3:
-        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.solver_uptr.get().num_events != 3 (use_dense = %d; t_eval_provided = %d).\n", use_dense, t_eval_provided)
+        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.solver_uptr.get().num_events != 3 (%d).\n", solution_ptr.solver_uptr.get().num_events)
         tests_passed = False
     
-    # TODO Don't currently check if events executed correctly.
+    # Check results of event run.
+    if solution_ptr.event_times.size() != 3:
+        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_times.size() != 3 (%d).\n", solution_ptr.event_times.size())
+        tests_passed = False
+    if solution_ptr.event_states.size() != 3:
+        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_states.size() != 3 (%d).\n", solution_ptr.event_states.size())
+        tests_passed = False
     
+    cdef size_t event_i
+    for event_i in range(3):
+        printf("INFO: `run_cysolver_with_events` - solution_ptr.event_times[%d].size() = %d\n", event_i, solution_ptr.event_times[event_i].size())
+        if solution_ptr.event_times[event_i].size() == 0:
+            printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_times[%d].size() == 0.\n", event_i)
+            tests_passed = False
+            break
+        
+        printf("INFO: `run_cysolver_with_events` - solution_ptr.event_states[%d].size() = %d\n", event_i, solution_ptr.event_states[event_i].size())
+        if solution_ptr.event_states[event_i].size() == 0:
+            printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_states[%d].size() == 0.\n", event_i)
+            tests_passed = False
+            break
     
-    return tests_passed
+        if solution_ptr.event_states[event_i].size() != num_dy * solution_ptr.event_times[event_i].size():
+            printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_states[%d].size() / num_dy (%d) != event_times.\n", event_i, num_dy)
+            tests_passed = False
+            break
+
+    cdef double time_check = 0.0
+    if use_termination:
+        if not solution_ptr.event_terminated:
+            printf("TEST FAILED: `run_cysolver_with_events` - solution.event_terminated is False.\n")
+            tests_passed = False
+
+        time_check = solution_ptr.time_domain_vec.back()
+
+        # Surprisingly scipy's root finding method really does not get very close to 5.0 so we will check if its above 5.1; for this example it should be ~5.035
+        if time_check > 5.1:
+            printf("TEST FAILED: `run_cysolver_with_events` - Solver did not terminated when requested: t_end = %f.\n", time_check)
+            tests_passed = False
+    
+    if not tests_passed:
+        printf("`run_cysolver_with_events` - Tests Failed. use_dense = %d; t_eval_provided = %d; use_termination = %d\n", use_dense, t_eval_provided, use_termination)
+    
+    return solution, tests_passed
 
 
 
