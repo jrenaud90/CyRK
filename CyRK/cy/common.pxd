@@ -1,6 +1,7 @@
 from libcpp cimport bool as cpp_bool
 from libcpp.string cimport string as cpp_string
 from libcpp.map cimport map as cpp_map
+from libcpp.vector cimport vector
 
 # =====================================================================================================================
 # Import common functions and constants
@@ -42,7 +43,15 @@ cdef extern from "c_common.cpp" nogil:
         BAD_INITIAL_STEP_SIZE,
         OTHER_ERROR,
         UNSET_ERROR_CODE
+    
     const cpp_map[CyrkErrorCodes, cpp_string] CyrkErrorMessages
+
+    cdef struct OptimizeInfo:
+        size_t funcalls
+        size_t iterations
+        CyrkErrorCodes error_num
+        vector[double] y_vec
+        double* y_at_root_ptr
     
     const double INF
     const double EPS_100

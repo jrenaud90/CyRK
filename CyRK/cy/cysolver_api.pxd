@@ -17,6 +17,9 @@ cnp.import_array()
 cdef extern from "c_brentq.cpp" nogil:
     pass
 
+cdef extern from "c_events.cpp" nogil:
+    pass
+
 cdef extern from "cy_array.cpp" nogil:
     size_t binary_search_with_guess(double key, const double* array, size_t length, size_t guess)
 

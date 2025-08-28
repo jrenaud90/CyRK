@@ -1,6 +1,7 @@
 from libcpp.vector cimport vector
 
-from CyRK.cy.cysolver_api cimport CySolverDense, CyrkErrorCodes
+from CyRK.cy.common cimport OptimizeInfo, CyrkErrorCodes
+from CyRK.cy.cysolver_api cimport CySolverDense
 from CyRK.cy.events cimport EventFunc
 
 cdef extern from "c_common.cpp" nogil:
@@ -13,13 +14,6 @@ cdef extern from "dense.cpp" nogil:
     pass
 
 cdef extern from "c_brentq.cpp" nogil:
-
-    cdef struct OptimizeInfo:
-        size_t funcalls
-        size_t iterations
-        CyrkErrorCodes error_num
-        vector[double] y_vec
-        double* y_at_root_ptr
 
     cdef double c_brentq(
         EventFunc func,

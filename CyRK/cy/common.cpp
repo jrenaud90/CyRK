@@ -18,14 +18,14 @@
         ],
         "include_dirs": [
             "CyRK\\cy",
-            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-tnxcc219\\overlay\\Lib\\site-packages\\numpy\\_core\\include",
-            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-tnxcc219\\site",
+            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-3_arbqay\\overlay\\Lib\\site-packages\\numpy\\_core\\include",
+            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-3_arbqay\\site",
             "C:\\Users\\joepr\\miniforge3\\envs\\cyrk313\\python313.zip",
             "C:\\Users\\joepr\\miniforge3\\envs\\cyrk313\\DLLs",
             "C:\\Users\\joepr\\miniforge3\\envs\\cyrk313\\Lib",
-            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-tnxcc219\\overlay\\Lib\\site-packages",
-            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-tnxcc219\\normal\\Lib\\site-packages",
-            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-tnxcc219\\overlay\\Lib\\site-packages\\setuptools\\_vendor"
+            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-3_arbqay\\overlay\\Lib\\site-packages",
+            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-3_arbqay\\normal\\Lib\\site-packages",
+            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-3_arbqay\\overlay\\Lib\\site-packages\\setuptools\\_vendor"
         ],
         "language": "c++",
         "name": "CyRK.cy.common",
@@ -1188,6 +1188,7 @@ static CYTHON_INLINE float __PYX_NAN() {
     #endif
     
 #include <map>
+#include <vector>
 #include "c_common.cpp"
 #ifdef _OPENMP
 #include <omp.h>
@@ -2042,6 +2043,8 @@ static int __Pyx_State_RemoveModule(void*);
 /* Module declarations from "libcpp.utility" */
 
 /* Module declarations from "libcpp.map" */
+
+/* Module declarations from "libcpp.vector" */
 
 /* Module declarations from "CyRK.cy.common" */
 static PyObject *__Pyx_EnumBase = 0;
