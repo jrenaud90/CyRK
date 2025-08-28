@@ -501,6 +501,7 @@ CyrkErrorCodes CySolverBase::setup()
     
                 // Find new event state array
                 this->event_checks_old_ptr[event_i] = current_event.check(
+                    &current_event,
                     this->t_now,
                     event_y_now_use_ptr,
                     this->args_ptr);
@@ -599,6 +600,7 @@ CyrkErrorCodes CySolverBase::p_check_events() noexcept
     
         // Find new event state array
         double g_now = current_event.check(
+            &current_event,
             this->t_now,
             event_y_now_use_ptr,
             this->args_ptr);
@@ -657,6 +659,7 @@ CyrkErrorCodes CySolverBase::p_check_events() noexcept
             MAX_BRENTQ_ITER,
             this->storage_ptr->config_uptr->args_vec,
             &this->root_finder_data,
+            &current_event,
             dense_func_ptr);
         
         if (root_finder_data.error_num != CyrkErrorCodes::CONVERGED)

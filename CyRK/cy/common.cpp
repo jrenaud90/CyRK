@@ -18,14 +18,14 @@
         ],
         "include_dirs": [
             "CyRK\\cy",
-            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-urvh32o1\\overlay\\Lib\\site-packages\\numpy\\_core\\include",
-            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-urvh32o1\\site",
+            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-ribgx61z\\overlay\\Lib\\site-packages\\numpy\\_core\\include",
+            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-ribgx61z\\site",
             "C:\\Users\\joepr\\miniforge3\\envs\\cyrk313\\python313.zip",
             "C:\\Users\\joepr\\miniforge3\\envs\\cyrk313\\DLLs",
             "C:\\Users\\joepr\\miniforge3\\envs\\cyrk313\\Lib",
-            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-urvh32o1\\overlay\\Lib\\site-packages",
-            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-urvh32o1\\normal\\Lib\\site-packages",
-            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-urvh32o1\\overlay\\Lib\\site-packages\\setuptools\\_vendor"
+            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-ribgx61z\\overlay\\Lib\\site-packages",
+            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-ribgx61z\\normal\\Lib\\site-packages",
+            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-ribgx61z\\overlay\\Lib\\site-packages\\setuptools\\_vendor"
         ],
         "language": "c++",
         "name": "CyRK.cy.common",
@@ -2069,6 +2069,7 @@ static const char __pyx_k_test[] = "__test__";
 static const char __pyx_k_module[] = "module";
 static const char __pyx_k_IntEnum[] = "IntEnum";
 static const char __pyx_k_IntFlag[] = "IntFlag";
+static const char __pyx_k_MAX_SIZE[] = "MAX_SIZE";
 static const char __pyx_k_NO_ERROR[] = "NO_ERROR";
 static const char __pyx_k_module_2[] = "__module__";
 static const char __pyx_k_qualname[] = "__qualname__";
@@ -2149,7 +2150,7 @@ typedef struct {
   PyTypeObject *__pyx_CoroutineType;
   #endif
   __Pyx_CachedCFunction __pyx_umethod_PyDict_Type_get;
-  PyObject *__pyx_string_tab[50];
+  PyObject *__pyx_string_tab[51];
 /* #### Code section: module_state_contents ### */
 /* CodeObjectCache.module_state_decls */
 struct __Pyx_CodeObjectCache __pyx_code_cache;
@@ -2202,33 +2203,34 @@ static __pyx_mstatetype * const __pyx_mstate_global = &__pyx_mstate_global_stati
 #define __pyx_n_u_IntEnum __pyx_string_tab[20]
 #define __pyx_n_u_IntFlag __pyx_string_tab[21]
 #define __pyx_n_u_MAX_ITERATIONS_HIT __pyx_string_tab[22]
-#define __pyx_n_u_MAX_STEPS_SYSARCH_EXCEEDED __pyx_string_tab[23]
-#define __pyx_n_u_MAX_STEPS_USER_EXCEEDED __pyx_string_tab[24]
-#define __pyx_n_u_MEMORY_ALLOCATION_ERROR __pyx_string_tab[25]
-#define __pyx_n_u_NO_ERROR __pyx_string_tab[26]
-#define __pyx_n_u_NUMBER_OF_EQUATIONS_IS_ZERO __pyx_string_tab[27]
-#define __pyx_n_u_OPTIMIZE_CONVERGENCE_ERROR __pyx_string_tab[28]
-#define __pyx_n_u_OPTIMIZE_SIGN_ERROR __pyx_string_tab[29]
-#define __pyx_n_u_OTHER_ERROR __pyx_string_tab[30]
-#define __pyx_n_u_PROPERTY_NOT_SET __pyx_string_tab[31]
-#define __pyx_n_u_SETUP_NOT_CALLED __pyx_string_tab[32]
-#define __pyx_n_u_STEP_SIZE_ERROR_ACCEPTANCE __pyx_string_tab[33]
-#define __pyx_n_u_STEP_SIZE_ERROR_SPACING __pyx_string_tab[34]
-#define __pyx_n_u_SUCCESSFUL_INTEGRATION __pyx_string_tab[35]
-#define __pyx_n_u_UNINITIALIZED_CLASS __pyx_string_tab[36]
-#define __pyx_n_u_UNSET_ERROR_CODE __pyx_string_tab[37]
-#define __pyx_n_u_UNSUPPORTED_UNKNOWN_MODEL __pyx_string_tab[38]
-#define __pyx_n_u_VECTOR_SIZE_EXCEEDS_LIMITS __pyx_string_tab[39]
-#define __pyx_kp_u__2 __pyx_string_tab[40]
-#define __pyx_n_u_cline_in_traceback __pyx_string_tab[41]
-#define __pyx_n_u_enum __pyx_string_tab[42]
-#define __pyx_n_u_get __pyx_string_tab[43]
-#define __pyx_n_u_main __pyx_string_tab[44]
-#define __pyx_n_u_module __pyx_string_tab[45]
-#define __pyx_n_u_module_2 __pyx_string_tab[46]
-#define __pyx_n_u_name __pyx_string_tab[47]
-#define __pyx_n_u_qualname __pyx_string_tab[48]
-#define __pyx_n_u_test __pyx_string_tab[49]
+#define __pyx_n_u_MAX_SIZE __pyx_string_tab[23]
+#define __pyx_n_u_MAX_STEPS_SYSARCH_EXCEEDED __pyx_string_tab[24]
+#define __pyx_n_u_MAX_STEPS_USER_EXCEEDED __pyx_string_tab[25]
+#define __pyx_n_u_MEMORY_ALLOCATION_ERROR __pyx_string_tab[26]
+#define __pyx_n_u_NO_ERROR __pyx_string_tab[27]
+#define __pyx_n_u_NUMBER_OF_EQUATIONS_IS_ZERO __pyx_string_tab[28]
+#define __pyx_n_u_OPTIMIZE_CONVERGENCE_ERROR __pyx_string_tab[29]
+#define __pyx_n_u_OPTIMIZE_SIGN_ERROR __pyx_string_tab[30]
+#define __pyx_n_u_OTHER_ERROR __pyx_string_tab[31]
+#define __pyx_n_u_PROPERTY_NOT_SET __pyx_string_tab[32]
+#define __pyx_n_u_SETUP_NOT_CALLED __pyx_string_tab[33]
+#define __pyx_n_u_STEP_SIZE_ERROR_ACCEPTANCE __pyx_string_tab[34]
+#define __pyx_n_u_STEP_SIZE_ERROR_SPACING __pyx_string_tab[35]
+#define __pyx_n_u_SUCCESSFUL_INTEGRATION __pyx_string_tab[36]
+#define __pyx_n_u_UNINITIALIZED_CLASS __pyx_string_tab[37]
+#define __pyx_n_u_UNSET_ERROR_CODE __pyx_string_tab[38]
+#define __pyx_n_u_UNSUPPORTED_UNKNOWN_MODEL __pyx_string_tab[39]
+#define __pyx_n_u_VECTOR_SIZE_EXCEEDS_LIMITS __pyx_string_tab[40]
+#define __pyx_kp_u__2 __pyx_string_tab[41]
+#define __pyx_n_u_cline_in_traceback __pyx_string_tab[42]
+#define __pyx_n_u_enum __pyx_string_tab[43]
+#define __pyx_n_u_get __pyx_string_tab[44]
+#define __pyx_n_u_main __pyx_string_tab[45]
+#define __pyx_n_u_module __pyx_string_tab[46]
+#define __pyx_n_u_module_2 __pyx_string_tab[47]
+#define __pyx_n_u_name __pyx_string_tab[48]
+#define __pyx_n_u_qualname __pyx_string_tab[49]
+#define __pyx_n_u_test __pyx_string_tab[50]
 /* #### Code section: module_state_clear ### */
 #if CYTHON_USE_MODULE_STATE
 static CYTHON_SMALL_CODE int __pyx_m_clear(PyObject *m) {
@@ -2249,7 +2251,7 @@ static CYTHON_SMALL_CODE int __pyx_m_clear(PyObject *m) {
   #if CYTHON_PEP489_MULTI_PHASE_INIT
   __Pyx_State_RemoveModule(NULL);
   #endif
-  for (int i=0; i<50; ++i) { Py_CLEAR(clear_module_state->__pyx_string_tab[i]); }
+  for (int i=0; i<51; ++i) { Py_CLEAR(clear_module_state->__pyx_string_tab[i]); }
   return 0;
 }
 #endif
@@ -2270,7 +2272,7 @@ static CYTHON_SMALL_CODE int __pyx_m_traverse(PyObject *m, visitproc visit, void
   #ifdef __Pyx_FusedFunction_USED
   Py_VISIT(traverse_module_state->__pyx_FusedFunctionType);
   #endif
-  for (int i=0; i<50; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_string_tab[i]); }
+  for (int i=0; i<51; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_string_tab[i]); }
   return 0;
 }
 #endif
@@ -3291,9 +3293,20 @@ __Pyx_RefNannySetupContext("PyInit_common", 0);
   if (unlikely((PyDict_SetItem(__Pyx_globals, __pyx_mstate_global->__pyx_n_u_CyrkErrorCodes, __pyx_t_2) < 0))) __PYX_ERR(1, 46, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
+  /* "CyRK/cy/common.pyx":3
+ * # distutils: language = c++
+ * # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
+ * MAX_SIZE = MAX_SIZET_SIZE             # <<<<<<<<<<<<<<
+*/
+  __pyx_t_2 = __Pyx_PyLong_FromSize_t(MAX_SIZET_SIZE); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 3, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_MAX_SIZE, __pyx_t_2) < 0) __PYX_ERR(0, 3, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+
   /* "CyRK/cy/common.pyx":1
  * # distutils: language = c++             # <<<<<<<<<<<<<<
  * # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
+ * MAX_SIZE = MAX_SIZET_SIZE
 */
   __pyx_t_2 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 1, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
@@ -3419,6 +3432,7 @@ static const __Pyx_StringTabEntry __pyx_string_tab[] = {
   {__pyx_k_IntEnum, sizeof(__pyx_k_IntEnum), 0, 1, 1}, /* PyObject cname: __pyx_n_u_IntEnum */
   {__pyx_k_IntFlag, sizeof(__pyx_k_IntFlag), 0, 1, 1}, /* PyObject cname: __pyx_n_u_IntFlag */
   {__pyx_k_MAX_ITERATIONS_HIT, sizeof(__pyx_k_MAX_ITERATIONS_HIT), 0, 1, 1}, /* PyObject cname: __pyx_n_u_MAX_ITERATIONS_HIT */
+  {__pyx_k_MAX_SIZE, sizeof(__pyx_k_MAX_SIZE), 0, 1, 1}, /* PyObject cname: __pyx_n_u_MAX_SIZE */
   {__pyx_k_MAX_STEPS_SYSARCH_EXCEEDED, sizeof(__pyx_k_MAX_STEPS_SYSARCH_EXCEEDED), 0, 1, 1}, /* PyObject cname: __pyx_n_u_MAX_STEPS_SYSARCH_EXCEEDED */
   {__pyx_k_MAX_STEPS_USER_EXCEEDED, sizeof(__pyx_k_MAX_STEPS_USER_EXCEEDED), 0, 1, 1}, /* PyObject cname: __pyx_n_u_MAX_STEPS_USER_EXCEEDED */
   {__pyx_k_MEMORY_ALLOCATION_ERROR, sizeof(__pyx_k_MEMORY_ALLOCATION_ERROR), 0, 1, 1}, /* PyObject cname: __pyx_n_u_MEMORY_ALLOCATION_ERROR */

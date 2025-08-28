@@ -212,49 +212,49 @@ def run_cysolver_with_events(
     
     # Check that solution storage is properly setup to handle events
     if solution_ptr.num_events != 3:
-        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.num_events != 3 (%d).\n", solution_ptr.num_events)
+        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.num_events != 3 (%zd).\n", solution_ptr.num_events)
         tests_passed = False
     if solution_ptr.event_times.size() != 3:
-        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_times.size() != 3 (%d).\n", solution_ptr.event_times.size())
+        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_times.size() != 3 (%zd).\n", solution_ptr.event_times.size())
         tests_passed = False
     if solution_ptr.event_states.size() != 3:
-        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_states.size() != 3 (%d).\n", solution_ptr.event_states.size())
+        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_states.size() != 3 (%zd).\n", solution_ptr.event_states.size())
         tests_passed = False
 
     # Check Solution event data
     if solution_ptr.num_events != 3:
-        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.num_events != 3 (%d).\n", solution_ptr.num_events)
+        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.num_events != 3 (%zd).\n", solution_ptr.num_events)
         tests_passed = False
     
     # Check CySolver for correct event data
     if solution_ptr.solver_uptr.get().num_events != 3:
-        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.solver_uptr.get().num_events != 3 (%d).\n", solution_ptr.solver_uptr.get().num_events)
+        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.solver_uptr.get().num_events != 3 (%zd).\n", solution_ptr.solver_uptr.get().num_events)
         tests_passed = False
     
     # Check results of event run.
     if solution_ptr.event_times.size() != 3:
-        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_times.size() != 3 (%d).\n", solution_ptr.event_times.size())
+        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_times.size() != 3 (%zd).\n", solution_ptr.event_times.size())
         tests_passed = False
     if solution_ptr.event_states.size() != 3:
-        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_states.size() != 3 (%d).\n", solution_ptr.event_states.size())
+        printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_states.size() != 3 (%zd).\n", solution_ptr.event_states.size())
         tests_passed = False
     
     cdef size_t event_i
     for event_i in range(3):
-        printf("INFO: `run_cysolver_with_events` - solution_ptr.event_times[%d].size() = %d\n", event_i, solution_ptr.event_times[event_i].size())
+        printf("INFO: `run_cysolver_with_events` - solution_ptr.event_times[%zd].size() = %zd\n", event_i, solution_ptr.event_times[event_i].size())
         if solution_ptr.event_times[event_i].size() == 0:
-            printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_times[%d].size() == 0.\n", event_i)
+            printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_times[%zd].size() == 0.\n", event_i)
             tests_passed = False
             break
         
-        printf("INFO: `run_cysolver_with_events` - solution_ptr.event_states[%d].size() = %d\n", event_i, solution_ptr.event_states[event_i].size())
+        printf("INFO: `run_cysolver_with_events` - solution_ptr.event_states[%zd].size() = %d\n", event_i, solution_ptr.event_states[event_i].size())
         if solution_ptr.event_states[event_i].size() == 0:
-            printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_states[%d].size() == 0.\n", event_i)
+            printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_states[%zd].size() == 0.\n", event_i)
             tests_passed = False
             break
     
         if solution_ptr.event_states[event_i].size() != num_dy * solution_ptr.event_times[event_i].size():
-            printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_states[%d].size() / num_dy (%d) != event_times.\n", event_i, num_dy)
+            printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_states[%zd].size() / num_dy (%zd) != event_times.\n", event_i, num_dy)
             tests_passed = False
             break
 

@@ -8,7 +8,7 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 double c_brentq(
-        EventFunc func,
+        EventFuncWithInst func,
         double xa,
         double xb,
         double xtol,
@@ -16,4 +16,5 @@ double c_brentq(
         size_t iter,
         std::vector<char>& func_data_vec,
         OptimizeInfo* solver_stats,
+        Event* event_ptr,
         CySolverDense* dense_func = nullptr);

@@ -10,6 +10,8 @@
 
 static void (*__pyx_api_f_4CyRK_2cy_15pysolver_cyhook_call_diffeq_from_cython)(PyObject *, DiffeqMethod) = 0;
 #define call_diffeq_from_cython __pyx_api_f_4CyRK_2cy_15pysolver_cyhook_call_diffeq_from_cython
+static double (*__pyx_api_f_4CyRK_2cy_15pysolver_cyhook_call_pyevent_from_cython)(PyObject *, PyEventMethod, size_t, double, double *) = 0;
+#define call_pyevent_from_cython __pyx_api_f_4CyRK_2cy_15pysolver_cyhook_call_pyevent_from_cython
 static int __Pyx_ImportFunction_3_1_3(PyObject *module, const char *funcname, void (**f)(void), const char *sig);
 
 #ifndef __PYX_HAVE_RT_ImportFunction_3_1_3
@@ -62,6 +64,7 @@ static int import_CyRK__cy__pysolver_cyhook(void) {
   module = PyImport_ImportModule("CyRK.cy.pysolver_cyhook");
   if (!module) goto bad;
   if (__Pyx_ImportFunction_3_1_3(module, "call_diffeq_from_cython", (void (**)(void))&__pyx_api_f_4CyRK_2cy_15pysolver_cyhook_call_diffeq_from_cython, "void (PyObject *, DiffeqMethod)") < 0) goto bad;
+  if (__Pyx_ImportFunction_3_1_3(module, "call_pyevent_from_cython", (void (**)(void))&__pyx_api_f_4CyRK_2cy_15pysolver_cyhook_call_pyevent_from_cython, "double (PyObject *, PyEventMethod, size_t, double, double *)") < 0) goto bad;
   Py_DECREF(module); module = 0;
   return 0;
   bad:

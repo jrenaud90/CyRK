@@ -13,7 +13,7 @@ from .helper import nb2cy, cy2nb
 from ._test import test_nbrk, test_cysolver, test_pysolver
 
 # Import python solver
-from CyRK.cy.common import CyrkErrorCodes
+from CyRK.cy.common import CyrkErrorCodes, MAX_SIZE
 from CyRK.cy.cysolver_api import WrapCySolverResult, ODEMethod
 from CyRK.cy.pysolver import pysolve_ivp, PySolver
 

@@ -223,11 +223,13 @@ CyrkErrorCodes CySolverResult::setup(ProblemConfig* provided_config_ptr)
         this->size             = 0;
         this->num_interpolates = 0;
         this->steps_taken      = 0;
+        this->event_terminate_index = MAX_SIZET_SIZE;
 
         // Reset flags
-        this->setup_called   = false;
-        this->success        = false;
-        this->retain_solver  = false;
+        this->setup_called     = false;
+        this->success          = false;
+        this->retain_solver    = false;
+        this->event_terminated = false;
 
         // Reset all vectors
         // We resize these to zero so that we can retain any capacity they had from previous runs.

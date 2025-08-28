@@ -57,6 +57,8 @@ cdef extern from "c_common.cpp" nogil:
     const double EPS_100
     const size_t BUFFER_SIZE
     const double MAX_STEP
+    const double dbl_NAN
+    const size_t MAX_SIZET_SIZE
 
     ctypedef void (*PreEvalFunc)(char*, double, double*, char*)
     ctypedef void (*DiffeqFuncType)(double*, double, double*, char*, PreEvalFunc)

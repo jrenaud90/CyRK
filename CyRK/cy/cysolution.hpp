@@ -48,7 +48,7 @@ public:
 
     // Event information
     size_t num_events = 0;
-    size_t event_terminate_index = MAX_ALLOWED_SYS;  // Set the default to something large that is unrealistic (this is basically a size_t nan)
+    size_t event_terminate_index = MAX_SIZET_SIZE;  // Set the default to something large that is unrealistic (this is basically a size_t nan)
 
     // Dependent variable
     size_t num_y  = 0;

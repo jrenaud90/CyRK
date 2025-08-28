@@ -5,6 +5,7 @@ from libcpp cimport nullptr
 from libcpp.vector cimport vector
 
 from CyRK.cy.cysolver_api cimport CySolverDense
+from CyRK.cy.events cimport Event
 from CyRK.optimize.brentq cimport c_brentq, OptimizeInfo
 
 # extra parameters
@@ -12,7 +13,7 @@ ctypedef struct extra_params:
     double[4] a
 
 # callback function
-cdef double f_example(double x, double* y_ptr, char *args_char_ptr) noexcept nogil:
+cdef double f_example(Event* event_inst, double x, double* y_ptr, char *args_char_ptr) noexcept nogil:
     cdef extra_params *args_ptr = <extra_params*> args_char_ptr
     # y_ptr is unused in this example.
 
@@ -41,6 +42,7 @@ def brentq_test(
 
     # Dense function is not used for this test; set to null
     cdef CySolverDense* dense_func = NULL
+    cdef Event* event_inst = NULL
 
     # Call and return brentq root finder
-    return c_brentq(f_example, xa, xb, xtol, rtol, mitr, args_vec, &optimize_info, dense_func)
+    return c_brentq(f_example, xa, xb, xtol, rtol, mitr, args_vec, &optimize_info, event_inst, dense_func)

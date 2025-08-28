@@ -1,6 +1,6 @@
 [project]
 name='CyRK'
-version = '0.16.0a1.dev7'
+version = '0.16.0a1.dev11'
 description='Runge-Kutta ODE Integrator Implemented in Cython and Numba.'
 authors= [
     {name = 'Joe P. Renaud', email = 'joe.p.renaud@gmail.com'}

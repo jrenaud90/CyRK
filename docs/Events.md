@@ -21,7 +21,84 @@ Additionally each event function might have the following attributes:"
 ```
 _The above is copied out of SciPy's documentation [here](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html#scipy.integrate.solve_ivp)._
 
-#### Differences from SciPy's Implementation
+#### Example
+```python
+import numpy as np
+from CyRK import pysolve_ivp
+import matplotlib.pyplot as plt
+from numba import njit
+
+# Example with SciPy
+@njit
+def event_func_1(t, y, a, b, c):
+
+    # Check if t greater than or equal to 5.0
+    if t >= 5.0:
+        return 0.0
+    else:
+        return 1.0
+
+@njit
+def event_func_2(t, y, a, b, c):
+
+    # Check y values.
+    # In the time span [0,10]: 
+    #    y_0  starts at 1, spikes then goes below zero and oscillates with a min below -10. Have this return if y_0 < -10
+    if y[0] < -10.0:
+        return 0.0
+    elif y[2] > 30.0:
+        return 0.0
+    else:
+        return 1.0
+
+@njit
+def event_func_3(t, y, a, b, c):
+
+    # We won't actually use the args but lets just check they are correct.
+    args_correct = False
+    if a == 10.0 and b == 28.0 and c == 8.0 / 3.0:
+        args_correct = True
+
+    # Then return events if args are correct and t greater than 8
+    if args_correct:
+        return 0.0
+    else:
+        return 1.0
+
+@njit
+def lorenz_diffeq(dy, t, y, a, b, c):
+    # Unpack y
+    y0 = y[0]
+    y1 = y[1]
+    y2 = y[2]
+    
+    dy[0] = a * (y1 - y0)
+    dy[1] = y0 * (b - y2) - y1
+    dy[2] = y0 * y1 - c * y2
+
+def run_pysove_with_events(terminate = False):
+
+    event_func_1.direction = 0
+    event_func_1.terminal = 10000
+    if terminate:
+        event_func_1.terminal = 1
+    event_func_2.direction = 0
+    event_func_2.terminal = 10000
+    event_func_3.direction = 0
+    event_func_3.terminal = 10000
+
+
+    time_span = (0.0, 10.0)
+    y0 = np.asarray([1.0, 0.0, 0.0])
+    args = (10.0, 28.0, 8.0/3.0)
+    solution = pysolve_ivp(lorenz_diffeq, time_span, y0, method="RK45",
+                           args=args, rtol=1.0e-6, atol=1.0e-6, t_eval=None, dense_output=False, pass_dy_as_arg=True,
+                           events=(event_func_1, event_func_2, event_func_3))
+
+    return solution
+```
+
+## Differences from SciPy's Implementation
 CyRK allows you to use extra parameters that are captured during integration (see [Extra Output](Extra_Output) for more details) in your user provided event functions. 
 They are appended to the `y` array passed to the event function after the dependent variables.
 
@@ -33,7 +110,8 @@ scipy_solution.y_events == cyrk_solution.y_events.T
 
 
 
-##### `pysolve_ivp` Example:
+## Additional Arguments to Event Functions
+### `pysolve_ivp` Example:
 ```python
 def event_func(t, y, *args):
     y0 = y[0]
@@ -46,7 +124,7 @@ def event_func(t, y, *args):
     # These extras can now be used to trigger an event!
 ```
 
-##### `cysolve_ivp` Example:
+### `cysolve_ivp` Example:
 ```cython
 cdef event_func(double t, double* y, char* args):
     cdef double y0 = y[0]
@@ -59,12 +137,6 @@ cdef event_func(double t, double* y, char* args):
     # These extras can now be used to trigger an event!
 ```
 
-
-#### Example Usage
-
-### `cysolve_ivp` Version
-
-#### Example Usage
 
 ## Event Data and Diagnostics in CySolution
 CyRK provides several event-related data that can be used to diagnose issues or just learn about the integration results.

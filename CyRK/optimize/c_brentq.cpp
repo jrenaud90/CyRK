@@ -39,7 +39,7 @@ Adapted for CyRK by Joe P. Renaud (joseph.p.renaud@nasa.gov) in August 2025
 */
 
 double c_brentq(
-        EventFunc func,
+        EventFuncWithInst func,
         double xa,
         double xb,
         double xtol,
@@ -47,6 +47,7 @@ double c_brentq(
         size_t iter,
         std::vector<char>& func_data_vec,
         OptimizeInfo* solver_stats,
+        Event* event_ptr,
         CySolverDense* dense_func)
 {
     double xpre = xa, xcur = xb;
@@ -78,8 +79,8 @@ double c_brentq(
     }
 
     // Call event function for the two bounds.
-    double fpre = (*func)(xpre, y1_ptr, func_data_ptr);
-    double fcur = (*func)(xcur, y2_ptr, func_data_ptr);
+    double fpre = func(event_ptr, xpre, y1_ptr, func_data_ptr);
+    double fcur = func(event_ptr, xcur, y2_ptr, func_data_ptr);
 
     solver_stats->funcalls = 2;
     if (fpre == 0)
@@ -195,7 +196,7 @@ double c_brentq(
             // This function call will also update the data that the y_ptr in solver_stats
             dense_func->call(xcur, y1_ptr);
         }
-        fcur = (*func)(xcur, y1_ptr, func_data_ptr);
+        fcur = func(event_ptr, xcur, y1_ptr, func_data_ptr);
         solver_stats->funcalls++;
     }
     solver_stats->error_num = CyrkErrorCodes::OPTIMIZE_CONVERGENCE_ERROR;
