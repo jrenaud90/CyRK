@@ -3,6 +3,9 @@ from libcpp.vector cimport vector
 
 from CyRK.cy.common cimport CyrkErrorCodes
 
+cdef extern from "c_brentq.cpp" nogil:
+    pass
+
 cdef extern from "c_events.cpp" nogil:
     ctypedef double (*EventFunc)(double, double*, char*)
 

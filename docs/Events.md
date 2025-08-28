@@ -25,6 +25,14 @@ _The above is copied out of SciPy's documentation [here](https://docs.scipy.org/
 CyRK allows you to use extra parameters that are captured during integration (see [Extra Output](Extra_Output) for more details) in your user provided event functions. 
 They are appended to the `y` array passed to the event function after the dependent variables.
 
+
+CyRK prefers to output y values as the first index of `y_events` compared to SciPy outputting them as the second.
+```python
+scipy_solution.y_events == cyrk_solution.y_events.T
+```
+
+
+
 ##### `pysolve_ivp` Example:
 ```python
 def event_func(t, y, *args):
