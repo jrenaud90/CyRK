@@ -283,6 +283,54 @@ def cy_extra_output_tester():
 
     return True
 
+# Event fuinctions for baseline diffeq
+cdef double baseline_diffeq_event1_check(double t, double* y, char* args) noexcept nogil:
+    if y[0] > 50.0:
+        return 0.0
+    return 1.0
+
+cdef double baseline_diffeq_event2_check(double t, double* y, char* args) noexcept nogil:
+    if y[1] < 50.0:
+        return 0.0
+    return 1.0
+
+cdef double baseline_diffeq_event3_check(double t, double* y, char* args) noexcept nogil:
+    if t > 5.0:
+        return 0.0
+    else:
+        return 1.0
+
+cdef vector[Event] baseline_diffeq_events = vector[Event]()
+# Default constructor will handle direction and max num allowed (no termination in this case)
+baseline_diffeq_events.emplace_back(baseline_diffeq_event1_check)
+baseline_diffeq_events.emplace_back(baseline_diffeq_event2_check)
+baseline_diffeq_events.emplace_back(baseline_diffeq_event3_check)
+
+
+# Event functions for pendulum diffeq
+cdef double pendulum_diffeq_event1_check(double t, double* y, char* args) noexcept nogil:
+    if y[0] > 50.0:
+        return 0.0
+    return 1.0
+
+cdef double pendulum_diffeq_event2_check(double t, double* y, char* args) noexcept nogil:
+    if y[1] < 50.0:
+        return 0.0
+    return 1.0
+
+cdef double pendulum_diffeq_event3_check(double t, double* y, char* args) noexcept nogil:
+    if t > 5.0:
+        return 0.0
+    else:
+        return 1.0
+
+cdef vector[Event] pendulum_diffeq_events = vector[Event]()
+# Default constructor will handle direction and max num allowed (no termination in this case)
+pendulum_diffeq_events.emplace_back(pendulum_diffeq_event1_check)
+pendulum_diffeq_events.emplace_back(pendulum_diffeq_event2_check)
+pendulum_diffeq_events.emplace_back(pendulum_diffeq_event3_check)
+
+
 def cytester(
         int diffeq_number,
         tuple t_span = None,
@@ -293,6 +341,7 @@ def cytester(
         size_t max_num_steps = 0,
         size_t max_ram_MB = 2000,
         bint dense_output = False,
+        bint use_events = False,
         double[::1] t_eval = None,
         double rtol = 1.0e-3, 
         double atol = 1.0e-6,
@@ -356,6 +405,15 @@ def cytester(
         pre_eval_func = pendulum_preeval_func
     else:
         raise NotImplementedError
+    
+    cdef vector[Event] events_vec = vector[Event]()
+    if use_events:
+        if diffeq_number == 0:
+            events_vec = baseline_diffeq_events
+        elif diffeq_number == 6:
+            events_vec = pendulum_diffeq_events
+        else:
+            raise NotImplementedError
 
     # Set up additional argument information
     cdef vector[char] args_vec = vector[char]()
@@ -524,9 +582,6 @@ def cytester(
 
     if not solution_ptr:
         raise AttributeError("Solution pointer not set.")
-
-    # Setup empty events vector for these tests.
-    cdef vector[Event] events_vec = vector[Event]()
 
     # Solve ODE
     cysolve_ivp_noreturn(
