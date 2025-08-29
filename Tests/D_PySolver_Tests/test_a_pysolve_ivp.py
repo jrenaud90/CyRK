@@ -117,7 +117,7 @@ njit_rk45_tested = False
 njit_DOP853_tested = False
 
 @pytest.mark.filterwarnings("error")  # Some exceptions get propagated via cython as warnings; we want to make sure the lead to crashes.
-@pytest.mark.parametrize('event_flag', (0, 1, 2))
+@pytest.mark.parametrize('event_flag', (0, 1, 2, 3))
 @pytest.mark.parametrize('capture_extra', (True, False))
 @pytest.mark.parametrize('max_step', (1.0, 100_000.0))
 @pytest.mark.parametrize('first_step', (0.0, 0.00001))
@@ -139,15 +139,18 @@ def test_pysolve_ivp(use_scipy_style, use_args, use_njit_always,
     global njit_DOP853_tested
 
     # Parse event tests
-    if event_flag == 0:
-        check_events = False
-        event_terminate = False
-    elif event_flag == 1:
+    check_events = False
+    event_terminate = False
+    event_direction_test = False
+    if event_flag == 1:
         check_events = True
-        event_terminate = False
     elif event_flag == 2:
         check_events = True
         event_terminate = True
+    elif event_flag == 3:
+        check_events = True
+        event_terminate = True
+        event_direction_test = True
 
     # To reduce number of tests, only test RK23 once. 
     if RK23_TESTED and SKIP_SOME_RK23_TESTS and (integration_method=="RK23"):
@@ -165,6 +168,8 @@ def test_pysolve_ivp(use_scipy_style, use_args, use_njit_always,
             event_func_1_use.terminal = 1
         else:
             event_func_1_use.terminal = None
+        if event_direction_test:
+            event_func_1_use.direction = 1
         events = [event_func_1, event_func_2, event_func_3]
 
     if use_args:
@@ -283,7 +288,13 @@ def test_pysolve_ivp(use_scipy_style, use_args, use_njit_always,
 
         if check_events:
             if event_terminate:
-                assert result.event_terminated
+                if event_direction_test:
+                    # Event termination should occur one step further than normal
+                    # The last two t's should be the same.
+                    # TODO: this is dumb though but apparently its how event tracking in scipy works? Should look into this...
+                    assert result.t[-1] == result.t[-2]
+                else:
+                    assert result.event_terminated
             else:
                 assert not result.event_terminated
             assert type(result.t_events) == list
@@ -294,12 +305,17 @@ def test_pysolve_ivp(use_scipy_style, use_args, use_njit_always,
             for i in range(len(events)):
                 assert type(result.t_events[i]) == np.ndarray
                 assert type(result.y_events[i]) == np.ndarray
+                if i == 0:
+                    assert result.t_events[i].size > 0
+
                 if result.t_events[i].size > 0:
                     if capture_extra:
                         assert result.y_events[i].shape[0] == 4
                     else:
                         assert result.y_events[i].shape[0] == 2
                     assert result.t_events[i].size == result.y_events[i][0].size
+        else:
+            assert not result.event_terminated
 
         reuses += 1
 
@@ -502,5 +518,5 @@ def test_pysolve_ivp_readonly(integration_method):
 if __name__ == "__main__":
     test_pysolve_ivp(False, False, False,
                      False, False, False, False, "RK45",
-                     0.0, 1.0, True, 2)
+                     0.0, 1.0, True, 3)
     print("Finished!")
