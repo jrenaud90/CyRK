@@ -31,45 +31,11 @@
     "link_args": [],
     "is_cpp": false
   },
-  "pysolver_cyhook": {
-    "name": "CyRK.cy.pysolver_cyhook",
-    "sources": [["CyRK", "cy", "pysolver_cyhook.pyx"]],
-    "include_dirs": [["CyRK", "cy"]],
-    "compile_args": [],
-    "link_args": [],
-    "is_cpp": true
-  },
-  "cysolver_api": {
-    "name": "CyRK.cy.cysolver_api",
+  "cy_common": {
+    "name": "CyRK.cy.common",
     "sources": [
-      ["CyRK", "cy", "cysolver_api.pyx"]
+      ["CyRK", "cy", "common.pyx"]
     ],
-    "include_dirs": [["CyRK", "cy"]],
-    "compile_args": [],
-    "link_args": [],
-    "is_cpp": true
-  },
-  "cysolver_test": {
-    "name": "CyRK.cy.cysolver_test",
-    "sources": [["CyRK", "cy", "cysolver_test.pyx"]],
-    "include_dirs": [["CyRK", "cy"]],
-    "compile_args": [],
-    "link_args": [],
-    "is_cpp": true
-  },
-  "pysolver": {
-    "name": "CyRK.cy.pysolver",
-    "sources": [
-      ["CyRK", "cy", "pysolver.pyx"]
-    ],
-    "include_dirs": [["CyRK", "cy"]],
-    "compile_args": [],
-    "link_args": [],
-    "is_cpp": true
-  },
-  "cysolver_helpers": {
-    "name": "CyRK.cy.helpers",
-    "sources": [["CyRK", "cy", "helpers.pyx"]],
     "include_dirs": [["CyRK", "cy"]],
     "compile_args": [],
     "link_args": [],
@@ -78,6 +44,14 @@
   "cysolver_events": {
     "name": "CyRK.cy.events",
     "sources": [["CyRK", "cy", "events.pyx"]],
+    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
+    "compile_args": [],
+    "link_args": [],
+    "is_cpp": true
+  },
+  "cysolver_events_test": {
+    "name": "CyRK.cy.events_test",
+    "sources": [["CyRK", "cy", "events_test.pyx"]],
     "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
     "compile_args": [],
     "link_args": [],
@@ -94,6 +68,50 @@
   "optimize_test": {
     "name": "CyRK.optimize.optimize_test",
     "sources": [["CyRK", "optimize", "optimize_test.pyx"]],
+    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
+    "compile_args": [],
+    "link_args": [],
+    "is_cpp": true
+  },
+  "pysolver_cyhook": {
+    "name": "CyRK.cy.pysolver_cyhook",
+    "sources": [["CyRK", "cy", "pysolver_cyhook.pyx"]],
+    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
+    "compile_args": [],
+    "link_args": [],
+    "is_cpp": true
+  },
+  "cysolver_api": {
+    "name": "CyRK.cy.cysolver_api",
+    "sources": [
+      ["CyRK", "cy", "cysolver_api.pyx"]
+    ],
+    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
+    "compile_args": [],
+    "link_args": [],
+    "is_cpp": true
+  },
+  "cysolver_test": {
+    "name": "CyRK.cy.cysolver_test",
+    "sources": [["CyRK", "cy", "cysolver_test.pyx"]],
+    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
+    "compile_args": [],
+    "link_args": [],
+    "is_cpp": true
+  },
+  "pysolver": {
+    "name": "CyRK.cy.pysolver",
+    "sources": [
+      ["CyRK", "cy", "pysolver.pyx"]
+    ],
+    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
+    "compile_args": [],
+    "link_args": [],
+    "is_cpp": true
+  },
+  "cysolver_helpers": {
+    "name": "CyRK.cy.helpers",
+    "sources": [["CyRK", "cy", "helpers.pyx"]],
     "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
     "compile_args": [],
     "link_args": [],

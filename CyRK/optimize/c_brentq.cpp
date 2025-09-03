@@ -39,51 +39,90 @@ Adapted for CyRK by Joe P. Renaud (joseph.p.renaud@nasa.gov) in August 2025
 */
 
 double c_brentq(
-        EventFunc func,
+        EventFuncWithInst func,
         double xa,
         double xb,
         double xtol,
         double rtol,
         size_t iter,
         std::vector<char>& func_data_vec,
-        OptimizeInfo* solver_stats)
+        OptimizeInfo* solver_stats,
+        Event* event_ptr,
+        CySolverDense* dense_func)
 {
     double xpre = xa, xcur = xb;
     double xblk = 0., fblk = 0., spre = 0., scur = 0.;
-    /* the tolerance is 2*delta */
-    double delta;
     double stry, dpre, dblk;
-    int i;
     solver_stats->error_num = CyrkErrorCodes::INITIALIZING;
     char* func_data_ptr = func_data_vec.data();
 
-    double fpre = (*func)(xpre, func_data_ptr);
-    double fcur = (*func)(xcur, func_data_ptr);
+    // Variables related to dense function
+    bool dense_provided = dense_func != nullptr;
+    size_t num_dy = 0;
+    std::vector<double>& y_vec = solver_stats->y_vec;
+    double* y1_ptr = nullptr;
+    double* y2_ptr = nullptr;
+    if (dense_provided)
+    {
+        // Resize to the correct y size and set pointers
+        num_dy = dense_func->num_dy;
+        y_vec.resize(2 * dense_func->num_dy);
+        y1_ptr = &y_vec[0];
+        y2_ptr = &y_vec[num_dy];
+
+        // By default set the y_ptr to the first set of y values
+        solver_stats->y_at_root_ptr = y1_ptr;
+
+        // Call dense function for the two bounds
+        dense_func->call(xpre, y1_ptr);
+        dense_func->call(xcur, y2_ptr);
+    }
+
+    // Call event function for the two bounds.
+    double fpre = func(event_ptr, xpre, y1_ptr, func_data_ptr);
+    double fcur = func(event_ptr, xcur, y2_ptr, func_data_ptr);
 
     solver_stats->funcalls = 2;
-    if (fpre == 0) {
+    if (fpre == 0)
+    {
         solver_stats->error_num = CyrkErrorCodes::CONVERGED;
         return xpre;
     }
-    if (fcur == 0) {
+    if (fcur == 0)
+    {
         solver_stats->error_num = CyrkErrorCodes::CONVERGED;
+        if (dense_provided)
+        {
+            // In this case set the y_ptr to the second set of y values
+            solver_stats->y_at_root_ptr = y2_ptr;
+        }
         return xcur;
     }
-    if (signbit(fpre)==signbit(fcur)) {
+
+    if (signbit(fpre) == signbit(fcur))
+    {
         solver_stats->error_num = CyrkErrorCodes::OPTIMIZE_SIGN_ERROR;
-        return 0.;
+        return 0.0;
     }
+
     solver_stats->iterations = 0;
-    for (i = 0; i < iter; i++)
+    for (size_t i = 0; i < iter; i++)
     {
         solver_stats->iterations++;
-        if (fpre != 0 && fcur != 0 &&
-	    (signbit(fpre) != signbit(fcur))) {
+
+        if (
+                (fpre != 0)
+            and (fcur != 0)
+            and (signbit(fpre) != signbit(fcur))
+           )
+        {
             xblk = xpre;
             fblk = fpre;
             spre = scur = xcur - xpre;
         }
-        if (fabs(fblk) < fabs(fcur)) {
+
+        if (fabs(fblk) < fabs(fcur))
+        {
             xpre = xcur;
             xcur = xblk;
             xblk = xpre;
@@ -93,50 +132,71 @@ double c_brentq(
             fblk = fpre;
         }
 
-        delta = (xtol + rtol*fabs(xcur))/2;
-        double sbis = (xblk - xcur)/2;
-        if (fcur == 0 || fabs(sbis) < delta) {
+        // the tolerance is 2*delta
+        double delta = (xtol + rtol*fabs(xcur)) / 2.0;
+        double sbis  = (xblk - xcur) / 2.0;
+
+        if (
+               (fcur == 0)
+            or (fabs(sbis) < delta)
+           )
+        {
             solver_stats->error_num = CyrkErrorCodes::CONVERGED;
             return xcur;
         }
 
-        if (fabs(spre) > delta && fabs(fcur) < fabs(fpre)) {
-            if (xpre == xblk) {
+        if (
+                (fabs(spre) > delta)
+            and (fabs(fcur) < fabs(fpre))
+           )
+        {
+            if (xpre == xblk)
+            {
                 /* interpolate */
-                stry = -fcur*(xcur - xpre)/(fcur - fpre);
+                stry = -fcur * (xcur - xpre) / (fcur - fpre);
             }
-            else {
+            else
+            {
                 /* extrapolate */
-                dpre = (fpre - fcur)/(xpre - xcur);
-                dblk = (fblk - fcur)/(xblk - xcur);
-                stry = -fcur*(fblk*dblk - fpre*dpre)
-                    /(dblk*dpre*(fblk - fpre));
+                dpre = (fpre - fcur) / (xpre - xcur);
+                dblk = (fblk - fcur) / (xblk - xcur);
+                stry = -fcur * (fblk * dblk - fpre*dpre) / (dblk * dpre * (fblk - fpre));
             }
-            if (2*fabs(stry) < MIN(fabs(spre), 3*fabs(sbis) - delta)) {
+            if (2.0 * fabs(stry) < MIN(fabs(spre), 3.0 * fabs(sbis) - delta))
+            {
                 /* good short step */
                 spre = scur;
                 scur = stry;
-            } else {
+            } else
+            {
                 /* bisect */
                 spre = sbis;
                 scur = sbis;
             }
         }
-        else {
+        else
+        {
             /* bisect */
             spre = sbis;
             scur = sbis;
         }
 
         xpre = xcur; fpre = fcur;
-        if (fabs(scur) > delta) {
+        if (fabs(scur) > delta)
+        {
             xcur += scur;
         }
-        else {
+        else
+        {
             xcur += (sbis > 0 ? delta : -delta);
         }
 
-        fcur = (*func)(xcur, func_data_ptr);
+        if (dense_provided)
+        {
+            // This function call will also update the data that the y_ptr in solver_stats
+            dense_func->call(xcur, y1_ptr);
+        }
+        fcur = func(event_ptr, xcur, y1_ptr, func_data_ptr);
         solver_stats->funcalls++;
     }
     solver_stats->error_num = CyrkErrorCodes::OPTIMIZE_CONVERGENCE_ERROR;

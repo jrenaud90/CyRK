@@ -7,8 +7,17 @@
 
 /* "CyRK/cy/pysolver_cyhook.pxd":1
  * ctypedef public api void (*DiffeqMethod)(object py_instance) noexcept             # <<<<<<<<<<<<<<
+ * 
+ * ctypedef public api double (*PyEventMethod)(object py_instance, size_t event_index, double t, double* y_ptr) noexcept
 */
 typedef void (*DiffeqMethod)(PyObject *);
+
+/* "CyRK/cy/pysolver_cyhook.pxd":3
+ * ctypedef public api void (*DiffeqMethod)(object py_instance) noexcept
+ * 
+ * ctypedef public api double (*PyEventMethod)(object py_instance, size_t event_index, double t, double* y_ptr) noexcept             # <<<<<<<<<<<<<<
+*/
+typedef double (*PyEventMethod)(PyObject *, size_t, double, double *);
 
 #ifndef __PYX_HAVE_API__CyRK__cy__pysolver_cyhook
 
@@ -30,6 +39,7 @@ typedef void (*DiffeqMethod)(PyObject *);
 #endif
 
 __PYX_EXTERN_C void call_diffeq_from_cython(PyObject *, DiffeqMethod);
+__PYX_EXTERN_C double call_pyevent_from_cython(PyObject *, PyEventMethod, size_t, double, double *);
 
 #endif /* !__PYX_HAVE_API__CyRK__cy__pysolver_cyhook */
 

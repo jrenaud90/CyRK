@@ -4,6 +4,7 @@
 #include <string>
 #include <cmath>
 #include <limits>
+#include <vector>
 
 // Pre-processor constants
 static const size_t BUFFER_SIZE     = 16;
@@ -11,8 +12,13 @@ static const size_t PRE_ALLOC_STEPS = 256;
 static const size_t PRE_ALLOC_NUMY  = 16;
 
 enum class CyrkErrorCodes : int {
+    
+    // Temporary statuses
     CONVERGED = 20,
     INITIALIZING = 10,
+
+    // "Success" statuses
+    EVENT_TERMINATED = 2,
     SUCCESSFUL_INTEGRATION = 1,
     NO_ERROR = 0,
 
@@ -51,6 +57,9 @@ enum class CyrkErrorCodes : int {
     DENSE_BUILD_FAILED = -56,
     INTEGRATION_NOT_SUCCESSFUL = -57,
 
+    // Problems related to events start at -60
+    EVENT_SETUP_FAILED = -60,
+
     // Python related problems start at -70
     ERROR_IMPORTING_PYTHON_MODULE = -70,
 
@@ -62,8 +71,14 @@ enum class CyrkErrorCodes : int {
 };
 
 inline const std::map<CyrkErrorCodes, std::string> CyrkErrorMessages = {
+    { CyrkErrorCodes::CONVERGED,
+      "An optimization routine has successfully converged." },
+
     { CyrkErrorCodes::INITIALIZING,
       "Initializing. If you see this message then it was likely interrupted." },
+    
+    { CyrkErrorCodes::EVENT_TERMINATED,
+      "Integration ended early: An event has been triggered the maximum allowed times. No issues detected." },
 
     { CyrkErrorCodes::SUCCESSFUL_INTEGRATION,
       "Integration completed without issue." },
@@ -150,26 +165,33 @@ inline const std::map<CyrkErrorCodes, std::string> CyrkErrorMessages = {
       "The error code was never set." }
 };
 
+struct OptimizeInfo {
+    size_t funcalls           = 0;
+    size_t iterations         = 0;
+    CyrkErrorCodes error_num  = CyrkErrorCodes::UNINITIALIZED_CLASS;
+    std::vector<double> y_vec = std::vector<double>();
+    double* y_at_root_ptr     = nullptr;
+};
 
 // Integration Constants
 // Multiply steps computed from asymptotic behaviour of errors by this.
-static const double SAFETY             = 0.9;   // Error coefficient factor (1 == use calculated error; < 1 means be conservative).
-static const double MIN_FACTOR         = 0.2;   // Minimum allowed decrease in a step size.
-static const double MAX_FACTOR         = 10.0;  // Maximum allowed increase in a step size.
-static constexpr double INF            = std::numeric_limits<double>::infinity();
-static const double MAX_STEP           = INF;
-static constexpr double EPS            = std::numeric_limits<double>::epsilon();
-static const double EPS_10             = EPS * 10.0;
-static const double EPS_100            = EPS * 100.0;
-static constexpr size_t MAX_SIZET_SIZE = std::numeric_limits<size_t>::max();
-static constexpr size_t MAX_INT_SIZE   = std::numeric_limits<int>::max();
-
+static const double SAFETY              = 0.9;   // Error coefficient factor (1 == use calculated error; < 1 means be conservative).
+static const double MIN_FACTOR          = 0.2;   // Minimum allowed decrease in a step size.
+static const double MAX_FACTOR          = 10.0;  // Maximum allowed increase in a step size.
+static constexpr double INF             = std::numeric_limits<double>::infinity();
+static const double MAX_STEP            = INF;
+static constexpr double EPS             = std::numeric_limits<double>::epsilon();
+static const double EPS_10              = EPS * 10.0;
+static const double EPS_100             = EPS * 100.0;
+static constexpr size_t MAX_SIZET_SIZE  = std::numeric_limits<size_t>::max();
+static constexpr size_t MAX_INT_SIZE    = std::numeric_limits<int>::max();
+static constexpr double dbl_NAN         = std::numeric_limits<double>::quiet_NaN();
 
 // Memory management constants
-// Assume that a cpu has a L1 of 300KB.Say that this progam will have access to 75 % of that total.
-static constexpr double CPU_CACHE_SIZE = 0.75 * 300000.0;
+// Assume that a cpu has a L1 of 32KB. Say that this program will have access to 75 % of that total.
+static constexpr double CPU_CACHE_SIZE = 0.75 * 32000.0;
 // Number of entities we can fit into that size is based on the size of double(or double complex)
-static const double MAX_ARRAY_PREALLOCATE_SIZE_DBL = 600000.0;
+static const double MAX_ARRAY_PREALLOCATE_SIZE_DBL = 3000.0;
 static const double MIN_ARRAY_PREALLOCATE_SIZE     = 10.0;
 static const double ARRAY_PREALLOC_TABS_SCALE      = 1000.0;  // A delta_t_abs higher than this value will start to grow array size.
 static const double ARRAY_PREALLOC_RTOL_SCALE      = 1.0e-5;  // A rtol lower than this value will start to grow array size.

@@ -4,9 +4,9 @@ from libc.string cimport memcpy
 from libcpp.cmath cimport fmin, fabs
 from libcpp.vector cimport vector
 
-from CyRK.cy.cysolver_api cimport (
-    find_expected_size, INF, EPS_100, CyrkErrorCodes, CyrkErrorMessages,
-    ProblemConfig, RKConfig, CySolverBase)
+from CyRK.cy.common cimport INF, EPS_100, CyrkErrorCodes, CyrkErrorMessages, find_expected_size, dbl_NAN, MAX_SIZET_SIZE
+from CyRK.cy.cysolver_api cimport ProblemConfig, RKConfig, CySolverBase
+from CyRK.cy.events cimport Event, EventFunc
 
 import numpy as np
 cimport numpy as cnp
@@ -57,6 +57,7 @@ cdef class PySolver(WrapCySolverResult):
             str method = 'RK45',
             const double[::1] t_eval = None,
             bint dense_output = False,
+            object events = None,
             tuple args = None,
             size_t expected_size = 0,
             size_t num_extra = 0,
@@ -146,6 +147,51 @@ cdef class PySolver(WrapCySolverResult):
         problem_config_ptr.t_start = t_start
         problem_config_ptr.t_end = t_end
         problem_config_ptr.y0_vec = y0_vec
+
+        # Parse Events
+        problem_config_ptr.check_events = False
+        problem_config_ptr.events_vec = vector[Event]()
+        cdef size_t num_events
+        cdef int event_direction 
+        cdef size_t event_max_allowed
+        cdef object terminal
+        cdef EventFunc cyevent_func = NULL
+        cdef CyrkErrorCodes event_setup_status = CyrkErrorCodes.NO_ERROR
+        cdef PyEventMethod pyevent_check_func = <PyEventMethod>self.check_pyevent
+        if events is not None:
+            self.events_list = list()
+            if type(events) in (tuple, list):
+                for py_event in events:
+                    self.events_list.append(py_event)
+            else:
+                self.events_list.append(events)
+            num_events = len(self.events_list)
+
+            # Build events vector
+            for i in range(num_events):
+                # Pull out properties the user may have set.
+                event_direction = getattr(self.events_list[i], 'direction', 0)
+                terminal        = getattr(self.events_list[i], 'terminal', None)
+                if terminal is None:
+                    event_max_allowed = getattr(self.events_list[i], 'max_allowed', MAX_SIZET_SIZE)
+                else:
+                    event_max_allowed = <size_t>terminal
+            
+                # Build events with null pointers - we won't use the cython version of the event checker function
+                problem_config_ptr.events_vec.emplace_back(cyevent_func, event_max_allowed, event_direction)
+                
+                # Set up other properties so it can work with PySolver
+                problem_config_ptr.events_vec[i].pyevent_index = i
+                event_setup_status = problem_config_ptr.events_vec[i].set_cython_extension_instance(
+                    <cpy_ref.PyObject*>self,
+                    pyevent_check_func
+                    )
+                if event_setup_status != CyrkErrorCodes.NO_ERROR:
+                    raise Exception(f"ERROR: `PySolver.set_problem_parameters` - Failed to setup pyhooks in Event class (event index {i}).")
+            
+            # Setup a python-safe array used in pyevent solver.
+            self.y_tmp_arr  = np.empty(self.num_dy, dtype=np.float64, order='C')
+            self.y_tmp_view = self.y_tmp_arr
 
         # Parse t_eval
         problem_config_ptr.t_eval_provided = False
@@ -258,6 +304,25 @@ cdef class PySolver(WrapCySolverResult):
             # the values from the newly created dy memory view
             # Note that num_dy may be larger than num_y if the user is capturing extra output during integration.
             memcpy(self.dy_now_ptr, &self.dy_now_view[0], sizeof(double) * self.num_dy)
+    
+    cdef double check_pyevent(
+            self,
+            size_t event_index,
+            double t, 
+            double* y_ptr) noexcept:
+
+        # Convert pointer to python object so it can be passed to the python event function
+        # TODO: Explore ways to improve performance of this function.
+        cdef size_t y_i
+        for y_i in range(self.num_dy):
+            self.y_tmp_view[y_i] = y_ptr[y_i]
+        
+        cdef double result = dbl_NAN
+        if self.use_args:
+            result = self.events_list[event_index](t, self.y_tmp_arr, *self.args)
+        else:
+            result = self.events_list[event_index](t, self.y_tmp_arr)
+        return result
 
 # =====================================================================================================================
 # PySolver wrapper function
@@ -269,6 +334,7 @@ def pysolve_ivp(
         str method = 'RK45',
         const double[::1] t_eval = None,
         bint dense_output = False,
+        object events = None,
         tuple args = None,
         size_t expected_size = 0,
         size_t num_extra = 0,
@@ -296,6 +362,7 @@ def pysolve_ivp(
             method,
             t_eval,
             dense_output,
+            events,
             args,
             expected_size,
             num_extra,

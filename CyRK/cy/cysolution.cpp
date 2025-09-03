@@ -173,7 +173,10 @@ void CySolverResult::p_finalize()
     }
 
     // Check if the integrator finished
-    if (this->status == CyrkErrorCodes::SUCCESSFUL_INTEGRATION)
+    if (
+           (this->status == CyrkErrorCodes::SUCCESSFUL_INTEGRATION)
+        or (this->status == CyrkErrorCodes::EVENT_TERMINATED)
+       )
     {
         this->success = true;
     }
@@ -220,11 +223,13 @@ CyrkErrorCodes CySolverResult::setup(ProblemConfig* provided_config_ptr)
         this->size             = 0;
         this->num_interpolates = 0;
         this->steps_taken      = 0;
+        this->event_terminate_index = MAX_SIZET_SIZE;
 
         // Reset flags
-        this->setup_called   = false;
-        this->success        = false;
-        this->retain_solver  = false;
+        this->setup_called     = false;
+        this->success          = false;
+        this->retain_solver    = false;
+        this->event_terminated = false;
 
         // Reset all vectors
         // We resize these to zero so that we can retain any capacity they had from previous runs.
@@ -233,6 +238,8 @@ CyrkErrorCodes CySolverResult::setup(ProblemConfig* provided_config_ptr)
         this->solution.resize(0);
         this->interp_time_vec.resize(0);
         this->dense_vec.resize(0);
+        this->event_times.resize(0);
+        this->event_states.resize(0);
 
         // Store properties
         if (provided_config_ptr)
@@ -279,8 +286,9 @@ CyrkErrorCodes CySolverResult::setup(ProblemConfig* provided_config_ptr)
         this->direction_flag       = (this->config_uptr->t_end - this->config_uptr->t_start) >= 0.0;
         this->num_y                = this->config_uptr->num_y;
         this->num_dy               = this->config_uptr->num_dy;
-
-        // TODO STORAGE CAPACITY - use previous itereation if set or change to expected size.
+        this->num_events           = this->config_uptr->events_vec.size();        
+    
+        // TODO STORAGE CAPACITY - use previous iteration if set or change to expected size.
         // Storage capacity from previous runs may be larger than expected size. If
         // that is the case then we will just use it instead of reallocating to a smaller size.         
         // Otherwise use expected size.
@@ -301,6 +309,27 @@ CyrkErrorCodes CySolverResult::setup(ProblemConfig* provided_config_ptr)
             {
                 this->interp_time_vec.reserve(this->storage_capacity);
             }
+            
+            // Try to create event storage if needed.
+            if (this->num_events > 0)
+            {
+                this->event_times.resize(this->num_events);
+                this->event_states.resize(this->num_events);
+                // Assume that we will have around a third of the number of events as we do steps.
+                // This is a total guess and could be optimized, but really it will be so different for different
+                // problems that it doesn't really matter. Some problems will get lucky with fewer reallocations some won't.
+                size_t initial_event_reserve = std::max<size_t>(1, this->storage_capacity / 3);
+                round_to_2(initial_event_reserve);
+
+                for (size_t event_i = 0; event_i < this->num_events; event_i++)
+                {
+                    // Assume that we will have 10% the number of events as we do steps.
+                    // This is a total guess and could be optimized, but really it will be so different for different
+                    // problems that it doesn't really matter.
+                    this->event_times[event_i].reserve(initial_event_reserve);
+                    this->event_states[event_i].reserve(initial_event_reserve * this->num_dy);
+                }
+            }            
         }
         catch (std::bad_alloc const&)
         {
@@ -327,7 +356,11 @@ CyrkErrorCodes CySolverResult::setup(ProblemConfig* provided_config_ptr)
 
         // If the user provided a t_eval vector but is not capturing dense output then we need to
         // create a single dense output that will be used to capture the solution at the interpolated time steps.
-        if (this->t_eval_provided and (not this->capture_dense_output))
+        // The same goes if the user provided events and did not set dense output to true.
+        if (
+               (this->t_eval_provided  and (not this->capture_dense_output))
+            or ((this->num_events > 0) and (not this->capture_dense_output))
+           )
         {
             this->dense_vec.emplace_back(this->solver_uptr.get(), false);
             this->num_interpolates++;
@@ -361,7 +394,7 @@ void CySolverResult::save_data(
     // Save time results
     this->time_domain_vec.push_back(new_t);
 
-    // Save y results
+    // Save y results 
     this->solution.insert(this->solution.end(), new_solution_y_ptr, new_solution_y_ptr + this->num_y);
 
     if (this->config_uptr->capture_extra)
@@ -369,6 +402,30 @@ void CySolverResult::save_data(
         // Save extra ouput results
         // Start at the end of y values (Dependent dys) and go to the end of the dy array
         this->solution.insert(this->solution.end(), &new_solution_dy_ptr[this->num_y], new_solution_dy_ptr + this->num_dy);
+    }
+}
+
+void CySolverResult::record_event_data() noexcept
+{
+    CySolverBase* const solver_ptr = this->solver_uptr.get();
+    if (
+            (this->num_events > 0)
+        and (solver_ptr->active_event_indices_vec.size() > 0)
+       )
+    {
+        for (size_t active_event_index : solver_ptr->active_event_indices_vec)
+        {
+            Event& current_event = this->config_uptr->events_vec[active_event_index];
+            
+            // Save time data
+            this->event_times[active_event_index].push_back(current_event.last_root);
+
+            // Save y results including any extra outputs
+            this->event_states[active_event_index].insert(
+                this->event_states[active_event_index].end(),
+                current_event.y_at_root_vec.begin(),
+                current_event.y_at_root_vec.end());
+        }
     }
 }
 

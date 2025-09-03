@@ -15,8 +15,10 @@ include cython_extensions.json
 # Include required hpp and cpp files
 include CyRK/array/interp_common.c
 
-include CyRK/cy/common.cpp
-include CyRK/cy/common.hpp
+include CyRK/cy/c_common.cpp
+include CyRK/cy/c_common.hpp
+include CyRK/cy/c_events.cpp
+include CyRK/cy/c_events.hpp
 include CyRK/cy/cysolver.cpp
 include CyRK/cy/cysolver.hpp
 include CyRK/cy/rk.cpp
@@ -31,6 +33,9 @@ include CyRK/cy/cysolution.cpp
 include CyRK/cy/cysolution.hpp
 include CyRK/cy/pysolver_cyhook.h
 include CyRK/cy/pysolver_cyhook_api.h
+
+include CyRK/optimize/c_brentq.cpp
+include CyRK/optimize/c_brentq.hpp
 
 # Exclude the whole Tests folder
 exclude Tests/*

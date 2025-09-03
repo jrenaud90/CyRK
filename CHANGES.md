@@ -2,12 +2,23 @@
 
 ## 2025
 
+TODO: Shouldnt the event checking and the t_eval routine run even in the last time step? Right now they are skipped.
+
 ### v0.16.0 (2025-XXX)
 
-#### New
+#### CyRK now supports Events!
+* New C++ `Event` class which wraps Cython functions and is integrated into `CySolver`.
+* Added tests and documentation for these new features.
+
+#### Other New Features
 * Added new `CyRK.optimize` package with will house various numerical/scientific optimizations tools.
   * To this package, added a Cython wrapped `brentq` method based off of SciPy's implementation. (Note this is not properly exposed to python (don't need to for CyRK but might be a nice thing to add in the future)
 
+#### Changes
+* Moved Cython wrappers for "common.cpp" to its own file "common.pyx/pxd"; refactored previous "common.cpp/hpp" to "c_common.cpp/hpp"
+
+#### Fixes
+* Fixed some incorrect types in cysolver_api wrapper.
 
 ### v0.15.1 (2025-08-15)
 

@@ -5,7 +5,7 @@
 #include <vector>
 #include <cstring>
 
-#include "common.hpp"
+#include "c_common.hpp"
 #include "cysolver.hpp"
 
 
@@ -19,7 +19,6 @@ protected:
     // y and t state info
     // Dense state variables
     size_t Q_order = 0;
-    size_t num_y   = 0;  // Number of dependent variables
 
     // Pointer to the CySolverBase class
     CySolverBase* solver_ptr = nullptr;
@@ -36,6 +35,8 @@ protected:
     std::vector<double> state_data_vec = std::vector<double>(PRE_ALLOC_NUMY * (4 + 1));
 
 public:
+    size_t num_y  = 0;  // Number of dependent variables
+    size_t num_dy = 0; // Number of total outputs (dy/dt + extra outputs)
 
 /* Methods */
 protected:

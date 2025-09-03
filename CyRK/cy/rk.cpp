@@ -23,6 +23,7 @@ RKConfig::RKConfig(
         PreEvalFunc pre_eval_func_,
         bool capture_dense_output_,
         bool force_retain_solver_,
+        std::vector<Event>& events_vec_,
         std::vector<double>& rtols_,
         std::vector<double>& atols_,
         double max_step_size_,
@@ -44,7 +45,8 @@ RKConfig::RKConfig(
                 max_ram_MB_,
                 pre_eval_func_,
                 capture_dense_output_,
-                force_retain_solver_)
+                force_retain_solver_,
+                events_vec_)
 {
 }
 
@@ -62,6 +64,7 @@ void RKConfig::update_properties(
         PreEvalFunc pre_eval_func_,
         bool capture_dense_output_,
         bool force_retain_solver_,
+        std::vector<Event>& events_vec_,
         std::vector<double>& rtols_,
         std::vector<double>& atols_,
         double max_step_size_,
@@ -85,7 +88,8 @@ void RKConfig::update_properties(
         max_ram_MB_,
         pre_eval_func_,
         capture_dense_output_,
-        force_retain_solver_
+        force_retain_solver_,
+        events_vec_
         );
 }
 
@@ -120,6 +124,7 @@ void RKConfig::update_properties_from_config(RKConfig* new_config_ptr)
         new_config_ptr->pre_eval_func,
         new_config_ptr->capture_dense_output,
         new_config_ptr->force_retain_solver,
+        new_config_ptr->events_vec,
         new_config_ptr->rtols,
         new_config_ptr->atols,
         new_config_ptr->max_step_size,
