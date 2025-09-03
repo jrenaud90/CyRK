@@ -18,14 +18,14 @@
         ],
         "include_dirs": [
             "CyRK\\cy",
-            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-c8bjssw2\\overlay\\Lib\\site-packages\\numpy\\_core\\include",
-            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-c8bjssw2\\site",
+            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-tj9_vmyk\\overlay\\Lib\\site-packages\\numpy\\_core\\include",
+            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-tj9_vmyk\\site",
             "C:\\Users\\joepr\\miniforge3\\envs\\cyrk313\\python313.zip",
             "C:\\Users\\joepr\\miniforge3\\envs\\cyrk313\\DLLs",
             "C:\\Users\\joepr\\miniforge3\\envs\\cyrk313\\Lib",
-            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-c8bjssw2\\overlay\\Lib\\site-packages",
-            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-c8bjssw2\\normal\\Lib\\site-packages",
-            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-c8bjssw2\\overlay\\Lib\\site-packages\\setuptools\\_vendor"
+            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-tj9_vmyk\\overlay\\Lib\\site-packages",
+            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-tj9_vmyk\\normal\\Lib\\site-packages",
+            "C:\\Users\\joepr\\AppData\\Local\\Temp\\pip-build-env-tj9_vmyk\\overlay\\Lib\\site-packages\\setuptools\\_vendor"
         ],
         "language": "c++",
         "name": "CyRK.cy.common",
