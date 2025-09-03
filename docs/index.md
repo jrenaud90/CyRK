@@ -13,13 +13,13 @@ Also check out the GitHub page to see the code.
 
 Getting Started <Readme.md>
 Events.md
-Dense_Output_and_t_eval.md
-Extra_Output.md
-Advanced_CySolver.md
-Status_and_Error_Codes.md
-CySolverResult_Reuses.md
-Optimize.md
-C++_API.md
+Dense Output and `t_eval` <Dense_Output_and_t_eval.md>
+Extra Outputs during Integration <Extra_Output.md>
+Advanced CySolver <Advanced_CySolver.md>
+Status and Error Codes <Status_and_Error_Codes.md>
+Solution Reuse <CySolverResult_Reuses.md>
+Optimization Functions <Optimize.md>
+C++ API <C++_API.md>
 Deprecations.md
 Changes.md
 License.md
