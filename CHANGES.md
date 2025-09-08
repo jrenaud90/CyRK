@@ -16,6 +16,7 @@ TODO: Shouldnt the event checking and the t_eval routine run even in the last ti
 
 #### Changes
 * Moved Cython wrappers for "common.cpp" to its own file "common.pyx/pxd"; refactored previous "common.cpp/hpp" to "c_common.cpp/hpp"
+* Improved performance of pysolve_ivp.
 
 #### Fixes
 * Fixed some incorrect types in cysolver_api wrapper.
