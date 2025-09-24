@@ -18,7 +18,7 @@
 ---
 [Documentation](https://cyrk.readthedocs.io/en/latest/) | [GitHub](https://github.com/jrenaud90/cyrk)
 
-<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.15.1 Alpha-orange" alt="CyRK Version 0.15.1 Alpha" /></a>
+<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.16.0 Alpha-orange" alt="CyRK Version 0.16.0 Alpha" /></a>
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
 
@@ -35,6 +35,34 @@ An additional benefit of the two cython implementations is that they are pre-com
 
 
 <img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_predprey_v0-15-0.png" alt="CyRK Performance Graphic" />
+
+## Supported Features
+CyRK's `pysolve_ivp` (which works with pure python functions) and `cysolve_ivp` (which works with cython compiled functions) shares many of the same features as SciPy's `solve_ivp`:
+* Triggerable [events](https://cyrk.readthedocs.io/en/latest/Events.html) to track certain events or cause a early termination.
+* Adaptive step size solver that uses relative and absolute error of the ODE to increase or decrease the step size as needed.
+* [Dense](https://cyrk.readthedocs.io/en/latest/Dense_Output_and_t_eval.html) output to create callable functions to interpolate an ODE's solution between solution steps. Allowing user to take advantage of the much more efficient adaptive step size solver. 
+* A user-provided [time domain](https://cyrk.readthedocs.io/en/latest/Dense_Output_and_t_eval.html) or `t_eval` can be given to the solver to find solutions at specific time steps.
+
+_Note: `nbsolve_ivp` has a much more limited feature set than `cysolve_ivp` and `pysolve_ivp`. The latter methods are recommended where possible._
+
+### Supported Integrators
+Currently, CyRK supports the following integration methods:
+* "RK23" - Explicit Runge-Kutta method of order 3(2).
+* "RK45" - Explicit Runge-Kutta method of order 5(4)
+* "DOP853" - Explicit Runge-Kutta method of order 8. Error is controlled using a combination of 5th and 3rd order interpolators.
+
+More methods will be added as the need arises. We are always looking for contributors if you'd like to see your favorite method added to CyRK!
+
+### Additional Features
+In additional to improved performance, CyRK offers a few additional features that SciPy does not:
+* Ability to capture [extra outputs](https://cyrk.readthedocs.io/en/latest/Extra_Output.html) during integration so a user can record other parameters instead of just the dependent variables without having to make repeat calls to the differential equations.
+* Ability to [reuse](https://cyrk.readthedocs.io/en/latest/CySolverResult_Reuses.html) solvers when the previous result is no longer needed or has been recorded (improving performance, particularly for problems with small integration domain sizes).
+* CyRK provides a robust integration diagnostic feedback system to identify and help remedy issues with an ODE solution.
+
+### Limitations
+There are some features that SciPy has that CyRK currently does not. A non-exhaustive list is:
+* A number of integrator methods are missing, particularly implicit approaches.
+* `cysolve_ivp` and `pysolve_ivp` can only work with ODEs of double-precision floating point numbers. So complex numbers are not directly supported but systems of ODEs of complex numbers can be converted to systems of doubles for use with CyRK.
 
 ## Installation
 
@@ -112,10 +140,6 @@ If you intend to work on CyRK's code base you will want to install the following
 To learn how to use CyRK, please reference our detailed documentation on Read the Docs!
 
 [Read the Docs: CyRK Documentation](https://cyrk.readthedocs.io/en/latest/)
-
-## Limitations and Known Issues
-
-- [Issue 30](https://github.com/jrenaud90/CyRK/issues/30): CyRK's cysolve_ivp and pysolve_ivp does not allow for complex-valued dependent variables. 
 
 ## Citing CyRK
 

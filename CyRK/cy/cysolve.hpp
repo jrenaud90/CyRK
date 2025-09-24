@@ -2,8 +2,9 @@
 
 #include <memory>
 
-#include "common.hpp"
+#include "c_common.hpp"
 #include "cysolution.hpp"
+#include "c_events.hpp"
 
 void baseline_cysolve_ivp_noreturn(
     CySolverResult* solution_ptr,
@@ -20,6 +21,7 @@ void baseline_cysolve_ivp_noreturn(
     bool capture_dense_output,
     std::vector<double>& t_eval_vec,
     PreEvalFunc pre_eval_func,
+    std::vector<Event>& events_vec,
     std::vector<double>& rtols,
     std::vector<double>& atols,
     double max_step_size,
@@ -41,6 +43,7 @@ std::unique_ptr<CySolverResult> baseline_cysolve_ivp(
     bool capture_dense_output,
     std::vector<double>& t_eval_vec,
     PreEvalFunc pre_eval_func,
+    std::vector<Event>& events_vec,
     std::vector<double>& rtols,
     std::vector<double>& atols,
     double max_step_size,

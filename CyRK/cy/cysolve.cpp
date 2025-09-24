@@ -18,6 +18,7 @@ void baseline_cysolve_ivp_noreturn(
         bool capture_dense_output,
         std::vector<double>& t_eval_vec,
         PreEvalFunc pre_eval_func,
+        std::vector<Event>& events_vec,
         std::vector<double>& rtols,
         std::vector<double>& atols,
         double max_step_size,
@@ -40,7 +41,8 @@ void baseline_cysolve_ivp_noreturn(
         max_ram_MB,
         pre_eval_func,
         capture_dense_output,
-        true, // force_retain_solver; not currently in use.
+        true, // force_retain_solver; Currently we always retain solver.
+        events_vec,
         rtols,
         atols,
         max_step_size,
@@ -69,6 +71,7 @@ std::unique_ptr<CySolverResult> baseline_cysolve_ivp(
         bool capture_dense_output,
         std::vector<double>& t_eval_vec,
         PreEvalFunc pre_eval_func,
+        std::vector<Event>& events_vec,
         std::vector<double>& rtols,
         std::vector<double>& atols,
         double max_step_size,
@@ -94,6 +97,7 @@ std::unique_ptr<CySolverResult> baseline_cysolve_ivp(
         capture_dense_output,
         t_eval_vec,
         pre_eval_func,
+        events_vec,
         rtols,
         atols,
         max_step_size,

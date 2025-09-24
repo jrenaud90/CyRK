@@ -4,9 +4,9 @@ from libc.string cimport memcpy
 from libcpp.cmath cimport fmin, fabs
 from libcpp.vector cimport vector
 
-from CyRK.cy.cysolver_api cimport (
-    find_expected_size, INF, EPS_100, CyrkErrorCodes, CyrkErrorMessages,
-    ProblemConfig, RKConfig, CySolverBase)
+from CyRK.cy.common cimport INF, EPS_100, CyrkErrorCodes, CyrkErrorMessages, find_expected_size, dbl_NAN, MAX_SIZET_SIZE
+from CyRK.cy.cysolver_api cimport ProblemConfig, RKConfig, CySolverBase
+from CyRK.cy.events cimport Event, EventFunc
 
 import numpy as np
 cimport numpy as cnp
@@ -17,7 +17,7 @@ cnp.import_array()
 # =====================================================================================================================
 cdef class PySolver(WrapCySolverResult):
 
-    def set_pydiffeq(
+    cpdef set_pydiffeq(
             self,
             object diffeq_func,
             tuple args,
@@ -49,7 +49,7 @@ cdef class PySolver(WrapCySolverResult):
         else:
             self.pass_dy_as_arg = False
 
-    def set_problem_parameters(
+    cpdef set_problem_parameters(
             self,
             object py_diffeq,
             tuple time_span,
@@ -57,6 +57,7 @@ cdef class PySolver(WrapCySolverResult):
             str method = 'RK45',
             const double[::1] t_eval = None,
             bint dense_output = False,
+            object events = None,
             tuple args = None,
             size_t expected_size = 0,
             size_t num_extra = 0,
@@ -103,7 +104,7 @@ cdef class PySolver(WrapCySolverResult):
             raise AttributeError("ERROR: `PySolver::set_problem_parameters` - CySolver not set within CySolverResult object.")
 
         # Parse y0
-        cdef size_t i
+        cdef size_t i, y_i
         cdef size_t num_y  = y0.size
         cdef size_t num_dy = num_y + num_extra  
         cdef vector[double] y0_vec = vector[double](num_y)
@@ -147,43 +148,100 @@ cdef class PySolver(WrapCySolverResult):
         problem_config_ptr.t_end = t_end
         problem_config_ptr.y0_vec = y0_vec
 
+        # Parse Events
+        problem_config_ptr.check_events = False
+        problem_config_ptr.events_vec.resize(0)
+        cdef size_t num_events = 0
+        cdef int event_direction 
+        cdef size_t event_max_allowed
+        cdef object terminal
+        cdef EventFunc cyevent_func = NULL
+        cdef CyrkErrorCodes event_setup_status = CyrkErrorCodes.NO_ERROR
+        cdef PyEventMethod pyevent_check_func = <PyEventMethod>self.check_pyevent
+        cdef object py_event
+        if events is not None:
+            self.events_list = list()
+            if type(events) in (tuple, list):
+                for py_event in events:
+                    self.events_list.append(py_event)
+                    num_events += 1
+            else:
+                self.events_list.append(events)
+                num_events = 1
+
+            # Build events vector
+            for i in range(num_events):
+                # Pull out properties the user may have set.
+                event_direction = getattr(self.events_list[i], 'direction', 0)
+                terminal        = getattr(self.events_list[i], 'terminal', None)
+                if terminal is None:
+                    event_max_allowed = getattr(self.events_list[i], 'max_allowed', MAX_SIZET_SIZE)
+                else:
+                    event_max_allowed = <size_t>terminal
+            
+                # Build events with null pointers - we won't use the cython version of the event checker function
+                problem_config_ptr.events_vec.emplace_back(cyevent_func, event_max_allowed, event_direction)
+                
+                # Set up other properties so it can work with PySolver
+                problem_config_ptr.events_vec[i].pyevent_index = i
+                event_setup_status = problem_config_ptr.events_vec[i].set_cython_extension_instance(
+                    <cpy_ref.PyObject*>self,
+                    pyevent_check_func
+                    )
+                if event_setup_status != CyrkErrorCodes.NO_ERROR:
+                    raise Exception(f"ERROR: `PySolver.set_problem_parameters` - Failed to setup pyhooks in Event class (event index {i}).")
+            
+            # Setup a python-safe array used in pyevent solver.
+            self.y_tmp_arr  = np.empty(self.num_dy, dtype=np.float64, order='C')
+            self.y_tmp_view = self.y_tmp_arr
+
         # Parse t_eval
-        problem_config_ptr.t_eval_provided = False
-        cdef vector[double] t_eval_vec = vector[double](0)
-        if t_eval is not None:
-            t_eval_vec.resize(t_eval.size)
-            for i in range(t_eval.size):
-                t_eval_vec[i] = t_eval[i]
-            problem_config_ptr.t_eval_vec = t_eval_vec
+        cdef size_t t_eval_size = 0
+        if t_eval is None:
+            problem_config_ptr.t_eval_provided = False
+            problem_config_ptr.t_eval_vec.resize(0)
+        else:
+            t_eval_size = t_eval.size
             problem_config_ptr.t_eval_provided = True
+            problem_config_ptr.t_eval_vec.resize(t_eval_size)
+            for i in range(t_eval_size):
+                problem_config_ptr.t_eval_vec[i] = t_eval[i]
         
         # Parse rtol
-        cdef vector[double] rtols_vec = vector[double](1)
+        cdef size_t rtol_size = 0
         if type(rtol) == float:
-            rtols_vec[0] = rtol
+            problem_config_ptr.rtols.resize(1)
+            problem_config_ptr.rtols[0] = rtol
         else:
-            rtols_vec.resize(rtol.size)
-            for y_i in range(rtol.size):
-                rtols_vec[y_i] = rtol[y_i]
-        problem_config_ptr.rtols = rtols_vec
+            rtol_size = rtol.size
+            if rtol_size > 1 and rtol_size != num_y:
+                raise AttributeError("ERROR: `PySolver.set_problem_parameters` - Provided rtol array size must be 1 or the number of dependent variables.")
+            
+            problem_config_ptr.rtols.resize(rtol_size)
+            for y_i in range(rtol_size):
+                problem_config_ptr.rtols[y_i] = rtol[y_i]
         
         # Parse atol
-        cdef vector[double] atols_vec = vector[double](1)
+        cdef size_t atol_size = 0
         if type(atol) == float:
-            atols_vec[0] = atol
+            problem_config_ptr.atols.resize(1)
+            problem_config_ptr.atols[0] = atol
         else:
-            atols_vec.resize(atol.size)
-            for y_i in range(atol.size):
-                atols_vec[y_i] = atol[y_i]
-        problem_config_ptr.atols = atols_vec
+            atol_size = atol.size
+            if atol_size > 1 and atol_size != num_y:
+                raise AttributeError("ERROR: `PySolver.set_problem_parameters` - Provided atol array size must be 1 or the number of dependent variables.")
+
+            problem_config_ptr.atols.resize(atol_size)
+            for y_i in range(atol_size):
+                problem_config_ptr.atols[y_i] = atol[y_i]
         
         # Parse expected size
         cdef size_t expected_size_touse = expected_size
         cdef double rtol_tmp
         cdef double min_rtol = INF
         if expected_size_touse == 0:
-            for i in range(rtols_vec.size()):
-                rtol_tmp = rtols_vec[i]
+            for i in range(problem_config_ptr.rtols.size()):
+                rtol_tmp = problem_config_ptr.rtols[i]
                 if rtol_tmp < EPS_100:
                     rtol_tmp = EPS_100
                 min_rtol = fmin(min_rtol, rtol_tmp)
@@ -209,7 +267,7 @@ cdef class PySolver(WrapCySolverResult):
         problem_config_ptr.max_ram_MB           = max_ram_MB
 
         # Load config into cysolution
-        status_code = cyresult_ptr.setup()
+        cdef CyrkErrorCodes status_code = cyresult_ptr.setup()
 
         if status_code != CyrkErrorCodes.NO_ERROR:
             raise Exception(
@@ -258,6 +316,25 @@ cdef class PySolver(WrapCySolverResult):
             # the values from the newly created dy memory view
             # Note that num_dy may be larger than num_y if the user is capturing extra output during integration.
             memcpy(self.dy_now_ptr, &self.dy_now_view[0], sizeof(double) * self.num_dy)
+    
+    cdef double check_pyevent(
+            self,
+            size_t event_index,
+            double t, 
+            double* y_ptr) noexcept:
+
+        # Convert pointer to python object so it can be passed to the python event function
+        # TODO: Explore ways to improve performance of this function.
+        cdef size_t y_i
+        for y_i in range(self.num_dy):
+            self.y_tmp_view[y_i] = y_ptr[y_i]
+        
+        cdef double result = dbl_NAN
+        if self.use_args:
+            result = self.events_list[event_index](t, self.y_tmp_arr, *self.args)
+        else:
+            result = self.events_list[event_index](t, self.y_tmp_arr)
+        return result
 
 # =====================================================================================================================
 # PySolver wrapper function
@@ -269,6 +346,7 @@ def pysolve_ivp(
         str method = 'RK45',
         const double[::1] t_eval = None,
         bint dense_output = False,
+        object events = None,
         tuple args = None,
         size_t expected_size = 0,
         size_t num_extra = 0,
@@ -296,6 +374,7 @@ def pysolve_ivp(
             method,
             t_eval,
             dense_output,
+            events,
             args,
             expected_size,
             num_extra,

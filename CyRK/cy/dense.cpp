@@ -20,7 +20,8 @@ CySolverDense::CySolverDense(
         // So Q has shape of (num_y, q_order)
         // The max size of Q is (7) * num_y for DOP853
         // state vector is laid out as [y_vector, Q_matrix]
-        this->num_y = this->solver_ptr->num_y;
+        this->num_y  = this->solver_ptr->num_y;
+        this->num_dy = this->solver_ptr->num_dy;
         this->state_data_vec.resize(this->num_y * (this->Q_order + 1));  // +1 is so we can store y_values in the first spot.
 
         // Populate values with current state

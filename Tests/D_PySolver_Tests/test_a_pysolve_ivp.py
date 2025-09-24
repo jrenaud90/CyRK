@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from numba import njit
 
-from CyRK import pysolve_ivp, WrapCySolverResult, CyrkErrorCodes
+from CyRK import pysolve_ivp, WrapCySolverResult, CyrkErrorCodes, MAX_SIZE
 
 
 # To reduce number of tests, only test RK23 once since RK45 should capture all its functionality
@@ -73,6 +73,26 @@ def diffeq_scipy_style_args_extra(t, y, a, b):
     dy[3] = extra_2
     return dy
 
+def event_func_1(t, y, *args):
+    if t > 8.0:
+        return 0.0
+    return 1.0
+
+def event_func_2(t, y, *args):
+    if t < 2.0:
+        return 0.0
+    return 1.0
+
+def event_func_3(t, y, *args):
+    if y[0] < 0.0:
+        return 0.0
+    return 1.0
+
+def event_func_4args(t, y, a, b):
+    if a == 0.01:
+        return 0.0
+    return 1.0
+
 args = (0.01, 0.02)
 
 initial_conds = np.asarray((20., 20.), dtype=np.float64, order='C')
@@ -97,6 +117,7 @@ njit_rk45_tested = False
 njit_DOP853_tested = False
 
 @pytest.mark.filterwarnings("error")  # Some exceptions get propagated via cython as warnings; we want to make sure the lead to crashes.
+@pytest.mark.parametrize('event_flag', (0, 1, 2, 3))
 @pytest.mark.parametrize('capture_extra', (True, False))
 @pytest.mark.parametrize('max_step', (1.0, 100_000.0))
 @pytest.mark.parametrize('first_step', (0.0, 0.00001))
@@ -110,12 +131,26 @@ njit_DOP853_tested = False
 @pytest.mark.parametrize('use_scipy_style', (True, False))
 def test_pysolve_ivp(use_scipy_style, use_args, use_njit_always,
                      use_large_timespan, use_atol_array, use_rtol_array, use_different_tols, integration_method,
-                     first_step, max_step, capture_extra):
+                     first_step, max_step, capture_extra, event_flag):
     """Check that the pysolve_ivp function is able to run with various changes to its arguments. """
     global RK23_TESTED
     global njit_rk23_tested
     global njit_rk45_tested
     global njit_DOP853_tested
+
+    # Parse event tests
+    check_events = False
+    event_terminate = False
+    event_direction_test = False
+    if event_flag == 1:
+        check_events = True
+    elif event_flag == 2:
+        check_events = True
+        event_terminate = True
+    elif event_flag == 3:
+        check_events = True
+        event_terminate = True
+        event_direction_test = True
 
     # To reduce number of tests, only test RK23 once. 
     if RK23_TESTED and SKIP_SOME_RK23_TESTS and (integration_method=="RK23"):
@@ -123,7 +158,24 @@ def test_pysolve_ivp(use_scipy_style, use_args, use_njit_always,
     else:
         RK23_TESTED = True
 
+    # if use_large_timespan and check_events:
+    #     pytest.skip("Skipping large timespan when checking events (the examples just are not designed for it).")
+
+    events = None
+    if check_events:
+        event_func_1_use = event_func_1
+        if event_terminate:
+            event_func_1_use.terminal = 1
+        else:
+            event_func_1_use.terminal = None
+        if event_direction_test:
+            event_func_1_use.direction = 1
+        events = [event_func_1, event_func_2, event_func_3]
+
     if use_args:
+        if events is not None:
+            events.append(event_func_4args)
+
         if use_scipy_style:
             if capture_extra:
                 diffeq_to_use = diffeq_scipy_style_args_extra
@@ -145,6 +197,9 @@ def test_pysolve_ivp(use_scipy_style, use_args, use_njit_always,
                 diffeq_to_use = diffeq_extra
             else:
                 diffeq_to_use = diffeq
+    
+    if events is not None:
+        events = tuple(events)
 
     if use_njit_always:
         diffeq_to_use = njit(diffeq_to_use)
@@ -194,17 +249,23 @@ def test_pysolve_ivp(use_scipy_style, use_args, use_njit_always,
         result = \
             pysolve_ivp(diffeq_to_use, time_span_touse, initial_conds,
                         method=integration_method,
-                        args=args_touse, rtol=rtols_use, atol=atols_use,
+                        args=args_touse, rtol=rtols_use, atol=atols_use, events=events,
                         num_extra=num_extra, first_step=first_step, max_step=max_step,
                         pass_dy_as_arg=(not use_scipy_style),
                         solution_reuse=result)
 
         assert isinstance(result, WrapCySolverResult)
         assert result.success
-        assert result.error_code == 1
+        if event_terminate and check_events:
+            assert result.error_code == CyrkErrorCodes.EVENT_TERMINATED
+        else:
+            assert result.error_code == CyrkErrorCodes.SUCCESSFUL_INTEGRATION
         assert result.size > 1
         assert result.steps_taken > 1
-        assert result.message == "Integration completed without issue."
+        if event_terminate and check_events:
+            assert result.message == "Integration ended early: An event has been triggered the maximum allowed times. No issues detected."
+        else:
+            assert result.message == "Integration completed without issue."
         # Check that the ndarrays make sense
         assert type(result.t) == np.ndarray
         assert result.t.dtype == np.float64
@@ -224,6 +285,38 @@ def test_pysolve_ivp(use_scipy_style, use_args, use_njit_always,
             assert result.y.shape[0] == 2
 
         assert type(result.message) == str
+
+        if check_events:
+            if event_terminate:
+                if event_direction_test:
+                    # Event termination should occur one step further than normal
+                    # The last two t's should be the same.
+                    # TODO: this is dumb though but apparently its how event tracking in scipy works? Should look into this...
+                    assert result.t[-1] == result.t[-2]
+                else:
+                    assert result.event_terminated
+            else:
+                assert not result.event_terminated
+            assert type(result.t_events) == list
+            assert len(result.t_events) == len(events)
+
+            assert type(result.y_events) == list
+            assert len(result.y_events) == len(events)
+            for i in range(len(events)):
+                assert type(result.t_events[i]) == np.ndarray
+                assert type(result.y_events[i]) == np.ndarray
+                if i == 0:
+                    assert result.t_events[i].size > 0
+
+                if result.t_events[i].size > 0:
+                    if capture_extra:
+                        assert result.y_events[i].shape[0] == 4
+                    else:
+                        assert result.y_events[i].shape[0] == 2
+                    assert result.t_events[i].size == result.y_events[i][0].size
+        else:
+            assert not result.event_terminated
+
         reuses += 1
 
 
@@ -423,6 +516,7 @@ def test_pysolve_ivp_readonly(integration_method):
     assert type(result.message) == str
 
 if __name__ == "__main__":
-    test_pysolve_ivp(False, False, False, 
-                    False, False, False, False, "RK45", 0.0, 100_000.0, False)
+    test_pysolve_ivp(False, False, False,
+                     False, False, False, False, "RK45",
+                     0.0, 1.0, True, 3)
     print("Finished!")

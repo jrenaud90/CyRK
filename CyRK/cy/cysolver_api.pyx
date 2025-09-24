@@ -51,12 +51,47 @@ cdef class WrapCySolverResult:
     cpdef finalize(self):
         # Convert solution to pointers and views
         cdef CySolverResult* cyresult_ptr = self.cyresult_uptr.get()
+
+        cdef double[::1] dbl_view
+        cdef double* dbl_ptr
+        cdef size_t i, size1, size2
+
         if cyresult_ptr:
             if cyresult_ptr.size > 0:
                 self.time_ptr  = &cyresult_ptr.time_domain_vec[0]
                 self.y_ptr     = &cyresult_ptr.solution[0]
                 self.time_view = <double[:self.size]>self.time_ptr
                 self.y_view    = <double[:self.size * self.num_dy]>self.y_ptr
+            
+            # Handle event arrays.
+            # Event times and data are stored in a vector of vectors (vector[vector[double]])
+            # Data is of size dy since extra output is also grabbed.
+            if cyresult_ptr.num_events > 0:
+                # Event arrays will have a different size for each event since one event may trigger more than another.
+                # We will store each one d array in a numpy array that is then stored in a python list; one array for each event.
+                
+                # Initialize lists
+                self.list_t_events = list()
+                self.list_y_events = list()
+
+                # Step through each event building our numpy arrays.
+                for i in range(cyresult_ptr.num_events):
+                    size1 = cyresult_ptr.event_times[i].size()
+                    if size1 > 0:
+                        dbl_ptr = &cyresult_ptr.event_times[i][0]
+                        dbl_view = <double[:size1]>dbl_ptr
+                        # Convert to numpy array and store in our list.
+                        self.list_t_events.append(np.copy(np.asarray(dbl_view, dtype=np.float64, order='C')))
+
+                        # Repeat for y data but now we need to reshape.
+                        size2 = size1 * self.num_dy
+                        dbl_ptr = &cyresult_ptr.event_states[i][0]
+                        dbl_view = <double[:size2]>dbl_ptr
+                        self.list_y_events.append(np.copy(np.asarray(dbl_view, dtype=np.float64, order='C')).reshape((size1, self.num_dy)).T)
+                    else:
+                        # No triggered events. Return empty arrays
+                        self.list_t_events.append(np.array([], dtype=np.float64, order='C'))
+                        self.list_y_events.append(np.array([], dtype=np.float64, order='C'))
 
     def call(self, double t):
         """ Call the dense output interpolater and return y """
@@ -96,9 +131,12 @@ cdef class WrapCySolverResult:
 
     def print_diagnostics(self):
         
+        cdef size_t i
+        
         if not self.cyresult_uptr:
             raise AttributeError("ERROR: `WrapCySolverResult::print_diagnostics` - CySolverResult is Null.")
         cdef CySolverResult* cyresult_ptr = self.cyresult_uptr.get()
+        cdef ProblemConfig* config_ptr = cyresult_ptr.config_uptr.get()
     
         cdef str diagnostic_str = ''
         from CyRK import __version__
@@ -109,24 +147,36 @@ cdef class WrapCySolverResult:
         diagnostic_str += f'----------------------------------------------------\n'
         diagnostic_str += f'CyRK v{__version__} - WrapCySolverResult Diagnostic.\n'
         diagnostic_str += f'----------------------------------------------------\n'
-        diagnostic_str += f'# of y:      {self.num_y}.\n'
-        diagnostic_str += f'# of dy:     {self.num_dy}.\n'
-        diagnostic_str += f'Success:     {self.success}.\n'
-        diagnostic_str += f'Error Code:  {self.error_code}.\n'
-        diagnostic_str += f'Size:        {self.size}.\n'
-        diagnostic_str += f'Steps Taken: {self.steps_taken}.\n'
+        diagnostic_str += f'# of y:       {self.num_y}.\n'
+        diagnostic_str += f'# of dy:      {self.num_dy}.\n'
+        diagnostic_str += f'# of events:  {self.num_events}.\n'
+        diagnostic_str += f'Success:      {self.success}.\n'
+        diagnostic_str += f'Error Code:   {self.error_code}.\n'
+        diagnostic_str += f'Size:         {self.size}.\n'
+        diagnostic_str += f'Steps Taken:  {self.steps_taken}.\n'
+        diagnostic_str += f'Event Termination:  {self.event_terminated}.\n'
+        if self.event_terminated:
+            diagnostic_str += f'Event Term. Index:  {self.event_terminate_index}.\n'
         diagnostic_str += f'Integrator Message:\n\t{self.message}\n'
         diagnostic_str += f'\n----------------- CySolverResult -------------------\n'
-        diagnostic_str += f'Capture Extra:         {cyresult_ptr.capture_extra}.\n'
-        diagnostic_str += f'Capture Dense Output:  {cyresult_ptr.capture_dense_output}.\n'
-        diagnostic_str += f'Integration Direction: {direction_str}.\n'
-        diagnostic_str += f'Integration Method:    {self.integration_method}.\n'
-        diagnostic_str += f'# of Interpolates:     {cyresult_ptr.num_interpolates}.\n'
+        diagnostic_str += f'Capture Extra:          {cyresult_ptr.capture_extra}.\n'
+        diagnostic_str += f'Capture Dense Output:   {cyresult_ptr.capture_dense_output}.\n'
+        diagnostic_str += f'Integration Direction:  {direction_str}.\n'
+        diagnostic_str += f'Integration Method:     {self.integration_method}.\n'
+        diagnostic_str += f'# of Interpolates:      {cyresult_ptr.num_interpolates}.\n'
+
+        if cyresult_ptr.num_events > 0:
+            diagnostic_str += f'\n------------------- Event Data ---------------------\n'
+            for i in range(cyresult_ptr.num_events):
+                diagnostic_str += f'Event {i}:\n'
+                diagnostic_str += f'\tDirection:      {config_ptr.events_vec[i].direction}.\n'
+                diagnostic_str += f'\tMax Allowed:    {config_ptr.events_vec[i].max_allowed}.\n'
+                diagnostic_str += f'\tNum Triggers:   {config_ptr.events_vec[i].current_count}.\n'
+                diagnostic_str += f'\tLast Trigger t: {config_ptr.events_vec[i].last_root:0.4e}.\n'
 
         cdef CySolverBase* cysolver = cyresult_ptr.solver_uptr.get()
         cdef size_t num_y
         cdef size_t num_dy
-        cdef size_t i
         cdef size_t dbl_i
         cdef size_t args_size
         cdef size_t args_size_dbls
@@ -154,8 +204,8 @@ cdef class WrapCySolverResult:
             # of its contents. For now just assume they are all doubles so we can display something.
             # Also display the value of the raw chars.
             diagnostic_str += f'---- Additional Argument Info ----\n'
-            args_size      = cyresult_ptr.config_uptr.get().args_vec.size()
-            args_char_ptr  = cyresult_ptr.config_uptr.get().args_vec.data()
+            args_size      = config_ptr.args_vec.size()
+            args_char_ptr  = config_ptr.args_vec.data()
             args_dbl_ptr   = <double*>args_char_ptr
             args_size_dbls = <size_t>floor(args_size / sizeof(double))
             diagnostic_str += f'args size (bytes):   {args_size}.\n'
@@ -247,6 +297,40 @@ cdef class WrapCySolverResult:
         return self.cyresult_uptr.get().num_dy
     
     @property
+    def num_events(self):
+        if not self.cyresult_uptr:
+            return None
+        return self.cyresult_uptr.get().num_events
+    
+    @property
+    def t_events(self):
+        if not self.cyresult_uptr:
+            return None
+        if self.num_events == 0:
+            return None
+        return self.list_t_events
+    
+    @property
+    def y_events(self):
+        if not self.cyresult_uptr:
+            return None
+        if self.num_events == 0:
+            return None
+        return self.list_y_events
+
+    @property
+    def event_terminated(self):
+        if not self.cyresult_uptr:
+            return None
+        return self.cyresult_uptr.get().event_terminated
+    
+    @property
+    def event_terminate_index(self):
+        if not self.cyresult_uptr:
+            return None
+        return self.cyresult_uptr.get().event_terminate_index
+    
+    @property
     def status(self):
         if not self.cyresult_uptr:
             return None
@@ -289,6 +373,7 @@ cdef void cysolve_ivp_noreturn(
             cpp_bool dense_output = False,
             vector[double] t_eval_vec = vector[double](),
             PreEvalFunc pre_eval_func = NULL,
+            vector[Event] events_vec = vector[Event](),
             vector[double] rtols_vec = vector[double](),
             vector[double] atols_vec = vector[double](),
             double max_step = MAX_STEP,
@@ -317,6 +402,7 @@ cdef void cysolve_ivp_noreturn(
         dense_output,
         t_eval_vec,
         pre_eval_func,
+        events_vec,
         rtols_vec,
         atols_vec,
         max_step,
@@ -338,6 +424,7 @@ cdef CySolveOutput cysolve_ivp(
             cpp_bool dense_output = False,
             vector[double] t_eval_vec = vector[double](),
             PreEvalFunc pre_eval_func = NULL,
+            vector[Event] events_vec = vector[Event](),
             vector[double] rtols_vec = vector[double](),
             vector[double] atols_vec = vector[double](),
             double max_step = MAX_STEP,
@@ -366,6 +453,7 @@ cdef CySolveOutput cysolve_ivp(
         dense_output,
         t_eval_vec,
         pre_eval_func,
+        events_vec,
         rtols_vec,
         atols_vec,
         max_step,
@@ -389,6 +477,7 @@ cdef CySolveOutput cysolve_ivp_gil(
             cpp_bool dense_output = False,
             vector[double] t_eval_vec = vector[double](),
             PreEvalFunc pre_eval_func = NULL,
+            vector[Event] events_vec = vector[Event](),
             vector[double] rtols_vec = vector[double](),
             vector[double] atols_vec = vector[double](),
             double max_step = MAX_STEP,
@@ -417,6 +506,7 @@ cdef CySolveOutput cysolve_ivp_gil(
         dense_output,
         t_eval_vec,
         pre_eval_func,
+        events_vec,
         rtols_vec,
         atols_vec,
         max_step,

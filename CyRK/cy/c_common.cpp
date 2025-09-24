@@ -1,6 +1,6 @@
 /* Helper functions and global constants */
 
-#include "common.hpp"
+#include "c_common.hpp"
 
 
 void round_to_2(size_t &initial_value) noexcept
