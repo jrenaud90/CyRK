@@ -37,6 +37,34 @@ cdef class PySolver(WrapCySolverResult):
     cdef list events_list
 
     cdef void set_state(self, NowStatePointers* solver_state_ptr) noexcept
+    cpdef set_pydiffeq(
+        self,
+        object diffeq_func,
+        tuple args,
+        size_t num_y,
+        size_t num_dy,
+        bint pass_dy_as_arg = *
+        )
+    cpdef set_problem_parameters(
+        self,
+        object py_diffeq,
+        tuple time_span,
+        const double[::1] y0,
+        str method = *,
+        const double[::1] t_eval = *,
+        bint dense_output = *,
+        object events = *,
+        tuple args = *,
+        size_t expected_size = *,
+        size_t num_extra = *,
+        double first_step = *,
+        double max_step = *,
+        rtol = *,
+        atol = *,
+        size_t max_num_steps = *,
+        size_t max_ram_MB = *,
+        bint pass_dy_as_arg = *
+        )
     cdef void diffeq(self) noexcept
     cdef double check_pyevent(
         self,
