@@ -2,12 +2,11 @@
 
 ## 2025
 
-TODO: Shouldnt the event checking and the t_eval routine run even in the last time step? Right now they are skipped.
-
-### v0.16.0 (2025-XXX)
+### v0.16.0 (2025-09-24)
 
 #### CyRK now supports Events!
 * New C++ `Event` class which wraps Cython functions and is integrated into `CySolver`.
+* `pysolve_ivp` and `cysolve_ivp` have new arguments for the user to provide event functions.
 * Added tests and documentation for these new features.
 
 #### Other New Features
