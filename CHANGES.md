@@ -2,7 +2,7 @@
 
 ## 2025
 
-### v0.16.1 (2025-12-x)
+### v0.16.1 (2025-12-10)
 
 #### Dependencies
 * CyRK now supports numpy 2.4.x
