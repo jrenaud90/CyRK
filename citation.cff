@@ -1,0 +1,49 @@
+cff-version: 1.2.0
+title: CyRK
+message: If you use this software, please cite it using the metadata from this file.
+type: software
+abstract: CyRK provides fast integration tools to solve systems of ODEs using an adaptive time stepping scheme.
+  CyRK can accept differential equations that are written in pure Python, njited numba, or cython-based cdef
+  functions. These kinds of functions are generally easier to implement than pure c functions and can be used in
+  existing Python software. Using CyRK can speed up development time while avoiding the slow performance that comes
+  with using pure Python-based solvers like SciPy's `solve_ivp`.
+authors:
+- given-names: Joe
+  family-names: Renaud
+  email: joe.p.renaud@gmail.com
+  affiliation: University of Maryland College Park; NASA Goddard
+  orcid: https://orcid.org/0000-0002-8619-8542
+identifiers:
+- type: doi
+  value: 10.5281/zenodo.7093266
+  description: Zenodo Record
+- type: url
+  value: https://pypi.org/project/CyRK/
+  description: PyPI Repository
+- type: url
+  value: https://anaconda.org/conda-forge/cyrk
+  description: Conda-Forge Repository
+repository-code: https://github.com/jrenaud90/CyRK
+url: https://github.com/jrenaud90/CyRK
+keywords:
+- Numerical Integration
+- ODE Solvers
+- ODEs
+- Runge-Kutta
+- Ordinary Differential Equations
+- Cython
+- Python
+- C++ 
+license: Apache-2.0
+commit: 1676d51
+version: 0.7.0
+date-released: '2025-12-03'
+preferred-citation:
+  type: article
+  authors:
+  - family-names: Renaud
+    given-names: Joe P.
+  title: 'CyRK: ODE Integrator Implemented in Cython and Numba'
+  journal: Zenodo
+  year: 2023
+  doi: 10.5281/zenodo.7093266
