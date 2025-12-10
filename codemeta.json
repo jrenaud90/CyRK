@@ -1,0 +1,92 @@
+{
+  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+  "@type": "SoftwareSourceCode",
+  "name": "CyRK",
+  "description": "CyRK provides fast integration tools to solve systems of ODEs using an adaptive time stepping scheme. CyRK can accept differential equations that are written in pure Python, njited numba, or cython-based cdef functions. These kinds of functions are generally easier to implement than pure c functions and can be used in existing Python software. Using CyRK can speed up development time while avoiding the slow performance that comes with using pure Python-based solvers like SciPy's `solve_ivp`.",
+  "identifier": "https://doi.org/10.5281/zenodo.7093266",
+  "version": "0.16.1",
+  "datePublished": "2025-12-10",
+  "dateModified": "2025-12-10",
+  "codeRepository": "https://github.com/jrenaud90/CyRK",
+  "issueTracker": "https://github.com/jrenaud90/CyRK/issues",
+  "license": "https://www.apache.org/licenses/LICENSE-2.0",
+  "url": "https://github.com/jrenaud90/CyRK",
+  "author": [
+    {
+      "@type": "Person",
+      "givenName": "Joe",
+      "familyName": "Renaud",
+      "email": "joe.p.renaud@gmail.com",
+      "@id": "https://orcid.org/0000-0002-8619-8542",
+      "affiliation": {
+        "@type": "Organization",
+        "name": "University of Maryland College Park"
+      }
+    },
+    {
+      "@type": "Person",
+      "givenName": "Joe",
+      "familyName": "Renaud",
+      "email": "joe.p.renaud@gmail.com",
+      "@id": "https://orcid.org/0000-0002-8619-8542",
+      "affiliation": {
+        "@type": "Organization",
+        "name": "NASA Goddard Space Flight Center"
+      }
+    }
+  ],
+  "maintainer": [
+    {
+      "@type": "Person",
+      "givenName": "Joe",
+      "familyName": "Renaud",
+      "email": "joe.p.renaud@gmail.com",
+      "@id": "https://orcid.org/0000-0002-8619-8542"
+    }
+  ],
+  "programmingLanguage": [
+    "Python",
+    "C++",
+    "Cython"
+  ],
+  "operatingSystem": [
+    "Linux",
+    "macOS",
+    "Windows"
+  ],
+  "applicationCategory": "Scientific Software",
+  "keywords": [
+    "Numerical Integration",
+    "ODE Solvers",
+    "ODEs",
+    "Runge-Kutta",
+    "Ordinary Differential Equations",
+    "Cython",
+    "Python",
+    "C++"
+  ],
+  "referencePublication": {
+    "@type": "ScholarlyArticle",
+    "name": "CyRK: ODE Integrator Implemented in Cython and Numba",
+    "author": [
+      {
+        "@type": "Person",
+        "givenName": "Joe P.",
+        "familyName": "Renaud"
+      }
+    ],
+    "datePublished": "2023",
+    "identifier": "https://doi.org/10.5281/zenodo.7017475"
+  },
+  "softwareRequirements": [
+    "Python >= 3.8"
+  ],
+  "downloadUrl": [
+    "https://pypi.org/project/CyRK/",
+    "https://anaconda.org/conda-forge/CyRK"
+  ],
+  "relatedLink": [
+    "https://pypi.org/project/CyRK/",
+    "https://anaconda.org/conda-forge/CyRK"
+  ]
+}

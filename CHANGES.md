@@ -2,6 +2,20 @@
 
 ## 2025
 
+### v0.16.1 (2025-12-10)
+
+#### Dependencies
+* CyRK now supports numpy 2.4.x
+
+#### Repository Changes
+* Changed license to Apache 2.0
+* Added citation.cff file
+* Added codemeta.json file
+* Add GitHub Workflow to automatically update version numbers
+
+#### Tests
+* Retired MacOS 13 tests.
+
 ### v0.16.0 (2025-09-24)
 
 #### CyRK now supports Events!
