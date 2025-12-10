@@ -13,6 +13,9 @@
 * Added codemeta.json file
 * Add GitHub Workflow to automatically update version numbers
 
+#### Tests
+* Retired MacOS 13 tests.
+
 ### v0.16.0 (2025-09-24)
 
 #### CyRK now supports Events!
