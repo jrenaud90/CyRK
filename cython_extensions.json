@@ -99,6 +99,14 @@
     "link_args": [],
     "is_cpp": true
   },
+  "prange_test": {
+    "name": "CyRK.cy.prange_test",
+    "sources": [["CyRK", "cy", "prange_test.pyx"]],
+    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
+    "compile_args": [],
+    "link_args": [],
+    "is_cpp": true
+  },
   "pysolver": {
     "name": "CyRK.cy.pysolver",
     "sources": [

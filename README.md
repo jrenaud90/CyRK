@@ -18,7 +18,7 @@
 ---
 [Documentation](https://cyrk.readthedocs.io/en/latest/) | [GitHub](https://github.com/jrenaud90/cyrk)
 
-<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.16.0 Alpha-orange" alt="CyRK Version 0.16.0 Alpha" /></a>
+<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.17.0 Alpha-orange" alt="CyRK Version 0.17.0 Alpha" /></a>
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
 
@@ -31,10 +31,12 @@ Currently, CyRK's [numba-based](https://numba.discourse.group/) (njit-safe) impl
 The [cython-based](https://cython.org/) `pysolve_ivp` function that works with python (or njit'd) functions is **10-40x faster** than scipy.
 The [cython-based](https://cython.org/) `cysolver_ivp` function that works with cython-based cdef functions is **40-300+x faster** than scipy.
 
+CyRK's solvers can also be parallelized for even larger gains.
+
 An additional benefit of the two cython implementations is that they are pre-compiled. This avoids most of the start-up performance hit experienced by just-in-time compilers like numba.
 
 
-<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_predprey_v0-16-0.png" alt="CyRK Performance Graphic" />
+<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_predprey_v0-17-0.png" alt="CyRK Performance Graphic" />
 
 ## Supported Features
 CyRK's `pysolve_ivp` (which works with pure python functions) and `cysolve_ivp` (which works with cython compiled functions) shares many of the same features as SciPy's `solve_ivp`:

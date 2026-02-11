@@ -6,9 +6,14 @@
 
 #### v0.17.0 (2026-02-xx)
 
+##### Demos
+* Fixed demos so they properly use cross-platform headers (required ipython hack which is included in the new "Demos/jupyter_cyhack.py").
+* Added demo to show cysolve prange.
+
 ##### Documentation
 * Added resets/restarts to the CySolver examples notebook.
 * Adjusts change log section numbering.
+* Added brief note in documentation about parallelizing cysolve.
 
 ## 2025
 
