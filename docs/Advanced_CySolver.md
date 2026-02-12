@@ -4,12 +4,6 @@ _TODO: This document needs expansion. There are currently many ways to interface
 
 _Many of the examples below can be found in the interactive "Demos/Advanced CySolver Examples.ipynb" jupyter notebook._
 
-## Parallelized `cysolve_ivp`
-The inner workings of CySolver are not parallelized on purpose: generally the performance gains of parallelizing the
-integration steps are far out weighed by the complexity, errors, and most importantly, overhead of distributed work.
-However, the `cysolve_ivp` function itself can be parallelized using Cython's [prange](https://cython.readthedocs.io/en/latest/src/userguide/parallelism.html).
-Examples on how you can do this can be found in the Advanced CySolver Examples notebook or in `CyRK.cy.prange_test`.
-
 ## Arbitrary Additional Arguments
 
 `cysolve_ivp` allows users to specify arbitrary additional arguments which are passed to the differential equation function at each evaluation. Many problems require additional arguments that often take the form of numerical parameters (e.g., double precision floating point numbers). However, occasionally more advanced information may be required such as: boolean flags, complex numbers, and perhaps even strings or whole other classes and structs. Below we outline how to utilize arbitrary types in CySolver's additional arguments and discuss any limitations.

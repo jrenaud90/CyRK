@@ -13,6 +13,7 @@ Also check out the GitHub page to see the code.
 
 Getting Started <Readme.md>
 Events.md
+Parallelization.md
 Dense Output and `t_eval` <Dense_Output_and_t_eval.md>
 Extra Outputs during Integration <Extra_Output.md>
 Advanced CySolver <Advanced_CySolver.md>
