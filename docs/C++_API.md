@@ -86,3 +86,18 @@ Currently available functions and associated integration method integer:
     - Explicit Runge-Kutta method of order 5 (error control of order 4)
 - DOP853 : ODEMethod.DOP853
     - Explicit Runge-Kutta method of order 8 (error control of combination of order 5 and 3)
+
+## Memory Usage
+The following formulas approximate the total memory footprint in bytes of the underlying C++ structures. Only think of these as estimates. All values are in kB. 
+These assume that extra outputs, dense outputs, and events are all off.
+
+$S = $ Solution Size.
+
+$N = $ Number of dependent y's (for this we assume num_dy = num_y).
+
+### RK23
+$$8S(N+1)+120N+1,200$$
+### RK45
+$$8S(N+1)+144N+1,650$$
+### DOP853
+$$8S(N+1)+232N+3,500$$

@@ -14,6 +14,7 @@
 * Added resets/restarts to the CySolver examples notebook.
 * Adjusts change log section numbering.
 * Added brief note in documentation about parallelizing cysolve.
+* Added document describing memory usage of the C++ structures.
 
 ## 2025
 
