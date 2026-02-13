@@ -1,5 +1,5 @@
 {% set name = "CyRK" %}
-{% set version = "0.17.0a1.dev1" %}
+{% set version = "0.17.0a2.dev0" %}
 
 package:
   name: {{ name|lower }}
