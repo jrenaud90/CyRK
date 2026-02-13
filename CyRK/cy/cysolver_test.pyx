@@ -349,7 +349,8 @@ def cytester(
         double[::1] atol_array = None,
         double max_step = MAX_STEP,
         double first_step = 0.0,
-        WrapCySolverResult solution_reuse = None
+        WrapCySolverResult solution_reuse = None,
+        cpp_bool force_retain_solver = False
         ):
     cdef size_t i
     cdef vector[double] t_eval_vec = vector[double]()
@@ -604,7 +605,8 @@ def cytester(
         atols_vec = atols_vec,
         max_step = max_step,
         first_step = first_step,
-        expected_size = expected_size
+        expected_size = expected_size,
+        force_retain_solver = force_retain_solver
         )
     
     solution_reuse.finalize()

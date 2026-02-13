@@ -330,7 +330,8 @@ cdef extern from "cysolve.cpp" nogil:
         vector[double]& rtols,
         vector[double]& atols,
         double max_step_size,
-        double first_step_size
+        double first_step_size,
+        cpp_bool force_retain_solver
         )
 
     cdef unique_ptr[CySolverResult] baseline_cysolve_ivp(
@@ -351,7 +352,8 @@ cdef extern from "cysolve.cpp" nogil:
         vector[double]& rtols,
         vector[double]& atols,
         double max_step_size,
-        double first_step_size
+        double first_step_size,
+        cpp_bool force_retain_solver
         )
 
 
@@ -378,7 +380,8 @@ cdef void cysolve_ivp_noreturn(
     vector[double] atols_vec = *,
     double max_step = *,
     double first_step = *,
-    size_t expected_size = *
+    size_t expected_size = *,
+    cpp_bool force_retain_solver = *
     ) noexcept nogil
 
 cdef CySolveOutput cysolve_ivp(
@@ -401,7 +404,8 @@ cdef CySolveOutput cysolve_ivp(
     vector[double] atols_vec = *,
     double max_step = *,
     double first_step = *,
-    size_t expected_size = *
+    size_t expected_size = *,
+    cpp_bool force_retain_solver = *
     ) noexcept nogil
 
 cdef CySolveOutput cysolve_ivp_gil(
@@ -424,5 +428,6 @@ cdef CySolveOutput cysolve_ivp_gil(
     vector[double] atols_vec = *,
     double max_step = *,
     double first_step = *,
-    size_t expected_size = *
+    size_t expected_size = *,
+    cpp_bool force_retain_solver = *
     ) noexcept

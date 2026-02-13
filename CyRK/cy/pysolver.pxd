@@ -63,7 +63,8 @@ cdef class PySolver(WrapCySolverResult):
         atol = *,
         size_t max_num_steps = *,
         size_t max_ram_MB = *,
-        bint pass_dy_as_arg = *
+        bint pass_dy_as_arg = *,
+        bint force_retain_solver = *
         )
     cdef void diffeq(self) noexcept
     cdef double check_pyevent(

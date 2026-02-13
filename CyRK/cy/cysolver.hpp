@@ -76,7 +76,7 @@ struct ProblemConfig {
     size_t max_ram_MB              = 2048;                    // Default maximum RAM in MB
     PreEvalFunc pre_eval_func      = nullptr;                 // Pre-evaluation function for the differential equation
     bool capture_dense_output      = false;                   // Whether to capture dense output
-    bool force_retain_solver       = true;                    // Whether to retain the solver after solving
+    bool force_retain_solver       = false;                   // Whether to retain the solver after solving
 
     // Parameters that will be updated during setup.
     bool capture_extra   = false; // Whether to capture extra outputs
