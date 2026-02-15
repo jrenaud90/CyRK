@@ -17,6 +17,7 @@ atols = np.asarray((1.0e-6, 1.0e-7), dtype=np.float64, order='C')
 
 
 @pytest.mark.filterwarnings("error")  # Some exceptions get propagated via cython as warnings; we want to make sure the lead to crashes.
+@pytest.mark.parametrize('force_retain_solver', (True, False))
 @pytest.mark.parametrize('capture_extra', (True, False))
 @pytest.mark.parametrize('max_step', (1.0, 100_000.0))
 @pytest.mark.parametrize('first_step', (0.0, 0.00001))
@@ -26,7 +27,6 @@ atols = np.asarray((1.0e-6, 1.0e-7), dtype=np.float64, order='C')
 @pytest.mark.parametrize('use_atol_array', (True, False))
 @pytest.mark.parametrize('use_large_timespan', (True, False))
 @pytest.mark.parametrize('use_args', (True, False))
-@pytest.mark.parametrize('force_retain_solver', (True, False))
 def test_cysolve_ivp(use_args,
                      use_large_timespan, use_atol_array, use_rtol_array, use_different_tols, integration_method,
                      first_step, max_step, capture_extra, force_retain_solver):
@@ -202,5 +202,5 @@ def test_cysolve_extra_output():
     assert cy_extra_output_tester()
 
 if __name__ == "__main__":
-    test_cysolve_ivp(False, False, False, False, False, 'rk45', 0.0, 100_0000.0, False)
+    test_cysolve_ivp(False, False, False, False, False, 'rk45', 0.0, 100_0000.0, False, False)
     print("Finished.")
