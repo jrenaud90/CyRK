@@ -252,10 +252,18 @@ CyrkErrorCodes CySolverResult::setup(ProblemConfig* provided_config_ptr)
             }
             this->config_uptr->update_properties_from_config(provided_config_ptr);
         }
-        
-        // Ensure the configuration file is properly initialized.
-        this->config_uptr->initialize();
-
+        // Initialize config
+        if (not this->config_uptr->initialized)
+        {
+            this->config_uptr->initialize();
+        }
+        // If the config failed to initialize, throw an error.
+        if (not this->config_uptr->initialized)
+        {
+            // User may have manually updated the current config so the argument may be null
+            setup_status = CyrkErrorCodes::UNINITIALIZED_CLASS;
+            break;
+        }
         // Solver may have been cleared if not forced to retain it.
         if (not this->solver_uptr)
         {
@@ -267,6 +275,7 @@ CyrkErrorCodes CySolverResult::setup(ProblemConfig* provided_config_ptr)
             break;
         }
         
+        // Ensure the solver was actually initialized.
         if (not this->solver_uptr)
         {
             setup_status = CyrkErrorCodes::UNINITIALIZED_CLASS;
@@ -317,7 +326,8 @@ CyrkErrorCodes CySolverResult::setup(ProblemConfig* provided_config_ptr)
                 this->event_states.resize(this->num_events);
                 // Assume that we will have around a third of the number of events as we do steps.
                 // This is a total guess and could be optimized, but really it will be so different for different
-                // problems that it doesn't really matter. Some problems will get lucky with fewer reallocations some won't.
+                //  problems that it doesn't really matter.
+                // Some problems will get lucky with fewer reallocations, some won't.
                 size_t initial_event_reserve = std::max<size_t>(1, this->storage_capacity / 3);
                 round_to_2(initial_event_reserve);
 
@@ -325,7 +335,7 @@ CyrkErrorCodes CySolverResult::setup(ProblemConfig* provided_config_ptr)
                 {
                     // Assume that we will have 10% the number of events as we do steps.
                     // This is a total guess and could be optimized, but really it will be so different for different
-                    // problems that it doesn't really matter.
+                    //  problems that it doesn't really matter.
                     this->event_times[event_i].reserve(initial_event_reserve);
                     this->event_states[event_i].reserve(initial_event_reserve * this->num_dy);
                 }

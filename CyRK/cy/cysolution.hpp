@@ -24,7 +24,8 @@ public:
     // Message storage
     std::string message;
 
-    // Configurations - Currently we will always be making a RK config so let's initialize to that for now.
+    // Configurations
+    // TODO: Currently we will always be making a RK config so let's initialize to that for now.
     std::unique_ptr<ProblemConfig> config_uptr = std::make_unique<RKConfig>();
 
     // Current storage information

@@ -96,7 +96,7 @@ struct ProblemConfig {
 
     // Event data
     bool check_events = false;
-    std::vector<Event> events_vec = std::vector<Event>();
+    std::vector<Event> events_vec = std::vector<Event>(0);
 
     // Solver specific configurations can be added below via overloading the class.
 
