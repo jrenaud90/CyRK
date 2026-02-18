@@ -26,7 +26,7 @@ MaxNumStepsOutput find_max_num_steps(
     /* Determines the maximum number of steps (max size of time domain) that the integrator is allowed to take. */
 
     // Determine the maximum number of steps permitted during integration run.
-    // Then divide by number of dependnet and extra variables that will be stored. The extra "1" is for the time domain.
+    // Then divide by number of dependent and extra variables that will be stored. The extra "1" is for the time domain.
     double max_num_steps_ram_dbl = max_ram_MB * (1000.0 * 1000.0) / (sizeof(double) * (1.0 + num_y + num_extra));
     size_t max_num_steps_ram = (size_t)std::floor(max_num_steps_ram_dbl);
 

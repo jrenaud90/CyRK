@@ -308,6 +308,7 @@ CyrkErrorCodes CySolverBase::setup()
     this->setup_called      = false;
     this->error_flag        = false;
     this->check_events_flag = false;
+    this->swap_flag         = false;
     this->num_events        = 0;
     this->user_provided_max_num_steps = false;
     this->clear_python_refs();
@@ -543,7 +544,7 @@ CyrkErrorCodes CySolverBase::setup()
 
 NowStatePointers CySolverBase::get_now_state()
 {
-    return NowStatePointers(&this->t_now, this->y_now_ptr, this->dy_now_ptr);
+    return NowStatePointers(&this->t_now, this->y_now_ptr, this->dy_now_ptr, this->y_old_ptr, this->dy_old_ptr);
 }
 
 inline bool CySolverBase::check_status() const
@@ -974,8 +975,11 @@ void CySolverBase::take_step()
         {
             // Prep for next step
             this->t_old = this->t_now;
-            std::memcpy(this->y_old_ptr, this->y_now_ptr, this->sizeof_dbl_Ny);
-            std::memcpy(this->dy_old_ptr, this->dy_now_ptr, this->sizeof_dbl_Ndy);
+            std::swap(this->y_old_ptr, this->y_now_ptr);
+            std::swap(this->dy_old_ptr, this->dy_now_ptr);
+
+            // Swap flag tells pysolve_ivp which array to use now for y_now_arr and dy_now_arr
+            this->swap_flag = !this->swap_flag;
         }
     }
 

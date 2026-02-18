@@ -161,12 +161,21 @@ struct NowStatePointers
     double* t_now_ptr;
     double* y_now_ptr;
     double* dy_now_ptr;
-    
-    NowStatePointers():
-        t_now_ptr(nullptr), y_now_ptr(nullptr), dy_now_ptr(nullptr) { }
+    double* y_old_ptr;
+    double* dy_old_ptr;
 
-    NowStatePointers(double* t_now_ptr, double* y_now_ptr, double* dy_now_ptr):
-        t_now_ptr(t_now_ptr), y_now_ptr(y_now_ptr), dy_now_ptr(dy_now_ptr) { }
+    NowStatePointers():
+        t_now_ptr(nullptr), y_now_ptr(nullptr), dy_now_ptr(nullptr),
+        y_old_ptr(nullptr), dy_old_ptr(nullptr)
+    { }
+
+    NowStatePointers(
+            double* t_now_ptr_, double* y_now_ptr_, double* dy_now_ptr_, 
+            double* y_old_ptr_, double* dy_old_ptr_
+            ):
+        t_now_ptr(t_now_ptr_), y_now_ptr(y_now_ptr_), dy_now_ptr(dy_now_ptr_),
+        y_old_ptr(y_old_ptr_), dy_old_ptr(dy_old_ptr_)
+    { }
 };
 
 class CySolverBase {
@@ -264,7 +273,7 @@ protected:
     double* y_interp_ptr = nullptr;
     // For dy, both the dy/dt and any extra outputs are stored. So the maximum size is `num_y` + `num_extra`
     std::vector<double> dy_holder_vec = std::vector<double>(PRE_ALLOC_NUMY * 4);
-    double* dy_old_ptr = nullptr;
+    //double* dy_old_ptr = nullptr; // This needs to be public
     //double* dy_now_ptr = nullptr; // This needs to be public
     double* dy_tmp_ptr  = nullptr;
     double* dy_tmp2_ptr = nullptr;
@@ -286,6 +295,7 @@ public:
     bool use_dense_output            = false;
     bool user_provided_max_num_steps = false;
     bool use_pysolver                = false;
+    bool swap_flag                   = false; // Flag that toggles each time y_old is swapped for y_now; PySolver will look for this to determine which numpy array it needs to use.
 
     ODEMethod integration_method = ODEMethod::NO_METHOD_SET;
 
@@ -299,6 +309,7 @@ public:
     double t_now       = 0.0;
     double* y_old_ptr  = nullptr;
     double* y_now_ptr  = nullptr;
+    double* dy_old_ptr = nullptr;
     double* dy_now_ptr = nullptr;
     std::vector<size_t> active_event_indices_vec = std::vector<size_t>();
 };

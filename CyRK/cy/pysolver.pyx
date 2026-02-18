@@ -5,7 +5,7 @@ from libcpp.cmath cimport fmin, fabs
 from libcpp.vector cimport vector
 
 from CyRK.cy.common cimport INF, EPS_100, CyrkErrorCodes, CyrkErrorMessages, find_expected_size, dbl_NAN, MAX_SIZET_SIZE
-from CyRK.cy.cysolver_api cimport ProblemConfig, RKConfig, CySolverBase
+from CyRK.cy.cysolver_api cimport ProblemConfig, RKConfig
 from CyRK.cy.events cimport Event, EventFunc
 
 import numpy as np
@@ -128,7 +128,7 @@ cdef class PySolver(WrapCySolverResult):
 
         # Pull in current state pointers from CySolver C++ object to this object so that `self.diffeq` can update the "now" attributes.
         cdef NowStatePointers solver_state = cysolver_ptr.get_now_state()
-        self.set_state(&solver_state)
+        self.set_state(cysolver_ptr, &solver_state)
 
         # Update other configurations now
         if len(time_span) != 2:
@@ -278,14 +278,19 @@ cdef class PySolver(WrapCySolverResult):
                 f"ERROR: `PySolver::set_problem_parameters` - Error during config setup. Error Code: {status_code}. "
                 f"Message: {CyrkErrorMessages.at(status_code).decode('utf-8')}")
     
-    cdef void set_state(self, NowStatePointers* solver_state_ptr) noexcept:
-        
+    cdef void set_state(self, CySolverBase* solver_ptr, NowStatePointers* solver_state_ptr) noexcept:
+
+        self.cysolver_ptr = solver_ptr
+    
         self.t_now_ptr  = solver_state_ptr.t_now_ptr
         self.y_now_ptr  = solver_state_ptr.y_now_ptr
         self.dy_now_ptr = solver_state_ptr.dy_now_ptr
+        self.y_old_ptr  = solver_state_ptr.y_old_ptr
+        self.dy_old_ptr = solver_state_ptr.dy_old_ptr
 
         # Create memoryviews of the pointers
         self.y_now_view  = <double[:self.num_y]>self.y_now_ptr
+        self.y_old_view  = <double[:self.num_y]>self.y_old_ptr
 
         # Create numpy arrays which will be passed to the python diffeq.
         # We need to make sure that this is a not a new ndarray, but one that points to the same data. 
@@ -297,29 +302,56 @@ cdef class PySolver(WrapCySolverResult):
         shape_ptr[0] = <cnp.npy_intp>self.num_y
         
         self.y_now_arr = cnp.PyArray_SimpleNewFromData(1, shape_ptr, cnp.NPY_DOUBLE, self.y_now_ptr)
+        self.y_old_arr = cnp.PyArray_SimpleNewFromData(1, shape_ptr, cnp.NPY_DOUBLE, self.y_old_ptr)
         
         # Do the same for dy if the user provided the appropriate kind of differential equation.
         if self.pass_dy_as_arg:
             self.dy_now_view = <double[:self.num_dy]>self.dy_now_ptr
             shape[0]         = <cnp.npy_intp>self.num_dy  # dy may have a larger shape than y
-            self.dy_now_arr  = cnp.PyArray_SimpleNewFromData(1, shape_ptr, cnp.NPY_DOUBLE, self.dy_now_ptr)   
+            self.dy_now_arr  = cnp.PyArray_SimpleNewFromData(1, shape_ptr, cnp.NPY_DOUBLE, self.dy_now_ptr)
+            
+            self.dy_old_view = <double[:self.num_dy]>self.dy_old_ptr
+            self.dy_old_arr  = cnp.PyArray_SimpleNewFromData(1, shape_ptr, cnp.NPY_DOUBLE, self.dy_old_ptr)
 
     cdef void diffeq(self) noexcept:
-        # Run python diffeq
-        if self.pass_dy_as_arg:
-            if self.use_args:
-                self.diffeq_func(self.dy_now_arr, self.t_now_ptr[0], self.y_now_arr, *self.args)
+        # Update dy_now_arr and y_now_arr pointers because the underlying C++ code may have swapped them.
+        if not self.cysolver_ptr:
+            raise RuntimeError("Can not perform diffeq calculation, CySolverBase is null.")
+
+        # Determine which array we should use. The underlying C++ mechanism swaps between using y_now and y_old at each
+        #  step. t_now does not get swapped.
+        if not self.cysolver_ptr.swap_flag:
+            # Run python diffeq
+            if self.pass_dy_as_arg:
+                if self.use_args:
+                    self.diffeq_func(self.dy_now_arr, self.t_now_ptr[0], self.y_now_arr, *self.args)
+                else:
+                    self.diffeq_func(self.dy_now_arr, self.t_now_ptr[0], self.y_now_arr)
             else:
-                self.diffeq_func(self.dy_now_arr, self.t_now_ptr[0], self.y_now_arr)
+                if self.use_args:
+                    self.dy_now_view = self.diffeq_func(self.t_now_ptr[0], self.y_now_arr, *self.args)
+                else:
+                    self.dy_now_view = self.diffeq_func(self.t_now_ptr[0], self.y_now_arr)
+                # Since we do not have a static dy that we can pass to the function and use in the solver we must copy over
+                # the values from the newly created dy memory view
+                # Note that num_dy may be larger than num_y if the user is capturing extra output during integration.
+                memcpy(self.dy_now_ptr, &self.dy_now_view[0], sizeof(double) * self.num_dy)
         else:
-            if self.use_args:
-                self.dy_now_view = self.diffeq_func(self.t_now_ptr[0], self.y_now_arr, *self.args)
+            # Run python diffeq
+            if self.pass_dy_as_arg:
+                if self.use_args:
+                    self.diffeq_func(self.dy_old_arr, self.t_now_ptr[0], self.y_old_arr, *self.args)
+                else:
+                    self.diffeq_func(self.dy_old_arr, self.t_now_ptr[0], self.y_old_arr)
             else:
-                self.dy_now_view = self.diffeq_func(self.t_now_ptr[0], self.y_now_arr)
-            # Since we do not have a static dy that we can pass to the function and use in the solver we must copy over
-            # the values from the newly created dy memory view
-            # Note that num_dy may be larger than num_y if the user is capturing extra output during integration.
-            memcpy(self.dy_now_ptr, &self.dy_now_view[0], sizeof(double) * self.num_dy)
+                if self.use_args:
+                    self.dy_old_view = self.diffeq_func(self.t_now_ptr[0], self.y_old_arr, *self.args)
+                else:
+                    self.dy_old_view = self.diffeq_func(self.t_now_ptr[0], self.y_old_arr)
+                # Since we do not have a static dy that we can pass to the function and use in the solver we must copy over
+                # the values from the newly created dy memory view
+                # Note that num_dy may be larger than num_y if the user is capturing extra output during integration.
+                memcpy(self.dy_old_ptr, &self.dy_old_view[0], sizeof(double) * self.num_dy)
     
     cdef double check_pyevent(
             self,

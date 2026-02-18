@@ -160,10 +160,10 @@ void RKSolver::p_estimate_error() noexcept
     double atol = this->atols_ptr[0];
 
     // Cache values thate used multiple times
-    double* const y_old_ptr_ = this->y_old_ptr;
-    double* const y_now_ptr_ = this->y_now_ptr;
-    const double* const E_start_ptr = this->E_ptr;
-    const double* const E_end_ptr   = this->E_ptr + this->n_stages_p1;
+    double* const CYRK_RESTRICT y_old_ptr_ = this->y_old_ptr;
+    double* const CYRK_RESTRICT y_now_ptr_ = this->y_now_ptr;
+    const double* const CYRK_RESTRICT E_start_ptr = this->E_ptr;
+    const double* const CYRK_RESTRICT E_end_ptr   = this->E_ptr + this->n_stages_p1;
 
     for (size_t y_i = 0; y_i < this->num_y; y_i++)
     {
@@ -289,15 +289,15 @@ void RKSolver::p_step_implementation() noexcept
     // Run RK integration step
 
     // Create local variables instead of calling class attributes for pointer objects.
-    double* const l_K_ptr       = this->K_ptr;
-    const double* const l_A_ptr = this->A_ptr;
-    const double* const l_B_ptr = this->B_ptr;
-    const double* const l_B_end_ptr = this->B_ptr + this->n_stages;
-    const double* const l_C_ptr = this->C_ptr;
-    double* const l_y_now_ptr   = this->y_now_ptr;
-    double* const l_y_old_ptr   = this->y_old_ptr;
-    double* const l_dy_now_ptr  = this->dy_now_ptr;
-    double* const l_dy_old_ptr  = this->dy_old_ptr;
+    double* const CYRK_RESTRICT l_K_ptr       = this->K_ptr;
+    const double* const CYRK_RESTRICT l_A_ptr = this->A_ptr;
+    const double* const CYRK_RESTRICT l_B_ptr = this->B_ptr;
+    const double* const CYRK_RESTRICT l_B_end_ptr = this->B_ptr + this->n_stages;
+    const double* const CYRK_RESTRICT l_C_ptr = this->C_ptr;
+    double* const CYRK_RESTRICT l_y_now_ptr   = this->y_now_ptr;
+    double* const CYRK_RESTRICT l_y_old_ptr   = this->y_old_ptr;
+    double* const CYRK_RESTRICT l_dy_now_ptr  = this->dy_now_ptr;
+    double* const CYRK_RESTRICT l_dy_old_ptr  = this->dy_old_ptr;
 
     // Determine step size based on previous loop
     // Find minimum step size based on the value of t (less floating point numbers between numbers when t is large)
