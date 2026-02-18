@@ -90,7 +90,7 @@ void RKConfig::update_properties(
         capture_dense_output_,
         force_retain_solver_,
         events_vec_
-        );
+    );
 }
 
 void RKConfig::initialize()
@@ -143,37 +143,23 @@ CyrkErrorCodes RKSolver::p_additional_setup() noexcept
     // Update stride information
     this->nstages_numy = this->n_stages * this->num_y;
     this->n_stages_p1  = this->n_stages + 1;
-    size_t raw_size = this->K_size;
+    this->K_stride     = this->n_stages_p1;
 
-    // Optimize K stride to align with 32-bytes (4 doubles) or 64-byte (8 doubles)
-    // RK45 has n+1 = 7 stages. 7 doubles = 56 bytes. Padded to 8 doubles = 64 bytes
-    // This way each stage will fit into one cache line (or 2 stages in 1 for RK23).
-    // DOP853 has n+1 = 18 so it will be padded up to 160 bytes; 1 stage requires 2.5 cache lines.
-    // TODO: 2 of DOP853 are temporary array values. If we can find out a different location for those then DOP853 could fit nicely in 2 cache lines.
-    if (raw_size % 4 != 0) {
-        this->K_stride = raw_size + (4 - (raw_size % 4));
-    } else {
-        this->K_stride = raw_size;
-    }
-
-    // Resize K using the stride, not the raw size
-    // Fill with zeros
+    // Allocate K and fill with zeros
     try {
         // Only resize if we need more space to avoid reallocation overhead
         size_t required_size = this->num_y * this->K_stride;
-        if (this->K.size() < required_size) {
-            this->K.resize(required_size);
-        }
+        this->K.resize(required_size);
         // It is important to initialize the K variable with zeros
         std::fill(this->K.data(), this->K.data() + required_size, 0.0);
     }
     catch (const std::bad_alloc&) {
         return CyrkErrorCodes::MEMORY_ALLOCATION_ERROR;
     }
-    
+
     // Update pointer
     this->K_ptr = this->K.data();
-    
+
     return CyrkErrorCodes::NO_ERROR;
 }
 
@@ -187,10 +173,10 @@ void RKSolver::p_estimate_error() noexcept
     double atol = this->atols_ptr[0];
 
     // Cache values thate used multiple times
-    double* const CYRK_RESTRICT y_old_ptr_ = this->y_old_ptr;
-    double* const CYRK_RESTRICT y_now_ptr_ = this->y_now_ptr;
-    const double* const CYRK_RESTRICT E_start_ptr = this->E_ptr;
-    const double* const CYRK_RESTRICT E_end_ptr   = this->E_ptr + this->n_stages_p1;
+    double* const CYRK_RESTRICT l_y_old_ptr   = this->y_old_ptr;
+    double* const CYRK_RESTRICT l_y_now_ptr   = this->y_now_ptr;
+    const double* const CYRK_RESTRICT l_E_ptr = this->E_ptr;
+    double* const CYRK_RESTRICT l_K_ptr       = this->K_ptr;
 
     for (size_t y_i = 0; y_i < this->num_y; y_i++)
     {
@@ -199,12 +185,16 @@ void RKSolver::p_estimate_error() noexcept
 
         // Dot product between K and E
         const size_t idx_K = y_i * this->K_stride;
-        double* const K_ptr_yi = &this->K_ptr[idx_K];
+        double* const l_K_ptr_yi = &l_K_ptr[idx_K];
 
-        const double error_dot = std::inner_product(this->E_ptr, E_end_ptr, K_ptr_yi, 0.0);
+        double error_dot = l_E_ptr[0] * l_K_ptr_yi[0];
+        for (size_t s = 1; s < this->n_stages_p1; s++)
+        {
+            error_dot += l_E_ptr[s] * l_K_ptr_yi[s];
+        }
 
         // Find scale of y for error calculations
-        const double scale_inv = 1.0 / (atol + std::fmax(std::fabs(y_old_ptr_[y_i]), std::fabs(y_now_ptr_[y_i])) * rtol);
+        const double scale_inv = 1.0 / (atol + std::fmax(std::fabs(l_y_old_ptr[y_i]), std::fabs(l_y_now_ptr[y_i])) * rtol);
 
         // We need the absolute value but since we are taking the square, it is guaranteed to be positive.
         // TODO: This will need to change if CySolver ever accepts complex numbers
@@ -319,7 +309,6 @@ void RKSolver::p_step_implementation() noexcept
     double* const CYRK_RESTRICT l_K_ptr       = this->K_ptr;
     const double* const CYRK_RESTRICT l_A_ptr = this->A_ptr;
     const double* const CYRK_RESTRICT l_B_ptr = this->B_ptr;
-    const double* const CYRK_RESTRICT l_B_end_ptr = this->B_ptr + this->n_stages;
     const double* const CYRK_RESTRICT l_C_ptr = this->C_ptr;
     double* const CYRK_RESTRICT l_y_now_ptr   = this->y_now_ptr;
     double* const CYRK_RESTRICT l_y_old_ptr   = this->y_old_ptr;
@@ -385,34 +374,43 @@ void RKSolver::p_step_implementation() noexcept
         // But we need to return to its original value later on. Store in temp variable.
         const double time_tmp = this->t_now;
 
-        for (size_t s = 1; s < this->len_C; s++) {
+        // Stage 1
+        this->t_now = this->t_old + l_C_ptr[1] * this->step;
+        for (size_t y_i = 0; y_i < this->num_y; y_i++)
+        {
+            const double temp_double = l_dy_old_ptr[y_i];
+            // Set the first column of K (s=0)
+            const size_t idx_K = y_i * this->K_stride;
+            l_K_ptr[idx_K] = temp_double;
+            // Now update y
+            l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + (this->step * temp_double * A_at_10);
+        }
+        // Call diffeq method to update K with the new dydt
+            // This will use the now updated dy_now_ptr based on the values of y_now_ptr and t_now_ptr.
+        this->diffeq(this);
+
+        // Stage 2+
+        for (size_t s = 2; s < this->len_C; s++)
+        {
             // Find the current time based on the old time and the step size.
             this->t_now = this->t_old + l_C_ptr[s] * this->step;
-            const size_t stride_A             = s * this->len_Acols;
-            const double* const l_A_ptr_s     = &l_A_ptr[stride_A];
-            const double* const l_A_ptr_s_end = l_A_ptr_s + s;
+            const size_t stride_A = s * this->len_Acols;
+            const double* const l_A_ptr_s = &l_A_ptr[stride_A];
 
             for (size_t y_i = 0; y_i < this->num_y; y_i++)
             {
-                double temp_double;
-                const size_t idx_K                = y_i * this->K_stride;
-                const double* const l_K_ptr_yi    = &l_K_ptr[idx_K];
-                const double* const l_A_ptr_s_end = l_A_ptr_s + s;
+                const size_t idx_K = y_i * this->K_stride;
+                double* const l_K_ptr_yi = &l_K_ptr[idx_K];
+
+                // Update K based on the previous s loop value (including s=1 which is the loop above).
+                l_K_ptr_yi[s - 1] = l_dy_now_ptr[y_i];
 
                 // Dot Product (K, a) * step
-                switch (s)
+                // Dot product of A and K arrays up to s
+                double temp_double = l_A_ptr_s[0] * l_K_ptr_yi[0];
+                for (size_t j = 1; j < s; j++)
                 {
-                case 1:
-                    // Set the first column of K
-                    temp_double = l_dy_old_ptr[y_i];
-                    l_K_ptr[idx_K] = temp_double;
-                    temp_double *= A_at_10;
-                    break;
-
-                [[likely]] default:
-                    // Dot product of A and K arrays up to s
-                    temp_double = std::inner_product(l_A_ptr_s, l_A_ptr_s_end, l_K_ptr_yi, 0.0);
-                    break;
+                    temp_double += l_A_ptr_s[j] * l_K_ptr_yi[j];
                 }
 
                 // Update value of y_now
@@ -421,12 +419,6 @@ void RKSolver::p_step_implementation() noexcept
             // Call diffeq method to update K with the new dydt
             // This will use the now updated dy_now_ptr based on the values of y_now_ptr and t_now_ptr.
             this->diffeq(this);
-
-            // Update K based on the new dy values.
-            for (size_t y_i = 0; y_i < this->num_y; ++y_i) {
-                // Store dy_now into K[s] for this y
-                l_K_ptr[y_i * this->K_stride + s] = l_dy_now_ptr[y_i];
-            }
         }
 
         // Restore t_now to its previous value.
@@ -435,12 +427,18 @@ void RKSolver::p_step_implementation() noexcept
         // Dot Product (K, B) * step
         for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
-            
             const size_t idx_K = y_i * this->K_stride;
-            const double* const l_K_ptr_yi = &l_K_ptr[idx_K];
+            double* const l_K_ptr_yi = &l_K_ptr[idx_K];
+            // Need to update K based on that last s step since it won't hit the loop update (where there is a [s - 1] index)
+            l_K_ptr_yi[this->len_C - 1] = l_dy_now_ptr[y_i];
 
             // Update y_now
-            const double temp_double = std::inner_product(l_B_ptr, l_B_end_ptr, l_K_ptr_yi, 0.0);
+            double temp_double = l_B_ptr[0] * l_K_ptr_yi[0];
+            for (size_t s = 1; s < this->n_stages; s++)
+            {
+                temp_double += l_B_ptr[s] * l_K_ptr_yi[s];
+            }
+
             l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + (this->step * temp_double);
         }
 
@@ -636,7 +634,7 @@ void RKSolver::set_Q_array(double* Q_ptr)
             for (size_t y_i = 0; y_i < this->num_y; y_i++)
             {
                 // Dot Product (K.T dot a) * h
-                stride_K = y_i + this->K_stride;
+                stride_K = y_i * this->K_stride;
                 // Go up to a max of Row 13
                 temp_double = 0.0;
                 // Initialize temp accumulators
@@ -665,7 +663,7 @@ void RKSolver::set_Q_array(double* Q_ptr)
             {
                 // Update stride
                 stride_K = y_i * this->K_stride;
-    
+
                 // Store dy from the last call.
                 K_ni = this->dy_now_ptr[y_i];
                 this->K_ptr[stride_K + 13] = K_ni;
@@ -710,7 +708,6 @@ void RKSolver::set_Q_array(double* Q_ptr)
             {
                 // Update stride
                 stride_K = y_i * this->K_stride;
-    
                 // Store dy from the last call.
                 this->K_ptr[stride_K + 15] = this->dy_now_ptr[y_i];
 
@@ -865,11 +862,11 @@ CyrkErrorCodes RKSolver::setup()
         size_t num_rtols = config_ptr->rtols.size();
         size_t num_atols = config_ptr->atols.size();
         if (
-            (num_rtols == 0) or 
+            (num_rtols == 0) or
             ((num_rtols > 1) and (num_rtols != this->num_y)) or
             (num_atols == 0) or
             ((num_atols > 1) and (num_atols != this->num_y))
-           )
+            )
         {
             // No rtols or atols provided, or the size of the array is not correct.
             setup_status = CyrkErrorCodes::BAD_CONFIG_DATA;
@@ -1009,6 +1006,13 @@ void DOP853::p_estimate_error() noexcept
     double rtol = this->rtols_ptr[0];
     double atol = this->atols_ptr[0];
 
+    // Cache values thate used multiple times
+    double* const CYRK_RESTRICT l_y_old_ptr    = this->y_old_ptr;
+    double* const CYRK_RESTRICT l_y_now_ptr    = this->y_now_ptr;
+    const double* const CYRK_RESTRICT l_E3_ptr = this->E3_ptr;
+    const double* const CYRK_RESTRICT l_E5_ptr = this->E5_ptr;
+    double* const CYRK_RESTRICT l_K_ptr        = this->K_ptr;
+
     for (size_t y_i = 0; y_i < this->num_y; y_i++)
     {
         if (this->use_array_rtols)
@@ -1021,22 +1025,23 @@ void DOP853::p_estimate_error() noexcept
             atol = this->atols_ptr[y_i];
         }
 
-        const size_t stride_K = y_i * this->K_stride;
-        double* const K_ptr_yi = &this->K_ptr[stride_K];
+        const size_t stride_K    = y_i * this->K_stride;
+        double* const l_K_ptr_yi = &l_K_ptr[stride_K];
 
         // Dot product between K and E3 & E5 (sum over n_stages + 1; for DOP853 n_stages = 12
         // n = 0
-        double error_dot3 = this->E3_ptr[0] * K_ptr_yi[0];
-        double error_dot5 = this->E5_ptr[0] * K_ptr_yi[0];
+        double K0         = l_K_ptr_yi[0];
+        double error_dot3 = l_E3_ptr[0] * K0;
+        double error_dot5 = l_E5_ptr[0] * K0;
         for (size_t n_i = 1; n_i < this->n_stages_p1; n_i++)
         {
-            const double temp_double = K_ptr_yi[n_i];
-            error_dot3 += this->E3_ptr[n_i] * temp_double;
-            error_dot5 += this->E5_ptr[n_i] * temp_double;
+            const double temp_double = l_K_ptr_yi[n_i];
+            error_dot3 += l_E3_ptr[n_i] * temp_double;
+            error_dot5 += l_E5_ptr[n_i] * temp_double;
         }
 
         // Find scale of y for error calculations
-        const double scale_inv = 1.0 / (atol + std::fmax(std::fabs(this->y_old_ptr[y_i]), std::fabs(this->y_now_ptr[y_i])) * rtol);
+        const double scale_inv = 1.0 / (atol + std::fmax(std::fabs(l_y_old_ptr[y_i]), std::fabs(l_y_now_ptr[y_i])) * rtol);
 
         // We need the absolute value but since we are taking the square, it is guaranteed to be positive.
         // TODO: This will need to change if CySolver ever accepts complex numbers
