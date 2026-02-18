@@ -20,6 +20,7 @@
 ##### Benchmarks
 * Added in a repeater inside `cysolve_ivp` tester so we can more accurately benchmark the integrators performance without also tracking the python wrappers overhead. 
   * This led to a huge increase in performance on the benchmarks. `cysolve_ivp is now consistently 100 to 500x faster than scipy `solve_ivp`.
+* Added a benchmark for large number of dependent y variables (y=10_000) to cytester and the SciPy Comparison notebook.
 
 ##### Demos
 * Fixed demos so they properly use cross-platform headers (required ipython hack which is included in the new "Demos/jupyter_cyhack.py").

@@ -15,6 +15,8 @@ from lorenz import (
     lorenz_cy, lorenz_nb, lorenz_args, lorenz_y0, lorenz_time_span_1, lorenz_time_span_2,
     lorenz_nb_extra, lorenz_cy_extra)
 
+from largey import largey_cy, largey_nb, largey_args, largey_y0, largey_time_span_1, largey_time_span_2
+
 from CyRK.cy.cysolver_test import cytester
 
 REPEATS = 4
@@ -25,6 +27,7 @@ CySolverLotkavolterra_Int = 5
 CySolverPendulum_Int = 6
 CySolverLorenz_Int = 3
 CySolverLorenzExtra_Int = 4
+CySolverLargeY = 9
 
 performance_filename = 'cyrk_performance.csv'
 diffeqs = {
@@ -33,7 +36,9 @@ diffeqs = {
     'Pendulum'       : (pendulum_cy, pendulum_nb, pendulum_args, pendulum_y0, (pendulum_time_span_1, pendulum_time_span_2), CySolverPendulum_Int),
     'Lorenz'         : (lorenz_cy, lorenz_nb, lorenz_args, lorenz_y0, (lorenz_time_span_1, lorenz_time_span_2), CySolverLorenz_Int),
     'Lorenz-ExtraOut': (lorenz_cy_extra, lorenz_nb_extra, lorenz_args, lorenz_y0,
-                        (lorenz_time_span_1, lorenz_time_span_2), CySolverLorenzExtra_Int)
+                        (lorenz_time_span_1, lorenz_time_span_2), CySolverLorenzExtra_Int),
+    'Large-NumY'     : (largey_cy, largey_nb, largey_args, largey_y0,
+                        (largey_time_span_1, largey_time_span_2), CySolverLargeY)
     }
 
 time_spans = {

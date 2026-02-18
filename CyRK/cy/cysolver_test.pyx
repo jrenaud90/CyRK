@@ -221,6 +221,24 @@ cdef void pendulum_preeval_diffeq(double* dy_ptr, double t, double* y_ptr, char*
     dy_ptr[0] = y1
     dy_ptr[1] = pre_eval_storage_ptr[1] * sin(y0) + pre_eval_storage_ptr[2] * pre_eval_storage_ptr[0]
 
+cdef void large_numy_diffeq(double* dy_ptr, double t, double* y_ptr, char* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
+    cdef size_t num_y = 10_000
+
+    cdef double* args_dbl_ptr = <double*>args_ptr
+    cdef double decay_rate = args_dbl_ptr[0]
+    cdef double forcing_scale = args_dbl_ptr[1]
+
+    # This diffeq converges so should be stable
+    cdef size_t i
+    for i in range(num_y):
+        if i % 1000 == 0:
+            # Every 1000 make the decay rate a little worse so there is some difference in the y's
+            decay_rate *= 0.95
+        dy_ptr[i] = (decay_rate * y_ptr[i]) + (<double>i) * forcing_scale
+        # Add some coupling
+        if (i % 2 == 0) and ((i + 1) < (num_y - 1)):
+            dy_ptr[i] += 0.5 * y_ptr[i + 1]
+
 def cy_extra_output_tester():
 
     cdef double t_start = 0.0
@@ -283,7 +301,7 @@ def cy_extra_output_tester():
 
     return True
 
-# Event fuinctions for baseline diffeq
+# Event functions for baseline diffeq
 cdef double baseline_diffeq_event1_check(double t, double* y, char* args) noexcept nogil:
     if y[0] > 50.0:
         return 0.0
@@ -329,6 +347,12 @@ cdef vector[Event] pendulum_diffeq_events = vector[Event]()
 pendulum_diffeq_events.emplace_back(pendulum_diffeq_event1_check)
 pendulum_diffeq_events.emplace_back(pendulum_diffeq_event2_check)
 pendulum_diffeq_events.emplace_back(pendulum_diffeq_event3_check)
+
+# Use the same events for large y diffeq
+cdef vector[Event] large_numy_events = vector[Event]()
+large_numy_events.emplace_back(pendulum_diffeq_event1_check)
+large_numy_events.emplace_back(pendulum_diffeq_event2_check)
+large_numy_events.emplace_back(pendulum_diffeq_event3_check)
 
 
 def cytester(
@@ -405,6 +429,10 @@ def cytester(
     elif diffeq_number == 8:
         diffeq = pendulum_preeval_diffeq
         pre_eval_func = pendulum_preeval_func
+    elif diffeq_number == 9:
+        diffeq = large_numy_diffeq
+        num_extra = 2
+
     else:
         raise NotImplementedError
     
@@ -414,6 +442,8 @@ def cytester(
             events_vec = baseline_diffeq_events
         elif diffeq_number == 6:
             events_vec = pendulum_diffeq_events
+        elif diffeq_number == 9:
+            events_vec = large_numy_events
         else:
             raise NotImplementedError
 
@@ -535,7 +565,23 @@ def cytester(
             args_dbl_ptr[0] = 1.0
             args_dbl_ptr[1] = 1.0
             args_dbl_ptr[2] = 9.81
-
+        
+        elif diffeq_number == 9:
+            # Test with very large number of dependent y's
+            num_y = 10_000
+            y0_vec.resize(num_y)
+            for i in range(num_y):
+                y0_vec[i] = 100.0
+            args_vec.resize(2 * sizeof(double))
+            args_dbl_ptr = <double*>args_vec.data()
+            args_dbl_ptr[0] = -0.5
+            args_dbl_ptr[1] = 1.0e-5
+            if t_span is not None:
+                t_start = t_span[0]
+                t_end   = t_span[1]
+            else:
+                t_start = 0.0
+                t_end = 10.0
         else:
             raise NotImplementedError
     else:
@@ -554,7 +600,49 @@ def cytester(
             args_vec.resize(args.size * sizeof(double))
             memcpy(args_vec.data(), &args[0], sizeof(double) * args.size)
         else:
-            args_vec.resize(0)
+            # Use default args
+            if diffeq_number == 3:
+                args_vec.resize(3 * sizeof(double))
+                args_dbl_ptr = <double*>args_vec.data()
+                args_dbl_ptr[0] = 10.0
+                args_dbl_ptr[1] = 28.0
+                args_dbl_ptr[2] = 8.0 / 3.0
+            elif diffeq_number == 4:
+                args_vec.resize(3 * sizeof(double))
+                args_dbl_ptr = <double*>args_vec.data()
+                args_dbl_ptr[0] = 10.0
+                args_dbl_ptr[1] = 28.0
+                args_dbl_ptr[2] = 8.0 / 3.0
+            elif diffeq_number == 5:
+                args_vec.resize(4 * sizeof(double))
+                args_dbl_ptr = <double*>args_vec.data()
+                args_dbl_ptr[0] = 1.5
+                args_dbl_ptr[1] = 1.0
+                args_dbl_ptr[2] = 3.0
+                args_dbl_ptr[3] = 1.0
+            elif diffeq_number == 6:
+                args_vec.resize(3 * sizeof(double))
+                args_dbl_ptr = <double*>args_vec.data()
+                args_dbl_ptr[0] = 1.0
+                args_dbl_ptr[1] = 1.0
+                args_dbl_ptr[2] = 9.81
+            elif diffeq_number == 7:
+                args_vec.resize(sizeof(ArbitraryArgStruct))
+                memcpy(args_vec.data(), &arb_arg_struct, sizeof(ArbitraryArgStruct))
+            elif diffeq_number == 8:
+                args_vec.resize(3 * sizeof(double))
+                args_dbl_ptr = <double*>args_vec.data()
+                args_dbl_ptr[0] = 1.0
+                args_dbl_ptr[1] = 1.0
+                args_dbl_ptr[2] = 9.81
+            elif diffeq_number == 9:
+                args_vec.resize(2 * sizeof(double))
+                args_dbl_ptr = <double*>args_vec.data()
+                args_dbl_ptr[0] = -0.5
+                args_dbl_ptr[1] = 1.0e-5
+            else:
+                args_vec.resize(0)
+    
 
     # Parse rtol
     cdef vector[double] rtols_vec = vector[double]()
