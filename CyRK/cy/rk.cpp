@@ -143,9 +143,36 @@ CyrkErrorCodes RKSolver::p_additional_setup() noexcept
     // Update stride information
     this->nstages_numy = this->n_stages * this->num_y;
     this->n_stages_p1  = this->n_stages + 1;
+    size_t raw_size = this->K_size;
 
-    // It is important to initialize the K variable with zeros
-    std::fill(this->K_ptr, this->K_ptr + (this->num_y * this->n_stages_p1), 0.0);
+    // Optimize K stride to align with 32-bytes (4 doubles) or 64-byte (8 doubles)
+    // RK45 has n+1 = 7 stages. 7 doubles = 56 bytes. Padded to 8 doubles = 64 bytes
+    // This way each stage will fit into one cache line (or 2 stages in 1 for RK23).
+    // DOP853 has n+1 = 18 so it will be padded up to 160 bytes; 1 stage requires 2.5 cache lines.
+    // TODO: 2 of DOP853 are temporary array values. If we can find out a different location for those then DOP853 could fit nicely in 2 cache lines.
+    if (raw_size % 4 != 0) {
+        this->K_stride = raw_size + (4 - (raw_size % 4));
+    } else {
+        this->K_stride = raw_size;
+    }
+
+    // Resize K using the stride, not the raw size
+    // Fill with zeros
+    try {
+        // Only resize if we need more space to avoid reallocation overhead
+        size_t required_size = this->num_y * this->K_stride;
+        if (this->K.size() < required_size) {
+            this->K.resize(required_size);
+        }
+        // It is important to initialize the K variable with zeros
+        std::fill(this->K.data(), this->K.data() + required_size, 0.0);
+    }
+    catch (const std::bad_alloc&) {
+        return CyrkErrorCodes::MEMORY_ALLOCATION_ERROR;
+    }
+    
+    // Update pointer
+    this->K_ptr = this->K.data();
     
     return CyrkErrorCodes::NO_ERROR;
 }
@@ -171,8 +198,8 @@ void RKSolver::p_estimate_error() noexcept
         atol = this->use_array_atols ? this->atols_ptr[y_i] : atol;
 
         // Dot product between K and E
-        const size_t stride_K = y_i * this->n_stages_p1;
-        double* const K_ptr_yi  = &this->K_ptr[stride_K];
+        const size_t idx_K = y_i * this->K_stride;
+        double* const K_ptr_yi = &this->K_ptr[idx_K];
 
         const double error_dot = std::inner_product(this->E_ptr, E_end_ptr, K_ptr_yi, 0.0);
 
@@ -368,8 +395,8 @@ void RKSolver::p_step_implementation() noexcept
             for (size_t y_i = 0; y_i < this->num_y; y_i++)
             {
                 double temp_double;
-                const size_t stride_K             = y_i * this->n_stages_p1;
-                const double* const l_K_ptr_yi     = &l_K_ptr[stride_K];
+                const size_t idx_K                = y_i * this->K_stride;
+                const double* const l_K_ptr_yi    = &l_K_ptr[idx_K];
                 const double* const l_A_ptr_s_end = l_A_ptr_s + s;
 
                 // Dot Product (K, a) * step
@@ -378,7 +405,7 @@ void RKSolver::p_step_implementation() noexcept
                 case 1:
                     // Set the first column of K
                     temp_double = l_dy_old_ptr[y_i];
-                    l_K_ptr[stride_K] = temp_double;
+                    l_K_ptr[idx_K] = temp_double;
                     temp_double *= A_at_10;
                     break;
 
@@ -396,14 +423,9 @@ void RKSolver::p_step_implementation() noexcept
             this->diffeq(this);
 
             // Update K based on the new dy values.
-            double* K_col_ptr = l_K_ptr + s;
-            double* dy_ptr = l_dy_now_ptr;
-            size_t stride = this->n_stages_p1;
-
             for (size_t y_i = 0; y_i < this->num_y; ++y_i) {
-                *K_col_ptr = *dy_ptr;
-                K_col_ptr += stride;
-                ++dy_ptr;
+                // Store dy_now into K[s] for this y
+                l_K_ptr[y_i * this->K_stride + s] = l_dy_now_ptr[y_i];
             }
         }
 
@@ -414,8 +436,8 @@ void RKSolver::p_step_implementation() noexcept
         for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
             
-            const size_t stride_K = y_i * this->n_stages_p1;
-            const double* const l_K_ptr_yi = &l_K_ptr[stride_K];
+            const size_t idx_K = y_i * this->K_stride;
+            const double* const l_K_ptr_yi = &l_K_ptr[idx_K];
 
             // Update y_now
             const double temp_double = std::inner_product(l_B_ptr, l_B_end_ptr, l_K_ptr_yi, 0.0);
@@ -427,10 +449,8 @@ void RKSolver::p_step_implementation() noexcept
         this->diffeq(this);
 
         // Set last column of K equal to dydt. K has size num_y * (n_stages + 1) so the last column is at n_stages
-        for (size_t y_i = 0; y_i < this->num_y; y_i++)
-        {
-            const size_t stride_K = y_i * this->n_stages_p1;
-            l_K_ptr[stride_K + this->n_stages] = l_dy_now_ptr[y_i];
+        for (size_t y_i = 0; y_i < this->num_y; y_i++) {
+            l_K_ptr[y_i * this->K_stride + this->n_stages] = l_dy_now_ptr[y_i];
         }
 
         // Check how well this step performed by calculating its error.
@@ -493,6 +513,7 @@ void RKSolver::set_Q_order(size_t* Q_order_ptr)
 {
     // Q's definition depends on the integrators implementation. 
     // For default RK, it is defined by Q = K.T.dot(self.P)  K has shape of (n_stages + 1, num_y) so K.T has shape of (num_y, n_stages + 1)
+    // *Technically K is padded up to (K_stride, num_y) if n_stages + 1 is not divisible by 4.
     // P has shape of (4, 3) for RK23; (7, 4) for RK45.. So (n_stages + 1, Q_order)
     // So Q has shape of (num_y, num_Pcols)
     Q_order_ptr[0] = this->len_Pcols;
@@ -501,7 +522,8 @@ void RKSolver::set_Q_order(size_t* Q_order_ptr)
 void RKSolver::set_Q_array(double* Q_ptr)
 {
     // Q's definition depends on the integrators implementation. 
-    // For default RK, it is defined by Q = K.T.dot(self.P)  K has shape of (n_stages + 1, num_y) so K.T has shape of (num_y, n_stages + 1)
+    // For default RK, it is defined by Q = K.T.dot(self.P)  K has a (real) shape of (n_stages + 1, num_y) so K.T has shape of (num_y, n_stages + 1)
+    // *Technically K is padded up to (K_stride, num_y) if n_stages + 1 is not divisible by 4.
     // P has shape of (4, 3) for RK23; (7, 4) for RK45.. So (n_stages + 1, Q_order)
     // So Q has shape of (num_y, num_Pcols)
 
@@ -512,7 +534,7 @@ void RKSolver::set_Q_array(double* Q_ptr)
         for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
             const size_t stride_Q = y_i * this->len_Pcols;
-            const size_t stride_K = y_i * this->n_stages_p1;
+            const size_t stride_K = y_i * this->K_stride;
             // len_Pcols == 3; n_stages + 1 == 4
 
             // P = 0
@@ -544,7 +566,7 @@ void RKSolver::set_Q_array(double* Q_ptr)
         for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
             const size_t stride_Q = y_i * this->len_Pcols;
-            const size_t stride_K = y_i * this->n_stages_p1;
+            const size_t stride_K = y_i * this->K_stride;
 
             // len_Pcols == 4; n_stages + 1 == 7
             // P = 0
@@ -601,10 +623,6 @@ void RKSolver::set_Q_array(double* Q_ptr)
             // We need to save a copy of the current state because we will overwrite the values shortly
             this->offload_to_temp();
 
-            // We also need to store dy_dt so that they can be used in dot products
-            double* K_extended_ptr        = &this->K[13 * this->num_y];
-            double* temp_double_array_ptr = &this->K[16 * this->num_y];
-
             // S (row) == 13
             // Solve for dy used to call diffeq
             double temp_double;
@@ -613,21 +631,25 @@ void RKSolver::set_Q_array(double* Q_ptr)
             double temp_double_4;
             double K_ni;
             size_t stride_K;
+            size_t stride_A;
 
             for (size_t y_i = 0; y_i < this->num_y; y_i++)
             {
                 // Dot Product (K.T dot a) * h
-                stride_K = this->n_stages_p1 * y_i;
+                stride_K = y_i + this->K_stride;
                 // Go up to a max of Row 13
-                temp_double                        = 0.0;
-                temp_double_array_ptr[y_i * 2]     = 0.0;
-                temp_double_array_ptr[y_i * 2 + 1] = 0.0;
+                temp_double = 0.0;
+                // Initialize temp accumulators
+                this->K_ptr[stride_K + 16] = 0.0;
+                this->K_ptr[stride_K + 17] = 0.0;
+
                 for (size_t n_i = 0; n_i < this->n_stages_p1; n_i++)
                 {
                     K_ni = K_ptr[stride_K + n_i];
-                    temp_double                        += K_ni * this->AEXTRA_ptr[3 * n_i];
-                    temp_double_array_ptr[y_i * 2]     += K_ni * this->AEXTRA_ptr[3 * n_i + 1];
-                    temp_double_array_ptr[y_i * 2 + 1] += K_ni * this->AEXTRA_ptr[3 * n_i + 2];
+                    stride_A = 3 * n_i;
+                    temp_double                += K_ni * this->AEXTRA_ptr[stride_A];
+                    this->K_ptr[stride_K + 16] += K_ni * this->AEXTRA_ptr[stride_A + 1];
+                    this->K_ptr[stride_K + 17] += K_ni * this->AEXTRA_ptr[stride_A + 2];
                 }
 
                 // Update y for diffeq call using the temp_double dot product.
@@ -638,37 +660,45 @@ void RKSolver::set_Q_array(double* Q_ptr)
             this->diffeq(this);
 
             // S (row) == 14
+            stride_A = 3 * 13;
             for (size_t y_i = 0; y_i < this->num_y; y_i++)
             {
+                // Update stride
+                stride_K = y_i * this->K_stride;
+    
                 // Store dy from the last call.
                 K_ni = this->dy_now_ptr[y_i];
-                K_extended_ptr[y_i * 3] = K_ni;
+                this->K_ptr[stride_K + 13] = K_ni;
 
                 // Dot Product (K.T dot a) * h
                 // Add row 14 to the remaining dot product trackers
-                temp_double_array_ptr[y_i * 2]     += K_ni * AEXTRA_ptr[3 * 13 + 1];
-                temp_double_array_ptr[y_i * 2 + 1] += K_ni * AEXTRA_ptr[3 * 13 + 2];
+                this->K_ptr[stride_K + 16] += K_ni * AEXTRA_ptr[stride_A + 1];
+                this->K_ptr[stride_K + 17] += K_ni * AEXTRA_ptr[stride_A + 2];
 
                 // Update y for diffeq call
-                this->y_now_ptr[y_i] = this->y_old_ptr[y_i] + temp_double_array_ptr[y_i * 2] * this->step;
+                this->y_now_ptr[y_i] = this->y_old_ptr[y_i] + this->K_ptr[stride_K + 16] * this->step;
             }
             // Update time and call the diffeq.
             this->t_now = this->t_old + (this->step * CEXTRA_ptr[1]);
             this->diffeq(this);
 
             // S (row) == 15
+            stride_A = 3 * 14;
             for (size_t y_i = 0; y_i < this->num_y; y_i++)
             {
+                // Update stride
+                stride_K = y_i * this->K_stride;
+
                 // Store dy from the last call.
                 K_ni = this->dy_now_ptr[y_i];
-                K_extended_ptr[y_i * 3 + 1] = K_ni;
+                this->K_ptr[stride_K + 14] = K_ni;
 
                 // Dot Product (K.T dot a) * h            
                 // Add row 15 to the remaining dot product trackers
-                temp_double_array_ptr[y_i * 2 + 1] += K_ni * AEXTRA_ptr[3 * 14 + 2];
+                this->K_ptr[stride_K + 17] += K_ni * AEXTRA_ptr[stride_A + 2];
 
                 // Update y for diffeq call
-                this->y_now_ptr[y_i] = this->y_old_ptr[y_i] + temp_double_array_ptr[y_i * 2 + 1] * this->step;
+                this->y_now_ptr[y_i] = this->y_old_ptr[y_i] + this->K_ptr[stride_K + 17] * this->step;
             }
             // Update time and call the diffeq.
             this->t_now = this->t_old + (this->step * CEXTRA_ptr[2]);
@@ -678,8 +708,11 @@ void RKSolver::set_Q_array(double* Q_ptr)
             // Done with diffeq calls. Now build up Q matrix.
             for (size_t y_i = 0; y_i < this->num_y; y_i++)
             {
+                // Update stride
+                stride_K = y_i * this->K_stride;
+    
                 // Store dy from the last call.
-                K_extended_ptr[y_i * 3 + 2] = this->dy_now_ptr[y_i];
+                this->K_ptr[stride_K + 15] = this->dy_now_ptr[y_i];
 
                 // SciPy builds up a "F" matrix. Then in the dense interpolator this is reversed.
                 // To keep consistency we will build F pre-reversed into Q. 
@@ -697,7 +730,6 @@ void RKSolver::set_Q_array(double* Q_ptr)
                 // F[6] = delta_y
 
                 // Work on dot product between D and K
-                stride_K = this->n_stages_p1 * y_i;
                 // D Row 4
                 temp_double   = 0.0;
                 temp_double_2 = 0.0;
@@ -707,32 +739,36 @@ void RKSolver::set_Q_array(double* Q_ptr)
                 // First add up normal K
                 for (size_t n_i = 0; n_i < this->n_stages_p1; n_i++)
                 {
+                    const size_t D_stride = 4 * n_i;
                     K_ni = this->K_ptr[stride_K + n_i];
                     // Row 1
-                    temp_double   += K_ni * this->D_ptr[4 * n_i];
+                    temp_double   += K_ni * this->D_ptr[D_stride];
                     // Row 2
-                    temp_double_2 += K_ni * this->D_ptr[4 * n_i + 1];
+                    temp_double_2 += K_ni * this->D_ptr[D_stride + 1];
                     // Row 3
-                    temp_double_3 += K_ni * this->D_ptr[4 * n_i + 2];
+                    temp_double_3 += K_ni * this->D_ptr[D_stride + 2];
                     // Row 4
-                    temp_double_4 += K_ni * this->D_ptr[4 * n_i + 3];
+                    temp_double_4 += K_ni * this->D_ptr[D_stride + 3];
                 }
                 // Now add the extra 3 rows from extended
                 // Row 1
-                temp_double   += K_extended_ptr[y_i * 3]     * this->D_ptr[4 * 13];
-                temp_double_2 += K_extended_ptr[y_i * 3]     * this->D_ptr[4 * 13 + 1];
-                temp_double_3 += K_extended_ptr[y_i * 3]     * this->D_ptr[4 * 13 + 2];
-                temp_double_4 += K_extended_ptr[y_i * 3]     * this->D_ptr[4 * 13 + 3];
+                double k_ = this->K_ptr[stride_K + 13];
+                temp_double   += k_ * this->D_ptr[4 * 13];
+                temp_double_2 += k_ * this->D_ptr[4 * 13 + 1];
+                temp_double_3 += k_ * this->D_ptr[4 * 13 + 2];
+                temp_double_4 += k_ * this->D_ptr[4 * 13 + 3];
                 // Row 2
-                temp_double   += K_extended_ptr[y_i * 3 + 1] * this->D_ptr[4 * 14];
-                temp_double_2 += K_extended_ptr[y_i * 3 + 1] * this->D_ptr[4 * 14 + 1];
-                temp_double_3 += K_extended_ptr[y_i * 3 + 1] * this->D_ptr[4 * 14 + 2];
-                temp_double_4 += K_extended_ptr[y_i * 3 + 1] * this->D_ptr[4 * 14 + 3];
+                k_ = this->K_ptr[stride_K + 14];
+                temp_double   += k_ * this->D_ptr[4 * 14];
+                temp_double_2 += k_ * this->D_ptr[4 * 14 + 1];
+                temp_double_3 += k_ * this->D_ptr[4 * 14 + 2];
+                temp_double_4 += k_ * this->D_ptr[4 * 14 + 3];
                 // Row 3
-                temp_double   += K_extended_ptr[y_i * 3 + 2] * this->D_ptr[4 * 15];
-                temp_double_2 += K_extended_ptr[y_i * 3 + 2] * this->D_ptr[4 * 15 + 1];
-                temp_double_3 += K_extended_ptr[y_i * 3 + 2] * this->D_ptr[4 * 15 + 2];
-                temp_double_4 += K_extended_ptr[y_i * 3 + 2] * this->D_ptr[4 * 15 + 3];
+                k_ = this->K_ptr[stride_K + 15];
+                temp_double   += k_ * this->D_ptr[4 * 15];
+                temp_double_2 += k_ * this->D_ptr[4 * 15 + 1];
+                temp_double_3 += k_ * this->D_ptr[4 * 15 + 2];
+                temp_double_4 += k_ * this->D_ptr[4 * 15 + 3];
 
 
                 // Store these in reversed order
@@ -765,7 +801,7 @@ void RKSolver::set_Q_array(double* Q_ptr)
     [[unlikely]] default:
         for (size_t y_i = 0; y_i < this->num_y; y_i++)
         {
-            const size_t stride_K = this->n_stages_p1 * y_i;
+            const size_t stride_K = y_i * this->K_stride;
             const size_t stride_Q = y_i * this->len_Pcols;
 
             for (size_t P_i = 0; P_i < this->len_Pcols; P_i++)
@@ -875,17 +911,6 @@ CyrkErrorCodes RKSolver::setup()
 // ########################################################################################################################
 CyrkErrorCodes RK23::p_additional_setup() noexcept
 {
-    // Allocate the size of K
-    try
-    {
-        this->K.resize(this->num_y * 4);
-    }
-    catch (const std::bad_alloc&)
-    {
-        // Memory allocation failed, return error code
-        return CyrkErrorCodes::MEMORY_ALLOCATION_ERROR;
-    }
-
     // Setup RK constants before calling the base class reset
     this->order     = RK23_order;
     this->n_stages  = RK23_n_stages;
@@ -906,7 +931,7 @@ CyrkErrorCodes RK23::p_additional_setup() noexcept
     this->D_ptr      = nullptr;       // Not used for RK23
     this->AEXTRA_ptr = nullptr;       // Not used for RK23
     this->CEXTRA_ptr = nullptr;       // Not used for RK23
-    this->K_ptr      = this->K.data();
+    this->K_size     = this->n_stages + 1;
     this->integration_method = ODEMethod::RK23;
 
     return RKSolver::p_additional_setup();
@@ -918,17 +943,6 @@ CyrkErrorCodes RK23::p_additional_setup() noexcept
 // ########################################################################################################################
 CyrkErrorCodes RK45::p_additional_setup() noexcept
 {
-    // Allocate the size of K
-    try
-    {
-        this->K.resize(this->num_y * 7);
-    }
-    catch (const std::bad_alloc&)
-    {
-        // Memory allocation failed, return error code
-        return CyrkErrorCodes::MEMORY_ALLOCATION_ERROR;
-    }
-
     // Setup RK constants before calling the base class reset
     this->order     = RK45_order;
     this->n_stages  = RK45_n_stages;
@@ -949,7 +963,7 @@ CyrkErrorCodes RK45::p_additional_setup() noexcept
     this->D_ptr      = nullptr;       // Not used for RK45
     this->AEXTRA_ptr = nullptr;       // Not used for RK45
     this->CEXTRA_ptr = nullptr;       // Not used for RK45
-    this->K_ptr      = this->K.data();
+    this->K_size     = this->n_stages + 1;
     this->integration_method = ODEMethod::RK45;
 
     return RKSolver::p_additional_setup();
@@ -960,20 +974,6 @@ CyrkErrorCodes RK45::p_additional_setup() noexcept
 // ########################################################################################################################
 CyrkErrorCodes DOP853::p_additional_setup() noexcept
 {
-    // Allocate the size of K
-    try
-    {
-        this->K.resize(this->num_y * 18);
-        // First 13 cols are K
-        // Next 3 are K_extended
-        // Next 2 are temp_double_array_ptr
-    }
-    catch (const std::bad_alloc&)
-    {
-        // Memory allocation failed, return error code
-        return CyrkErrorCodes::MEMORY_ALLOCATION_ERROR;
-    }
-
     // Setup RK constants before calling the base class reset
     this->order     = DOP853_order;
     this->n_stages  = DOP853_n_stages;
@@ -994,7 +994,7 @@ CyrkErrorCodes DOP853::p_additional_setup() noexcept
     this->D_ptr      = &this->DOP853_D[0];
     this->AEXTRA_ptr = &this->DOP853_AEXTRA[0];
     this->CEXTRA_ptr = &this->DOP853_CEXTRA[0];
-    this->K_ptr      = this->K.data();
+    this->K_size     = (this->n_stages + 1) + 3 + 2; // First 13 cols are K; next 3 are K_extended; next 2 are temp_double_array_ptr
     this->integration_method = ODEMethod::DOP853;
 
     return RKSolver::p_additional_setup();
@@ -1021,7 +1021,7 @@ void DOP853::p_estimate_error() noexcept
             atol = this->atols_ptr[y_i];
         }
 
-        const size_t stride_K = y_i * this->n_stages_p1;
+        const size_t stride_K = y_i * this->K_stride;
         double* const K_ptr_yi = &this->K_ptr[stride_K];
 
         // Dot product between K and E3 & E5 (sum over n_stages + 1; for DOP853 n_stages = 12

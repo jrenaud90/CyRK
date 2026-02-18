@@ -78,6 +78,8 @@ protected:
     const double error_safety    = SAFETY;
     const double min_step_factor = MIN_FACTOR;
     const double max_step_factor = MAX_FACTOR;
+    size_t K_stride = 0;
+    size_t K_size = 0;
 
     // RK constants
     size_t order = 0;
