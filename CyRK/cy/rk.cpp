@@ -811,11 +811,13 @@ CyrkErrorCodes RKSolver::setup()
         {
             if (this->user_provided_first_step_size < 0.0) [[unlikely]]
             {
+                // Negative first step size. Even in reverse integration the step size should be positive.
                 this->storage_ptr->update_status(CyrkErrorCodes::BAD_INITIAL_STEP_SIZE);
                 break;
             }
             else if (this->user_provided_first_step_size > (this->t_delta_abs * 0.5)) [[unlikely]]
             {
+                // First step size is greater than 50% of the solution domain.
                 this->storage_ptr->update_status(CyrkErrorCodes::BAD_INITIAL_STEP_SIZE);
                 break;
             }
@@ -826,12 +828,12 @@ CyrkErrorCodes RKSolver::setup()
         // The length of the pointer array must be the same as y0 (and <= 25).
         size_t num_rtols = config_ptr->rtols.size();
         size_t num_atols = config_ptr->atols.size();
-        if ((num_rtols == 0) or 
-            (num_rtols > this->num_y) or
-            ((num_rtols > 1) and (num_rtols < this->num_y)) or
+        if (
+            (num_rtols == 0) or 
+            ((num_rtols > 1) and (num_rtols != this->num_y)) or
             (num_atols == 0) or
-            (num_atols > this->num_y) or
-            ((num_atols > 1) and (num_atols < this->num_y)))
+            ((num_atols > 1) and (num_atols != this->num_y))
+           )
         {
             // No rtols or atols provided, or the size of the array is not correct.
             setup_status = CyrkErrorCodes::BAD_CONFIG_DATA;

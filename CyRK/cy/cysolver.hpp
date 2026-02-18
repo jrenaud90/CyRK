@@ -40,6 +40,11 @@ enum class ODEMethod : int {
     DOP853
 };
 
+// Root finding parameters
+constexpr double BRENTQ_ATOL     = 4.0 * EPS;
+constexpr double BRENTQ_RTOL     = 4.0 * EPS;
+constexpr size_t MAX_BRENTQ_ITER = 100;
+
 inline const std::map<ODEMethod, std::string> CyrkODEMethods = {
     { ODEMethod::NO_METHOD_SET,
       "An integration method has not been set." },
@@ -96,7 +101,7 @@ struct ProblemConfig {
 
     // Event data
     bool check_events = false;
-    std::vector<Event> events_vec = std::vector<Event>();
+    std::vector<Event> events_vec = std::vector<Event>(0);
 
     // Solver specific configurations can be added below via overloading the class.
 

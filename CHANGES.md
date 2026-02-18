@@ -6,6 +6,21 @@
 
 #### v0.17.0 (2026-02-xx)
 
+##### Fixes
+* Fixed issue where events may not be checked in pysolve_ivp.
+
+##### C++ Backend
+* Changed how dense outputs are constructed so they retain a pointer to the solution instance not the solver. 
+  * This will allow dense to survive even if the solver is released. The exception is if `capture_extra` is set to true
+    In that case we need to call the diffeq from dense::call so we must keep the reference (all dense are destroyed if the solver is released).
+* Exposed the `force_retain_solver` parameter in `cysolve_ivp`.
+  * If set to True (the default) then the solver will be retained at the end of integration, even if it is not necessarily needed. This can avoid issues where the solver is accessed by the user after it has been released. 
+  * If set to False (and capture_extra = False or capture_dense = False) then the solver's memory will be released at the end of integration. This can reduce memory overhead particularly if your problem has a large number of dependent y variables.
+
+##### Benchmarks
+* Added in a repeater inside `cysolve_ivp` tester so we can more accurately benchmark the integrators performance without also tracking the python wrappers overhead. 
+  * This led to a huge increase in performance on the benchmarks. `cysolve_ivp is now consistently 100 to 500x faster than scipy `solve_ivp`.
+
 ##### Demos
 * Fixed demos so they properly use cross-platform headers (required ipython hack which is included in the new "Demos/jupyter_cyhack.py").
 * Added demo to show cysolve prange.

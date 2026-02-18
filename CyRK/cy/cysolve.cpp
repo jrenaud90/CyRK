@@ -22,7 +22,9 @@ void baseline_cysolve_ivp_noreturn(
         std::vector<double>& rtols,
         std::vector<double>& atols,
         double max_step_size,
-        double first_step_size
+        double first_step_size,
+        // Parameters that deal with CyRK's memory management strategy
+        bool force_retain_solver
         )
 {
     // For now we are only ever using RK methods so it is safe to assume RK Config.
@@ -41,7 +43,7 @@ void baseline_cysolve_ivp_noreturn(
         max_ram_MB,
         pre_eval_func,
         capture_dense_output,
-        true, // force_retain_solver; Currently we always retain solver.
+        force_retain_solver,
         events_vec,
         rtols,
         atols,
@@ -75,7 +77,9 @@ std::unique_ptr<CySolverResult> baseline_cysolve_ivp(
         std::vector<double>& rtols,
         std::vector<double>& atols,
         double max_step_size,
-        double first_step_size
+        double first_step_size,
+        // Parameters that deal with CyRK's memory management strategy
+        bool force_retain_solver
         )
 {
     // Build storage class
@@ -101,7 +105,8 @@ std::unique_ptr<CySolverResult> baseline_cysolve_ivp(
         rtols,
         atols,
         max_step_size,
-        first_step_size
+        first_step_size,
+        force_retain_solver
     );
 
     // Return the results

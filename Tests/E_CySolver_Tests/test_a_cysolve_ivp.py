@@ -17,6 +17,7 @@ atols = np.asarray((1.0e-6, 1.0e-7), dtype=np.float64, order='C')
 
 
 @pytest.mark.filterwarnings("error")  # Some exceptions get propagated via cython as warnings; we want to make sure the lead to crashes.
+@pytest.mark.parametrize('force_retain_solver', (True, False))
 @pytest.mark.parametrize('capture_extra', (True, False))
 @pytest.mark.parametrize('max_step', (1.0, 100_000.0))
 @pytest.mark.parametrize('first_step', (0.0, 0.00001))
@@ -28,7 +29,7 @@ atols = np.asarray((1.0e-6, 1.0e-7), dtype=np.float64, order='C')
 @pytest.mark.parametrize('use_args', (True, False))
 def test_cysolve_ivp(use_args,
                      use_large_timespan, use_atol_array, use_rtol_array, use_different_tols, integration_method,
-                     first_step, max_step, capture_extra):
+                     first_step, max_step, capture_extra, force_retain_solver):
     """Check that the pysolve_ivp function is able to run with various changes to its arguments. """
 
     if use_atol_array:
@@ -74,7 +75,7 @@ def test_cysolve_ivp(use_args,
         cytester(diffeq_num, time_span_touse, initial_conds, args=args_touse,
                  method=integration_method,
                  rtol=rtols_float, atol=atols_float, rtol_array=rtols_array, atol_array=atols_array,
-                 max_step=max_step, first_step=first_step)
+                 max_step=max_step, first_step=first_step, force_retain_solver=force_retain_solver)
 
     assert isinstance(result, WrapCySolverResult)
     assert result.success
@@ -201,5 +202,5 @@ def test_cysolve_extra_output():
     assert cy_extra_output_tester()
 
 if __name__ == "__main__":
-    test_cysolve_ivp(False, False, False, False, False, 'rk45', 0.0, 100_0000.0, False)
+    test_cysolve_ivp(False, False, False, False, False, 'rk45', 0.0, 100_0000.0, False, False)
     print("Finished.")

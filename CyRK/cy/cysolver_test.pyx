@@ -349,7 +349,9 @@ def cytester(
         double[::1] atol_array = None,
         double max_step = MAX_STEP,
         double first_step = 0.0,
-        WrapCySolverResult solution_reuse = None
+        WrapCySolverResult solution_reuse = None,
+        cpp_bool force_retain_solver = False,
+        size_t repeats = 1
         ):
     cdef size_t i
     cdef vector[double] t_eval_vec = vector[double]()
@@ -604,8 +606,37 @@ def cytester(
         atols_vec = atols_vec,
         max_step = max_step,
         first_step = first_step,
-        expected_size = expected_size
+        expected_size = expected_size,
+        force_retain_solver = force_retain_solver
         )
+    
+    if repeats > 1:
+        # For bench marking purposes, repeat the integration before wrapping in python to get a more
+        #  accurate measurement of cysolve_ivp's time.
+        for i in range(1, repeats):
+            cysolve_ivp_noreturn(
+                solution_ptr,
+                diffeq,
+                t_start,
+                t_end,
+                y0_vec,
+                rtol = rtol,
+                atol = atol,
+                args_vec = args_vec,
+                num_extra = num_extra,
+                max_num_steps = max_num_steps,
+                max_ram_MB = max_ram_MB,
+                dense_output = dense_output,
+                t_eval_vec = t_eval_vec,
+                pre_eval_func = pre_eval_func,
+                events_vec = events_vec,
+                rtols_vec = rtols_vec,
+                atols_vec = atols_vec,
+                max_step = max_step,
+                first_step = first_step,
+                expected_size = expected_size,
+                force_retain_solver = force_retain_solver
+                )
     
     solution_reuse.finalize()
 
