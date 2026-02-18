@@ -257,7 +257,10 @@ def test_pysolve_ivp(use_scipy_style, use_args, use_njit_always,
         assert isinstance(result, WrapCySolverResult)
         assert result.success
         if event_terminate and check_events:
-            assert result.error_code == CyrkErrorCodes.EVENT_TERMINATED
+            try:
+                assert result.error_code == CyrkErrorCodes.EVENT_TERMINATED
+            except:
+                import pdb; pdb.set_trace()
         else:
             assert result.error_code == CyrkErrorCodes.SUCCESSFUL_INTEGRATION
         assert result.size > 1

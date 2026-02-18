@@ -184,8 +184,13 @@ void CySolverResult::p_finalize()
     // Delete the solver if we don't need it anymore
     if ((not this->retain_solver) and this->solver_uptr)
     {
-        // Make sure that any dense outputs also have their ptr's nulled.
-        this->dense_vec.resize(0);
+        if (this->capture_extra)
+        {
+            // When capture extra is true then any dense outputs will carry a reference to the solver instance.
+            // These are no longer going to be valid when we release so make sure we remove all of them.
+            // (in reality retain_solver is set to False in this scenario - so this should never be called).
+            this->dense_vec.resize(0);
+        }
 
         // Reset the cysolver smart pointer in this class.
         this->solver_uptr.reset();
@@ -372,7 +377,7 @@ CyrkErrorCodes CySolverResult::setup(ProblemConfig* provided_config_ptr)
             or ((this->num_events > 0) and (not this->capture_dense_output))
            )
         {
-            this->dense_vec.emplace_back(this->solver_uptr.get(), false);
+            this->dense_vec.emplace_back(this, false);
             this->num_interpolates++;
         }
 
@@ -418,23 +423,26 @@ void CySolverResult::save_data(
 void CySolverResult::record_event_data() noexcept
 {
     CySolverBase* const solver_ptr = this->solver_uptr.get();
-    if (
-            (this->num_events > 0)
-        and (solver_ptr->active_event_indices_vec.size() > 0)
-       )
+    if (solver_ptr)
     {
-        for (size_t active_event_index : solver_ptr->active_event_indices_vec)
+        if (
+            (this->num_events > 0) and
+            (solver_ptr->active_event_indices_vec.size() > 0)
+       )
         {
-            Event& current_event = this->config_uptr->events_vec[active_event_index];
-            
-            // Save time data
-            this->event_times[active_event_index].push_back(current_event.last_root);
+            for (size_t active_event_index : solver_ptr->active_event_indices_vec)
+            {
+                Event& current_event = this->config_uptr->events_vec[active_event_index];
+                
+                // Save time data
+                this->event_times[active_event_index].push_back(current_event.last_root);
 
-            // Save y results including any extra outputs
-            this->event_states[active_event_index].insert(
-                this->event_states[active_event_index].end(),
-                current_event.y_at_root_vec.begin(),
-                current_event.y_at_root_vec.end());
+                // Save y results including any extra outputs
+                this->event_states[active_event_index].insert(
+                    this->event_states[active_event_index].end(),
+                    current_event.y_at_root_vec.begin(),
+                    current_event.y_at_root_vec.end());
+            }
         }
     }
 }
@@ -457,7 +465,7 @@ void CySolverResult::build_dense(bool save_dense) noexcept
         }
 
         // We need to heap allocate the dense solution
-        this->dense_vec.emplace_back(this->solver_uptr.get(), true);
+        this->dense_vec.emplace_back(this, true);
 
         // Save interpolated time (if t_eval was provided)
         if (this->t_eval_provided)

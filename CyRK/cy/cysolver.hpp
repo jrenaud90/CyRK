@@ -40,6 +40,11 @@ enum class ODEMethod : int {
     DOP853
 };
 
+// Root finding parameters
+constexpr double BRENTQ_ATOL     = 4.0 * EPS;
+constexpr double BRENTQ_RTOL     = 4.0 * EPS;
+constexpr size_t MAX_BRENTQ_ITER = 100;
+
 inline const std::map<ODEMethod, std::string> CyrkODEMethods = {
     { ODEMethod::NO_METHOD_SET,
       "An integration method has not been set." },
@@ -76,7 +81,7 @@ struct ProblemConfig {
     size_t max_ram_MB              = 2048;                    // Default maximum RAM in MB
     PreEvalFunc pre_eval_func      = nullptr;                 // Pre-evaluation function for the differential equation
     bool capture_dense_output      = false;                   // Whether to capture dense output
-    bool force_retain_solver       = false;                   // Whether to retain the solver after solving
+    bool force_retain_solver       = true;                    // Whether to retain the solver after solving
 
     // Parameters that will be updated during setup.
     bool capture_extra   = false; // Whether to capture extra outputs

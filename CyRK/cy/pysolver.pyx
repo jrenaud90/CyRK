@@ -96,10 +96,10 @@ cdef class PySolver(WrapCySolverResult):
         else:
             self.build_cyresult(integration_method)
         cyresult_ptr = self.cyresult_uptr.get()
-        cdef ProblemConfig* base_config_ptr = cyresult_ptr.config_uptr.get()
-        
         if not cyresult_ptr:
             raise RuntimeError("ERROR: `PySolver::set_problem_parameters` - CySolverResult was not constructed.")
+
+        cdef ProblemConfig* base_config_ptr = cyresult_ptr.config_uptr.get()
         cdef CySolverBase* cysolver_ptr = cyresult_ptr.solver_uptr.get()
         if not cysolver_ptr:
             raise AttributeError("ERROR: `PySolver::set_problem_parameters` - CySolver not set within CySolverResult object.")
@@ -169,6 +169,9 @@ cdef class PySolver(WrapCySolverResult):
             else:
                 self.events_list.append(events)
                 num_events = 1
+
+            problem_config_ptr.check_events = True
+            problem_config_ptr.events_vec.reserve(num_events)
 
             # Build events vector
             for i in range(num_events):

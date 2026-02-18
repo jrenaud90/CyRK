@@ -24,17 +24,6 @@ cdef extern from "cy_array.cpp" nogil:
     size_t binary_search_with_guess(double key, const double* array, size_t length, size_t guess)
 
 
-cdef extern from "dense.cpp" nogil:
-    cdef cppclass CySolverDense:
-        CySolverDense()
-        CySolverDense(
-            CySolverBase* solver_ptr,
-            cpp_bool set_state)
-
-        void set_state()
-        void call(double t_interp, double* y_interped)
-
-
 # =====================================================================================================================
 # Import CySolverResult (container for integration results)
 # =====================================================================================================================
@@ -84,6 +73,16 @@ cdef extern from "cysolution.cpp" nogil:
             CyrkErrorCodes call_vectorize(const double* t_array_ptr, size_t len_t, double* y_interp)
 
 ctypedef unique_ptr[CySolverResult] CySolveOutput
+
+cdef extern from "dense.cpp" nogil:
+    cdef cppclass CySolverDense:
+        CySolverDense()
+        CySolverDense(
+            CySolverResult* solution_ptr,
+            cpp_bool set_state)
+
+        void set_state()
+        void call(double t_interp, double* y_interped)
 
 cdef class WrapCySolverResult:
     """ Wrapper for the C++ class `CySolverResult` defined in "cysolution.cpp" """
