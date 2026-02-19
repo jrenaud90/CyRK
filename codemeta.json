@@ -4,7 +4,7 @@
   "name": "CyRK",
   "description": "CyRK provides fast integration tools to solve systems of ODEs using an adaptive time stepping scheme. CyRK can accept differential equations that are written in pure Python, njited numba, or cython-based cdef functions. These kinds of functions are generally easier to implement than pure c functions and can be used in existing Python software. Using CyRK can speed up development time while avoiding the slow performance that comes with using pure Python-based solvers like SciPy's `solve_ivp`.",
   "identifier": "https://doi.org/10.5281/zenodo.7093266",
-  "version": "0.17.0a3.dev12",
+  "version": "0.17.0a3.dev13",
   "datePublished": "2026-02-19",
   "dateModified": "2026-02-19",
   "codeRepository": "https://github.com/jrenaud90/CyRK",
