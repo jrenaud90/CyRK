@@ -9,19 +9,23 @@ DEBUG_MODE = False
 install_platform = platform.system()
 
 if install_platform.lower() == 'windows':
-    extra_compile_args = ['/openmp', "/arch:AVX2", "/O2", "/LTCG"]
-    extra_link_args = []
+    extra_compile_args = ['/openmp', "/arch:AVX2", "/O2", "/GL"]
+    extra_link_args = ["/LTCG"]
     if DEBUG_MODE:
-        extra_compile_args.append('/Ox')
-        extra_compile_args.append('/Zi')
-        extra_link_args.append("/debug:full")
+        # Note: Debug usually disables optimizations (/Od)
+        extra_compile_args = ['/openmp', '/Zi', '/Od']
+        extra_link_args = ['/DEBUG:FULL']
 elif install_platform.lower() == 'darwin':
     # OpenMP is installed via llvm. See https://stackoverflow.com/questions/60005176/how-to-deal-with-clang-error-unsupported-option-fopenmp-on-travis
-    extra_compile_args = ['-O3', '-fopenmp', "-mavx2", "-mfma", "-march=native", "-flto"]
-    extra_link_args = ['-lomp']
-else:
-    extra_compile_args = ['-fopenmp', '-O3', "-mavx2", "-mfma", "-march=native", "-flto"]
-    extra_link_args = ['-fopenmp', '-O3']
+    # Common flags for Linux/Mac
+    extra_compile_args = ['-O3', '-fopenmp', '-mavx2', '-mfma', '-flto']
+    extra_link_args = ['-flto']
+    
+    if install_platform.lower() == 'darwin':
+        extra_link_args.append('-lomp')
+    else:
+        extra_link_args.append('-fopenmp')
+
 macro_list = [("NPY_NO_DEPRECATED_API", "NPY_1_9_API_VERSION")]
 
 # Load CyRK's cython extensions
