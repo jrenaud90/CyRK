@@ -1,6 +1,6 @@
 # distutils: language = c++
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
-from libc.math cimport sin, cos
+from libc.math cimport sin, cos, pi
 from libc.string cimport memcpy
 
 from libcpp cimport bool as cpp_bool
@@ -231,13 +231,11 @@ cdef void large_numy_diffeq(double* dy_ptr, double t, double* y_ptr, char* args_
     # This diffeq converges so should be stable
     cdef size_t i
     for i in range(num_y):
-        if i % 1000 == 0:
-            # Every 1000 make the decay rate a little worse so there is some difference in the y's
-            decay_rate *= 0.95
-        dy_ptr[i] = (decay_rate * y_ptr[i]) + (<double>i) * forcing_scale
-        # Add some coupling
-        if (i % 2 == 0) and ((i + 1) < (num_y - 1)):
-            dy_ptr[i] += 0.5 * y_ptr[i + 1]
+        decay_rate *= 0.9999
+        if i < (num_y - 1):
+            dy_ptr[i] = decay_rate * y_ptr[i] * sin(2 * pi * t / 5.0 + y_ptr[i + 1]/50.0)
+        else:
+            dy_ptr[i] = decay_rate * y_ptr[i] * sin(2 * pi * t / 5.0)
 
 def cy_extra_output_tester():
 
