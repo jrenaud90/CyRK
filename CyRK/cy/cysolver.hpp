@@ -183,7 +183,7 @@ class CySolverBase {
 // Methods
 protected:
     virtual CyrkErrorCodes p_additional_setup() noexcept;
-    virtual void p_estimate_error() noexcept;
+    virtual double p_estimate_error() noexcept;
     virtual void p_step_implementation() noexcept;
     inline void p_cy_diffeq() noexcept;
     virtual void p_calc_first_step_size() noexcept;
@@ -195,7 +195,7 @@ public:
     CySolverBase(CySolverResult* storage_ptr_);
 
     virtual void set_Q_order(size_t* Q_order_ptr);
-    virtual void set_Q_array(double* Q_ptr);
+    virtual void set_Q_array(double* Q_ptr) noexcept;
     void clear_python_refs();
     void offload_to_temp() noexcept;
     void load_back_from_temp() noexcept;

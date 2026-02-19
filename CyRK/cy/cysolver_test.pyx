@@ -1,7 +1,7 @@
 # distutils: language = c++
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
 from libc.math cimport sin, cos, pi
-from libc.string cimport memcpy
+from libc.string cimport memcpy, memset
 
 from libcpp cimport bool as cpp_bool
 from libcpp.utility cimport move
@@ -226,7 +226,6 @@ cdef void large_numy_diffeq(double* dy_ptr, double t, double* y_ptr, char* args_
 
     cdef double* args_dbl_ptr = <double*>args_ptr
     cdef double decay_rate = args_dbl_ptr[0]
-    cdef double forcing_scale = args_dbl_ptr[1]
 
     # This diffeq converges so should be stable
     cdef size_t i
@@ -236,6 +235,13 @@ cdef void large_numy_diffeq(double* dy_ptr, double t, double* y_ptr, char* args_
             dy_ptr[i] = decay_rate * y_ptr[i] * sin(2 * pi * t / 5.0 + y_ptr[i + 1]/50.0)
         else:
             dy_ptr[i] = decay_rate * y_ptr[i] * sin(2 * pi * t / 5.0)
+
+cdef void large_numy_simple_diffeq(double* dy_ptr, double t, double* y_ptr, char* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
+    cdef size_t num_y = 10_000
+
+    dy_ptr[0] = sin(2.0 * pi * t / 10.0)
+
+    memset(&dy_ptr[1], 0, num_y - 1)
 
 def cy_extra_output_tester():
 
@@ -352,6 +358,11 @@ large_numy_events.emplace_back(pendulum_diffeq_event1_check)
 large_numy_events.emplace_back(pendulum_diffeq_event2_check)
 large_numy_events.emplace_back(pendulum_diffeq_event3_check)
 
+cdef vector[Event] large_numy_simple_events = vector[Event]()
+large_numy_simple_events.emplace_back(pendulum_diffeq_event1_check)
+large_numy_simple_events.emplace_back(pendulum_diffeq_event2_check)
+large_numy_simple_events.emplace_back(pendulum_diffeq_event3_check)
+
 
 def cytester(
         int diffeq_number,
@@ -429,7 +440,8 @@ def cytester(
         pre_eval_func = pendulum_preeval_func
     elif diffeq_number == 9:
         diffeq = large_numy_diffeq
-        num_extra = 2
+    elif diffeq_number == 10:
+        diffeq = large_numy_simple_diffeq
 
     else:
         raise NotImplementedError
@@ -442,6 +454,8 @@ def cytester(
             events_vec = pendulum_diffeq_events
         elif diffeq_number == 9:
             events_vec = large_numy_events
+        elif diffeq_number == 10:
+            events_vec = large_numy_simple_events
         else:
             raise NotImplementedError
 
@@ -570,16 +584,29 @@ def cytester(
             y0_vec.resize(num_y)
             for i in range(num_y):
                 y0_vec[i] = 100.0
-            args_vec.resize(2 * sizeof(double))
+            args_vec.resize(1 * sizeof(double))
             args_dbl_ptr = <double*>args_vec.data()
             args_dbl_ptr[0] = -0.5
-            args_dbl_ptr[1] = 1.0e-5
             if t_span is not None:
                 t_start = t_span[0]
                 t_end   = t_span[1]
             else:
                 t_start = 0.0
                 t_end = 10.0
+
+        elif diffeq_number == 10:
+            # Test with very large number of dependent y's
+            num_y = 10_000
+            y0_vec.resize(num_y)
+            for i in range(num_y):
+                y0_vec[i] = 100.0
+            args_vec.resize(0)
+            if t_span is not None:
+                t_start = t_span[0]
+                t_end   = t_span[1]
+            else:
+                t_start = 0.0
+                t_end = 50.0
         else:
             raise NotImplementedError
     else:
@@ -634,13 +661,13 @@ def cytester(
                 args_dbl_ptr[1] = 1.0
                 args_dbl_ptr[2] = 9.81
             elif diffeq_number == 9:
-                args_vec.resize(2 * sizeof(double))
+                args_vec.resize(1 * sizeof(double))
                 args_dbl_ptr = <double*>args_vec.data()
                 args_dbl_ptr[0] = -0.5
-                args_dbl_ptr[1] = 1.0e-5
+            elif diffeq_number == 10:
+                args_vec.resize(0)
             else:
                 args_vec.resize(0)
-    
 
     # Parse rtol
     cdef vector[double] rtols_vec = vector[double]()
