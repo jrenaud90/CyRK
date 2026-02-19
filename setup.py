@@ -9,22 +9,24 @@ DEBUG_MODE = False
 install_platform = platform.system()
 
 if install_platform.lower() == 'windows':
-    extra_compile_args = ['/openmp', "/arch:AVX2", "/O2", "/GL"]
+    extra_compile_args = ['/openmp', "/arch:AVX2", "/O2i", "/GL"]
     extra_link_args = ["/LTCG"]
     if DEBUG_MODE:
         # Note: Debug usually disables optimizations (/Od)
         extra_compile_args = ['/openmp', '/Zi', '/Od']
         extra_link_args = ['/DEBUG:FULL']
-elif install_platform.lower() == 'darwin':
+else:
     # OpenMP is installed via llvm. See https://stackoverflow.com/questions/60005176/how-to-deal-with-clang-error-unsupported-option-fopenmp-on-travis
     # Common flags for Linux/Mac
-    extra_compile_args = ['-O3', '-fopenmp', '-mavx2', '-mfma', '-flto']
+    extra_compile_args = ['-O3', '-flto']
     extra_link_args = ['-flto']
     
     if install_platform.lower() == 'darwin':
         extra_link_args.append('-lomp')
     else:
         extra_link_args.append('-fopenmp')
+        extra_link_args.append('-mavx2')
+        extra_link_args.append('-mfma')
 
 macro_list = [("NPY_NO_DEPRECATED_API", "NPY_1_9_API_VERSION")]
 
