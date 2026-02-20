@@ -12,6 +12,7 @@ Also check out the GitHub page to see the code.
 :caption: Contents
 
 Getting Started <Readme.md>
+Performance <Performance.md>
 Events.md
 Parallelization.md
 Dense Output and `t_eval` <Dense_Output_and_t_eval.md>
