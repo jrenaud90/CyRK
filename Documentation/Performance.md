@@ -27,7 +27,7 @@ Even if it was perfect at predicting step sizes, a 100 step integration would ha
 
 In addition to these computational considerations, the memory footprint of the solver and the solution structure will
 increase with the number of y. For double floating point numbers, the $y$-specific footprint of the solver is (in Bytes):
-$112 N_{y}$ (RK23), $136 N_{y}$ (RK45), and $224 N_{y}$$ (DOP853). This is just the $y$-dependent memory not other 
+$112 N_{y}$ (RK23), $136 N_{y}$ (RK45), and $224 N_{y}$ (DOP853). This is just the $y$-dependent memory not other 
 overheads (the other overheads are around 1,500 kB). So for RK45, if $N_{y} = 10,000$, the solver would be over 1 MB.
 During integration the solution will also be added to at each time step and the data storage grows as $8*(1+N_{y})$
 Bytes/step. If the same 10,000 $N_{y}$ ODE takes 100 steps to complete, the memory usage will approach 10 MB. While
@@ -70,6 +70,8 @@ less steps. Less steps means less computing power. Benchmarking can tell you if 
 per step cost.
 
 ### Fewer Steps, Dense Output, and `t_eval`
+_Read more about dense outputs and `t_eval` [here](Dense_Output_and_t_eval.md)._
+
 While decreasing the number of steps will improve performance, it may not produce your desired outcome. If you only 
 care about the solution of an ODE at $t=t_{end}$, then it is perfect. However, if you want the solution at every $t_x$
 time then you probably are not going to get that since CyRK's adaptive step solver creates uneven step sizes. This is

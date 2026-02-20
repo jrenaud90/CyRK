@@ -22,16 +22,18 @@
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
 
-CyRK provides fast integration tools to solve systems of ODEs using an adaptive time stepping scheme. CyRK can accept differential equations that are written in pure Python, njited numba, or cython-based cdef functions. These kinds of functions are generally easier to implement than pure c functions and can be used in existing Python software. Using CyRK can speed up development time while avoiding the slow performance that comes with using pure Python-based solvers like SciPy's `solve_ivp`.
+CyRK provides fast integration tools to solve systems of ODEs using an adaptive time stepping scheme. CyRK can accept differential equations that are written in pure Python, njited numba, or cython-based cdef. Implementing these types of functions is generally easier than doing so in pure C. Calling CyRK's functions and utilizing its results is also much easier to integrate into existing Python or Cython software. Using CyRK can speed up development time while avoiding the slow performance that comes with using pure Python-based solvers like SciPy's `solve_ivp`.
 
 The purpose of this package is to provide some 
 functionality of [scipy's solve_ivp](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html) with greatly improved performance.
 
 Currently, CyRK's [numba-based](https://numba.discourse.group/) (njit-safe) implementation is **8--60x faster** than scipy's solve_ivp function.
 The [cython-based](https://cython.org/) `pysolve_ivp` function that works with python (or njit'd) functions is **10-40x faster** than scipy.
-The [cython-based](https://cython.org/) `cysolver_ivp` function that works with cython-based cdef functions is **40-300+x faster** than scipy.
+The [cython-based](https://cython.org/) `cysolver_ivp` function that works with cython-based cdef functions is **100-500x faster** than scipy.
 
-CyRK's solvers can also be parallelized for even larger gains.
+Details about CyRK's performance including more benchmarks can be found [here](https://cyrk.readthedocs.io/en/latest/Performance.html).
+
+CyRK's solvers can also be [parallelized](https://cyrk.readthedocs.io/en/latest/Parallelization.html) for even larger gains.
 
 An additional benefit of the two cython implementations is that they are pre-compiled. This avoids most of the start-up performance hit experienced by just-in-time compilers like numba.
 
@@ -60,6 +62,7 @@ In additional to improved performance, CyRK offers a few additional features tha
 * Ability to capture [extra outputs](https://cyrk.readthedocs.io/en/latest/Extra_Output.html) during integration so a user can record other parameters instead of just the dependent variables without having to make repeat calls to the differential equations.
 * Ability to [reuse](https://cyrk.readthedocs.io/en/latest/CySolverResult_Reuses.html) solvers when the previous result is no longer needed or has been recorded (improving performance, particularly for problems with small integration domain sizes).
 * CyRK provides a robust integration diagnostic feedback system to identify and help remedy issues with an ODE solution.
+* CyRK offers much more control over the memory management and other aspects of the solver.
 
 ### Limitations
 There are some features that SciPy has that CyRK currently does not. A non-exhaustive list is:
@@ -83,8 +86,8 @@ mamba:
 `mamba install cyrk`
 
 If not installing from a wheel, CyRK will attempt to install `Cython` and `Numpy` in order to compile the source code. A "C++ 20" compatible compiler is required.
-Compiling CyRK has been tested on the latest versions of Windows, Ubuntu, and MacOS. Your milage may vary if you are using a older or different operating system.
-If on MacOS you will likely need a non-default compiler in order to compile the required openMP package. See the "Installation Troubleshooting" below. 
+Compiling CyRK has been tested on the latest versions of Windows, Ubuntu, and MacOS. Your milage may vary if you are using an older or different operating system.
+If on MacOS you will likely need a non-default compiler in order to compile the required [OpenMP](https://www.openmp.org/) package. See the "Installation Troubleshooting" section below. 
 After everything has been compiled, cython will be uninstalled and CyRK's runtime dependencies (see the pyproject.toml file for the latest list) will be installed instead.
 
 A new installation of CyRK can be tested quickly by running the following from a python console.
@@ -110,13 +113,14 @@ to force python to recompile the cython extensions locally (rather than via a pr
 brew install llvm
 brew install libomp
 
-# If on ARM64 (Apple Silicon) then do:
+# If on a newer computer that uses ARM64 (Apple Silicon) then:
 export LDFLAGS="-L/opt/homebrew/opt/llvm/lib"
 export CPPFLAGS="-I/opt/homebrew/opt/llvm/include"
 export LDFLAGS="-L/opt/homebrew/opt/libomp/lib"
 export CPPFLAGS="-I/opt/homebrew/opt/libomp/include"
 export CC=/opt/homebrew/opt/llvm/bin/clang
 export CXX=/opt/homebrew/opt/llvm/bin/clang++
+
 # Otherwise change these directories to:
 export LDFLAGS="-L/usr/local/opt/llvm/lib"
 export CPPFLAGS="-I/usr/local/opt/llvm/include"
@@ -145,15 +149,34 @@ To learn how to use CyRK, please reference our detailed documentation on Read th
 
 ## Citing CyRK
 
-It is great to see CyRK used in other software or in scientific studies. We ask that you cite back to CyRK's [GitHub](https://github.com/jrenaud90/CyRK) website so interested parties can learn about this package.
+It is great to see CyRK used in other software or in scientific studies. We ask that you reference CyRK's [GitHub](https://github.com/jrenaud90/CyRK) website so interested parties can learn about this package. And please cite the following paper in any formal publication of your work.
+
+```bibtex
+@software{renaud_2022_cyrk,
+  author       = {Renaud, Joe P.},
+  title        = {CyRK - ODE Integrator Implemented in Cython and Numba},
+  year         = {2022},
+  publisher    = {Zenodo},
+  doi          = {10.5281/zenodo.7093266},
+  url          = {[https://doi.org/10.5281/zenodo.7093266](https://doi.org/10.5281/zenodo.7093266)}
+}
+```
 
 It would also be great to hear about the work being done with CyRK and add your project to the list below, so get in touch!
 
-Renaud, Joe P. (2022). CyRK - ODE Integrator Implemented in Cython and Numba. Zenodo. https://doi.org/10.5281/zenodo.7093266
+In addition to citing CyRK, please strongly consider citing SciPy and its references for the specific Runge-Kutta model that was used in your work. CyRK is largely an adaptation of SciPy's functionality. Find more details [here](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html).
 
-In addition to citing CyRK, please consider citing SciPy and its references for the specific Runge-Kutta model that was used in your work. CyRK is largely an adaptation of SciPy's functionality. Find more details [here](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html).
-
-Pauli Virtanen, Ralf Gommers, Travis E. Oliphant, Matt Haberland, Tyler Reddy, David Cournapeau, Evgeni Burovski, Pearu Peterson, Warren Weckesser, Jonathan Bright, Stéfan J. van der Walt, Matthew Brett, Joshua Wilson, K. Jarrod Millman, Nikolay Mayorov, Andrew R. J. Nelson, Eric Jones, Robert Kern, Eric Larson, CJ Carey, İlhan Polat, Yu Feng, Eric W. Moore, Jake VanderPlas, Denis Laxalde, Josef Perktold, Robert Cimrman, Ian Henriksen, E.A. Quintero, Charles R Harris, Anne M. Archibald, Antônio H. Ribeiro, Fabian Pedregosa, Paul van Mulbregt, and SciPy 1.0 Contributors. (2020) SciPy 1.0: Fundamental Algorithms for Scientific Computing in Python. Nature Methods, 17(3), 261-272.
+```bibtex
+@article{virtanen2020scipy,
+  author  = {Virtanen, Pauli and Gommers, Ralf and Oliphant, Travis E. and Haberland, Matt and Reddy, Tyler and Cournapeau, David and Burovski, Evgeni and Peterson, Pearu and Weckesser, Warren and Bright, Jonathan and van der Walt, St{\'e}fan J. and Brett, Matthew and Wilson, Joshua and Millman, K. Jarrod and Mayorov, Nikolay and Nelson, Andrew R. J. and Jones, Eric and Kern, Robert and Larson, Eric and Carey, CJ and Polat, {\.I}lhan and Feng, Yu and Moore, Eric W. and VanderPlas, Jake and Laxalde, Denis and Perktold, Josef and Cimrman, Robert and Henriksen, Ian and Quintero, E.A. and Harris, Charles R. and Archibald, Anne M. and Ribeiro, Ant{\^o}nio H. and Pedregosa, Fabian and van Mulbregt, Paul and {SciPy 1.0 Contributors}},
+  title   = {{SciPy 1.0: Fundamental Algorithms for Scientific Computing in Python}},
+  journal = {Nature Methods},
+  year    = {2020},
+  volume  = {17},
+  number  = {3},
+  pages   = {261--272}
+}
+```
 
 ## Projects using CyRK
 _Don't see your project here? Create a GitHub issue or otherwise get in touch!_
@@ -167,7 +190,7 @@ _Don't see your project here? Create a GitHub issue or otherwise get in touch!_
 ## Contribute to CyRK
 _Please look [here](https://github.com/jrenaud90/CyRK/graphs/contributors) for an up-to-date list of contributors to the CyRK package._
 
-CyRK is open-source and is distributed under the Creative Commons Attribution-ShareAlike 4.0 International license. You are welcome to fork this repository and make any edits with attribution back to this project (please see the `Citing CyRK` section).
+CyRK is open-source and is distributed under the Apache 2.0 license. You are welcome to fork this repository and make any edits with attribution back to this project (please see the `Citing CyRK` section).
 - We encourage users to report bugs or feature requests using [GitHub Issues](https://github.com/jrenaud90/CyRK/issues).
 - If you would like to contribute but don't know where to start, check out the [good first issue](https://github.com/jrenaud90/CyRK/labels/good%20first%20issue) tag on GitHub.
 - Users are welcome to submit pull requests and should feel free to create them before the final code is completed so that feedback and suggestions can be given early on.

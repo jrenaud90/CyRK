@@ -12,25 +12,29 @@ The resulting time domain (and associated y-values) will be non-uniform and may 
 To correct this, a user may provide an array via the `t_eval` argument. CyRK will then compute its adaptive steps as usual, but will only save data for each `t_eval` point.
 If a `t_eval` point falls in-between the adaptive steps, then CyRK will use an interpolator (see next section) to determine a well-informed guess for the value.
 
-Notes:
-- `t_eval` must be within the provided `time_span`.
+:::{note}
+All elements of `t_eval` must fall between or at the border of th provided `time_span`.
+:::
 
 ## Dense Output
 
-In addition to the time domain, y-values, and any extra output (see "Extra Output.md"), CyRK can also build and store localized interpolator functions.
-These are constructed at each successful time step using the current state of the problems derivatives, y-values, and time information. 
-The interpolators can then be called with a desired time `t` and the resulting `y` will be produced, even if that specific `t` was never hit during integration (as long at `t` is within the provided `time_span`). 
-These interpolators are what is used for estimating y values when `t_eval` is provided.
+In addition to the time domain, y-values, and any extra output (See [Extra Output](Extra_Output.md)), CyRK can also build and store localized interpolator functions. These are constructed at each successful time step using the current state of the problem: derivatives, y-values, and time information. The interpolators can then be called with a desired time $t$ and the resulting $y$ will be produced, even if that specific $t$ was never hit during integration (as long at $t$ is within the provided `time_span`). These interpolators are what are used for estimating $y$ values when `t_eval` is provided.
 
-Notes:
-- The dense outputs are relatively large and must be heap allocated at each time step. Therefore it is rather computationally expensive to store them. Leave `dense_output=False` unless required to improve performance.
-    - This performance hit is much less noticeable if only `t_eval` is provided because in that case we can utilize a single stack allocation. 
+:::{note}
+The dense outputs are relatively large and must be heap allocated at each time step. They are also quite computationally
+to calculate. Leave `dense_output=False` unless required for your use case.
+
+The performance hit when using _only_ `t_eval` is much less because it only used one interpolator that is updated during
+the solution. No memory allocations or large objects are created. Note that the computation to rebuild the interpolator
+is still present so using `t_eval` will always be slower than not.
+:::
 
 ## Interpolating Extra Outputs with Dense Output
 
-As discussed in the "Extra Output.md" documentation, CyRK can capture additional outputs from the differential equation process. These are non-dependent variables (non-y values) that are not used during integration error calculations but may be useful data for the user.
-This is triggered when `num_extra` is set to > 0 in either `pysolve_ivp` or `cysolve_ivp`. If `dense_output` is also set to True, then the final solution interpolators will also interpolate these extra outputs. This is done by making additional calls to the differential equation to determine what the values of the extra outputs are at each interpolated time step. 
-More details can be found in "Extra Output.md"
+As discussed in the [Extra Output](Extra_Output.md) documentation, CyRK can capture additional outputs from the ODE solver process. These are non-dependent variables (non-$y$ values) that are not used during integration error calculations but may be useful data for the user.
+This is triggered when `num_extra` is set to > 0 in either `pysolve_ivp` or `cysolve_ivp`. If `dense_output` is also set to True, then the final solution interpolators will also interpolate these extra outputs. This is done by making additional calls to the differential equation to determine what the values of the extra outputs are at each interpolated time step.
+
+More details can be found in [Extra Output documentation](Extra_Output.md).
 
 ### Using Dense Outputs
 
