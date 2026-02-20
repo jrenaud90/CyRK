@@ -16,10 +16,12 @@
 * Exposed the `force_retain_solver` parameter in `cysolve_ivp`.
   * If set to True (the default) then the solver will be retained at the end of integration, even if it is not necessarily needed. This can avoid issues where the solver is accessed by the user after it has been released. 
   * If set to False (and capture_extra = False or capture_dense = False) then the solver's memory will be released at the end of integration. This can reduce memory overhead particularly if your problem has a large number of dependent y variables.
+* Unrolled most of the RK calculations to improve performance.
 
 ##### Benchmarks
 * Added in a repeater inside `cysolve_ivp` tester so we can more accurately benchmark the integrators performance without also tracking the python wrappers overhead. 
   * This led to a huge increase in performance on the benchmarks. `cysolve_ivp is now consistently 100 to 500x faster than scipy `solve_ivp`.
+* Added a benchmark for large number of dependent y variables (y=10_000) to cytester and the SciPy Comparison notebook.
 
 ##### Demos
 * Fixed demos so they properly use cross-platform headers (required ipython hack which is included in the new "Demos/jupyter_cyhack.py").
@@ -30,6 +32,7 @@
 * Adjusts change log section numbering.
 * Added brief note in documentation about parallelizing cysolve.
 * Added document describing memory usage of the C++ structures.
+* Added document describing performance tips and tricks.
 
 ## 2025
 

@@ -96,8 +96,8 @@ $S = $ Solution Size.
 $N = $ Number of dependent y's (for this we assume num_dy = num_y).
 
 ### RK23
-$$8S(N+1)+120N+1,200$$
+$$8S(N+1)+120N+1,528$$
 ### RK45
-$$8S(N+1)+144N+1,650$$
+$$8S(N+1)+144N+1,528$$
 ### DOP853
-$$8S(N+1)+232N+3,500$$
+$$8S(N+1)+232N+1,528$$

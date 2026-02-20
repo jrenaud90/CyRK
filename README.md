@@ -128,7 +128,7 @@ export CXX=/usr/local/opt/llvm/bin/clang++
 pip install CyRK --no-binary="CyRK"
 ```
 
-- CyRK has a number of runtime status codes which can be used to help determine what failed during integration. Learn more about these codes [https://github.com/jrenaud90/CyRK/blob/main/docs/Status%20and%20Error%20Codes.md](here).
+- CyRK has a number of runtime status codes which can be used to help determine what failed during integration. Learn more about these codes [https://cyrk.readthedocs.io/en/latest/Status_and_Error_Codes.html](here).
 
 ### Development and Testing Dependencies
 

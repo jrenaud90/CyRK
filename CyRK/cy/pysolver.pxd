@@ -3,7 +3,7 @@ cimport cpython.ref as cpy_ref
 
 from CyRK.utils.memory cimport unique_ptr, make_unique
 from CyRK.cy.pysolver_cyhook cimport DiffeqMethod, PyEventMethod
-from CyRK.cy.cysolver_api cimport ODEMethod, CySolverResult, NowStatePointers, WrapCySolverResult
+from CyRK.cy.cysolver_api cimport ODEMethod, CySolverResult, NowStatePointers, WrapCySolverResult, CySolverBase
 
 cimport numpy as cnp
 cnp.import_array()
@@ -27,16 +27,26 @@ cdef class PySolver(WrapCySolverResult):
     cdef double[::1] y_now_view
     cdef cnp.ndarray dy_now_arr
     cdef double[::1] dy_now_view
+    cdef cnp.ndarray y_old_arr
+    cdef double[::1] y_old_view
+    cdef cnp.ndarray dy_old_arr
+    cdef double[::1] dy_old_view
 
     # State attributes
-    cdef double* y_now_ptr
     cdef double* t_now_ptr
+    cdef double* y_now_ptr
     cdef double* dy_now_ptr
+    cdef double* y_old_ptr
+    cdef double* dy_old_ptr
+    cdef CySolverBase* cysolver_ptr
 
     # Event data
     cdef list events_list
 
-    cdef void set_state(self, NowStatePointers* solver_state_ptr) noexcept
+    cdef void set_state(
+        self,
+        CySolverBase* solver_ptr,
+        NowStatePointers* solver_state_ptr) noexcept
     cpdef set_pydiffeq(
         self,
         object diffeq_func,

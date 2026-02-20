@@ -6,8 +6,8 @@ build:
     python: "latest"
 
 sphinx:
-  configuration: docs/conf.py
+  configuration: Documentation/conf.py
 
 python:
   install:
-    - requirements: docs/requirements.txt
+    - requirements: Documentation/requirements.txt

@@ -193,6 +193,8 @@ cdef extern from "cysolver.cpp" nogil:
         double* t_now_ptr
         double* y_now_ptr
         double* dy_now_ptr
+        double* y_old_ptr
+        double* dy_old_ptr
 
     cdef cppclass CySolverBase:
         CySolverBase()
@@ -201,6 +203,7 @@ cdef extern from "cysolver.cpp" nogil:
         cpp_bool use_dense_output
         cpp_bool user_provided_max_num_steps
         cpp_bool use_pysolver
+        cpp_bool swap_flag
         ODEMethod integration_method
         size_t num_y
         size_t num_extra

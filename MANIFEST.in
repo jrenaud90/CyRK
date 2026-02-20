@@ -41,5 +41,5 @@ include CyRK/optimize/c_brentq.hpp
 exclude Tests/*
 exclude Demos/*
 exclude Benchmarks/*
-exclude docs/*
+exclude Documentation/*
 exclude Performance/*
