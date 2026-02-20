@@ -10,12 +10,13 @@ is magnified by the overhead that Python imposes.
 
 :::{tip}
 The tl;dr of this section: If you want improved performance follow this decision tree!
+:::
+
 ```{image} ./imgs/2026-02-20_cyrk_decision_tree.png
 :alt: CyRK Decision Tree
 :width: 600px
 :align: center
 ```
-:::
 
 ## Number of Dependent Variables
 The size of a ODE system is determined by the number of dependent $y$ variables ($N_{y}$). The more variables, the higher the 
@@ -91,11 +92,13 @@ that mimics a basic predator-prey model. The different colors represent: Blue = 
 `scipy.solve_ivp` using a `numba.njit'd` diffeq; Cyan = `CyRK.pysolve_ivp`; Orange = `CyRK.pysolve_ivp` using a
 `numba.njit'd` diffeq; Green = `CyRK.nbsolve_ivp`; and Red = `CyRK.cysolve_ivp`. The different symbols indicate
 different settings that can be turned on or off in the various solvers. 
+
 ```{image} ./imgs/CyRK_SciPy_Compare_predprey_v0-17-0a3-dev15.png
 :alt: CyRK's baseline benchmark using a predator-prey model.
 :width: 600px
 :align: center
 ```
+
 This is a simple diffeq meaning that even the Python version is not terribly slow so `numba.njit` helps with the
 speeding up the diffeq, but its not major. This problem is also small with only two dependent $y$ variables
 meaning that most of the optimizations in `scipy.solve_ivp` that utilize `numpy` ndarray logic is lost. The bulk of the
@@ -106,11 +109,13 @@ it beats `scipy` by a factor of 100x up to 400x.
 If we increase the number of dependent variables we start to see `CyRK` get closer to `scipy` since `scipy` is able to
 lean on `numpy`'s array math (which is highly optimized). In the example below we utilize a simple diffeq but an ODE
 system with $N_{y} = 10,000$ dependent $y$ variables.
+
 ```{image} ./imgs/CyRK_SciPy_Compare_large_numy_simple_v0-17-0a3-dev15.png
 :alt: Benchmark showing a ODE system with many (10,000) dependent variables.
 :width: 600px
 :align: center
 ```
+
 Even though `scipy` has to contend with the Python overhead, `SciPy` ends up only being about a factor of 4x slower
 than `CyRK.cysolve_ivp`.
 
@@ -118,11 +123,13 @@ than `CyRK.cysolve_ivp`.
 The prior examples used very simple diffeq's which run quickly even in Python. In this next example we look at a much
 more complicated diffeq. It has $N_{y} = 10,000$ dependent $y$ variables like the previous example. It also couples
 them to each other and uses trig functions.
+
 ```{image} ./imgs/CyRK_SciPy_Compare_large_numy_complex_v0-17-0a3-dev15.png
 :alt: Benchmark showing a complex diffeq ODE system with many (10,000) dependent variables.
 :width: 600px
 :align: center
 ```
+
 `numba.njit` is the real champion here. Using a `njit`'d diffeq with `scipy` produces results that are only slightly
 slower than `CyRK`. The bottleneck here is the complex diffeq and how poorly optimized it is in Python. `scipy`'s 
 `numpy` array math is not able to save it from the expense of the diffeq. Even `CyRK.pysolve` suffers greatly since

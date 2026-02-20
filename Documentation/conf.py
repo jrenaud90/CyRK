@@ -27,6 +27,13 @@ shutil.copyfile(src, dst)
 
 extensions = [
     'myst_parser',
+    'sphinx.ext.mathjax',  # Enables LaTeX rendering
+]
+
+# Tell MyST to look for math syntax
+myst_enable_extensions = [
+    "dollarmath",  # Allows standard $ and $$ syntax
+    "amsmath",     # Allows advanced LaTeX environments like \begin{align}
 ]
 
 source_suffix = {
@@ -36,4 +43,5 @@ source_suffix = {
 
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
-html_theme = 'sphinx_rtd_theme'
+# html_theme = 'sphinx_rtd_theme'
+html_theme = 'furo'
