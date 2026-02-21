@@ -13,7 +13,6 @@ from CyRK.cy.events cimport Event
 cimport numpy as cnp
 cnp.import_array()
 
-
 cdef extern from "c_brentq.cpp" nogil:
     pass
 

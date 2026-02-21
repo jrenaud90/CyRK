@@ -101,7 +101,8 @@ def nbsolve_ivp(
         t_eval: np.ndarray = EMPTY_ARR,
         capture_extra: bool = False,
         interpolate_extra: bool = False,
-        max_num_steps: int = 0
+        max_num_steps: int = 0,
+        warnings: bool = True
         ):
     """ A Numba-safe Runge-Kutta Integrator based on Scipy's solve_ivp RK integrator.
 
@@ -140,6 +141,8 @@ def nbsolve_ivp(
     max_num_steps : int = 0
         Maximum number of steps integrator is allowed to take.
         If set to 0 (the default) then an infinite number of steps are allowed.
+    warnings : bool = True
+        If True, then warnings will be raised which can slow down integration.
 
     References
     ----------
@@ -166,6 +169,10 @@ def nbsolve_ivp(
         Any integration messages, useful if success=False.
 
     """
+
+    if warnings:
+        print("DEPRECATION WARNING! This version of `nbsolve_ivp` will be deprecated in a future release in favor of the current `nbsolve2_ivp` (names will be swapped). These two functions are quite different so please review the documentation at https://cyrk.readthedocs.io/en/latest/Numba.html before upgrading.")
+        print("IMPORTANT!! Printing this warning is slowing down your integration! Disable it by setting `warnings=False` in `nbsolve_ivp`.")
 
     # Clean up and interpret inputs
     t_start = t_span[0]

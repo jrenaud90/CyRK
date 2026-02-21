@@ -36,6 +36,14 @@ cython_ext_path = os.path.join(absolute_path, 'cython_extensions.json')
 with open(cython_ext_path, 'r') as cython_ext_file:
     cython_ext_dict = json.load(cython_ext_file)
 
+global_include_dirs = [
+    ["CyRK", "nb"],
+    ["CyRK", "cy"],
+    ["CyRK", "utils"],
+    ["CyRK", "optimize"],
+    ["CyRK", "array"]
+]
+
 cython_extensions = list()
 import numpy as np
 for cython_ext, ext_data in cython_ext_dict.items():
@@ -53,7 +61,7 @@ for cython_ext, ext_data in cython_ext_dict.items():
             name=ext_data['name'],
             sources=[os.path.join(*tuple(source_path)) for source_path in ext_data['sources']],
             # Always add numpy to any includes; also add sys.path so we can capture python.h
-            include_dirs=[os.path.join(*tuple(dir_path)) for dir_path in ext_data['include_dirs']] + [np.get_include()] + sys.path,
+            include_dirs=[os.path.join(*tuple(dir_path)) for dir_path in global_include_dirs + ext_data['include_dirs']] + [np.get_include()] + sys.path,
             extra_compile_args=specific_compile_args,
             define_macros=macro_list,
             extra_link_args=ext_data['link_args'] + extra_link_args,
