@@ -9,9 +9,15 @@ Also check out the GitHub page to see the code.
 
 ```{toctree}
 :maxdepth: 2
+:caption: TidalPy
+
+Overview <Overview/index.md>
+```
+
+```{toctree}
+:maxdepth: 2
 :caption: Contents
 
-Getting Started <Readme.md>
 Performance <Performance.md>
 Parallelization.md
 Numba.md

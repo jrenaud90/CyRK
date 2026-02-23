@@ -44,6 +44,10 @@
 * Added document describing performance tips and tricks.
 * Added a new Numba.md documentation file describing `nbsolve_ivp` and `nbsolve2_ivp`.
 
+##### Dependencies
+* Bumps max numpy pins to 2.4.x
+* Adds support for Python 3.14.x
+
 ## 2025
 
 #### v0.16.1 (2025-12-10)

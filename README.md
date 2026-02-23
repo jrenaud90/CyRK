@@ -1,7 +1,7 @@
 # CyRK
 <div style="text-align: center;">
 <a href="https://doi.org/10.5281/zenodo.7093266"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.7093266.svg" alt="DOI"></a>
-<a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.9|3.10|3.11|3.12|3.13-blue" alt="Python Version 3.9-3.13" /></a>
+<a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.9|3.10|3.11|3.12|3.13-blue" alt="Python Version 3.9-3.14" /></a>
 <!-- <a href="https://codecov.io/gh/jrenaud90/CyRK" ><img src="https://codecov.io/gh/jrenaud90/CyRK/branch/main/graph/badge.svg?token=MK2PqcNGET" alt="Code Coverage"/></a> -->
 <br />
 <a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml/badge.svg?branch=main" alt="Windows Tests" /></a>
@@ -71,7 +71,7 @@ There are some features that SciPy has that CyRK currently does not. A non-exhau
 
 ## Installation
 
-*CyRK has been tested on Python 3.9--3.13; Windows, Ubuntu, and MacOS.*
+*CyRK has been tested on Python 3.9--3.14; Windows, Ubuntu, and MacOS.*
 
 Install via pip:
 
