@@ -4,6 +4,11 @@
 
 ### v0.17.X
 
+#### v0.17.1 (2026-02-23)
+
+##### Package
+* Adds new "numba_c_api_.cpp" to manifest.
+
 #### v0.17.0 (2026-02-23)
 
 ##### Fixes

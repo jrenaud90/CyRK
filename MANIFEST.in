@@ -37,7 +37,7 @@ include CyRK/cy/pysolver_cyhook_api.h
 include CyRK/optimize/c_brentq.cpp
 include CyRK/optimize/c_brentq.hpp
 
-include CyRK/nb/numba_c_api.cpp
+include CyRK/nb/numba_c_api_.cpp
 
 # Exclude the whole Tests folder
 exclude Tests/*
