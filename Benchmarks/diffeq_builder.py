@@ -43,6 +43,16 @@ def find_diffeq_data(diffeq_name: str):
             y1 = y[1]  # Angular velocity [rad s-1]
             dy[0] = y1
             dy[1] = (-3. * g / (2. * l)) * np.sin(y0) + (3. / (m * l**2)) * torque
+        
+        @njit
+        def diffeq_njit2(dy, t, y, args):
+            # External torque
+            torque = 0.1 * np.sin(t)
+
+            y0 = y[0]  # Angular deflection [rad]
+            y1 = y[1]  # Angular velocity [rad s-1]
+            dy[0] = y1
+            dy[1] = (-3. * args[2] / (2. * args[0])) * np.sin(y0) + (3. / (args[1] * args[0]**2)) * torque
 
         @njit
         def diffeq_scipy_njit(t, y, l, m, g):
@@ -121,6 +131,19 @@ def find_diffeq_data(diffeq_name: str):
                     dy[i] = decay_rate_use * y[i] * np.sin(2 * np.pi * t / 5.0 + y[i + 1]/50.0)
                 else:
                     dy[i] = decay_rate_use * y[i] * np.sin(2 * np.pi * t / 5.0)
+        
+        @njit
+        def diffeq_njit2(dy, t, y, args):
+            num_y = 10_000
+            decay_rate_use = args[0]
+            
+            # This diffeq converges so should be stable
+            for i in range(num_y):
+                decay_rate_use *= 0.9999
+                if i < (num_y - 1):
+                    dy[i] = decay_rate_use * y[i] * np.sin(2 * np.pi * t / 5.0 + y[i + 1]/50.0)
+                else:
+                    dy[i] = decay_rate_use * y[i] * np.sin(2 * np.pi * t / 5.0)
 
         @njit
         def diffeq_scipy_njit(t, y, decay_rate):
@@ -176,6 +199,11 @@ def find_diffeq_data(diffeq_name: str):
         def diffeq_njit(dy, t, y):
             dy.fill(0.0)
             dy[0] = np.sin(2.0 * np.pi * t / 10.0)
+        
+        @njit
+        def diffeq_njit2(dy, t, y, args):
+            dy.fill(0.0)
+            dy[0] = np.sin(2.0 * np.pi * t / 10.0)
 
         @njit
         def diffeq_scipy_njit(t, y):
@@ -221,6 +249,11 @@ def find_diffeq_data(diffeq_name: str):
         
         @njit
         def diffeq_njit(dy, t, y):
+            dy[0] = (1. - 0.01 * y[1]) * y[0]
+            dy[1] = (0.02 * y[0] - 1.) * y[1]
+        
+        @njit
+        def diffeq_njit2(dy, t, y, args):
             dy[0] = (1. - 0.01 * y[1]) * y[0]
             dy[1] = (0.02 * y[0] - 1.) * y[1]
         
@@ -295,6 +328,7 @@ def find_diffeq_data(diffeq_name: str):
         diffeq,
         diffeq_scipy,
         diffeq_njit,
+        diffeq_njit2,
         diffeq_scipy_njit,
         events,
         events_njit,

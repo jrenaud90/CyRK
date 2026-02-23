@@ -11,13 +11,13 @@ from CyRK.cy.pyhelpers import get_error_message, find_ode_method_int
 
 # Import numba solver
 from .nb.nbrk import nbsolve_ivp
-from .nb.numba_solver import nbsolve2_ivp
+from .nb.numba_solver import nbsolve2_ivp, cyjit, nb_diffeq_addr, NbCySolverResult, njit_test_nbsolve_ivp, test_nbsolve_ivp
 
 # Import helper functions
 from .helper import nb2cy, cy2nb
 
 # Import test functions
-from ._test import test_nbrk, test_cysolver, test_pysolver
+from ._test import test_nbrk, test_cysolver, test_pysolver, test_nbsolver
 
 # Helper function that provides directories to CyRK c++ headers
 def get_include():

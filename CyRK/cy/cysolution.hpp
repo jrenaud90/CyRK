@@ -96,5 +96,5 @@ public:
     void build_dense(bool save_dense) noexcept;
     CyrkErrorCodes solve();
     CyrkErrorCodes call(const double t, double* y_interp_ptr);
-    CyrkErrorCodes call_vectorize(const double* t_array_ptr, size_t len_t, double* y_interp_ptr);
+    CyrkErrorCodes call_vectorize(const double* t_array_ptr, const size_t len_t, double* y_interp_ptr);
 };
