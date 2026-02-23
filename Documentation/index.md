@@ -13,8 +13,9 @@ Also check out the GitHub page to see the code.
 
 Getting Started <Readme.md>
 Performance <Performance.md>
-Events.md
 Parallelization.md
+Numba.md
+Events.md
 Dense Output and `t_eval` <Dense_Output_and_t_eval.md>
 Extra Outputs during Integration <Extra_Output.md>
 Advanced CySolver <Advanced_CySolver.md>
@@ -22,7 +23,29 @@ Status and Error Codes <Status_and_Error_Codes.md>
 Solution Reuse <CySolverResult_Reuses.md>
 Optimization Functions <Optimize.md>
 C++ API <C++_API.md>
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: Demos
+
+Demos/1 - Getting Started <Demos/1 - Getting Started.ipynb>
+Demos/2 - Advanced CySolver Examples <Demos/2 - Advanced CySolver Examples.ipynb>
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: Auto Generated API
+
+CyRK API <API/index.md>
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: Additional Info
+:hidden:
+
 Deprecations.md
-Changes.md
+Change Log <Changes.md>
 License.md
 ```

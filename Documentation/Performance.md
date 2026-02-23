@@ -12,7 +12,7 @@ is magnified by the overhead that Python imposes.
 The tl;dr of this section: If you want improved performance follow this decision tree!
 :::
 
-```{image} ./imgs/2026-02-20_cyrk_decision_tree.png
+```{image} ./_static/imgs/2026-02-20_cyrk_decision_tree.png
 :alt: CyRK Decision Tree
 :width: 600px
 :align: center
@@ -95,7 +95,7 @@ that mimics a basic predator-prey model. The different colors represent: Blue = 
 `numba.njit'd` diffeq; Green = `CyRK.nbsolve_ivp`; and Red = `CyRK.cysolve_ivp`. The different symbols indicate
 different settings that can be turned on or off in the various solvers. 
 
-```{image} ./imgs/CyRK_SciPy_Compare_predprey_v0-17-0a3-dev15.png
+```{image} ./_static/imgs/CyRK_SciPy_Compare_predprey_v0-17-0a3-dev15.png
 :alt: CyRK's baseline benchmark using a predator-prey model.
 :width: 600px
 :align: center
@@ -112,7 +112,7 @@ If we increase the number of dependent variables we start to see `CyRK` get clos
 lean on `numpy`'s array math (which is highly optimized). In the example below we utilize a simple diffeq but an ODE
 system with $N_{y} = 10,000$ dependent $y$ variables.
 
-```{image} ./imgs/CyRK_SciPy_Compare_large_numy_simple_v0-17-0a3-dev15.png
+```{image} ./_static/imgs/CyRK_SciPy_Compare_large_numy_simple_v0-17-0a3-dev15.png
 :alt: Benchmark showing a ODE system with many (10,000) dependent variables.
 :width: 600px
 :align: center
@@ -126,7 +126,7 @@ The prior examples used very simple diffeq's which run quickly even in Python. I
 more complicated diffeq. It has $N_{y} = 10,000$ dependent $y$ variables like the previous example. It also couples
 them to each other and uses trig functions.
 
-```{image} ./imgs/CyRK_SciPy_Compare_large_numy_complex_v0-17-0a3-dev15.png
+```{image} ./_static/imgs/CyRK_SciPy_Compare_large_numy_complex_v0-17-0a3-dev15.png
 :alt: Benchmark showing a complex diffeq ODE system with many (10,000) dependent variables.
 :width: 600px
 :align: center

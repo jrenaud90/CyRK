@@ -266,7 +266,7 @@ ax.legend(loc="upper right")
 plt.show()
 ```
 
-```{image} ./imgs/events.png
+```{image} ./_static/imgs/events.png
 :alt: CyRK Events Example
 :width: 600px
 :align: center

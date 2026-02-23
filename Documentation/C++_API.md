@@ -1,5 +1,6 @@
 # CyRK's C++ API Description
-CyRK uses a C++ backend for most of its functionality. These files are described below.
+CyRK uses a C++ backend for most of its functionality. Most of these files can be found in "CyRK/cy" and
+are described below.
 
 This backend can be found in a dedicated repository [here](https://github.com/jrenaud90/CyRK_CPP).
 
@@ -74,7 +75,7 @@ std::unique_ptr<CySolverResult> baseline_cysolve_ivp(
 )
 ```
 
-## "CyRK/cy/rk.hpp(cpp)"
+## "rk.hpp(cpp)"
 Provides classes that wrap `CySolverBase` and provide Runge-Kutta integration methods and constants. Each integrator has
 a unique integer used to select it via `integration_method` in various function calls. These integers are defined in 
 an enum class `ODEMethod` which can be python imported or cython cimported `from CyRK import ODEMethod; ODEMethod.RK45`.

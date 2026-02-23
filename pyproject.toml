@@ -1,6 +1,6 @@
 [project]
 name='CyRK'
-version = '0.17.0a4.dev1'
+version = '0.17.0'
 description='Runge-Kutta ODE Integrator Implemented in Cython and Numba.'
 authors= [
     {name = 'Joe P. Renaud', email = 'joe.p.renaud@gmail.com'}
@@ -58,6 +58,25 @@ dev = [
     "pytest",
     "timeit",
     "line_profiler==3.5.1"
+]
+
+docs = [
+    "sphinx",
+    "myst-parser",
+    "linkify-it-py",
+    "sphinx_rtd_theme",
+    "toml",
+    "sphinx-copybutton",
+    "nbsphinx",
+    "ipykernel",
+    "nbconvert",
+    "jupyter",
+    "sphinx-autodoc-typehints",
+    "breathe",
+    # We also need to install TidalPy and its deps so that auto-doc's works.
+    "jupyter",
+    "pytest",
+    "matplotlib>=3.4.2",
 ]
 
 [build-system]
