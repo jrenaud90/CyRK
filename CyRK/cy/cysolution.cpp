@@ -566,12 +566,8 @@ CyrkErrorCodes CySolverResult::call(const double t, double* y_interp_ptr)
                 time_domain_sorted_ptr,
                 time_domain_sorted_ptr + interp_time_vec_len_touse,
                 t) - time_domain_sorted_ptr;
-                
-            if (upper_i == 0) {
-                closest_index = 0;
-            } else {
-                closest_index = upper_i - 1;
-            }
+            
+            closest_index = upper_i;
         }
         else
         {

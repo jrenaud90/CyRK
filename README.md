@@ -40,6 +40,8 @@ An additional benefit of the two cython implementations is that they are pre-com
 
 <img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_predprey_v0-17-0.png" alt="CyRK Performance Graphic" />
 
+# Overview
+
 ## Supported Features
 CyRK's `pysolve_ivp` (which works with pure python functions) and `cysolve_ivp` (which works with cython compiled functions) shares many of the same features as SciPy's `solve_ivp`:
 * Triggerable [events](https://cyrk.readthedocs.io/en/latest/Events.html) to track certain events or cause a early termination.
