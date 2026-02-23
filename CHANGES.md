@@ -4,7 +4,7 @@
 
 ### v0.17.X
 
-#### v0.17.0 (2026-02-xx)
+#### v0.17.0 (2026-02-23)
 
 ##### Fixes
 * Fixed issue where events may not be checked in pysolve_ivp.
