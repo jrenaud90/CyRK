@@ -72,6 +72,7 @@ docs = [
     "nbconvert",
     "jupyter",
     "sphinx-autodoc-typehints",
+    "furo",
     "breathe",
     # We also need to install TidalPy and its deps so that auto-doc's works.
     "jupyter",
