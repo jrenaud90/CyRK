@@ -1,10 +1,13 @@
 # Optimize Package
 
 ## BrentQ Method
-This function utilizes the Brent's method to find a root of the function on the sign changing interval [a, b]. It is based off of the implementation used by [SciPy](https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.brentq.html).
+This function utilizes the Brent's method to find a root of the function on the sign changing interval [a, b].
+It is based off of the implementation used by
+[SciPy](https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.brentq.html).
 
 ### Limitations
-While this function is wrapped in Cython it is not currently exposed to Python so you must use Cython or C++ to access and use it (see examples below). 
+While this function is wrapped in Cython it is not currently exposed to Python so you must use Cython or C++ to
+access and use it (see examples below). 
 
 ### Example Usage
 ```cython
@@ -49,4 +52,5 @@ def brentq_test(
 ```
 
 ### Citation
-Use of this function or of CyRK's integrators with "events" on should cite [SciPy](https://scipy.org/citing-scipy/) since this implementation is based on their work.
+Use of this function or of CyRK's integrators with "events" on should cite [SciPy](https://scipy.org/citing-scipy/)
+since this implementation is based on their work.

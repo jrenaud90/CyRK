@@ -1,7 +1,8 @@
-# Capturing Extra Output with CyRK's ODE Solvers
+# Capturing Extra Data with CyRK
 
-It can be advantageous to capture additional output parameters during the integration of systems of ordinary differential equations.
-Particularly when the differential equations in question are computationally expensive. For example, consider the following simplified differential equation.
+It can be advantageous to capture additional data parameters during the integration of systems of ordinary
+differential equations. Particularly when the differential equations in question are computationally expensive.
+For example, consider the following simplified differential equation.
 
 ```python
 
@@ -17,22 +18,27 @@ def diffeq(t, y, a, b):
     return np.asarray([dy_0, dy_1])
 ```
 
-Using CyRK it is easy to integrate this function to find $y_0$ and $y_1$ as a function of time.
-But suppose that in our final analysis we also want to see how $f$ is changing with time and with $y$'s. We could extract it by using `y_0` and `dy_0` (which we would have to calculate), 
-but the more complicated the relationship the harder this is to do and will require additional computations and code.
-An easier solution would be to make separate calls to `calculate_f` with the $y$ and $t$ found from integration, but again this requires additional computations which may be expensive.
-In this case `calculate_f` will be called _twice_ for each value in the time domain (once for the initial integration and once to find the value of `f` afterwards). 
+Using CyRK it is easy to integrate this function to find $y_0$ and $y_1$ as a function of time. But suppose that in our
+final analysis we also want to see how $f$ is changing with time and with $y$'s. We could extract it by using
+`y_0` and `dy_0` (which we would have to calculate), but the more complicated the relationship the harder this is to do
+and will require additional computations and code. An easier solution would be to make separate calls to `calculate_f`
+with the $y$ and $t$ found from integration, but again this requires additional computations which may be expensive. In
+this case `calculate_f` will be called _twice_ for each value in the time domain (once for the initial integration
+and once to find the value of `f` afterwards). 
 
 Instead, it would be ideal if we could just store the value of `f` during integration.
 
-CyRK offers this functionality at the expense of a small hit on performance when using this feature.
-The values of these extra parameters are not analyzed by the solver when determining the adaptive step size or numerical error handling.
+CyRK offers this functionality at the expense of a small hit on performance when using this feature. The values of
+these extra parameters are not analyzed by the solver when determining the adaptive step size or numerical
+error handling.
 
 ## Limitations
 
 Current limitations of this feature as of v0.17.0:
+
 - Only numerical parameters can be used as extra outputs (no strings, booleans, other structs).
-- All extra outputs must have the same _type_ as the input `y`s. (for `pysolve_ivp` and `cysolve_ivp` extra outputs can only be double floating point numbers).
+- All extra outputs must have the same _type_ as the input `y`s. (for `pysolve_ivp` and `cysolve_ivp` extra outputs
+can only be double floating point numbers).
 
 ## How to use with `CyRK.nbsolve_ivp` (Numba-based)
 
@@ -132,24 +138,29 @@ extra_parameter_1 = result.y[3, :]
 
 ### Interpolating for `cysolve_ivp` and `pysolve_ivp`
 
-When using either `dense_output` or `t_eval`, interpolations must be performed. For dependent $y$ variables, CyRK will utilize the user-specified differential equation method's approach to interpolation. However, this only works for _dependent_ variables.
-If you are capturing extra output they will not be included in this interpolation. Instead, both `cysolve_ivp` and `pysolve_ivp` will perform said dependent-variable interpolation and then use the results to make additional calls (one per interpolation, _i.e._, once per value in `t_eval`) to the differential equation to find the values of the extra outputs at the requested time steps.
+When using either `dense_output` or `t_eval`, interpolations must be performed. For dependent $y$ variables, CyRK will
+utilize the user-specified differential equation method's approach to interpolation. However, this only works for
+_dependent_ variables. If you are capturing extra output they will not be included in this interpolation. Instead,
+both `cysolve_ivp` and `pysolve_ivp` will perform said dependent-variable interpolation and then use the results to
+make additional calls (one per interpolation, _i.e._, once per value in `t_eval`) to the differential equation to find
+the values of the extra outputs at the requested time steps.
 
 This approach is similar to "option 1" discussed in the next section for the numba-based solver.
 
 :::{note}
-This means that collecting extra outputs when interpolation is one will result in additional calls to the ODE's diffeq. If it is a
-computationally expensive function then this could cause a noticeable impact on performance. Read more about managing the
-performance of `CyRK` solvers [here](Performance.md).
+This means that collecting extra outputs when interpolation is one will result in additional calls to the ODE's diffeq.
+If it is a computationally expensive function then this could cause a noticeable impact on performance. Read more about
+managing the performance of `CyRK` solvers [here](Performance.md).
 :::
 
 ### Interpolating for numba-based `nbsolve_ivp`
 
-By setting the `t_eval` argument for either the `nbsolve_ivp` solver, an interpolation will occur at the end of integration.
-As of CyRK 0.17.0, `nbsolve_ivp` does not support dense output interpolators like the kind discussed in the previous section.
-Instead it must rely on (less accurate and less efficient) general purpose, linear interpolators.
-These use the solved $y$'s and $t$ to find a new reduced `y_reduced` at `t_eval` intervals using a method similar to `numpy.interp` function. 
-Since we are potentially storing extra parameters during integration, we need to tell the solver how to handle any potential interpolation on these additional parameters.
+By setting the `t_eval` argument for either the `nbsolve_ivp` solver, an interpolation will occur at the end of
+integration. As of CyRK 0.17.0, `nbsolve_ivp` does not support dense output interpolators like the kind discussed in
+the previous section. Instead it must rely on (less accurate and less efficient) general purpose, linear interpolators.
+These use the solved $y$'s and $t$ to find a new reduced `y_reduced` at `t_eval` intervals using a method similar to
+`numpy.interp` function. Since we are potentially storing extra parameters during integration, we need to tell the
+solver how to handle any potential interpolation on these additional parameters.
 
 - **Option 1**: Solve for the extra parameters at the new interpolated `y` values
   - _How to set_: Set `t_eval` to the desired numpy array, set `capture_extra=True`, and `interpolate_extra=False`.

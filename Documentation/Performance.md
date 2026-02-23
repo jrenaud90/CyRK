@@ -5,8 +5,9 @@ tool and generally performs much better due to it being typed, compiled, and cac
 
 There are some considerations regarding performance that users should keep in mind, particularly if they are noticing
 poorer than anticipated integration times. Most of the conversation here is directed towards `cysolve_ivp` and CyRK's
-C++ backend. However, `pysolve_ivp` uses the same backend so these considerations still matter, but poor performance
-is magnified by the overhead that Python imposes.
+C++ backend. However, `pysolve_ivp` and `nbsolve2_ivp` use the same backend so these considerations still matter,
+but poor performance is magnified by the overhead that Python imposes (and to a much lesser extend, numba for 
+`nbsolve2_ivp`).
 
 :::{tip}
 The tl;dr of this section: If you want improved performance follow this decision tree!
@@ -22,11 +23,12 @@ The tl;dr of this section: If you want improved performance follow this decision
 The size of a ODE system is determined by the number of dependent $y$ variables ($N_{y}$). The more variables, the higher the 
 solver overhead will be as it must loop through all variables several times for each time step. The number of y loops,
 excluding any in the actual differential equation, is: 4 + 5+/step (RK23); 4 + 8+/step (RK45); 4 + 14+/step (DOP853).
-Each of the N+/step could be significantly more than the value listed if it takes a while to find a proper step size.
+The "N+/step" are the number of loops _per time step_ and the "+" indicates it could be significantly more than the
+value listed, particularly for diffeq's that might be stiff and have difficulty finding a proper step size.
 Even if it was perfect at predicting step sizes, a 100 step integration would have over 800 $y$-loops for the RK45 method.
 
 In addition to these computational considerations, the memory footprint of the solver and the solution structure will
-increase with the number of y. For double floating point numbers, the $y$-specific footprint of the solver is (in Bytes):
+increase with the number of $y$. For double floating point numbers, the $y$-specific footprint of the solver is (in Bytes):
 $112 N_{y}$ (RK23), $136 N_{y}$ (RK45), and $224 N_{y}$ (DOP853). This is just the $y$-dependent memory not other 
 overheads (the other overheads are around 1,500 kB). So for RK45, if $N_{y} = 10,000$, the solver would be over 1 MB.
 During integration the solution will also be added to at each time step and the data storage grows as $8*(1+N_{y})$
@@ -42,7 +44,7 @@ could be much larger if the error is large (or the integration tolerances are sm
 
 Expect the diffeq to be called 1000s of times for a typical integration. Slow diffeqs quickly become the bottleneck of
 the integrator. Providing a Cython (or C) compiled or a [numba.njit](https://numba.readthedocs.io/en/stable/)
-JIT compiled diffeq to CyRK will usually cause orders of magnitude better performance.
+JIT-compiled diffeq to CyRK will usually lead to orders of magnitude better performance.
 
 ## Reducing Number of Steps
 The prior conversation has focused on the "per step" performance. Reducing the _number_ of steps will always
@@ -56,8 +58,10 @@ The last two factors affecting the number of steps, and which are more adjustabl
 (`rtol` and `atol`) and the integration method ("RK23", "RK45", "DOP853"). The integration tolerances directly affect
 the number of steps because the solver must decrease step size to fit within smaller tolerances. It is important to
 keep in mind that CyRK allows `atol` and `rtol` to be provided as an array, one for each $y$. This can be helpful if
-one parameter changes much slower than others (does not need as high a `rtol`) or is generally much larger than the
-others (smaller `atol`). The integration method indirectly affects the number of steps by providing a different level
+one parameter changes much slower than others (looser `rtol`) or is generally much larger than the
+others (looser `atol`).
+
+The integration method indirectly affects the number of steps by providing a different level
 of confidence at a given error level. For example, DOP853 will know much more about the overall ODE at the same error
 level compared to RK45 (and the same for RK45 compared to RK23). So you can usually loosen the tolerances
 (make `rtol` and `atol` larger) when moving to more complex solver methods (_e.g._, perhaps you need `rtol=1.0e-6`
@@ -65,12 +69,15 @@ for RK23 to achieve your desired error level but only `rtol=1.0e-3` for DOP853 f
 
 As discussed earlier, the more complex methods are much more computationally expensive all else being equal. If you are
 not able to loosen tolerances then you are better off using a simpler method. The per step cost is always highest for
-DOP853 > RK45 > RK23. The benefit of DOP853 over RK45 (or RK45 over RK23) is better accuracy with looser tolerances and
+DOP853 > RK45 > RK23. The benefit of DOP853 over RK45 (and RK45 over RK23) is better accuracy with looser tolerances and
 less steps. Less steps means less computing power. Benchmarking can tell you if that savings outweighs the increased
 per step cost.
 
 ### Fewer Steps, Dense Output, and `t_eval`
-_Read more about dense outputs and `t_eval` [here](Dense_Output_and_t_eval.md)._
+
+:::{tip}
+Read more about dense outputs and `t_eval` [here](Dense_Output_and_t_eval.md).
+:::
 
 While decreasing the number of steps will improve performance, it may not produce your desired outcome. If you only 
 care about the solution of an ODE at $t=t_{end}$, then it is perfect. However, if you want the solution at every $t_x$
@@ -90,10 +97,9 @@ Keep in mind that using `t_eval` and especially `capture_dense=True` carries per
 
 ## CyRK Benchmarks and Discussion
 Below is the general benchmark shown else where in CyRK's documentation and repository. It uses a 2-component ODE
-that mimics a basic predator-prey model. The different colors represent: Blue = `scipy.solve_ivp`; Magenta = 
-`scipy.solve_ivp` using a `numba.njit'd` diffeq; Cyan = `CyRK.pysolve_ivp`; Orange = `CyRK.pysolve_ivp` using a
-`numba.njit'd` diffeq; Green = `CyRK.nbsolve_ivp`; and Red = `CyRK.cysolve_ivp`. The different symbols indicate
-different settings that can be turned on or off in the various solvers. 
+that mimics a basic predator-prey model. The different colors represent different solvers, including `SciPy.solve_ivp`.
+Note some of the solvers are repeated but utilize a njit'd diffeq vs. not. The different symbols indicate
+different settings that can be turned on or off in the various solvers, such as dense output. 
 
 ```{image} ./_static/imgs/CyRK_SciPy_Compare_predprey_v0-17-0.png
 :alt: CyRK's baseline benchmark using a predator-prey model.
@@ -101,15 +107,15 @@ different settings that can be turned on or off in the various solvers.
 :align: center
 ```
 
-This is a simple diffeq meaning that even the Python version is not terribly slow so `numba.njit` helps with the
-speeding up the diffeq, but its not major. This problem is also small with only two dependent $y$ variables
-meaning that most of the optimizations in `scipy.solve_ivp` that utilize `numpy` ndarray logic is lost. The bulk of the
-performance comes down to the overhead of the solver, and that is where `CyRK.cysolve_ivp` really shines. In most cases
-it beats `scipy` by a factor of 100x up to 400x.
+This is a simple diffeq meaning that even the Python version only gets modest benefit from a `numba.njit`'d diffeq.
+This problem is also small with only two dependent $y$ variables meaning that most of the optimizations in
+`scipy.solve_ivp` that utilize `numpy` ndarray logic is lost. The bulk of the performance comes down to the overhead
+of the solver, and that is where `CyRK.cysolve_ivp` really shines. In most cases it beats `scipy` by a factor of
+100x up to 400x.
 
 ### Many Dependent $y$ Variables
 If we increase the number of dependent variables we start to see `CyRK` get closer to `scipy` since `scipy` is able to
-lean on `numpy`'s array math (which is highly optimized). In the example below we utilize a simple diffeq but an ODE
+lean on `numpy`'s ndarray math (which is highly optimized). In the example below we utilize a simple diffeq but an ODE
 system with $N_{y} = 10,000$ dependent $y$ variables.
 
 ```{image} ./_static/imgs/CyRK_SciPy_Compare_large_numy_simple_v0-17-0.png
@@ -118,7 +124,7 @@ system with $N_{y} = 10,000$ dependent $y$ variables.
 :align: center
 ```
 
-Even though `scipy` has to contend with the Python overhead, `SciPy` ends up only being about a factor of 4x slower
+Even though `scipy` has to contend with the Python overhead, it ends up only being about a factor of 4x slower
 than `CyRK.cysolve_ivp`.
 
 ### Complex DiffEq's and Many Dependent $y$ Variables
@@ -133,10 +139,10 @@ them to each other and uses trig functions.
 ```
 
 `numba.njit` is the real champion here. Using a `njit`'d diffeq with `scipy` produces results that are only slightly
-slower than `CyRK`. The bottleneck here is the complex diffeq and how poorly optimized it is in Python. `scipy`'s 
-`numpy` array math is not able to save it from the expense of the diffeq. Even `CyRK.pysolve` suffers greatly since
-it to is having to deal with an unoptimized Python diffeq. All of the other solvers do quite well with 
+slower than `CyRK`. The bottleneck here is the complicated diffeq and how poorly optimized it is in pure Python.
+`scipy`'s `numpy` array math is not able to save it from the expense of the diffeq. Even `CyRK.pysolve` suffers greatly
+since it too is having to deal with an unoptimized Python diffeq. All of the other solvers do quite well with 
 `CyRK.cysolve_ivp` slightly eeking out the others (but being around 200x faster than regular `scipy`). Overall this
 integration may still be slow even for the faster solvers. If the DiffEq can not be optimized (_e.g._, maybe we could
-use taylor expansions on the trig functions or other tricks) then the only tool left is reducing the number of steps, 
-see section above.
+use taylor expansions on the trig functions or other tricks) then the only tool left is reducing the number of steps
+as discussed in the section above.
