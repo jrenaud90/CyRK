@@ -113,29 +113,35 @@ def nbsolve_ivp(
 
 
 ## `CyRK.nbsolve2_ivp`
-**`CyRK.nbsolve2_ivp` is currently considered experimental! Please perform testing before using in any production
-environment. Also expect syntax and functionality to change rapidly.**
 
-As of CyRK v0.17.0, a new numba-safe function, `nbsolve2_ivp` was introduced. This function does use the same C++ 
-backend as `cysolve_ivp` and `pysolve_ivp`. It uses ctypes to build C safe types that are sent to `cysolve_ivp`. The
+:::{note}
+`CyRK.nbsolve2_ivp` is currently considered experimental! Please perform testing before using in any production
+environment. Also expect syntax and functionality to change rapidly. Keep in mind that `nbsolve2_ivp` will replace
+`nbsolve_ivp` in a future release!
+:::
+
+In CyRK v0.17.0, a new numba-safe function, `nbsolve2_ivp` was introduced. This function uses the same C++ 
+backend as `cysolve_ivp` and `pysolve_ivp`. It utilizes ctypes to build C safe types that are sent to `cysolve_ivp`. The
 result of integration is a C++ class `CySolverResult`. However, numba does not currently support wrapping C++ classes
 directly (follow this [issue](https://github.com/numba/numba/issues/9803) if interested). Instead the result's raw
 pointer is stored in a numba [jitclass](https://numba.readthedocs.io/en/stable/user/jitclass.html) called
-`NbCySolverResult`. This jitclass uses light C getters to retrieve information from the underlying C++ class instance.
-The class can be used in both Python and njit'd functions.
+`NbCySolverResult`. This jitclass uses light-weight C getters to retrieve information from the underlying C++
+class instance. The class can then be used in both Python and njit'd functions. While there are a number of downsides
+of this approach (see limitations below), the advantage is that all of `CyRK`'s solvers will soon use the same backend.
+Meaning all functionality, new integrators, bug fixes, performance improvements, etc. will only have to be implemented
+once and then be available to all solvers. 
 
-While there are a number of downsides of this approach (see limitations below), the advantage is that all of `CyRK`'s
-solvers will soon use the same backend. Meaning all functionality, new integrators, bug fixes, performance improvements,
-etc. will only have to be implemented once and then be available to all solvers. 
-
-_For this reason, `nbsolve2_ivp` will replace `nbsolve_ivp` in a future release!_
+Users should consider `nbsolve2_ivp` if they need to perform integrations from _within_ a njit'd function. If instead
+they just want to use a njit'd diffeq, then they could consider using `pysolve_ivp` which has a easier interface, 
+safer memory management, and, depending on the problem, similar performance. `pysolve_ivp` can not be called from a
+njit'd function, however, so that is why CyRK provides `nbsolve2_ivp`.
 
 ### Limitations and Important Considerations
 There are several limitations and considerations when using `nbsolve2_ivp`. 
 
 :::{important}
 The `NbCySolverResult` result releases the `CySolverResult` unique pointer so its memory is no longer
-  managed by the C++ backend. Currently, jitclasses do not allow for `\_\_del\_\_` methods so we can not automatically 
+  managed by the C++ backend. Currently, jitclasses do not allow for `__del__` methods so we can not automatically 
   release the `CySolverResult` memory when the class is deleted or goes out of scope (this is being actively worked on
   see this [issue](https://github.com/numba/numba/issues/8470) and this [pr](https://github.com/numba/numba/pull/10383)).
   Users must manually call `solution.free()` on the returned solution from `nbsolve2_ivp`. Otherwise a memory leak
@@ -151,8 +157,11 @@ The `NbCySolverResult` result releases the `CySolverResult` unique pointer so it
 - The diffeq must be compiled to ctypes and its address provided to `nbsolve2_ivp`. CyRK provides helpers to assist with
   this: `from CyRK import cyjit, nb_diffeq_addr`. `cyjit` is the cfunc generator. `nb_diffeq_addr` automatically applies
   `cyjit` and returns the address. Note: this must be called from pure python, not njit'd code!
-- jitclass does not support \_\_call\_\_ so when dense output is on you must use `solution.call(...)` or
-  `solution.call_vectorize(...)`. `solution()` will not work.
+- jitclass does not support `__call__` so when dense output is on you must use `solution.call(...)` or
+  `solution.call_vectorize(...)`. Directly calling the class like `solution()` will not work.
+- As of CyRK v0.17.x, there is a significant performance floor when using `nbsolve2_ivp` for simple Diffeqs that 
+  requires few time steps (<100). However performance improves substantially for more time steps or more complex diffeqs
+  Future releases plan to improve this performance.
 
 ### How to Use
 Example usage
@@ -271,4 +280,112 @@ to the underlying memory of the integration solution's `CySolverResult` C++ clas
 Python or in a numba njit'd function. The following methods and properties are available to users.
 
 ```python
+class NbCySolverResult:
+    """
+    Numba-compatible wrapper for the C++ CySolverResult class.
+
+    Parameters
+    ----------
+    ptr : int
+        Memory address of the underlying C++ CySolverResult instance.
+    """
+    def __init__(self, ptr):
+        self._ptr = ptr
+    
+    @property
+    def cyresult_set(self):
+        """Boolean check if the underlying C++ pointer is valid."""
+
+    @property
+    def success(self):
+        """Boolean indicating if the integration was successful."""
+    
+    @property
+    def status(self):
+        """The integer status code returned by the solver."""
+
+    @property
+    def error_code(self):
+        """Alias for the solver status code."""
+
+    @property
+    def size(self):
+        """Number of points stored in the solution (size of `t`)."""
+
+    @property
+    def steps_taken(self):
+        """
+        Total number of internal steps taken by the integrator.
+        
+        This may be larger than `self.size`.
+        """
+
+    @property
+    def num_y(self):
+        """Number of dependent variables (equations) in the system."""
+
+    @property
+    def num_dy(self):
+        """Total size of the derivative vector (including extra outputs)."""
+
+    @property
+    def num_interpolates(self):
+        """Number of points generated via dense output interpolation."""
+
+    @property
+    def t(self):
+        """Zero-copy view of the time domain vector."""
+
+    @property
+    def y(self):
+        """Zero-copy view of the solution array transposed to (num_y, size)."""
+
+    def call(self, t):
+        """"
+        Evaluate the dense output interpolator at a single time point.
+
+        Parameters
+        ----------
+        t : float
+            The time point at which to interpolate.
+
+        Returns
+        -------
+        numpy.ndarray
+            The interpolated state vector at time t.
+        """
+
+    def call_vectorize(self, t_array):
+        """
+        Evaluate the dense output interpolator across multiple time points.
+
+        Parameters
+        ----------
+        t_array : numpy.ndarray
+            1D array of time points to interpolate.
+
+        Returns
+        -------
+        numpy.ndarray
+            2D array of interpolated states of shape (num_dy, len(t_array)).
+        """
+
+    @property
+    def status_message(self):
+        """Descriptive string for the current solver status."""
+        
+    @property
+    def message(self):
+        """Integrator message retrieved from the C++ backend."""
+
+    def print_diagnostics(self):
+        """Print detailed solver state and configuration to standard output."""
+
+    def free(self):
+        """
+        Frees the underlying `CySolverResult` Memory.
+        
+        Important! This is not called automatically! Users must call it before `NbCySolverResult` goes out of scope
+        or is deleted.
+        """
 ```

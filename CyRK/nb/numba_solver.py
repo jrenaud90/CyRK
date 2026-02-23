@@ -477,6 +477,13 @@ class NbCySolverResult:
         print(diagnostic_str)
 
     def free(self):
+        """
+        Frees the underlying `CySolverResult` Memory.
+        
+        Important! This is not called automatically! Users must call it before `NbCySolverResult` goes out of scope
+        or is deleted.
+        """
+        
         if self.cyresult_set:
             c_free(self._ptr)
             self._ptr = 0
