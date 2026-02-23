@@ -192,8 +192,6 @@ cdef extern from "cysolver.cpp" nogil:
         double* t_now_ptr
         double* y_now_ptr
         double* dy_now_ptr
-        double* y_old_ptr
-        double* dy_old_ptr
 
     cdef cppclass CySolverBase:
         CySolverBase()

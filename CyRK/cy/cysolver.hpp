@@ -161,20 +161,15 @@ struct NowStatePointers
     double* t_now_ptr;
     double* y_now_ptr;
     double* dy_now_ptr;
-    double* y_old_ptr;
-    double* dy_old_ptr;
 
     NowStatePointers():
-        t_now_ptr(nullptr), y_now_ptr(nullptr), dy_now_ptr(nullptr),
-        y_old_ptr(nullptr), dy_old_ptr(nullptr)
+        t_now_ptr(nullptr), y_now_ptr(nullptr), dy_now_ptr(nullptr)
     { }
 
     NowStatePointers(
-            double* t_now_ptr_, double* y_now_ptr_, double* dy_now_ptr_, 
-            double* y_old_ptr_, double* dy_old_ptr_
+            double* t_now_ptr_, double* y_now_ptr_, double* dy_now_ptr_
             ):
-        t_now_ptr(t_now_ptr_), y_now_ptr(y_now_ptr_), dy_now_ptr(dy_now_ptr_),
-        y_old_ptr(y_old_ptr_), dy_old_ptr(dy_old_ptr_)
+        t_now_ptr(t_now_ptr_), y_now_ptr(y_now_ptr_), dy_now_ptr(dy_now_ptr_)
     { }
 };
 

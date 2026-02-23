@@ -544,7 +544,7 @@ CyrkErrorCodes CySolverBase::setup()
 
 NowStatePointers CySolverBase::get_now_state()
 {
-    return NowStatePointers(&this->t_now, this->y_now_ptr, this->dy_now_ptr, this->y_old_ptr, this->dy_old_ptr);
+    return NowStatePointers(&this->t_now, this->y_now_ptr, this->dy_now_ptr);
 }
 
 inline bool CySolverBase::check_status() const
