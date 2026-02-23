@@ -8,6 +8,7 @@
 
 ##### Fixes
 * Fixed issue where events may not be checked in pysolve_ivp.
+* Fixed issue where dense output calls were not working when performing backwards integration.
 
 ##### C++ Backend
 * Changed how dense outputs are constructed so they retain a pointer to the solution instance not the solver. 
@@ -47,6 +48,10 @@
 ##### Dependencies
 * Bumps max numpy pins to 2.4.x
 * Adds support for Python 3.14.x
+
+##### Tests
+* Added tests for `nbsolve2_ivp`.
+* Turned back on backwards integration tests that were being skipped.
 
 ## 2025
 

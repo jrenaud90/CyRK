@@ -510,7 +510,7 @@ CyrkErrorCodes CySolverResult::solve()
 
 CyrkErrorCodes CySolverResult::call(const double t, double* y_interp_ptr)
 {
-    if (not this->success)
+    if (not this->success) [[unlikely]]
     {
         return CyrkErrorCodes::INTEGRATION_NOT_SUCCESSFUL;
     }
@@ -518,8 +518,21 @@ CyrkErrorCodes CySolverResult::call(const double t, double* y_interp_ptr)
     {
         return CyrkErrorCodes::DENSE_OUTPUT_NOT_SAVED;
     }
-    if ((not y_interp_ptr) or (t < this->config_uptr->t_start) or (t > this->config_uptr->t_end))
+    // Safety Catch: Ensure we have dense output available.
+    if (this->dense_vec.size() == 0) [[unlikely]]
     {
+        return CyrkErrorCodes::DENSE_OUTPUT_NOT_SAVED;
+    }
+    if (not y_interp_ptr) [[unlikely]]
+    {
+        // nullptr provided
+        return CyrkErrorCodes::ARGUMENT_ERROR;
+    }
+    double min_t = std::min(this->config_uptr->t_start, this->config_uptr->t_end);
+    double max_t = std::max(this->config_uptr->t_start, this->config_uptr->t_end);
+    if ((t < min_t) or (t > max_t)) [[unlikely]]
+    {
+        // t is not within solution domain.
         return CyrkErrorCodes::ARGUMENT_ERROR;
     }
 
@@ -532,56 +545,52 @@ CyrkErrorCodes CySolverResult::call(const double t, double* y_interp_ptr)
     {
         interp_time_vec_len_touse = this->size;
     }
-    // SciPy uses np.searchedsorted which as far as I can tell works the same as bibnary search with guess
+    // SciPy uses np.searchedsorted which as far as I can tell works the same as binary search with guess
     // Except that it is searchedsorted is 1 more than binary search.
     // This may only hold if the integration is in the forward direction.
-    // TODO: See if this holds for backwards integration and update if needed.
     // Get a guess for binary search
-    size_t closest_index;
-
-    // Check if there are any t_eval steps between this new index and the last index.
-    // Get lowest and highest indices
+    size_t closest_index = 0;
     double* time_domain_sorted_ptr = this->time_domain_vec_sorted_ptr->data();
-    auto lower_i = std::lower_bound(
-        time_domain_sorted_ptr,
-        time_domain_sorted_ptr + interp_time_vec_len_touse,
-        t) - time_domain_sorted_ptr;
+
+    // Unlikely, but if there is only one interpolator, then it does not matter if we are doing
+    //  forward or backward integration. There is only one function to call. 
+    // If this is the case though then leave closest_index == 0.
+    if (this->dense_vec.size() > 1) [[likely]]
+    {
     
-    auto upper_i = std::upper_bound(
-        time_domain_sorted_ptr,
-        time_domain_sorted_ptr + interp_time_vec_len_touse,
-        t) - time_domain_sorted_ptr;
-        
-    if (lower_i == upper_i)
-    {
-        // Only 1 index came back wrapping the value. See if it is different from before.
-        closest_index = lower_i;  // Doesn't matter which one we choose
-    }
-    else if (this->direction_flag)
-    {
-        // Two different indicies returned. Since we are working our way from low to high values we want the upper one.
-        closest_index = upper_i;
-    }
-    else
-    {
-        // Two different indicies returned. Since we are working our way from high to low values we want the lower one.
-        closest_index = lower_i;
-    }
-
-    // Clean up closest index
-    if (this->direction_flag)
-    {
-        closest_index = std::min<size_t>(std::max<size_t>(closest_index, 0), interp_time_vec_len_touse - 1);
-    }
-    else
-    {
-        closest_index = interp_time_vec_len_touse - closest_index - 1;
-        closest_index = std::min<size_t>(std::max<size_t>(closest_index, 1), interp_time_vec_len_touse - 1);
+        if (this->direction_flag) [[likely]]
+        {
+            // Forward integration: Use upper_bound to find the first element strictly greater than t.
+            // The interpolator we want is the step just before that element.
+            auto upper_i = std::upper_bound(
+                time_domain_sorted_ptr,
+                time_domain_sorted_ptr + interp_time_vec_len_touse,
+                t) - time_domain_sorted_ptr;
+                
+            if (upper_i == 0) {
+                closest_index = 0;
+            } else {
+                closest_index = upper_i - 1;
+            }
+        }
+        else
+        {
+            // Backward integration: Sorted array is [0.0, ..., 10.0]. 
+            // Use lower_bound to find the first element >= t. 
+            // We translate this back to the original descending index.
+            auto lower_i = std::lower_bound(
+                time_domain_sorted_ptr,
+                time_domain_sorted_ptr + interp_time_vec_len_touse,
+                t) - time_domain_sorted_ptr;
+                
+            closest_index = interp_time_vec_len_touse - lower_i - 1;
+        }
     }
 
-    if (closest_index > this->dense_vec.size())
+    // Safety Catch: Clamp the index to the bounds of the dense_vec array.
+    if (closest_index >= this->dense_vec.size())
     {
-        return CyrkErrorCodes::BOUNDS_ERROR;
+        closest_index = this->dense_vec.size() - 1;
     }
 
     // Call interpolant to update y
