@@ -262,7 +262,7 @@ def test_pysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output,
     if test_dense_output:
         # Check that dense output is working and that it gives decent results
         # Check with a float
-        y_array = result(0.5)
+        y_array = result.call(0.5)
         assert type(y_array) is np.ndarray
         assert y_array.shape == (2, 1)
 
@@ -272,7 +272,7 @@ def test_pysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output,
         if backward_integrate:
             t_array = np.ascontiguousarray(t_array[::-1])
 
-        y_array = result(t_array)
+        y_array = result.call_vectorize(t_array)
         assert type(y_array) is np.ndarray
         assert y_array.shape == (2, 10)
 

@@ -151,6 +151,8 @@ The `NbCySolverResult` result releases the `CySolverResult` unique pointer so it
 - The diffeq must be compiled to ctypes and its address provided to `nbsolve2_ivp`. CyRK provides helpers to assist with
   this: `from CyRK import cyjit, nb_diffeq_addr`. `cyjit` is the cfunc generator. `nb_diffeq_addr` automatically applies
   `cyjit` and returns the address. Note: this must be called from pure python, not njit'd code!
+- jitclass does not support \_\_call\_\_ so when dense output is on you must use `solution.call(...)` or
+  `solution.call_vectorize(...)`. `solution()` will not work.
 
 ### How to Use
 Example usage
