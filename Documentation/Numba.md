@@ -1,6 +1,6 @@
 # Numba `nbsolve_ivp`
 
-:::{alert}
+:::{attention}
 **Deprecation Warning!** As of CyRK v0.17.0 the original `CyRK.nbsolve_ivp` is marked for deprecation. In a future
 release it will be replaced by the new `CyRK.nbsolve2_ivp`. These two functions have similar purposes but different
 calling methods and very different internals. Details about both can be found on this page. As of CyRK v0.17.0,
@@ -133,12 +133,15 @@ _For this reason, `nbsolve2_ivp` will replace `nbsolve_ivp` in a future release!
 ### Limitations and Important Considerations
 There are several limitations and considerations when using `nbsolve2_ivp`. 
 
-- **Important!** The `NbCySolverResult` result releases the `CySolverResult` unique pointer so its memory is no longer
-  managed by the C++ backend. Currently, jitclasses do not allow for \__del\__ methods so we can not automatically 
+:::{important}
+The `NbCySolverResult` result releases the `CySolverResult` unique pointer so its memory is no longer
+  managed by the C++ backend. Currently, jitclasses do not allow for `\_\_del\_\_` methods so we can not automatically 
   release the `CySolverResult` memory when the class is deleted or goes out of scope (this is being actively worked on
   see this [issue](https://github.com/numba/numba/issues/8470) and this [pr](https://github.com/numba/numba/pull/10383)).
   Users must manually call `solution.free()` on the returned solution from `nbsolve2_ivp`. Otherwise a memory leak
   will occur.
+:::
+
 - `nbsolve2_ivp` does not currently support [events](Events.md).
 - Additional args provided to the diffeq function must be double floating point numbers. And they must be provided to 
   `nbsolve2_ivp` as a numpy array (even if it is only size 1).

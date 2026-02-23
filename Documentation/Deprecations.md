@@ -4,7 +4,7 @@ The functions discussed in this document were packaged in previous version of Cy
 Documentation is retained for comparison purposes to the new methods. This documentation will be removed in a future version of CyRK.
 
 ## Numba-Wrapped `nbsolve_ivp`
-:::{alert}
+:::{attention}
 **Deprecation Warning!** As of CyRK v0.17.0 the original `CyRK.nbsolve_ivp` is marked for deprecation. In a future
 release it will be replaced by the new `CyRK.nbsolve2_ivp`. These two functions have similar purposes but different
 calling methods and very different internals. Details about both can be found on the [Numba page](Numba.md).

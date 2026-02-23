@@ -12,9 +12,10 @@ FILE_PATH = os.path.dirname(__file__)
 # Auto generate API documentation
 def generate_api_docs():
     src_path = os.path.join(FILE_PATH, os.pardir, "CyRK")
-    out_path = os.path.join('API', 'generated')
+    out_path = os.path.join(FILE_PATH, 'API', 'generated')
     Path(out_path).mkdir(parents=True, exist_ok=True)
 
+    # Run the initial generation
     subprocess.call([
         "sphinx-apidoc",
         "-o", str(out_path),
@@ -24,6 +25,24 @@ def generate_api_docs():
         "--module-first",
         "--no-toc"
     ])
+
+    # --- CLEANUP HEADERS ---
+    for rst_file in Path(out_path).glob("*.rst"):
+        with open(rst_file, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+        
+        with open(rst_file, 'w', encoding='utf-8') as f:
+            for i, line in enumerate(lines):
+                # Clean up the titles
+                new_line = line.replace(" package", "").replace(" submodule", "")
+                
+                # If we modified the title line, we must also adjust the 
+                # underline length (the ===== or ----- line)
+                if i > 0 and (lines[i-1].strip() != new_line.strip()):
+                     if set(line.strip()) in [{'='}, {'-'}, {'~'}]:
+                         new_line = line[0] * (len(lines[i-1].strip()) - 8) + "\n"
+                
+                f.write(new_line)
 generate_api_docs()
 
 # Basic configurations
