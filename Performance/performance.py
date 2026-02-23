@@ -139,19 +139,19 @@ def run_performance(integration_method_name):
 
             # Run the numba function once to make sure everything is compiled.
             print('\t\tPrecompiling numba')
-            _ = nbsolve_ivp(nb_diffeq, time_span, y0, args_, rtol=RTOL, atol=ATOL, rk_method=int_method)
+            _ = nbsolve_ivp(nb_diffeq, time_span, y0, args_, rtol=RTOL, atol=ATOL, rk_method=int_method, warnings=False)
 
             if 'extraout' in diffeq_name.lower():
                 cy_result_for_reuse = pysolve_ivp(cy_diffeq, time_span, y0, args=args_, rtol=RTOL, atol=ATOL, method=int_method_str, num_extra=3, pass_dy_as_arg=True)
                 cysolver_result_for_reuse = cytester(cysolver_diffeq_int, time_span, y0, args=args_as_array, rtol=RTOL, atol=ATOL, method=int_method_str,)
                 cy_timer = timeit.Timer(lambda: pysolve_ivp(cy_diffeq, time_span, y0, args=args_, rtol=RTOL, atol=ATOL, method=int_method_str, num_extra=3, pass_dy_as_arg=True, solution_reuse=cy_result_for_reuse))
-                nb_timer = timeit.Timer(lambda: nbsolve_ivp(nb_diffeq, time_span, y0, args=args_, rtol=RTOL, atol=ATOL, rk_method=int_method, capture_extra=True))
+                nb_timer = timeit.Timer(lambda: nbsolve_ivp(nb_diffeq, time_span, y0, args=args_, rtol=RTOL, atol=ATOL, rk_method=int_method, capture_extra=True, warnings=False))
                 cysolver_timer = timeit.Timer(lambda: cytester(cysolver_diffeq_int, time_span, y0, args=args_as_array, rtol=RTOL, atol=ATOL, method=int_method_str, solution_reuse=cysolver_result_for_reuse, repeats=cysolver_repeats))
             else:
                 cy_result_for_reuse = pysolve_ivp(cy_diffeq, time_span, y0, args=args_, rtol=RTOL, atol=ATOL, method=int_method_str, pass_dy_as_arg=True)
                 cysolver_result_for_reuse = cytester(cysolver_diffeq_int, time_span, y0, args=args_as_array, rtol=RTOL, atol=ATOL, method=int_method_str)
                 cy_timer = timeit.Timer(lambda: pysolve_ivp(cy_diffeq, time_span, y0, args=args_, rtol=RTOL, atol=ATOL, method=int_method_str, pass_dy_as_arg=True, solution_reuse=cy_result_for_reuse))
-                nb_timer = timeit.Timer(lambda: nbsolve_ivp(nb_diffeq, time_span, y0, args=args_, rtol=RTOL, atol=ATOL, rk_method=int_method))
+                nb_timer = timeit.Timer(lambda: nbsolve_ivp(nb_diffeq, time_span, y0, args=args_, rtol=RTOL, atol=ATOL, rk_method=int_method, warnings=False))
                 cysolver_timer = timeit.Timer(lambda: cytester(cysolver_diffeq_int, time_span, y0, args=args_as_array, rtol=RTOL, atol=ATOL, method=int_method_str, solution_reuse=cysolver_result_for_reuse, repeats=cysolver_repeats))
 
             # Cython

@@ -295,7 +295,6 @@ public:
     bool use_dense_output            = false;
     bool user_provided_max_num_steps = false;
     bool use_pysolver                = false;
-    bool swap_flag                   = false; // Flag that toggles each time y_old is swapped for y_now; PySolver will look for this to determine which numpy array it needs to use.
 
     ODEMethod integration_method = ODEMethod::NO_METHOD_SET;
 

@@ -27,17 +27,11 @@ cdef class PySolver(WrapCySolverResult):
     cdef double[::1] y_now_view
     cdef cnp.ndarray dy_now_arr
     cdef double[::1] dy_now_view
-    cdef cnp.ndarray y_old_arr
-    cdef double[::1] y_old_view
-    cdef cnp.ndarray dy_old_arr
-    cdef double[::1] dy_old_view
 
     # State attributes
     cdef double* t_now_ptr
     cdef double* y_now_ptr
     cdef double* dy_now_ptr
-    cdef double* y_old_ptr
-    cdef double* dy_old_ptr
     cdef CySolverBase* cysolver_ptr
 
     # Event data

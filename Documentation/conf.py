@@ -69,24 +69,24 @@ shutil.copyfile(src, readme_file_nochanges)
 # Doing this here, rather than in the original readme.md file allows it to still serve as a stand alone document on 
 # the repo's github and other locations.
 # Read the copied file
-with open(readme_file, 'r', encoding='utf-8') as f:
-    content = f.read()
+# with open(readme_file, 'r', encoding='utf-8') as f:
+#     content = f.read()
 
 # Convert headers (remove one # from each header level)
 # This pattern matches lines starting with 2+ hashes followed by a space
-def reduce_header_level(match):
-    hashes = match.group(1)
-    rest = match.group(2)
-    # Remove one hash (but keep at least one)
-    new_hashes = hashes[1:] if len(hashes) > 1 else '#'
-    return f"{new_hashes}{rest}"
+# def reduce_header_level(match):
+#     hashes = match.group(1)
+#     rest = match.group(2)
+#     # Remove one hash (but keep at least one)
+#     new_hashes = hashes[1:] if len(hashes) > 1 else '#'
+#     return f"{new_hashes}{rest}"
 
-# Apply the conversion
-content = re.sub(r'^(#{2,})( .*)$', reduce_header_level, content, flags=re.MULTILINE)
+# # Apply the conversion
+# content = re.sub(r'^(#{2,})( .*)$', reduce_header_level, content, flags=re.MULTILINE)
 
-# Write back to the file
-with open(readme_file, 'w', encoding='utf-8') as f:
-    f.write(content)
+# # Write back to the file
+# with open(readme_file, 'w', encoding='utf-8') as f:
+#     f.write(content)
 
 # Copy all demos over
 demo_src_dir = Path(os.path.join(FILE_PATH, os.pardir, "Demos"))

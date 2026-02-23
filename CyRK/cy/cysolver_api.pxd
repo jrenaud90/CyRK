@@ -202,7 +202,6 @@ cdef extern from "cysolver.cpp" nogil:
         cpp_bool use_dense_output
         cpp_bool user_provided_max_num_steps
         cpp_bool use_pysolver
-        cpp_bool swap_flag
         ODEMethod integration_method
         size_t num_y
         size_t num_extra
