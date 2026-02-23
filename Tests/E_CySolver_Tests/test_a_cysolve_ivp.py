@@ -103,7 +103,7 @@ def test_cysolve_ivp(use_args,
     assert result.size > 1
     assert result.message == "Integration completed without issue."
     # Check that the ndarrays make sense
-    assert type(result.t) == np.ndarray
+    assert type(result.t) is np.ndarray
     assert result.t.dtype == np.float64
     assert result.y.dtype == np.float64
     assert result.t.size > 1
@@ -181,13 +181,13 @@ def test_cysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output)
         # Check that dense output is working and that it gives decent results
         # Check with a float
         y_array = result(0.5)
-        assert type(y_array) == np.ndarray
+        assert type(y_array) is np.ndarray
         assert y_array.shape == (2, 1)
 
         # Check with array
         t_array = np.linspace(0.1, 0.4, 10)
         y_array = result(t_array)
-        assert type(y_array) == np.ndarray
+        assert type(y_array) is np.ndarray
         assert y_array.shape == (2, 10)
 
         # Check accuracy

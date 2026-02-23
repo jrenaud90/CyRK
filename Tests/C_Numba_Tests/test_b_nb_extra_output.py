@@ -27,7 +27,7 @@ def test_extra_output_integration():
         nbsolve_ivp(diffeq_extra_outputs, time_span, initial_conds, capture_extra=True)
 
     # Check that the ndarrays make sense
-    assert type(nbrk_result.t) == np.ndarray
+    assert type(nbrk_result.t) is np.ndarray
     assert nbrk_result.t.dtype == np.float64
     assert nbrk_result.y.dtype == np.complex128
     assert nbrk_result.t.size > 1
@@ -56,7 +56,7 @@ def test_extra_output_integration_teval_no_extra_interpolation():
             capture_extra=True, interpolate_extra=False)
 
     # Check that the ndarrays make sense
-    assert type(nbrk_result.t) == np.ndarray
+    assert type(nbrk_result.t) is np.ndarray
     assert nbrk_result.t.dtype == np.float64
     assert nbrk_result.y.dtype == np.complex128
     assert nbrk_result.t.size > 1
@@ -86,7 +86,7 @@ def test_extra_output_integration_teval_with_extra_interpolation():
                 capture_extra=True, interpolate_extra=True)
 
     # Check that the ndarrays make sense
-    assert type(nbrk_result.t) == np.ndarray
+    assert type(nbrk_result.t) is np.ndarray
     assert nbrk_result.t.dtype == np.float64
     assert nbrk_result.y.dtype == np.complex128
     assert nbrk_result.t.size > 1

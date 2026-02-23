@@ -2,6 +2,9 @@
 import numpy as np
 from numba import njit
 
+from CyRK.cy.common import CyrkErrorCodes
+from CyRK.cy.cysolver_api import ODEMethod
+
 def nb2cy(diffeq: callable, use_njit: bool = True, cache_njit: bool = False) -> callable:
     """ Convert numba/scipy differential equation functions to the cyrk format.
 

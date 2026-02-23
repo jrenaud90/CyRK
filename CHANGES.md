@@ -18,6 +18,15 @@
   * If set to False (and capture_extra = False or capture_dense = False) then the solver's memory will be released at the end of integration. This can reduce memory overhead particularly if your problem has a large number of dependent y variables.
 * Unrolled most of the RK calculations to improve performance.
 
+##### `nbsolve_ivp` Changes
+* Implemented a new `nbsolve2_ivp` which is a numba-safe wrapper to the CySolver C++ backend. This will greatly 
+  improve future development by putting all functionality into C++ and just having a light numba wrapper around it.
+  The new `nbsolve2_ivp` can have `cysolve_ivp` functionality (like dense outputs) that the current `nbsolve_ivp` lacks.
+  * The current `nbsolve_ivp` will be replaced by this new `nbsolve2_ivp` in a future release (treating it as experimental for now).
+  * Added deprecation warnings and a new `warnings=True` bool to the current `nbsolve_ivp`.
+  * The result of integration using `nbsolve2_ivp` is different than CyRK's other solvers and there are some important
+    considerations to keep in mind. Please review the new "Numba" documentation.
+
 ##### Benchmarks
 * Added in a repeater inside `cysolve_ivp` tester so we can more accurately benchmark the integrators performance without also tracking the python wrappers overhead. 
   * This led to a huge increase in performance on the benchmarks. `cysolve_ivp is now consistently 100 to 500x faster than scipy `solve_ivp`.
@@ -33,6 +42,7 @@
 * Added brief note in documentation about parallelizing cysolve.
 * Added document describing memory usage of the C++ structures.
 * Added document describing performance tips and tricks.
+* Added a new Numba.md documentation file describing `nbsolve_ivp` and `nbsolve2_ivp`.
 
 ## 2025
 

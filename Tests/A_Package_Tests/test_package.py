@@ -1,7 +1,7 @@
 def test_package():
     """Check if all the functions can be imported. """
 
-    from CyRK import nbsolve_ivp, nb2cy, cy2nb, test_nbrk, test_cysolver, test_pysolver, version, __version__, pysolve_ivp
+    from CyRK import nbsolve_ivp, nb2cy, cy2nb, test_nbrk, test_cysolver, test_pysolver, version, __version__, pysolve_ivp, nbsolve2_ivp
 
     assert type(version) == str
     assert version == __version__
@@ -27,5 +27,12 @@ def test_testers_pysolver():
     from CyRK import test_pysolver
 
     test_pysolver()
+
+    assert True
+
+def test_testers_nbsolver():
+
+    from CyRK import test_nbsolver
+    test_nbsolver()
 
     assert True

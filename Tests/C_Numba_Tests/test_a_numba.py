@@ -65,7 +65,7 @@ def test_basic_integration(use_atol_array, use_rtol_array, rk_method, complex_va
         nbsolve_ivp(diffeq, time_span, initial_conds_to_use, rk_method=rk_method, **tol_dict)
 
     # Check that the ndarrays make sense
-    assert type(nbrk_result.t) == np.ndarray
+    assert type(nbrk_result.t) is np.ndarray
     assert nbrk_result.t.dtype == np.float64
     if complex_valued:
         assert nbrk_result.y.dtype == np.complex128
@@ -95,7 +95,7 @@ def test_different_tols(rk_method, complex_valued):
         nbsolve_ivp(diffeq, time_span, initial_conds_to_use, rk_method=rk_method, rtol=1.0e-10, atol=1.0e-12)
 
     # Check that the ndarrays make sense
-    assert type(nbrk_result.t) == np.ndarray
+    assert type(nbrk_result.t) is np.ndarray
     assert nbrk_result.t.dtype == np.float64
     if complex_valued:
         assert nbrk_result.y.dtype == np.complex128
@@ -125,7 +125,7 @@ def test_max_step(rk_method, complex_valued):
         nbsolve_ivp(diffeq, time_span, initial_conds_to_use, rk_method=rk_method, max_step=time_span[1] / 2.)
 
     # Check that the ndarrays make sense
-    assert type(nbrk_result.t) == np.ndarray
+    assert type(nbrk_result.t) is np.ndarray
     assert nbrk_result.t.dtype == np.float64
     if complex_valued:
         assert nbrk_result.y.dtype == np.complex128
@@ -155,7 +155,7 @@ def test_first_step(rk_method, complex_valued):
         nbsolve_ivp(diffeq, time_span, initial_conds_to_use, rk_method=rk_method, first_step=0.01)
 
     # Check that the ndarrays make sense
-    assert type(nbrk_result.t) == np.ndarray
+    assert type(nbrk_result.t) is np.ndarray
     assert nbrk_result.t.dtype == np.float64
     if complex_valued:
         assert nbrk_result.y.dtype == np.complex128
@@ -185,7 +185,7 @@ def test_large_end_value(rk_method, complex_valued):
         nbsolve_ivp(diffeq, time_span_large, initial_conds_to_use, rk_method=rk_method)
 
     # Check that the ndarrays make sense
-    assert type(nbrk_result.t) == np.ndarray
+    assert type(nbrk_result.t) is np.ndarray
     assert nbrk_result.t.dtype == np.float64
     if complex_valued:
         assert nbrk_result.y.dtype == np.complex128
@@ -217,7 +217,7 @@ def test_teval(rk_method, complex_valued):
         nbsolve_ivp(diffeq, time_span, initial_conds_to_use, rk_method=rk_method, t_eval=t_eval)
 
     # Check that the ndarrays make sense
-    assert type(nbrk_result.t) == np.ndarray
+    assert type(nbrk_result.t) is np.ndarray
     assert nbrk_result.t.dtype == np.float64
     if complex_valued:
         assert nbrk_result.y.dtype == np.complex128
@@ -247,7 +247,7 @@ def test_args(rk_method, complex_valued):
         nbsolve_ivp(diffeq_args, time_span, initial_conds_to_use, rk_method=rk_method, args=(0.01, 0.02))
 
     # Check that the ndarrays make sense
-    assert type(nbrk_result.t) == np.ndarray
+    assert type(nbrk_result.t) is np.ndarray
     assert nbrk_result.t.dtype == np.float64
     if complex_valued:
         assert nbrk_result.y.dtype == np.complex128
@@ -330,7 +330,7 @@ def test_max_num_steps(rk_method, complex_valued):
         nbsolve_ivp(diffeq, time_span_large, initial_conds_to_use, rk_method=rk_method, max_num_steps=1000000)
 
     # Check that the ndarrays make sense
-    assert type(nbrk_result.t) == np.ndarray
+    assert type(nbrk_result.t) is np.ndarray
     assert nbrk_result.t.dtype == np.float64
     if complex_valued:
         assert nbrk_result.y.dtype == np.complex128

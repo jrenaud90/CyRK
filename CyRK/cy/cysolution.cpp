@@ -590,7 +590,7 @@ CyrkErrorCodes CySolverResult::call(const double t, double* y_interp_ptr)
     return CyrkErrorCodes::NO_ERROR;
 }
 
-CyrkErrorCodes CySolverResult::call_vectorize(const double* t_array_ptr, size_t len_t, double* y_interp_ptr)
+CyrkErrorCodes CySolverResult::call_vectorize(const double* t_array_ptr, const size_t len_t, double* y_interp_ptr)
 {
     double* y_sub_ptr;
     CyrkErrorCodes sub_status = CyrkErrorCodes::NO_ERROR;
