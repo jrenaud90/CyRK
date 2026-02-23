@@ -9,13 +9,16 @@ on:
 jobs:
   sync-version:
     runs-on: ubuntu-latest
+    # Added permissions to allow pushing changes back to the repo
+    permissions:
+      contents: write
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0  # Fetch full history to get commit hash
-          ref: ${{ github.head_ref }}   # ensures a proper branch instead of detached HEAD
+          fetch-depth: 0  # Fetch full history for commit hash and branching
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -32,6 +35,7 @@ jobs:
           import yaml
           import json
           import re
+          import os
           from datetime import date
 
           # Read version from pyproject.toml
@@ -40,10 +44,9 @@ jobs:
           version = pyproject['project']['version']
           print(f"Version from pyproject.toml: {version}")
 
-          # Get current date and commit hash from environment
-          import os
+          # Get current date and commit hash
           current_date = date.today().strftime('%Y-%m-%d')
-          commit_hash = os.environ.get('GITHUB_SHA', 'unknown')[:7]  # Short hash
+          commit_hash = os.environ.get('GITHUB_SHA', 'unknown')[:7]
           
           print(f"Date: {current_date}")
           print(f"Commit: {commit_hash}")
@@ -74,7 +77,7 @@ jobs:
               
               with open('codemeta.json', 'w') as f:
                   json.dump(codemeta, f, indent=2, ensure_ascii=False)
-                  f.write('\n')  # Add trailing newline
+                  f.write('\n')
               print("Updated codemeta.json")
           except FileNotFoundError:
               print("codemeta.json not found, skipping")
@@ -83,7 +86,6 @@ jobs:
           try:
               with open('meta.yaml', 'r') as f:
                   content = f.read()
-              # Replace version in meta.yaml (handles both {% set version = "x.x.x" %} and version: x.x.x formats)
               content = re.sub(r'(version\s*[=]\s*["\']?)[^"\'}\n]+(["\']?)', rf'\g<1>{version}\g<2>', content)
               with open('meta.yaml', 'w') as f:
                   f.write(content)
@@ -96,23 +98,11 @@ jobs:
               with open('README.md', 'r') as f:
                   content = f.read()
 
-              # Update shield image URL version
-              content = re.sub(
-                r'(CyRK-)([\d\.]+)(-orange)',
-                rf'\g<1>{version}\g<3>',
-                content
-              )
-
-              # Update alt text version
-              content = re.sub(
-                r'(alt="CyRK Version )([\d\.]+)(")',
-                rf'\g<1>{version}\g<3>',
-                content
-              )
+              content = re.sub(r'(CyRK-)([\d\.]+)(-orange)', rf'\g<1>{version}\g<3>', content)
+              content = re.sub(r'(alt="CyRK Version )([\d\.]+)(")', rf'\g<1>{version}\g<3>', content)
 
               with open('README.md', 'w') as f:
                   f.write(content)
-              
               print("Updated README.md")
           except FileNotFoundError:
               print("README.md not found, skipping")
@@ -130,5 +120,5 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add citation.cff codemeta.json meta.yaml README.md
           git commit -m "chore: sync version numbers from pyproject.toml"
-
-          git push
+          # Pushing specifically to the branch that triggered the workflow
+          git push origin HEAD:${{ github.ref_name }}
