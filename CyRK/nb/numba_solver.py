@@ -96,8 +96,20 @@ c_numba_cysolve_ivp = solve_func_sig(nb_api.get_solve_func_ptr())
 # Helpers for Numba Strings and Formatting
 # ---------------------------------------------------------
 @nb.njit
-def get_status_message_str(status_code):
-    """ Numba-safe string extractor for C++ Error Code map. """
+def get_status_message_str(status_code: int):
+    """
+    Numba-safe string extractor for C++ Error Code map.
+
+    Parameters
+    ----------
+    status_code : int
+        The error code to look up.
+
+    Returns
+    -------
+    str
+        The descriptive error message from the C++ backend.
+    """
     max_len = 256
     buf = np.zeros(max_len, dtype=np.uint8)
     
@@ -112,8 +124,20 @@ def get_status_message_str(status_code):
     return s
 
 @nb.njit
-def to_hex(n):
-    """Numba-safe integer to hex string converter."""
+def to_hex(n: int):
+    """
+    Numba-safe integer to hex string converter.
+
+    Parameters
+    ----------
+    n : int
+        Integer to convert.
+
+    Returns
+    -------
+    str
+        Hexadecimal string representation.
+    """
     chars = "0123456789abcdef"
     s = ""
     while n > 0:
@@ -122,8 +146,20 @@ def to_hex(n):
     return "0x" + (s if s else "0")
 
 @nb.njit
-def get_method_str(method_int):
-    """ Maps method ints to strings. """
+def get_method_str(method_int: int):
+    """
+    Map integration method integers to strings.
+
+    Parameters
+    ----------
+    method_int : int
+        Integer identifier for the ODE method.
+
+    Returns
+    -------
+    str
+        String name of the integration method.
+    """
     if method_int == 1:
         return "RK45"
     if method_int == 2:
@@ -144,6 +180,19 @@ cyjit_sig = nb.types.void(
 )
 cyjit = nb.cfunc(cyjit_sig)
 def nb_diffeq_addr(diffeq_func):
+    """
+    Compile a Python function to a C-callback and return its memory address.
+
+    Parameters
+    ----------
+    diffeq_func : callable
+        The differential equation function to compile.
+
+    Returns
+    -------
+    int
+        Memory address of the compiled C-callback.
+    """
     return cyjit(diffeq_func).address
 
 
@@ -166,74 +215,109 @@ spec = [
 # https://github.com/numba/numba/pull/10383
 @nb.experimental.jitclass(spec)
 class NbCySolverResult:
+    """
+    Numba-compatible wrapper for the C++ CySolverResult class.
+
+    Parameters
+    ----------
+    ptr : int
+        Memory address of the underlying C++ CySolverResult instance.
+    """
     def __init__(self, ptr):
         self._ptr = ptr
     
     @property
     def cyresult_set(self):
+        """Boolean check if the underlying C++ pointer is valid."""
         return self._ptr != 0
 
     @property
     def success(self):
+        """Boolean indicating if the integration was successful."""
         if self.cyresult_set:
             return c_get_success(self._ptr)
         return False
     
     @property
     def status(self):
+        """The integer status code returned by the solver."""
         if self.cyresult_set:
             return c_get_status(self._ptr)
         return _ARGUMENT_NOT_SET
 
     @property
     def error_code(self):
+        """Alias for the solver status code."""
         return self.status
 
     @property
     def size(self):
+        """Number of points stored in the solution (size of `t`)."""
         if self.cyresult_set:
             return c_get_size(self._ptr)
         return np.uint64(0)
 
     @property
     def steps_taken(self):
+        """
+        Total number of internal steps taken by the integrator.
+        
+        This may be larger than `self.size`.
+        """
         if self.cyresult_set:
             return c_get_steps(self._ptr)
         return np.uint64(0)
 
     @property
     def num_y(self):
+        """Number of dependent variables (equations) in the system."""
         if self.cyresult_set:
             return c_get_num_y(self._ptr)
         return np.uint64(0)
 
     @property
     def num_dy(self):
+        """Total size of the derivative vector (including extra outputs)."""
         if self.cyresult_set:
             return c_get_num_dy(self._ptr)
         return np.uint64(0)
 
     @property
     def num_interpolates(self):
+        """Number of points generated via dense output interpolation."""
         if self.cyresult_set:
             return c_get_interp(self._ptr)
         return np.uint64(0)
 
     @property
     def t(self):
+        """Zero-copy view of the time domain vector."""
         if self.cyresult_set and self.size > 0:
             return carray(c_get_t_ptr(self._ptr), (self.size,))
         return np.empty(0, dtype=np.float64)
 
     @property
     def y(self):
+        """Zero-copy view of the solution array transposed to (num_y, size)."""
         if self.cyresult_set and self.size > 0:
             y_view = carray(c_get_y_ptr(self._ptr), (self.size, self.num_dy))
             return y_view.T
         return np.empty((0, 0), dtype=np.float64)
 
     def call(self, t):
-        """ Evaluate the dense output interpolator at a single float t. """
+        """"
+        Evaluate the dense output interpolator at a single time point.
+
+        Parameters
+        ----------
+        t : float
+            The time point at which to interpolate.
+
+        Returns
+        -------
+        numpy.ndarray
+            The interpolated state vector at time t.
+        """
         if not self.cyresult_set:
             return np.empty((0, 0), dtype=np.float64)
             
@@ -243,7 +327,19 @@ class NbCySolverResult:
         return y_interp.reshape((np.int64(self.num_dy), 1))
 
     def call_vectorize(self, t_array):
-        """ Evaluate the dense output interpolator across a 1D numpy array of times. """
+        """
+        Evaluate the dense output interpolator across multiple time points.
+
+        Parameters
+        ----------
+        t_array : numpy.ndarray
+            1D array of time points to interpolate.
+
+        Returns
+        -------
+        numpy.ndarray
+            2D array of interpolated states of shape (num_dy, len(t_array)).
+        """
         if not self.cyresult_set:
             return np.empty((0, 0), dtype=np.float64)
             
@@ -261,7 +357,7 @@ class NbCySolverResult:
 
     @property
     def status_message(self):
-        """ Returns the C++ error message string for the current status. """
+        """Descriptive string for the current solver status."""
         if not self.cyresult_set:
             return "NULL_POINTER"
             
@@ -270,7 +366,7 @@ class NbCySolverResult:
         
     @property
     def message(self):
-        """ Retrieves the C++ std::string by copying bytes to a Numba array. """
+        """Integrator message retrieved from the C++ backend."""
         if not self.cyresult_set:
             return ""
         
@@ -289,6 +385,7 @@ class NbCySolverResult:
         return s
 
     def print_diagnostics(self):
+        """Print detailed solver state and configuration to standard output."""
         if not self.cyresult_set:
             print("ERROR: `NbCySolverResult::print_diagnostics` - CySolverResult is Null.")
             return
@@ -415,7 +512,47 @@ def nbsolve2_ivp(
         force_retain_solver: bool = True
     ):
     """
-    Numba-compiled wrapper for the CyRK C++ ODE solver.
+    Numba-compiled entry point for the C++ CyRK ODE solver.
+
+    Parameters
+    ----------
+    diffeq_address : int
+        Memory address of the compiled differential equation C-callback.
+    t_span : tuple of float
+        Interval of integration (t0, tf).
+    y0 : numpy.ndarray
+        Initial state vector.
+    method : str, optional
+        Integration method ('RK45', 'RK23', 'DOP853'). Default is 'RK45'.
+    t_eval : numpy.ndarray, optional
+        Times at which to store the computed solution.
+    dense_output : bool, optional
+        Whether to compute a continuous-time polynomial interpolation. Default is False.
+    args : numpy.ndarray, optional
+        Additional arguments passed to the differential equation.
+    rtol, atol : float, optional
+        Relative and absolute tolerances.
+    rtols, atols : numpy.ndarray, optional
+        Vector-valued relative and absolute tolerances.
+    num_extra : int, optional
+        Number of extra output variables computed by the diffeq.
+    expected_size : int, optional
+        Estimated number of steps to pre-allocate memory.
+    max_step : float, optional
+        Maximum allowed step size.
+    first_step : float, optional
+        Initial step size guess.
+    max_num_steps : int, optional
+        Maximum number of steps allowed before termination.
+    max_ram_MB : int, optional
+        Maximum memory allowed for solution storage in Megabytes.
+    force_retain_solver : bool, optional
+        Whether to keep the solver instance alive after integration.
+
+    Returns
+    -------
+    NbCySolverResult
+        A jitclass object containing the integration results and solution views.
     """
 
     # Pre-eval functions are not currently supported by CyRK
@@ -520,6 +657,18 @@ def test_nbsolve_ivp(
         max_ram_MB: int = 2000,
         force_retain_solver: bool = True
     ):
+    """
+    Pure-Python test wrapper for the Numba solver.
+
+    Parameters
+    ----------
+    [Parameters mirror nbsolve2_ivp except diffeq is a callable]
+
+    Returns
+    -------
+    None
+        Frees the result object internally after execution.
+    """
 
     diffeq_addr = nb_diffeq_addr(diffeq)
 
@@ -573,6 +722,18 @@ def njit_test_nbsolve_ivp(
         max_ram_MB: int = 2000,
         force_retain_solver: bool = True
     ):
+    """
+    Numba-compiled test wrapper to verify njit-to-njit call performance.
+
+    Parameters
+    ----------
+    [Parameters mirror nbsolve2_ivp]
+
+    Returns
+    -------
+    None
+        Frees the result object internally after execution.
+    """
 
     sol = nbsolve2_ivp(
         diffeq_address,

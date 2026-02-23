@@ -202,7 +202,8 @@ def find_diffeq_data(diffeq_name: str):
         
         @njit
         def diffeq_njit2(dy, t, y, args):
-            dy.fill(0.0)
+            for i in range(num_y):
+                dy[i] = 0.0
             dy[0] = np.sin(2.0 * np.pi * t / 10.0)
 
         @njit
