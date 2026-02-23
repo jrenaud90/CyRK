@@ -60,9 +60,9 @@ author = 'Joe P. Renaud'
 
 # Make a copy of the current change log and move it into docs so it can be included in the documentation.
 src = os.path.abspath(os.path.join("..", "README.md"))
-readme_file = os.path.abspath(os.path.join(FILE_PATH, "Readme.md"))
+readme_file = os.path.abspath(os.path.join(FILE_PATH, "Overview", "Readme.md"))
 shutil.copyfile(src, readme_file)
-readme_file_nochanges = os.path.abspath(os.path.join(FILE_PATH, "Readme_raw.md"))
+readme_file_nochanges = os.path.abspath(os.path.join(FILE_PATH, "Overview", "Readme_raw.md"))
 shutil.copyfile(src, readme_file_nochanges)
 
 # For the readme we wan to decrement all headers by 1 so that they are loaded into the doctree correctly.
