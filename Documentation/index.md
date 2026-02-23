@@ -35,17 +35,17 @@ Demos/2 - Advanced CySolver Examples <Demos/2 - Advanced CySolver Examples.ipynb
 
 ```{toctree}
 :maxdepth: 2
-:caption: Auto Generated API
-
-CyRK API <API/index.md>
-```
-
-```{toctree}
-:maxdepth: 2
 :caption: Additional Info
 :hidden:
 
 Deprecations.md
 Change Log <Changes.md>
 License.md
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: Auto Generated API
+
+CyRK API <API/index.md>
 ```

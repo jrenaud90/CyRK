@@ -67,17 +67,17 @@ def find_diffeq_data(diffeq_name: str):
             dy[1] = (-3. * g / (2. * l)) * np.sin(y0) + (3. / (m * l**2)) * torque
             return dy
 
-        def event1_check(t, y):
+        def event1_check(t, y, l, m, g):
             if y[0] > 0.0:
                 return 0
             return 1
         
-        def event2_check(t, y):
+        def event2_check(t, y, l, m, g):
             if y[1] < 0.0:
                 return 0
             return 1
 
-        def event3_check(t, y):
+        def event3_check(t, y, l, m, g):
             if t > 5.0:
                 return 0
             else:

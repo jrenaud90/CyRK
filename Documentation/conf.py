@@ -11,7 +11,7 @@ FILE_PATH = os.path.dirname(__file__)
 
 # Auto generate API documentation
 def generate_api_docs():
-    src_path = os.path.join(FILE_PATH, os.pardir, "TidalPy")
+    src_path = os.path.join(FILE_PATH, os.pardir, "CyRK")
     out_path = os.path.join('API', 'generated')
     Path(out_path).mkdir(parents=True, exist_ok=True)
 
@@ -110,6 +110,10 @@ napoleon_google_docstring = True
 napoleon_numpy_docstring = True
 # Support C++ autodocs
 extensions.append('breathe')
+breathe_default_project = "CyRK"
+breathe_projects = {
+    "CyRK": os.path.abspath("API/generated/xml") 
+}
 breathe_default_project = "CyRK"
 
 # Jupyter notebook rendering
