@@ -5,8 +5,10 @@ from CyRK.cy.cysolver_api import WrapCySolverResult
 from CyRK.cy.cysolver_test import cytester, cy_extra_output_tester
 
 args = (0.01, 0.02)
+args_largey = (-0.5, 1.0e-5)
 
 initial_conds = np.asarray((20., 20.), dtype=np.float64, order='C')
+initial_conds_largey = 100.0 * np.ones(10_000, dtype=np.float64, order='C')
 time_span = (0., 10.)
 time_span_large = (0., 1000.)
 rtol = 1.0e-4
@@ -17,6 +19,8 @@ atols = np.asarray((1.0e-6, 1.0e-7), dtype=np.float64, order='C')
 
 
 @pytest.mark.filterwarnings("error")  # Some exceptions get propagated via cython as warnings; we want to make sure the lead to crashes.
+@pytest.mark.parametrize('force_retain_solver', (True, False))
+@pytest.mark.parametrize('test_large_y', (True, False))
 @pytest.mark.parametrize('capture_extra', (True, False))
 @pytest.mark.parametrize('max_step', (1.0, 100_000.0))
 @pytest.mark.parametrize('first_step', (0.0, 0.00001))
@@ -28,18 +32,22 @@ atols = np.asarray((1.0e-6, 1.0e-7), dtype=np.float64, order='C')
 @pytest.mark.parametrize('use_args', (True, False))
 def test_cysolve_ivp(use_args,
                      use_large_timespan, use_atol_array, use_rtol_array, use_different_tols, integration_method,
-                     first_step, max_step, capture_extra):
+                     first_step, max_step, capture_extra, test_large_y, force_retain_solver):
     """Check that the pysolve_ivp function is able to run with various changes to its arguments. """
 
     if use_atol_array:
         atols_float = np.nan
         atols_array = atols
+        if test_large_y:
+            pytest.skip("Skipping large y diffeq combined with atol/rtol arrays.")
     else:
         atols_float = atol
         atols_array = None
     if use_rtol_array:
         rtols_float = np.nan
         rtols_array = rtols
+        if test_large_y:
+            pytest.skip("Skipping large y diffeq combined with atol/rtol arrays.")
     else:
         rtols_float = rtol
         rtols_array = None
@@ -61,20 +69,33 @@ def test_cysolve_ivp(use_args,
         time_span_touse = time_span
 
     if use_args:
-        args_touse = np.asarray(args, dtype=np.float64, order='C')
+        if test_large_y:
+            args_touse = np.asarray(args_largey, dtype=np.float64, order='C')
+        else:
+            args_touse = np.asarray(args, dtype=np.float64, order='C')
     else:
         args_touse = None
     
     if capture_extra:
         diffeq_num = 2
+        if test_large_y:
+            pytest.skip("No diffeq for combo of large y and capture extra.")
     else:
-        diffeq_num = 0
+        if test_large_y:
+            diffeq_num = 9
+        else:
+            diffeq_num = 0
+    
+    if test_large_y:
+        ic = initial_conds_largey
+    else:
+        ic = initial_conds
 
     result = \
-        cytester(diffeq_num, time_span_touse, initial_conds, args=args_touse,
+        cytester(diffeq_num, time_span_touse, ic, args=args_touse,
                  method=integration_method,
                  rtol=rtols_float, atol=atols_float, rtol_array=rtols_array, atol_array=atols_array,
-                 max_step=max_step, first_step=first_step)
+                 max_step=max_step, first_step=first_step, force_retain_solver=force_retain_solver)
 
     assert isinstance(result, WrapCySolverResult)
     assert result.success
@@ -82,7 +103,7 @@ def test_cysolve_ivp(use_args,
     assert result.size > 1
     assert result.message == "Integration completed without issue."
     # Check that the ndarrays make sense
-    assert type(result.t) == np.ndarray
+    assert type(result.t) is np.ndarray
     assert result.t.dtype == np.float64
     assert result.y.dtype == np.float64
     assert result.t.size > 1
@@ -97,7 +118,10 @@ def test_cysolve_ivp(use_args,
         assert result.y[2].size == result.y[1].size
         assert result.y[3].size == result.y[1].size
     else:
-        assert result.y.shape[0] == 2
+        if test_large_y:
+            assert result.y.shape[0] == 10_000
+        else:
+            assert result.y.shape[0] == 2
 
     assert type(result.message) == str
 
@@ -157,13 +181,13 @@ def test_cysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output)
         # Check that dense output is working and that it gives decent results
         # Check with a float
         y_array = result(0.5)
-        assert type(y_array) == np.ndarray
+        assert type(y_array) is np.ndarray
         assert y_array.shape == (2, 1)
 
         # Check with array
         t_array = np.linspace(0.1, 0.4, 10)
         y_array = result(t_array)
-        assert type(y_array) == np.ndarray
+        assert type(y_array) is np.ndarray
         assert y_array.shape == (2, 10)
 
         # Check accuracy
@@ -201,5 +225,5 @@ def test_cysolve_extra_output():
     assert cy_extra_output_tester()
 
 if __name__ == "__main__":
-    test_cysolve_ivp(False, False, False, False, False, 'rk45', 0.0, 100_0000.0, False)
+    test_cysolve_ivp(False, False, False, False, False, 'rk45', 0.0, 100_0000.0, False, False)
     print("Finished.")

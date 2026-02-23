@@ -1,7 +1,7 @@
 # distutils: language = c++
 # cython: boundscheck=False, wraparound=False, nonecheck=False, cdivision=True, initializedcheck=False
-from libc.math cimport sin, cos
-from libc.string cimport memcpy
+from libc.math cimport sin, cos, pi
+from libc.string cimport memcpy, memset
 
 from libcpp cimport bool as cpp_bool
 from libcpp.utility cimport move
@@ -221,6 +221,28 @@ cdef void pendulum_preeval_diffeq(double* dy_ptr, double t, double* y_ptr, char*
     dy_ptr[0] = y1
     dy_ptr[1] = pre_eval_storage_ptr[1] * sin(y0) + pre_eval_storage_ptr[2] * pre_eval_storage_ptr[0]
 
+cdef void large_numy_diffeq(double* dy_ptr, double t, double* y_ptr, char* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
+    cdef size_t num_y = 10_000
+
+    cdef double* args_dbl_ptr = <double*>args_ptr
+    cdef double decay_rate = args_dbl_ptr[0]
+
+    # This diffeq converges so should be stable
+    cdef size_t i
+    for i in range(num_y):
+        decay_rate *= 0.9999
+        if i < (num_y - 1):
+            dy_ptr[i] = decay_rate * y_ptr[i] * sin(2 * pi * t / 5.0 + y_ptr[i + 1]/50.0)
+        else:
+            dy_ptr[i] = decay_rate * y_ptr[i] * sin(2 * pi * t / 5.0)
+
+cdef void large_numy_simple_diffeq(double* dy_ptr, double t, double* y_ptr, char* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
+    cdef size_t num_y = 10_000
+
+    dy_ptr[0] = sin(2.0 * pi * t / 10.0)
+
+    memset(&dy_ptr[1], 0, num_y - 1)
+
 def cy_extra_output_tester():
 
     cdef double t_start = 0.0
@@ -283,7 +305,7 @@ def cy_extra_output_tester():
 
     return True
 
-# Event fuinctions for baseline diffeq
+# Event functions for baseline diffeq
 cdef double baseline_diffeq_event1_check(double t, double* y, char* args) noexcept nogil:
     if y[0] > 50.0:
         return 0.0
@@ -330,6 +352,17 @@ pendulum_diffeq_events.emplace_back(pendulum_diffeq_event1_check)
 pendulum_diffeq_events.emplace_back(pendulum_diffeq_event2_check)
 pendulum_diffeq_events.emplace_back(pendulum_diffeq_event3_check)
 
+# Use the same events for large y diffeq
+cdef vector[Event] large_numy_events = vector[Event]()
+large_numy_events.emplace_back(pendulum_diffeq_event1_check)
+large_numy_events.emplace_back(pendulum_diffeq_event2_check)
+large_numy_events.emplace_back(pendulum_diffeq_event3_check)
+
+cdef vector[Event] large_numy_simple_events = vector[Event]()
+large_numy_simple_events.emplace_back(pendulum_diffeq_event1_check)
+large_numy_simple_events.emplace_back(pendulum_diffeq_event2_check)
+large_numy_simple_events.emplace_back(pendulum_diffeq_event3_check)
+
 
 def cytester(
         int diffeq_number,
@@ -349,7 +382,9 @@ def cytester(
         double[::1] atol_array = None,
         double max_step = MAX_STEP,
         double first_step = 0.0,
-        WrapCySolverResult solution_reuse = None
+        WrapCySolverResult solution_reuse = None,
+        cpp_bool force_retain_solver = False,
+        size_t repeats = 1
         ):
     cdef size_t i
     cdef vector[double] t_eval_vec = vector[double]()
@@ -403,6 +438,11 @@ def cytester(
     elif diffeq_number == 8:
         diffeq = pendulum_preeval_diffeq
         pre_eval_func = pendulum_preeval_func
+    elif diffeq_number == 9:
+        diffeq = large_numy_diffeq
+    elif diffeq_number == 10:
+        diffeq = large_numy_simple_diffeq
+
     else:
         raise NotImplementedError
     
@@ -412,6 +452,10 @@ def cytester(
             events_vec = baseline_diffeq_events
         elif diffeq_number == 6:
             events_vec = pendulum_diffeq_events
+        elif diffeq_number == 9:
+            events_vec = large_numy_events
+        elif diffeq_number == 10:
+            events_vec = large_numy_simple_events
         else:
             raise NotImplementedError
 
@@ -533,7 +577,36 @@ def cytester(
             args_dbl_ptr[0] = 1.0
             args_dbl_ptr[1] = 1.0
             args_dbl_ptr[2] = 9.81
+        
+        elif diffeq_number == 9:
+            # Test with very large number of dependent y's
+            num_y = 10_000
+            y0_vec.resize(num_y)
+            for i in range(num_y):
+                y0_vec[i] = 100.0
+            args_vec.resize(1 * sizeof(double))
+            args_dbl_ptr = <double*>args_vec.data()
+            args_dbl_ptr[0] = -0.5
+            if t_span is not None:
+                t_start = t_span[0]
+                t_end   = t_span[1]
+            else:
+                t_start = 0.0
+                t_end = 10.0
 
+        elif diffeq_number == 10:
+            # Test with very large number of dependent y's
+            num_y = 10_000
+            y0_vec.resize(num_y)
+            for i in range(num_y):
+                y0_vec[i] = 100.0
+            args_vec.resize(0)
+            if t_span is not None:
+                t_start = t_span[0]
+                t_end   = t_span[1]
+            else:
+                t_start = 0.0
+                t_end = 50.0
         else:
             raise NotImplementedError
     else:
@@ -552,7 +625,49 @@ def cytester(
             args_vec.resize(args.size * sizeof(double))
             memcpy(args_vec.data(), &args[0], sizeof(double) * args.size)
         else:
-            args_vec.resize(0)
+            # Use default args
+            if diffeq_number == 3:
+                args_vec.resize(3 * sizeof(double))
+                args_dbl_ptr = <double*>args_vec.data()
+                args_dbl_ptr[0] = 10.0
+                args_dbl_ptr[1] = 28.0
+                args_dbl_ptr[2] = 8.0 / 3.0
+            elif diffeq_number == 4:
+                args_vec.resize(3 * sizeof(double))
+                args_dbl_ptr = <double*>args_vec.data()
+                args_dbl_ptr[0] = 10.0
+                args_dbl_ptr[1] = 28.0
+                args_dbl_ptr[2] = 8.0 / 3.0
+            elif diffeq_number == 5:
+                args_vec.resize(4 * sizeof(double))
+                args_dbl_ptr = <double*>args_vec.data()
+                args_dbl_ptr[0] = 1.5
+                args_dbl_ptr[1] = 1.0
+                args_dbl_ptr[2] = 3.0
+                args_dbl_ptr[3] = 1.0
+            elif diffeq_number == 6:
+                args_vec.resize(3 * sizeof(double))
+                args_dbl_ptr = <double*>args_vec.data()
+                args_dbl_ptr[0] = 1.0
+                args_dbl_ptr[1] = 1.0
+                args_dbl_ptr[2] = 9.81
+            elif diffeq_number == 7:
+                args_vec.resize(sizeof(ArbitraryArgStruct))
+                memcpy(args_vec.data(), &arb_arg_struct, sizeof(ArbitraryArgStruct))
+            elif diffeq_number == 8:
+                args_vec.resize(3 * sizeof(double))
+                args_dbl_ptr = <double*>args_vec.data()
+                args_dbl_ptr[0] = 1.0
+                args_dbl_ptr[1] = 1.0
+                args_dbl_ptr[2] = 9.81
+            elif diffeq_number == 9:
+                args_vec.resize(1 * sizeof(double))
+                args_dbl_ptr = <double*>args_vec.data()
+                args_dbl_ptr[0] = -0.5
+            elif diffeq_number == 10:
+                args_vec.resize(0)
+            else:
+                args_vec.resize(0)
 
     # Parse rtol
     cdef vector[double] rtols_vec = vector[double]()
@@ -604,8 +719,37 @@ def cytester(
         atols_vec = atols_vec,
         max_step = max_step,
         first_step = first_step,
-        expected_size = expected_size
+        expected_size = expected_size,
+        force_retain_solver = force_retain_solver
         )
+    
+    if repeats > 1:
+        # For bench marking purposes, repeat the integration before wrapping in python to get a more
+        #  accurate measurement of cysolve_ivp's time.
+        for i in range(1, repeats):
+            cysolve_ivp_noreturn(
+                solution_ptr,
+                diffeq,
+                t_start,
+                t_end,
+                y0_vec,
+                rtol = rtol,
+                atol = atol,
+                args_vec = args_vec,
+                num_extra = num_extra,
+                max_num_steps = max_num_steps,
+                max_ram_MB = max_ram_MB,
+                dense_output = dense_output,
+                t_eval_vec = t_eval_vec,
+                pre_eval_func = pre_eval_func,
+                events_vec = events_vec,
+                rtols_vec = rtols_vec,
+                atols_vec = atols_vec,
+                max_step = max_step,
+                first_step = first_step,
+                expected_size = expected_size,
+                force_retain_solver = force_retain_solver
+                )
     
     solution_reuse.finalize()
 

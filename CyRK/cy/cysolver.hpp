@@ -40,6 +40,11 @@ enum class ODEMethod : int {
     DOP853
 };
 
+// Root finding parameters
+constexpr double BRENTQ_ATOL     = 4.0 * EPS;
+constexpr double BRENTQ_RTOL     = 4.0 * EPS;
+constexpr size_t MAX_BRENTQ_ITER = 100;
+
 inline const std::map<ODEMethod, std::string> CyrkODEMethods = {
     { ODEMethod::NO_METHOD_SET,
       "An integration method has not been set." },
@@ -96,7 +101,7 @@ struct ProblemConfig {
 
     // Event data
     bool check_events = false;
-    std::vector<Event> events_vec = std::vector<Event>();
+    std::vector<Event> events_vec = std::vector<Event>(0);
 
     // Solver specific configurations can be added below via overloading the class.
 
@@ -156,12 +161,16 @@ struct NowStatePointers
     double* t_now_ptr;
     double* y_now_ptr;
     double* dy_now_ptr;
-    
-    NowStatePointers():
-        t_now_ptr(nullptr), y_now_ptr(nullptr), dy_now_ptr(nullptr) { }
 
-    NowStatePointers(double* t_now_ptr, double* y_now_ptr, double* dy_now_ptr):
-        t_now_ptr(t_now_ptr), y_now_ptr(y_now_ptr), dy_now_ptr(dy_now_ptr) { }
+    NowStatePointers():
+        t_now_ptr(nullptr), y_now_ptr(nullptr), dy_now_ptr(nullptr)
+    { }
+
+    NowStatePointers(
+            double* t_now_ptr_, double* y_now_ptr_, double* dy_now_ptr_
+            ):
+        t_now_ptr(t_now_ptr_), y_now_ptr(y_now_ptr_), dy_now_ptr(dy_now_ptr_)
+    { }
 };
 
 class CySolverBase {
@@ -169,7 +178,7 @@ class CySolverBase {
 // Methods
 protected:
     virtual CyrkErrorCodes p_additional_setup() noexcept;
-    virtual void p_estimate_error() noexcept;
+    virtual double p_estimate_error() noexcept;
     virtual void p_step_implementation() noexcept;
     inline void p_cy_diffeq() noexcept;
     virtual void p_calc_first_step_size() noexcept;
@@ -181,7 +190,7 @@ public:
     CySolverBase(CySolverResult* storage_ptr_);
 
     virtual void set_Q_order(size_t* Q_order_ptr);
-    virtual void set_Q_array(double* Q_ptr);
+    virtual void set_Q_array(double* Q_ptr) noexcept;
     void clear_python_refs();
     void offload_to_temp() noexcept;
     void load_back_from_temp() noexcept;
@@ -259,7 +268,7 @@ protected:
     double* y_interp_ptr = nullptr;
     // For dy, both the dy/dt and any extra outputs are stored. So the maximum size is `num_y` + `num_extra`
     std::vector<double> dy_holder_vec = std::vector<double>(PRE_ALLOC_NUMY * 4);
-    double* dy_old_ptr = nullptr;
+    //double* dy_old_ptr = nullptr; // This needs to be public
     //double* dy_now_ptr = nullptr; // This needs to be public
     double* dy_tmp_ptr  = nullptr;
     double* dy_tmp2_ptr = nullptr;
@@ -294,6 +303,7 @@ public:
     double t_now       = 0.0;
     double* y_old_ptr  = nullptr;
     double* y_now_ptr  = nullptr;
+    double* dy_old_ptr = nullptr;
     double* dy_now_ptr = nullptr;
     std::vector<size_t> active_event_indices_vec = std::vector<size_t>();
 };

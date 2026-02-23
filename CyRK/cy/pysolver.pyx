@@ -5,7 +5,7 @@ from libcpp.cmath cimport fmin, fabs
 from libcpp.vector cimport vector
 
 from CyRK.cy.common cimport INF, EPS_100, CyrkErrorCodes, CyrkErrorMessages, find_expected_size, dbl_NAN, MAX_SIZET_SIZE
-from CyRK.cy.cysolver_api cimport ProblemConfig, RKConfig, CySolverBase
+from CyRK.cy.cysolver_api cimport ProblemConfig, RKConfig
 from CyRK.cy.events cimport Event, EventFunc
 
 import numpy as np
@@ -67,7 +67,8 @@ cdef class PySolver(WrapCySolverResult):
             atol = 1.0e-6,
             size_t max_num_steps = 0,
             size_t max_ram_MB = 2000,
-            bint pass_dy_as_arg = False
+            bint pass_dy_as_arg = False,
+            bint force_retain_solver = True  # This is defaulted to False in cysolver, but true for pysolver just to help avoid making Python mad by deallocating memory it might be using.
             ):
         # Parse method
         method = method.lower()
@@ -95,10 +96,10 @@ cdef class PySolver(WrapCySolverResult):
         else:
             self.build_cyresult(integration_method)
         cyresult_ptr = self.cyresult_uptr.get()
-        cdef ProblemConfig* base_config_ptr = cyresult_ptr.config_uptr.get()
-        
         if not cyresult_ptr:
             raise RuntimeError("ERROR: `PySolver::set_problem_parameters` - CySolverResult was not constructed.")
+
+        cdef ProblemConfig* base_config_ptr = cyresult_ptr.config_uptr.get()
         cdef CySolverBase* cysolver_ptr = cyresult_ptr.solver_uptr.get()
         if not cysolver_ptr:
             raise AttributeError("ERROR: `PySolver::set_problem_parameters` - CySolver not set within CySolverResult object.")
@@ -127,7 +128,7 @@ cdef class PySolver(WrapCySolverResult):
 
         # Pull in current state pointers from CySolver C++ object to this object so that `self.diffeq` can update the "now" attributes.
         cdef NowStatePointers solver_state = cysolver_ptr.get_now_state()
-        self.set_state(&solver_state)
+        self.set_state(cysolver_ptr, &solver_state)
 
         # Update other configurations now
         if len(time_span) != 2:
@@ -168,6 +169,9 @@ cdef class PySolver(WrapCySolverResult):
             else:
                 self.events_list.append(events)
                 num_events = 1
+
+            problem_config_ptr.check_events = True
+            problem_config_ptr.events_vec.reserve(num_events)
 
             # Build events vector
             for i in range(num_events):
@@ -260,7 +264,7 @@ cdef class PySolver(WrapCySolverResult):
 
         # Parse other flags
         problem_config_ptr.capture_dense_output = dense_output
-        problem_config_ptr.force_retain_solver  = True # For now we are going to keep solvers it is a small memory hit but makes everything much easier to debug and avoids crashes.
+        problem_config_ptr.force_retain_solver  = force_retain_solver
         problem_config_ptr.num_extra            = num_extra
         problem_config_ptr.capture_extra        = num_extra > 0
         problem_config_ptr.max_num_steps        = max_num_steps
@@ -274,8 +278,10 @@ cdef class PySolver(WrapCySolverResult):
                 f"ERROR: `PySolver::set_problem_parameters` - Error during config setup. Error Code: {status_code}. "
                 f"Message: {CyrkErrorMessages.at(status_code).decode('utf-8')}")
     
-    cdef void set_state(self, NowStatePointers* solver_state_ptr) noexcept:
-        
+    cdef void set_state(self, CySolverBase* solver_ptr, NowStatePointers* solver_state_ptr) noexcept:
+
+        self.cysolver_ptr = solver_ptr
+    
         self.t_now_ptr  = solver_state_ptr.t_now_ptr
         self.y_now_ptr  = solver_state_ptr.y_now_ptr
         self.dy_now_ptr = solver_state_ptr.dy_now_ptr
@@ -298,7 +304,7 @@ cdef class PySolver(WrapCySolverResult):
         if self.pass_dy_as_arg:
             self.dy_now_view = <double[:self.num_dy]>self.dy_now_ptr
             shape[0]         = <cnp.npy_intp>self.num_dy  # dy may have a larger shape than y
-            self.dy_now_arr  = cnp.PyArray_SimpleNewFromData(1, shape_ptr, cnp.NPY_DOUBLE, self.dy_now_ptr)   
+            self.dy_now_arr  = cnp.PyArray_SimpleNewFromData(1, shape_ptr, cnp.NPY_DOUBLE, self.dy_now_ptr)
 
     cdef void diffeq(self) noexcept:
         # Run python diffeq
@@ -357,7 +363,8 @@ def pysolve_ivp(
         size_t max_num_steps = 0,
         size_t max_ram_MB = 2000,
         bint pass_dy_as_arg = False,
-        PySolver solution_reuse = None
+        PySolver solution_reuse = None, 
+        bint force_retain_solver = True
         ):
 
     # Build PySolver solution storage.
@@ -384,7 +391,8 @@ def pysolve_ivp(
             atol,
             max_num_steps,
             max_ram_MB,
-            pass_dy_as_arg)
+            pass_dy_as_arg,
+            force_retain_solver)
     
     ##
     # Run the integrator!

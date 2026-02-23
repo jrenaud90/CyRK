@@ -147,13 +147,14 @@ cdef class WrapCySolverResult:
         diagnostic_str += f'----------------------------------------------------\n'
         diagnostic_str += f'CyRK v{__version__} - WrapCySolverResult Diagnostic.\n'
         diagnostic_str += f'----------------------------------------------------\n'
-        diagnostic_str += f'# of y:       {self.num_y}.\n'
-        diagnostic_str += f'# of dy:      {self.num_dy}.\n'
-        diagnostic_str += f'# of events:  {self.num_events}.\n'
-        diagnostic_str += f'Success:      {self.success}.\n'
-        diagnostic_str += f'Error Code:   {self.error_code}.\n'
-        diagnostic_str += f'Size:         {self.size}.\n'
-        diagnostic_str += f'Steps Taken:  {self.steps_taken}.\n'
+        diagnostic_str += f'# of y:             {self.num_y}.\n'
+        diagnostic_str += f'# of dy:            {self.num_dy}.\n'
+        diagnostic_str += f'# of events:        {self.num_events}.\n'
+        diagnostic_str += f'Success:            {self.success}.\n'
+        diagnostic_str += f'Error Code:         {self.error_code}.\n'
+        diagnostic_str += f'Status:             {self.status_message}.\n'
+        diagnostic_str += f'Size:               {self.size}.\n'
+        diagnostic_str += f'Steps Taken:        {self.steps_taken}.\n'
         diagnostic_str += f'Event Termination:  {self.event_terminated}.\n'
         if self.event_terminated:
             diagnostic_str += f'Event Term. Index:  {self.event_terminate_index}.\n'
@@ -169,30 +170,59 @@ cdef class WrapCySolverResult:
             diagnostic_str += f'\n------------------- Event Data ---------------------\n'
             for i in range(cyresult_ptr.num_events):
                 diagnostic_str += f'Event {i}:\n'
+                diagnostic_str += f'\tStatus:         {CyrkErrorMessages.at(config_ptr.events_vec[i].status).decode("utf-8")}.\n'
                 diagnostic_str += f'\tDirection:      {config_ptr.events_vec[i].direction}.\n'
                 diagnostic_str += f'\tMax Allowed:    {config_ptr.events_vec[i].max_allowed}.\n'
                 diagnostic_str += f'\tNum Triggers:   {config_ptr.events_vec[i].current_count}.\n'
-                diagnostic_str += f'\tLast Trigger t: {config_ptr.events_vec[i].last_root:0.4e}.\n'
+                diagnostic_str += f'\tLast Trigger t: {config_ptr.events_vec[i].last_root:0.3e}.\n'
+
+        # We want a way to print the value of the args but we have no idea its structure or types
+        # of its contents. For now just assume they are all doubles so we can display something.
+        # Also display the value of the raw chars.
+        cdef double* args_dbl_ptr = NULL
+        cdef char* args_char_ptr = NULL
+        cdef size_t dbl_i
+        cdef size_t args_size
+        cdef size_t args_size_dbls
+        diagnostic_str += f'\n---- Additional Argument Info ----\n'
+        args_size      = config_ptr.args_vec.size()
+        args_char_ptr  = config_ptr.args_vec.data()
+        args_dbl_ptr   = <double*>args_char_ptr
+        args_size_dbls = <size_t>floor(args_size / sizeof(double))
+        diagnostic_str += f'args size (bytes):   {args_size}.\n'
+        diagnostic_str += f'args size (doubles): {args_size_dbls}.\n'
+        if not args_char_ptr:
+            diagnostic_str += 'Args Pointer is Null.\n'
+        else:
+            dbl_i = 0
+            if args_size > 0:
+                for i in range(args_size):
+                    if i % 8 == 0:
+                        # New section of 8 bytes.
+                        diagnostic_str += f'\n{hex(args_char_ptr[i])}'
+                    elif i % 8 == 3:
+                        diagnostic_str += f' {hex(args_char_ptr[i])}\n'
+                    elif i % 8 == 7:
+                        diagnostic_str += f' {hex(args_char_ptr[i])}\n'
+                        diagnostic_str += f'As Double: {args_dbl_ptr[dbl_i]:0.5e}\n'
+                        dbl_i += 1
+                    else:
+                        diagnostic_str += f' {hex(args_char_ptr[i])}'
+        diagnostic_str += f'End of Additional Argument Info.\n'
 
         cdef CySolverBase* cysolver = cyresult_ptr.solver_uptr.get()
         cdef size_t num_y
         cdef size_t num_dy
-        cdef size_t dbl_i
-        cdef size_t args_size
-        cdef size_t args_size_dbls
-        cdef double* args_dbl_ptr = NULL
-        cdef char* args_char_ptr = NULL
         if cysolver:
             num_y  = cysolver.num_y
             num_dy = cysolver.num_dy
             diagnostic_str += f'\n------------------ CySolverBase --------------------\n'
-            diagnostic_str += f'Status #:   {cyresult_ptr.status}.\n'
-            diagnostic_str += f'Status:     {CyrkErrorMessages.at(cyresult_ptr.status).decode("utf-8")}.\n'
-            diagnostic_str += f'# of y:     {num_y}.\n'
-            diagnostic_str += f'# of dy:    {num_dy}.\n'
-            diagnostic_str += f'PySolver:   {cysolver.use_pysolver}.\n'
+            diagnostic_str += f'Integration Method: {cysolver.integration_method}.\n'
+            diagnostic_str += f'# of y:             {num_y}.\n'
+            diagnostic_str += f'# of dy:            {num_dy}.\n'
+            diagnostic_str += f'PySolver:           {cysolver.use_pysolver}.\n'
             diagnostic_str += f'---- Current State Info ----\n'
-            diagnostic_str += f't_now:      {cysolver.t_now}.\n'
+            diagnostic_str += f't_now: {cysolver.t_now}.\n'
             diagnostic_str += f'y_now:\n'
             for i in range(num_y):
                 diagnostic_str += f'\ty{i}  = {cysolver.y_now_ptr[i]:0.5e}.\n'
@@ -200,34 +230,6 @@ cdef class WrapCySolverResult:
             for i in range(num_dy):
                 diagnostic_str += f'\tdy{i} = {cysolver.dy_now_ptr[i]:0.5e}.\n'
             diagnostic_str += f'End of Current State Info.\n'
-            # We want a way to print the value of the args but we have no idea its structure or types
-            # of its contents. For now just assume they are all doubles so we can display something.
-            # Also display the value of the raw chars.
-            diagnostic_str += f'---- Additional Argument Info ----\n'
-            args_size      = config_ptr.args_vec.size()
-            args_char_ptr  = config_ptr.args_vec.data()
-            args_dbl_ptr   = <double*>args_char_ptr
-            args_size_dbls = <size_t>floor(args_size / sizeof(double))
-            diagnostic_str += f'args size (bytes):   {args_size}.\n'
-            diagnostic_str += f'args size (doubles): {args_size_dbls}.\n'
-            if not args_char_ptr:
-                diagnostic_str += 'Args Pointer is Null.\n'
-            else:
-                dbl_i = 0
-                if args_size > 0:
-                    for i in range(args_size):
-                        if i % 8 == 0:
-                            # New section of 8 bytes.
-                            diagnostic_str += f'\n{hex(args_char_ptr[i])}'
-                        elif i % 8 == 3:
-                            diagnostic_str += f' {hex(args_char_ptr[i])}\n'
-                        elif i % 8 == 7:
-                            diagnostic_str += f' {hex(args_char_ptr[i])}\n'
-                            diagnostic_str += f'As Double: {args_dbl_ptr[dbl_i]:0.5e}\n'
-                            dbl_i += 1
-                        else:
-                            diagnostic_str += f' {hex(args_char_ptr[i])}'
-            diagnostic_str += f'End of Additional Argument Info.\n'
         else:
             diagnostic_str += f'CySolver instance was deleted or voided.\n'
 
@@ -378,7 +380,8 @@ cdef void cysolve_ivp_noreturn(
             vector[double] atols_vec = vector[double](),
             double max_step = MAX_STEP,
             double first_step = 0.0,
-            size_t expected_size = 0
+            size_t expected_size = 0,
+            cpp_bool force_retain_solver = True
             ) noexcept nogil:
     
     if rtols_vec.size() == 0:
@@ -406,7 +409,8 @@ cdef void cysolve_ivp_noreturn(
         rtols_vec,
         atols_vec,
         max_step,
-        first_step
+        first_step,
+        force_retain_solver
         )
 
 cdef CySolveOutput cysolve_ivp(
@@ -429,7 +433,8 @@ cdef CySolveOutput cysolve_ivp(
             vector[double] atols_vec = vector[double](),
             double max_step = MAX_STEP,
             double first_step = 0.0,
-            size_t expected_size = 0
+            size_t expected_size = 0,
+            cpp_bool force_retain_solver = True
             ) noexcept nogil:
 
     if rtols_vec.size() == 0:
@@ -457,7 +462,8 @@ cdef CySolveOutput cysolve_ivp(
         rtols_vec,
         atols_vec,
         max_step,
-        first_step
+        first_step,
+        force_retain_solver
         )
 
     return move(result)
@@ -482,7 +488,8 @@ cdef CySolveOutput cysolve_ivp_gil(
             vector[double] atols_vec = vector[double](),
             double max_step = MAX_STEP,
             double first_step = 0.0,
-            size_t expected_size = 0
+            size_t expected_size = 0,
+            cpp_bool force_retain_solver = True
             ) noexcept:
     
     if rtols_vec.size() == 0:
@@ -510,7 +517,8 @@ cdef CySolveOutput cysolve_ivp_gil(
         rtols_vec,
         atols_vec,
         max_step,
-        first_step
+        first_step,
+        force_retain_solver
         )
 
     return move(result)

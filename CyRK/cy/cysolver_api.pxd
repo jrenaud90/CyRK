@@ -13,7 +13,6 @@ from CyRK.cy.events cimport Event
 cimport numpy as cnp
 cnp.import_array()
 
-
 cdef extern from "c_brentq.cpp" nogil:
     pass
 
@@ -22,17 +21,6 @@ cdef extern from "c_events.cpp" nogil:
 
 cdef extern from "cy_array.cpp" nogil:
     size_t binary_search_with_guess(double key, const double* array, size_t length, size_t guess)
-
-
-cdef extern from "dense.cpp" nogil:
-    cdef cppclass CySolverDense:
-        CySolverDense()
-        CySolverDense(
-            CySolverBase* solver_ptr,
-            cpp_bool set_state)
-
-        void set_state()
-        void call(double t_interp, double* y_interped)
 
 
 # =====================================================================================================================
@@ -84,6 +72,16 @@ cdef extern from "cysolution.cpp" nogil:
             CyrkErrorCodes call_vectorize(const double* t_array_ptr, size_t len_t, double* y_interp)
 
 ctypedef unique_ptr[CySolverResult] CySolveOutput
+
+cdef extern from "dense.cpp" nogil:
+    cdef cppclass CySolverDense:
+        CySolverDense()
+        CySolverDense(
+            CySolverResult* solution_ptr,
+            cpp_bool set_state)
+
+        void set_state()
+        void call(double t_interp, double* y_interped)
 
 cdef class WrapCySolverResult:
     """ Wrapper for the C++ class `CySolverResult` defined in "cysolution.cpp" """
@@ -330,7 +328,8 @@ cdef extern from "cysolve.cpp" nogil:
         vector[double]& rtols,
         vector[double]& atols,
         double max_step_size,
-        double first_step_size
+        double first_step_size,
+        cpp_bool force_retain_solver
         )
 
     cdef unique_ptr[CySolverResult] baseline_cysolve_ivp(
@@ -351,7 +350,8 @@ cdef extern from "cysolve.cpp" nogil:
         vector[double]& rtols,
         vector[double]& atols,
         double max_step_size,
-        double first_step_size
+        double first_step_size,
+        cpp_bool force_retain_solver
         )
 
 
@@ -378,7 +378,8 @@ cdef void cysolve_ivp_noreturn(
     vector[double] atols_vec = *,
     double max_step = *,
     double first_step = *,
-    size_t expected_size = *
+    size_t expected_size = *,
+    cpp_bool force_retain_solver = *
     ) noexcept nogil
 
 cdef CySolveOutput cysolve_ivp(
@@ -401,7 +402,8 @@ cdef CySolveOutput cysolve_ivp(
     vector[double] atols_vec = *,
     double max_step = *,
     double first_step = *,
-    size_t expected_size = *
+    size_t expected_size = *,
+    cpp_bool force_retain_solver = *
     ) noexcept nogil
 
 cdef CySolveOutput cysolve_ivp_gil(
@@ -424,5 +426,6 @@ cdef CySolveOutput cysolve_ivp_gil(
     vector[double] atols_vec = *,
     double max_step = *,
     double first_step = *,
-    size_t expected_size = *
+    size_t expected_size = *,
+    cpp_bool force_retain_solver = *
     ) noexcept

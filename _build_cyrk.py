@@ -21,19 +21,25 @@ if DEBUG_MODE:
 install_platform = platform.system()
 
 if install_platform.lower() == 'windows':
-    extra_compile_args = ['/openmp']
-    extra_link_args = []
+    extra_compile_args = ['/openmp', "/arch:AVX2", "/O2i", "/GL"]
+    extra_link_args = ["/LTCG"]
     if DEBUG_MODE:
-        extra_compile_args.append('/Ox')
-        extra_compile_args.append('/Zi')
-        extra_link_args.append("/debug:full")
-elif install_platform.lower() == 'darwin':
-    # OpenMP is installed via llvm. See https://stackoverflow.com/questions/60005176/how-to-deal-with-clang-error-unsupported-option-fopenmp-on-travis
-    extra_compile_args = ['-O3', '-fopenmp']
-    extra_link_args = ['-lomp']
+        # Note: Debug usually disables optimizations (/Od)
+        extra_compile_args = ['/openmp', '/Zi', '/Od']
+        extra_link_args = ['/DEBUG:FULL']
 else:
-    extra_compile_args = ['-fopenmp', '-O3']
-    extra_link_args = ['-fopenmp', '-O3']
+    # OpenMP is installed via llvm. See https://stackoverflow.com/questions/60005176/how-to-deal-with-clang-error-unsupported-option-fopenmp-on-travis
+    # Common flags for Linux/Mac
+    extra_compile_args = ['-O3', '-flto']
+    extra_link_args = ['-flto']
+    
+    if install_platform.lower() == 'darwin':
+        extra_link_args.append('-lomp')
+    else:
+        extra_link_args.append('-fopenmp')
+        extra_link_args.append('-mavx2')
+        extra_link_args.append('-mfma')
+
 macro_list = [("NPY_NO_DEPRECATED_API", "NPY_1_9_API_VERSION")]
 
 # Load CyRK's cython extensions
@@ -41,6 +47,14 @@ absolute_path = os.path.dirname(__file__)
 cython_ext_path = os.path.join(absolute_path, 'cython_extensions.json')
 with open(cython_ext_path, 'r') as cython_ext_file:
     cython_ext_dict = json.load(cython_ext_file)
+
+global_include_dirs = [
+    ["CyRK", "nb"],
+    ["CyRK", "cy"],
+    ["CyRK", "utils"],
+    ["CyRK", "optimize"],
+    ["CyRK", "array"]
+]
 
 cython_extensions = list()
 for cython_ext, ext_data in cython_ext_dict.items():
@@ -58,7 +72,7 @@ for cython_ext, ext_data in cython_ext_dict.items():
             name=ext_data['name'],
             sources=[os.path.join(*tuple(source_path)) for source_path in ext_data['sources']],
             # Always add numpy to any includes; also add sys.path so we can capture python.h
-            include_dirs=[os.path.join(*tuple(dir_path)) for dir_path in ext_data['include_dirs']] + [np.get_include()] + sys.path,
+            include_dirs=[os.path.join(*tuple(dir_path)) for dir_path in global_include_dirs + ext_data['include_dirs']] + [np.get_include()] + sys.path,
             extra_compile_args=specific_compile_args,
             define_macros=macro_list,
             extra_link_args=ext_data['link_args'] + extra_link_args,

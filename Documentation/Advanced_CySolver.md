@@ -195,7 +195,7 @@ print("\n\nIntegration success =", result_drag.success, "\n\tNumber of adaptive 
 print("Integration message:", result_drag.message)
 ```
 
-# Pre-Evaluation Functions
+## Pre-Evaluation Functions
 
 It is occasionally advantageous for users to define differential equation functions that utilize a "pre-evaluation" function that will use the current state to perform calculations that are then used by the diffeq function to find dydt. While this functionality could be hard coded into the diffeq, having a pre-eval function allows for different models to be defined without changing the rest of the differential equation. A large set of different pre-eval functions could then be passed in to subsequent runs of the solver to compare various models. 
 

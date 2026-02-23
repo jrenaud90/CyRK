@@ -101,9 +101,10 @@ def nbsolve_ivp(
         t_eval: np.ndarray = EMPTY_ARR,
         capture_extra: bool = False,
         interpolate_extra: bool = False,
-        max_num_steps: int = 0
+        max_num_steps: int = 0,
+        warnings: bool = True
         ):
-    """ A Numba-safe Runge-Kutta Integrator based on Scipy's solve_ivp RK integrator.
+    """ A Numba-safe Runge-Kutta Integrator based on Scipy's solve_ivp RK integrator [1]_, [2]_. 
 
     Parameters
     ----------
@@ -119,6 +120,10 @@ def nbsolve_ivp(
         Integration relative tolerance used to determine optimal step size.
     atol : float = 1.e-6
         Integration absolute tolerance used to determine optimal step size.
+    rtols : np.ndarray = EMPTY_ARR
+        Array of relative tolerances (size of y0).
+    atols : np.ndarray = EMPTY_ARR
+        Array of absolute tolerances (size of y0).
     max_step : float = np.inf
         Maximum allowed step size.
     first_step : float = None
@@ -140,6 +145,8 @@ def nbsolve_ivp(
     max_num_steps : int = 0
         Maximum number of steps integrator is allowed to take.
         If set to 0 (the default) then an infinite number of steps are allowed.
+    warnings : bool = True
+        If True, then warnings will be raised which can slow down integration.
 
     References
     ----------
@@ -155,10 +162,10 @@ def nbsolve_ivp(
     y_results : np.ndarray
         The solution of the differential equation provided for each time_result.
             If `capture_extra` was set to True then this will output both y and any extra parameters calculated by the
-             differential equation. The format of this output will look like:
-            ```
-            y_results[0:y_size, :]          = ... # Actual y-results calculated by the diffeq solver
-            y_results[y_size:extra_size, :] = ... # Extra outputs captured alongside y during integration
+             differential equation. The format of this output will look like::
+            
+                y_results[0:y_size, :]          = ... # Actual y-results calculated by the diffeq solver
+                y_results[y_size:extra_size, :] = ... # Extra outputs captured alongside y during integration
 
     success : bool
         Final integration success flag.
@@ -166,6 +173,10 @@ def nbsolve_ivp(
         Any integration messages, useful if success=False.
 
     """
+
+    if warnings:
+        print("DEPRECATION WARNING! This version of `nbsolve_ivp` will be deprecated in a future release in favor of the current `nbsolve2_ivp` (names will be swapped). These two functions are quite different so please review the documentation at https://cyrk.readthedocs.io/en/latest/Numba.html before upgrading.")
+        print("IMPORTANT!! Printing this warning is slowing down your integration! Disable it by setting `warnings=False` in `nbsolve_ivp`.")
 
     # Clean up and interpret inputs
     t_start = t_span[0]

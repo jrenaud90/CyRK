@@ -24,7 +24,8 @@ public:
     // Message storage
     std::string message;
 
-    // Configurations - Currently we will always be making a RK config so let's initialize to that for now.
+    // Configurations
+    // TODO: Currently we will always be making a RK config so let's initialize to that for now.
     std::unique_ptr<ProblemConfig> config_uptr = std::make_unique<RKConfig>();
 
     // Current storage information
@@ -95,5 +96,5 @@ public:
     void build_dense(bool save_dense) noexcept;
     CyrkErrorCodes solve();
     CyrkErrorCodes call(const double t, double* y_interp_ptr);
-    CyrkErrorCodes call_vectorize(const double* t_array_ptr, size_t len_t, double* y_interp_ptr);
+    CyrkErrorCodes call_vectorize(const double* t_array_ptr, const size_t len_t, double* y_interp_ptr);
 };

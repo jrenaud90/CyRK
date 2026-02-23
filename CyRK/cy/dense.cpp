@@ -3,15 +3,26 @@
 
 // Constructors
 CySolverDense::CySolverDense(
-            CySolverBase* solver_ptr_,
+            CySolverResult* solution_ptr_,
             bool set_state) :
-        solver_ptr(solver_ptr_)
+        solution_ptr(solution_ptr_)
 {
-    if (this->solver_ptr)
+    this->setup(set_state);
+}
+
+// Destructors
+CySolverDense::~CySolverDense()
+{
+}
+
+void CySolverDense::setup(bool set_state)
+{
+    CySolverBase* solver_ptr = this->solution_ptr->solver_uptr.get();
+
+    if (solver_ptr) [[likely]]
     {
         // Allocate memory for state vectors (memory allocation should not change since num_y does not change)
-            
-        this->solver_ptr->set_Q_order(&this->Q_order);
+        solver_ptr->set_Q_order(&this->Q_order);
 
         // Resize state vector based on dimensions. The state vector is a combination of the current y-values and Q
         // Q is a matrix of solver-specific parameters at the current time.
@@ -20,9 +31,10 @@ CySolverDense::CySolverDense(
         // So Q has shape of (num_y, q_order)
         // The max size of Q is (7) * num_y for DOP853
         // state vector is laid out as [y_vector, Q_matrix]
-        this->num_y  = this->solver_ptr->num_y;
-        this->num_dy = this->solver_ptr->num_dy;
+        this->num_y  = solver_ptr->num_y;
+        this->num_dy = solver_ptr->num_dy;
         this->state_data_vec.resize(this->num_y * (this->Q_order + 1));  // +1 is so we can store y_values in the first spot.
+        this->initialized = true;
 
         // Populate values with current state
         if (set_state)
@@ -32,28 +44,28 @@ CySolverDense::CySolverDense(
     }
 }
 
-// Destructors
-CySolverDense::~CySolverDense()
-{
-
-}
-
 void CySolverDense::set_state()
 {
-
-    // Store time information
-    this->t_old = this->solver_ptr->t_old;
-    this->t_now = this->solver_ptr->t_now;
+    if (this->initialized) [[likely]]
+    {
+        CySolverBase* solver_ptr = this->solution_ptr->solver_uptr.get();
     
-    // Calculate step
-    this->step = this->t_now - this->t_old;
+        // Store time information
+        this->t_old = solver_ptr->t_old;
+        this->t_now = solver_ptr->t_now;
+        
+        // Calculate step
+        this->step = this->t_now - this->t_old;
 
-    // Make a copy of the y_in pointer in the state vector storage
-    std::memcpy(this->state_data_vec.data(), this->solver_ptr->y_old_ptr, sizeof(double) * this->num_y);
+        // Make a copy of the y_in pointer in the state vector storage
+        std::memcpy(this->state_data_vec.data(), solver_ptr->y_old_ptr, sizeof(double) * this->num_y);
 
-    // Tell the solver to populate the values of the Q matrix. 
-    // Q starts at the num_y location of the state vector
-    this->solver_ptr->set_Q_array(&this->state_data_vec[this->num_y]);
+        // Tell the solver to populate the values of the Q matrix. 
+        // Q starts at the num_y location of the state vector
+        solver_ptr->set_Q_array(&this->state_data_vec[this->num_y]);
+
+        this->state_set = true;
+    }
 }
 
 void CySolverDense::call(double t_interp, double* y_interp_ptr)
@@ -67,7 +79,7 @@ void CySolverDense::call(double t_interp, double* y_interp_ptr)
 
     // Q has shape of (n_stages + 1, num_y)
     // y = y_old + Q dot p.
-    switch (this->solver_ptr->integration_method)
+    switch (this->solution_ptr->integrator_method)
     {
     case ODEMethod::RK23:
         for (size_t y_i = 0; y_i < this->num_y; y_i++)
@@ -157,9 +169,11 @@ void CySolverDense::call(double t_interp, double* y_interp_ptr)
         break;
     }
 
-    if (this->solver_ptr)
+    if (this->solution_ptr->capture_extra)
     {
-        if (this->solver_ptr->num_extra > 0)
+        CySolverBase* solver_ptr = this->solution_ptr->solver_uptr.get();
+
+        if (solver_ptr)
         {
             // We have interpolated the dependent y-values but have not handled any extra outputs
             // We can not use the RK (or any other integration method's) fancy interpolation because extra outputs are
@@ -167,27 +181,27 @@ void CySolverDense::call(double t_interp, double* y_interp_ptr)
             // TODO: Perhaps we could include them in that? 
             // For now, we will make an additional call to the diffeq using the y0 we just found above and t_interp.
             
-            size_t num_dy = this->solver_ptr->num_dy;
+            size_t num_dy = solver_ptr->num_dy;
 
             // We will be overwriting the solver's now variables so tell it to store a copy that it can be restored back to.
-            this->solver_ptr->offload_to_temp();
+            solver_ptr->offload_to_temp();
 
             // Load new values into t and y
-            std::memcpy(this->solver_ptr->y_now_ptr, y_interp_ptr, sizeof(double) * this->num_y);
-            this->solver_ptr->t_now = t_interp;
+            std::memcpy(solver_ptr->y_now_ptr, y_interp_ptr, sizeof(double) * this->num_y);
+            solver_ptr->t_now = t_interp;
             
             // Call diffeq to update dy_now pointer
-            this->solver_ptr->diffeq(this->solver_ptr);
+            solver_ptr->diffeq(solver_ptr);
 
             // Capture extra output and add to the y_interp_ptr array
             // We already have y interpolated from above so start at num_y
             for (size_t i = this->num_y; i < num_dy; i++)
             {
-                y_interp_ptr[i] = this->solver_ptr->dy_now_ptr[i];
+                y_interp_ptr[i] = solver_ptr->dy_now_ptr[i];
             }
 
             // Reset CySolver state to what it was before
-            this->solver_ptr->load_back_from_temp();
+            solver_ptr->load_back_from_temp();
         }
     }
 }

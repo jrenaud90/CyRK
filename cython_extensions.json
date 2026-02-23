@@ -2,7 +2,7 @@
   "utils": {
     "name": "CyRK.utils.utils",
     "sources": [["CyRK", "utils", "utils.pyx"]],
-    "include_dirs": [["CyRK", "utils"]],
+    "include_dirs": [],
     "compile_args": [],
     "link_args": [],
     "is_cpp": false
@@ -10,7 +10,7 @@
   "vector": {
     "name": "CyRK.utils.vector",
     "sources": [["CyRK", "utils", "vector.pyx"]],
-    "include_dirs": [["CyRK", "utils"]],
+    "include_dirs": [],
     "compile_args": [],
     "link_args": [],
     "is_cpp": false
@@ -18,7 +18,7 @@
   "memory": {
     "name": "CyRK.utils.memory",
     "sources": [["CyRK", "utils", "memory.pyx"]],
-    "include_dirs": [["CyRK", "utils"]],
+    "include_dirs": [],
     "compile_args": [],
     "link_args": [],
     "is_cpp": false
@@ -26,7 +26,7 @@
   "interp": {
     "name": "CyRK.array.interp",
     "sources": [["CyRK", "array", "interp.pyx"]],
-    "include_dirs": [["CyRK", "array"]],
+    "include_dirs": [],
     "compile_args": [],
     "link_args": [],
     "is_cpp": false
@@ -36,7 +36,7 @@
     "sources": [
       ["CyRK", "cy", "common.pyx"]
     ],
-    "include_dirs": [["CyRK", "cy"]],
+    "include_dirs": [],
     "compile_args": [],
     "link_args": [],
     "is_cpp": true
@@ -44,7 +44,7 @@
   "cysolver_events": {
     "name": "CyRK.cy.events",
     "sources": [["CyRK", "cy", "events.pyx"]],
-    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
+    "include_dirs": [],
     "compile_args": [],
     "link_args": [],
     "is_cpp": true
@@ -52,7 +52,7 @@
   "cysolver_events_test": {
     "name": "CyRK.cy.events_test",
     "sources": [["CyRK", "cy", "events_test.pyx"]],
-    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
+    "include_dirs": [],
     "compile_args": [],
     "link_args": [],
     "is_cpp": true
@@ -60,7 +60,7 @@
   "optimize_brentq": {
     "name": "CyRK.optimize.brentq",
     "sources": [["CyRK", "optimize", "brentq.pyx"]],
-    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
+    "include_dirs": [],
     "compile_args": [],
     "link_args": [],
     "is_cpp": true
@@ -68,7 +68,7 @@
   "optimize_test": {
     "name": "CyRK.optimize.optimize_test",
     "sources": [["CyRK", "optimize", "optimize_test.pyx"]],
-    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
+    "include_dirs": [],
     "compile_args": [],
     "link_args": [],
     "is_cpp": true
@@ -76,7 +76,7 @@
   "pysolver_cyhook": {
     "name": "CyRK.cy.pysolver_cyhook",
     "sources": [["CyRK", "cy", "pysolver_cyhook.pyx"]],
-    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
+    "include_dirs": [],
     "compile_args": [],
     "link_args": [],
     "is_cpp": true
@@ -86,7 +86,7 @@
     "sources": [
       ["CyRK", "cy", "cysolver_api.pyx"]
     ],
-    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
+    "include_dirs": [],
     "compile_args": [],
     "link_args": [],
     "is_cpp": true
@@ -94,7 +94,15 @@
   "cysolver_test": {
     "name": "CyRK.cy.cysolver_test",
     "sources": [["CyRK", "cy", "cysolver_test.pyx"]],
-    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
+    "include_dirs": [],
+    "compile_args": [],
+    "link_args": [],
+    "is_cpp": true
+  },
+  "prange_test": {
+    "name": "CyRK.cy.prange_test",
+    "sources": [["CyRK", "cy", "prange_test.pyx"]],
+    "include_dirs": [],
     "compile_args": [],
     "link_args": [],
     "is_cpp": true
@@ -104,7 +112,7 @@
     "sources": [
       ["CyRK", "cy", "pysolver.pyx"]
     ],
-    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
+    "include_dirs": [],
     "compile_args": [],
     "link_args": [],
     "is_cpp": true
@@ -112,7 +120,15 @@
   "cysolver_helpers": {
     "name": "CyRK.cy.helpers",
     "sources": [["CyRK", "cy", "helpers.pyx"]],
-    "include_dirs": [["CyRK", "cy"], ["CyRK", "optimize"]],
+    "include_dirs": [],
+    "compile_args": [],
+    "link_args": [],
+    "is_cpp": true
+  },
+  "numba_api": {
+    "name": "CyRK.nb.numba_c_api",
+    "sources": [["CyRK", "nb", "numba_c_api.pyx"]],
+    "include_dirs": [],
     "compile_args": [],
     "link_args": [],
     "is_cpp": true

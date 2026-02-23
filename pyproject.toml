@@ -1,14 +1,14 @@
 [project]
 name='CyRK'
-version = '0.16.1'
+version = '0.17.0'
 description='Runge-Kutta ODE Integrator Implemented in Cython and Numba.'
 authors= [
     {name = 'Joe P. Renaud', email = 'joe.p.renaud@gmail.com'}
     ]
-requires-python = ">=3.9,<3.14"
+requires-python = ">=3.9,<3.15"
 dependencies = [
     'numba >= 0.54.1',
-    'numpy >= 1.22, <2.4',
+    'numpy >= 1.22, <2.5',
     'scipy >= 1.9.3'
 ]
 license = "CC-BY-NC-SA-4.0"
@@ -35,6 +35,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: Implementation :: CPython",
     "Natural Language :: English",
     "Intended Audience :: Science/Research",
@@ -58,6 +59,25 @@ dev = [
     "pytest",
     "timeit",
     "line_profiler==3.5.1"
+]
+
+docs = [
+    "sphinx",
+    "myst-parser",
+    "linkify-it-py",
+    "sphinx_rtd_theme",
+    "toml",
+    "sphinx-copybutton",
+    "nbsphinx",
+    "ipykernel",
+    "nbconvert",
+    "jupyter",
+    "sphinx-autodoc-typehints",
+    "furo",
+    "breathe",
+    "jupyter",
+    "pytest",
+    "matplotlib>=3.4.2",
 ]
 
 [build-system]

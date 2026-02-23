@@ -7,6 +7,17 @@
 #include <vector>
 
 // Pre-processor constants
+#if defined(_MSC_VER)
+    // Microsoft Visual C++
+    #define CYRK_RESTRICT __restrict
+#elif defined(__GNUC__) || defined(__clang__)
+    // GCC and Clang
+    #define CYRK_RESTRICT __restrict__
+#else
+    // Fallback for other compilers (no optimization)
+    #define CYRK_RESTRICT
+#endif
+
 static const size_t BUFFER_SIZE     = 16;
 static const size_t PRE_ALLOC_STEPS = 256;
 static const size_t PRE_ALLOC_NUMY  = 16;

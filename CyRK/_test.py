@@ -18,6 +18,10 @@ def pysolve_diffeq(dy, t, y):
     dy[0] = (1. - 0.01 * y[1]) * y[0]
     dy[1] = (0.02 * y[0] - 1.) * y[1]
 
+def nbsolve_diffeq(dy, t, y, args):
+    dy[0] = (1. - 0.01 * y[1]) * y[0]
+    dy[1] = (0.02 * y[0] - 1.) * y[1]
+
 @njit
 def nb_diffeq(t, y):
     dy = np.empty_like(y)
@@ -33,8 +37,8 @@ def test_nbrk():
     nbrk_result = nbsolve_ivp(nb_diffeq, time_span, initial_conds)
 
     assert nbrk_result.success
-    assert type(nbrk_result.t) == np.ndarray
-    assert type(nbrk_result.y) == np.ndarray
+    assert type(nbrk_result.t) is np.ndarray
+    assert type(nbrk_result.y) is np.ndarray
     assert nbrk_result.y.shape[0] == 2
 
     print("CyRK's nbsolve_ivp was tested successfully.")
@@ -46,8 +50,8 @@ def test_pysolver():
     result = pysolve_ivp(pysolve_diffeq, time_span, initial_conds_float, pass_dy_as_arg=True)
 
     assert result.success
-    assert type(result.t) == np.ndarray
-    assert type(result.y) == np.ndarray
+    assert type(result.t) is np.ndarray
+    assert type(result.y) is np.ndarray
     assert result.y.shape[0] == 2
 
     print("CyRK's PySolver was tested successfully.")
@@ -67,8 +71,22 @@ def test_cysolver():
                       atol=atol)
 
     assert result.success
-    assert type(result.t) == np.ndarray
-    assert type(result.y) == np.ndarray
+    assert type(result.t) is np.ndarray
+    assert type(result.y) is np.ndarray
     assert result.y.shape[0] == 2
 
     print("CyRK's CySolver was tested successfully.")
+
+def test_nbsolver():
+
+    from CyRK import nbsolve2_ivp, nb_diffeq_addr
+
+    diffeq_addr = nb_diffeq_addr(nbsolve_diffeq)
+    result = nbsolve2_ivp(diffeq_addr, time_span, initial_conds_float)
+
+    assert result.success
+    assert type(result.t) is np.ndarray
+    assert type(result.y) is np.ndarray
+    assert result.y.shape[0] == 2
+
+    print("CyRK's nbsolve2_ivp was tested successfully.")

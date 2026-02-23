@@ -208,9 +208,10 @@ CyrkErrorCodes CySolverBase::p_additional_setup() noexcept
     return CyrkErrorCodes::NO_ERROR;
 }
 
-void CySolverBase::p_estimate_error() noexcept
+double CySolverBase::p_estimate_error() noexcept
 {
     // Overwritten by subclasses.
+    return 0.0;
 }
 
 void CySolverBase::p_step_implementation() noexcept
@@ -242,7 +243,7 @@ void CySolverBase::set_Q_order(size_t* Q_order_ptr)
     // Overwritten by subclasses.
 }
 
-void CySolverBase::set_Q_array(double* Q_ptr)
+void CySolverBase::set_Q_array(double* Q_ptr) noexcept
 {
     // Overwritten by subclasses.
 }
@@ -565,11 +566,6 @@ CyrkErrorCodes CySolverBase::p_check_events() noexcept
     Event* event_ptr = this->storage_ptr->config_uptr.get()->events_vec.data();
     CySolverDense* const dense_func_ptr = &this->storage_ptr->dense_vec.back();
 
-    // Root finding parameters
-    const double BRENTQ_ATOL     = 4.0 * EPS;
-    const double BRENTQ_RTOL     = 4.0 * EPS;
-    const size_t MAX_BRENTQ_ITER = 100;
-
     double* event_y_now_use_ptr = this->y_now_ptr;
     if (this->capture_extra)
     {
@@ -629,7 +625,7 @@ CyrkErrorCodes CySolverBase::p_check_events() noexcept
             event_triggered = true;
         }
 
-        // update old event check value
+        // Update old event check value
         this->event_checks_old_ptr[event_i] = g_now;
 
         if (not event_triggered)
