@@ -50,6 +50,8 @@
 
 ## 2025
 
+### v0.16.X
+
 #### v0.16.1 (2025-12-10)
 
 ##### Dependencies
@@ -82,6 +84,8 @@
 ##### Fixes
 * Fixed some incorrect types in cysolver_api wrapper.
 
+### v0.15.X
+
 #### v0.15.1 (2025-08-15)
 
 ##### Fixes
@@ -99,6 +103,8 @@
 ##### Fixes
 * Fixed some initialization of C++ object properties to be more efficient.
 * Other compile warnings were resolved.
+
+### v0.14.X
 
 #### v0.14.1 (2025-08-13)
 
@@ -146,6 +152,8 @@
   - Fixed potential issue where the python module may not have gotten decremented. 
   - Removed the PySolver methods from the C++ codebase. Don't see any reason they can't live in pure python land.
 
+### v0.13.X
+
 #### v0.13.5 (2025-04-09)
 
 ##### Fixes
@@ -187,13 +195,15 @@
   * The fix also led to a fairly big performance boost to `pysolve`.
 * Fixed error in CySolver tester that could cause crashes or incorrect results (only effected some tests and benchmarks).
 
+### v0.12.X
+
 #### v0.12.2 (2025-03-27)
 
 * Re-release to trigger conda build that included dependency fixes.
 
 ## 2024
 
-### v0.12.X
+### v0.12.X (cont'd)
 
 #### v0.12.1 (2024-12-02)
 

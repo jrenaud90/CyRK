@@ -9,7 +9,7 @@ Also check out the GitHub page to see the code.
 
 ```{toctree}
 :maxdepth: 2
-:caption: TidalPy
+:caption: CyRK
 
 Overview <Overview/index.md>
 ```
@@ -35,8 +35,8 @@ C++ API <C++_API.md>
 :maxdepth: 2
 :caption: Demos
 
-Demos/1 - Getting Started <Demos/1 - Getting Started.ipynb>
-Demos/2 - Advanced CySolver Examples <Demos/2 - Advanced CySolver Examples.ipynb>
+Demos/1 - Getting Started <Demos/1_-_Getting_Started.ipynb>
+Demos/2 - Advanced CySolver Examples <Demos/2_-_Advanced_CySolver_Examples.ipynb>
 ```
 
 ```{toctree}

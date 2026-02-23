@@ -33,16 +33,16 @@ def generate_api_docs():
         
         with open(rst_file, 'w', encoding='utf-8') as f:
             for i, line in enumerate(lines):
-                # Clean up the titles
-                new_line = line.replace(" package", "").replace(" submodule", "")
+                # Clean up the titles on the current line
+                lines[i] = line.replace(" package", "").replace(" submodule", "")
                 
-                # If we modified the title line, we must also adjust the 
-                # underline length (the ===== or ----- line)
-                if i > 0 and (lines[i-1].strip() != new_line.strip()):
-                     if set(line.strip()) in [{'='}, {'-'}, {'~'}]:
-                         new_line = line[0] * (len(lines[i-1].strip()) - 8) + "\n"
+            for i, line in enumerate(lines):
+                # If this line is an underline (only contains =, -, or ~)
+                if i > 0 and len(line.strip()) > 0 and set(line.strip()).issubset({'=', '-', '~'}):
+                    # Make it exactly as long as the line above it
+                    lines[i] = line[0] * len(lines[i-1].strip()) + "\n"
                 
-                f.write(new_line)
+                f.write(lines[i])
 generate_api_docs()
 
 # Basic configurations
