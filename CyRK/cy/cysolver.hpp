@@ -4,7 +4,6 @@
 
 #include <vector>
 #include <algorithm>
-#include <functional>
 #include <memory>
 
 #include "c_common.hpp"
@@ -180,8 +179,26 @@ protected:
     virtual CyrkErrorCodes p_additional_setup() noexcept;
     virtual double p_estimate_error() noexcept;
     virtual void p_step_implementation() noexcept;
-    inline void p_cy_diffeq() noexcept;
     virtual void p_calc_first_step_size() noexcept;
+
+    inline void call_diffeq() noexcept
+    {
+        if (this->use_pysolver) [[unlikely]]
+        {
+            call_diffeq_from_cython(
+                this->cython_extension_class_instance,
+                this->py_diffeq_method);
+        }
+        else [[likely]]
+        {
+            this->diffeq_ptr(
+                this->dy_now_ptr,
+                this->t_now,
+                this->y_now_ptr,
+                this->args_ptr,
+                this->pre_eval_func);
+        }
+    }
     CyrkErrorCodes p_check_events() noexcept;
 
 public:
@@ -199,8 +216,6 @@ public:
     inline bool check_status() const;
     void take_step();
     void solve();
-    // Diffeq can either be the C++ class method or the python hook diffeq. By default set to C++ version.
-    std::function<void(CySolverBase*)> diffeq;
     NowStatePointers get_now_state();
 
     // PySolver methods

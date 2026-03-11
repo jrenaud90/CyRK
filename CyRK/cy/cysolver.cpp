@@ -219,17 +219,6 @@ void CySolverBase::p_step_implementation() noexcept
     // Overwritten by subclasses.
 }
 
-inline void CySolverBase::p_cy_diffeq() noexcept
-{
-    // Call c function
-    this->diffeq_ptr(
-        this->dy_now_ptr,
-        this->t_now,
-        this->y_now_ptr,
-        this->args_ptr,
-        this->pre_eval_func);
-}
-
 void CySolverBase::p_calc_first_step_size() noexcept
 {
     // Overwritten by subclasses.
@@ -409,17 +398,6 @@ CyrkErrorCodes CySolverBase::setup()
         this->user_provided_max_num_steps = max_num_steps_output.user_provided_max_num_steps;
         this->max_num_steps = max_num_steps_output.max_num_steps;
 
-        if (this->use_pysolver)
-        {
-            // Change diffeq binding to the python version
-            this->diffeq = &CySolverBase::py_diffeq;
-        }
-        else
-        {
-            // Bind diffeq to C++ version
-            this->diffeq = &CySolverBase::p_cy_diffeq;
-        }
-
         // Setup event storage
         if (this->check_events_flag)
         {
@@ -472,7 +450,7 @@ CyrkErrorCodes CySolverBase::setup()
             setup_status = CyrkErrorCodes::PROPERTY_NOT_SET;
             break;
         }
-        this->diffeq(this);
+        this->call_diffeq();
 
         // Update dys
         std::memcpy(this->dy_old_ptr, this->dy_now_ptr, this->sizeof_dbl_Ndy);
@@ -828,7 +806,7 @@ void CySolverBase::take_step()
                     if (this->capture_extra)
                     {
                         // Call diffeq to get new dy_now values where extra output is stored.
-                        this->diffeq(this);
+                        this->call_diffeq();
                     }
                 }
             }
@@ -955,7 +933,7 @@ void CySolverBase::take_step()
                             std::memcpy(this->y_now_ptr, this->y_interp_ptr, this->sizeof_dbl_Ny);
 
                             // Call diffeq to update dy_now_ptr with the extra output.
-                            this->diffeq(this);
+                            this->call_diffeq();
                         }
                         // Save interpolated data to storage. If capture extra is true then dy_now holds those extra values. If it is false then it won't hurt to pass dy_now to storage.
                         this->storage_ptr->save_data(t_interp, this->y_interp_ptr, this->dy_now_ptr);

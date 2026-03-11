@@ -245,7 +245,7 @@ void RKSolver::p_calc_first_step_size() noexcept
         }
 
         // Update dy
-        this->diffeq(this);
+        this->call_diffeq();
 
         // Find the norm for d2
         double d2 = 0.0;
@@ -315,7 +315,7 @@ void RKSolver::p_compute_stages() noexcept
     }
     // Call diffeq method to update K with the new dydt
         // This will use the now updated dy_now_ptr based on the values of y_now_ptr and t_now_ptr.
-    this->diffeq(this);
+    this->call_diffeq();
 
     // Stage 2+
     for (size_t s = 2; s < l_len_C; s++)
@@ -345,7 +345,7 @@ void RKSolver::p_compute_stages() noexcept
         }
         // Call diffeq method to update K with the new dydt
         // This will use the now updated dy_now_ptr based on the values of y_now_ptr and t_now_ptr.
-        this->diffeq(this);
+        this->call_diffeq();
     }
 
     // Restore t_now to its previous value.
@@ -370,7 +370,7 @@ void RKSolver::p_compute_stages() noexcept
 
     // Find final dydt for this timestep
     // This will use the now updated dy_now_ptr based on the values of y_now_ptr and t_now_ptr.
-    this->diffeq(this);
+    this->call_diffeq();
 
     // Set last column of K equal to dydt. K has size num_y * (n_stages + 1) so the last column is at n_stages
     for (size_t y_i = 0; y_i < l_num_y; y_i++) {
@@ -721,7 +721,7 @@ void RK23::p_compute_stages() noexcept
         l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + (this->step * k[0] * (1.0 / 2.0));
     }
     // Calculate k_1
-    this->diffeq(this);
+    this->call_diffeq();
 
     // ------------------------------------------------------------------------
     // Stage 2 (C[2] = 3/4)
@@ -741,7 +741,7 @@ void RK23::p_compute_stages() noexcept
         l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + (this->step * temp_double);
     }
     // Calculate k_2
-    this->diffeq(this);
+    this->call_diffeq();
 
     // ------------------------------------------------------------------------
     // Final Update (B Vector Dot Product)
@@ -766,7 +766,7 @@ void RK23::p_compute_stages() noexcept
     }
 
     // Find final dydt for this timestep (calculates k_3)
-    this->diffeq(this);
+    this->call_diffeq();
 
     // Set last column of K equal to the final dydt. 
     // For RK23, n_stages is 3, so the last column is at index 3.
@@ -907,7 +907,7 @@ void RK45::p_compute_stages() noexcept
 
         l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + this->step * ((1.0 / 5.0) * k[0]);
     }
-    this->diffeq(this);
+    this->call_diffeq();
 
     // ------------------------------------------------------------------------
     // Stage 2 (C[2] = 3/10)
@@ -926,7 +926,7 @@ void RK45::p_compute_stages() noexcept
 
         l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + (this->step * temp_double);
     }
-    this->diffeq(this);
+    this->call_diffeq();
 
     // ------------------------------------------------------------------------
     // Stage 3 (C[3] = 4/5)
@@ -946,7 +946,7 @@ void RK45::p_compute_stages() noexcept
 
         l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + (this->step * temp_double);
     }
-    this->diffeq(this);
+    this->call_diffeq();
 
     // ------------------------------------------------------------------------
     // Stage 4 (C[4] = 8/9)
@@ -967,7 +967,7 @@ void RK45::p_compute_stages() noexcept
 
         l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + (this->step * temp_double);
     }
-    this->diffeq(this);
+    this->call_diffeq();
 
     // ------------------------------------------------------------------------
     // Stage 5 (C[5] = 1.0)
@@ -989,7 +989,7 @@ void RK45::p_compute_stages() noexcept
 
         l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + (this->step * temp_double);
     }
-    this->diffeq(this);
+    this->call_diffeq();
 
     // ------------------------------------------------------------------------
     // Final Update (B Vector Dot Product)
@@ -1015,7 +1015,7 @@ void RK45::p_compute_stages() noexcept
     }
 
     // Find final dydt for this timestep (calculates k_6)
-    this->diffeq(this);
+    this->call_diffeq();
 
     // Set last column of K equal to the final dydt. 
     // For RK45, n_stages is 6, so the last column is at index 6.
@@ -1173,7 +1173,7 @@ void DOP853::p_compute_stages() noexcept
 
         l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + this->step * (5.26001519587677318785587544488e-2 * k[0]);
     }
-    this->diffeq(this);
+    this->call_diffeq();
 
     // ------------------------------------------------------------------------
     // Stage 2 (C[2])
@@ -1190,7 +1190,7 @@ void DOP853::p_compute_stages() noexcept
 
         l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + (this->step * temp_double);
     }
-    this->diffeq(this);
+    this->call_diffeq();
 
     // ------------------------------------------------------------------------
     // Stage 3 (C[3])
@@ -1208,7 +1208,7 @@ void DOP853::p_compute_stages() noexcept
 
         l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + (this->step * temp_double);
     }
-    this->diffeq(this);
+    this->call_diffeq();
 
     // ------------------------------------------------------------------------
     // Stage 4 (C[4])
@@ -1227,7 +1227,7 @@ void DOP853::p_compute_stages() noexcept
 
         l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + (this->step * temp_double);
     }
-    this->diffeq(this);
+    this->call_diffeq();
 
     // ------------------------------------------------------------------------
     // Stage 5 (C[5])
@@ -1246,7 +1246,7 @@ void DOP853::p_compute_stages() noexcept
 
         l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + (this->step * temp_double);
     }
-    this->diffeq(this);
+    this->call_diffeq();
 
     // ------------------------------------------------------------------------
     // Stage 6 (C[6])
@@ -1265,7 +1265,7 @@ void DOP853::p_compute_stages() noexcept
 
         l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + (this->step * temp_double);
     }
-    this->diffeq(this);
+    this->call_diffeq();
 
     // ------------------------------------------------------------------------
     // Stage 7 (C[7])
@@ -1285,7 +1285,7 @@ void DOP853::p_compute_stages() noexcept
 
         l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + (this->step * temp_double);
     }
-    this->diffeq(this);
+    this->call_diffeq();
 
     // ------------------------------------------------------------------------
     // Stage 8 (C[8])
@@ -1306,7 +1306,7 @@ void DOP853::p_compute_stages() noexcept
 
         l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + (this->step * temp_double);
     }
-    this->diffeq(this);
+    this->call_diffeq();
 
     // ------------------------------------------------------------------------
     // Stage 9 (C[9])
@@ -1328,7 +1328,7 @@ void DOP853::p_compute_stages() noexcept
 
         l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + (this->step * temp_double);
     }
-    this->diffeq(this);
+    this->call_diffeq();
 
     // ------------------------------------------------------------------------
     // Stage 10 (C[10])
@@ -1351,7 +1351,7 @@ void DOP853::p_compute_stages() noexcept
 
         l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + (this->step * temp_double);
     }
-    this->diffeq(this);
+    this->call_diffeq();
 
     // ------------------------------------------------------------------------
     // Stage 11 (C[11])
@@ -1375,7 +1375,7 @@ void DOP853::p_compute_stages() noexcept
 
         l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + (this->step * temp_double);
     }
-    this->diffeq(this);
+    this->call_diffeq();
 
     // ------------------------------------------------------------------------
     // Final Update (B Vector Dot Product)
@@ -1402,7 +1402,7 @@ void DOP853::p_compute_stages() noexcept
     }
 
     // Find final dydt for this timestep (calculates k_12)
-    this->diffeq(this);
+    this->call_diffeq();
 
     // Set last column of K equal to the final dydt. 
     // For DOP853, n_stages is 12, so the last column is at index 12.
@@ -1545,7 +1545,7 @@ void DOP853::set_Q_array(double* Q_ptr) noexcept
     }
     // CEXTRA[0] = 0.1
     this->t_now = this->t_old + (this->step * 0.1);
-    this->diffeq(this);
+    this->call_diffeq();
 
     // ------------------------------------------------------------------------
     // Extra Stage 2 (Row 14 / S=14)
@@ -1563,7 +1563,7 @@ void DOP853::set_Q_array(double* Q_ptr) noexcept
     }
     // CEXTRA[1] = 0.2
     this->t_now = this->t_old + (this->step * 0.2);
-    this->diffeq(this);
+    this->call_diffeq();
 
     // ------------------------------------------------------------------------
     // Extra Stage 3 (Row 15 / S=15)
@@ -1580,7 +1580,7 @@ void DOP853::set_Q_array(double* Q_ptr) noexcept
     }
     // CEXTRA[2] = 0.777777777777777777777777777778
     this->t_now = this->t_old + (this->step * 0.777777777777777777777777777778);
-    this->diffeq(this);
+    this->call_diffeq();
 
     // ------------------------------------------------------------------------
     // Build Dense Interpolator (Q Matrix)
