@@ -4,6 +4,31 @@
 
 ### v0.17.X
 
+#### v0.17.2 (2026-08-15)
+
+##### Fixes
+* Fixed reused solutions silently keeping the previous run's problem shape.
+  * `CySolverResult::setup` only rebuilt the configuration's derived properties (`num_y`, `num_dy`,
+    `capture_extra`, ...) the first time it ran. Callers are allowed to set the source properties
+    directly, which `pysolve_ivp` does, so on a reuse those derived properties went stale and the
+    second run silently solved the wrong problem. They are now rebuilt on every setup.
+  * The most visible symptom was that changing `num_extra` on a reused `pysolve_ivp` solution
+    dropped the extra output entirely. That now works.
+  * `cysolve_ivp` was never affected; it builds its configuration through `update_properties`,
+    which has always re-initialized.
+* `pysolve_ivp` now raises an `AttributeError` when a reused solution is given a `y0` with a
+  different number of dependent variables, instead of silently returning garbage. The solver's
+  dependent variable storage is shared with numpy arrays that were built for the previous run, so
+  changing that size is not supported; build a new solver instead. `cysolve_ivp` shares no storage
+  with Python objects and keeps its ability to be reused across problems of different sizes.
+
+##### Documentation
+* Documented in "CySolverResult_Reuses.md" what can and can not change between reuses.
+
+##### Tests
+* Added "Tests/D_PySolver_Tests/test_e_pysolve_reuse_shape.py" covering reuse with a changed
+  `num_y`, `num_extra`, and `t_eval`, for both `pysolve_ivp` and `cysolve_ivp`.
+
 #### v0.17.1 (2026-02-23)
 
 ##### Package

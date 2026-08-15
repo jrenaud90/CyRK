@@ -107,11 +107,26 @@ cdef class PySolver(WrapCySolverResult):
         # Parse y0
         cdef size_t i, y_i
         cdef size_t num_y  = y0.size
-        cdef size_t num_dy = num_y + num_extra  
+        cdef size_t num_dy = num_y + num_extra
+
+        # A reused solution keeps the solver, and the solver's dependent variable storage is shared
+        # with numpy arrays that were built for the previous problem's size. Changing the number of
+        # dependent variables is therefore not supported; the user must build a new solver instead.
+        # This is checked before anything is resized so that a rejected call leaves the solution as
+        # it was.
+        if base_config_ptr.initialized and (num_y != base_config_ptr.num_y):
+            raise AttributeError(
+                "ERROR: `PySolver::set_problem_parameters` - "
+                f"Can not reuse a solution with a different number of dependent variables "
+                f"(this problem has {num_y}; the reused solution has {base_config_ptr.num_y}).\n"
+                "Build a new solver by not providing `solution_reuse` (or by providing a new "
+                "`PySolver` instance) when the number of dependent variables changes."
+                )
+
         cdef vector[double] y0_vec = vector[double](num_y)
         for i in range(num_y):
             y0_vec[i] = y0[i]
-        
+
         # We need to set the number of ys now because we need the now state pointers. 
         # These pointers could change which memory they are pointing to if by setting the num_y later 
         # causes a realloc of the underlying vectors.

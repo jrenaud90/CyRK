@@ -257,11 +257,13 @@ CyrkErrorCodes CySolverResult::setup(ProblemConfig* provided_config_ptr)
             }
             this->config_uptr->update_properties_from_config(provided_config_ptr);
         }
-        // Initialize config
-        if (not this->config_uptr->initialized)
-        {
-            this->config_uptr->initialize();
-        }
+        // Initialize config.
+        // The configuration's derived properties (num_y, num_dy, capture_extra, ...) are built
+        // from its source properties by `initialize`. Callers are allowed to set those source
+        // properties directly, so the derived ones have to be rebuilt on every setup rather than
+        // only the first time. Otherwise a solution that is reused for a problem with a different
+        // shape would silently keep the previous problem's derived values.
+        this->config_uptr->initialize();
         // If the config failed to initialize, throw an error.
         if (not this->config_uptr->initialized)
         {

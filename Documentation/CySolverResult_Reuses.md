@@ -149,3 +149,28 @@ def run_reuse_cysolver(tuple t_span, double[::1] y0):
     return pysafe_result
 
 ```
+
+## What can and can not change between reuses
+
+Most of the problem can change between reuses: the time span, the initial conditions, the
+tolerances, the step size limits, `t_eval`, the events, and the number of extra outputs. The
+solution recomputes everything it derives from those inputs on each run.
+
+The one thing that can not change for `pysolve_ivp` is the **number of dependent variables**. The
+solver's dependent variable storage is shared with numpy arrays that were handed to the previous
+run's differential equation, so resizing it underneath them is not supported. Passing a `y0` of a
+different length to a reused `PySolver` raises an `AttributeError`:
+
+```python
+result = pysolve_ivp(cy_diffeq, time_span, np.asarray((20., 20.)), pass_dy_as_arg=True)
+
+# This raises: "Can not reuse a solution with a different number of dependent variables"
+result = pysolve_ivp(other_diffeq, time_span, np.asarray((20., 20., 20.)),
+                     pass_dy_as_arg=True, solution_reuse=result)
+```
+
+Build a new solver instead by leaving `solution_reuse` out of the call. There is little to gain
+from reuse in that case anyway, since every dependent variable array has to be reallocated.
+
+`cysolve_ivp` does not share storage with Python objects, so it has no such restriction and can be
+reused across problems of different sizes.
