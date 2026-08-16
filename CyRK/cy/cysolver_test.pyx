@@ -243,6 +243,26 @@ cdef void large_numy_simple_diffeq(double* dy_ptr, double t, double* y_ptr, char
 
     memset(&dy_ptr[1], 0, num_y - 1)
 
+cdef void robertson_diffeq(double* dy_ptr, double t, double* y_ptr, char* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
+    """ Robertson chemical kinetics; a standard stiff benchmark problem. """
+    # Unpack args
+    cdef double* args_dbl_ptr = <double*>args_ptr
+    cdef double a = args_dbl_ptr[0]
+    cdef double b = args_dbl_ptr[1]
+    cdef double c = args_dbl_ptr[2]
+
+    # Unpack y
+    cdef double y0, y1, y2
+    y0 = y_ptr[0]
+    y1 = y_ptr[1]
+    y2 = y_ptr[2]
+
+    # The rate constants differ by many orders of magnitude which makes this system very stiff.
+    dy_ptr[0] = -a * y0 + b * y1 * y2
+    dy_ptr[1] = a * y0 - b * y1 * y2 - c * y1 * y1
+    dy_ptr[2] = c * y1 * y1
+
+
 def cy_extra_output_tester():
 
     cdef double t_start = 0.0
@@ -446,6 +466,8 @@ def cytester(
         diffeq = large_numy_diffeq
     elif diffeq_number == 10:
         diffeq = large_numy_simple_diffeq
+    elif diffeq_number == 11:
+        diffeq = robertson_diffeq
 
     else:
         raise NotImplementedError
@@ -611,6 +633,21 @@ def cytester(
             else:
                 t_start = 0.0
                 t_end = 50.0
+
+        elif diffeq_number == 11:
+            # Stiff chemical kinetics problem.
+            num_y = 3
+            y0_vec.resize(num_y)
+            y0_vec[0] = 1.0
+            y0_vec[1] = 0.0
+            y0_vec[2] = 0.0
+            t_start = 0.0
+            t_end = 40.0
+            args_vec.resize(3 * sizeof(double))
+            args_dbl_ptr = <double*>args_vec.data()
+            args_dbl_ptr[0] = 0.04
+            args_dbl_ptr[1] = 1.0e4
+            args_dbl_ptr[2] = 3.0e7
         else:
             raise NotImplementedError
     else:
@@ -670,6 +707,12 @@ def cytester(
                 args_dbl_ptr[0] = -0.5
             elif diffeq_number == 10:
                 args_vec.resize(0)
+            elif diffeq_number == 11:
+                args_vec.resize(3 * sizeof(double))
+                args_dbl_ptr = <double*>args_vec.data()
+                args_dbl_ptr[0] = 0.04
+                args_dbl_ptr[1] = 1.0e4
+                args_dbl_ptr[2] = 3.0e7
             else:
                 args_vec.resize(0)
 
