@@ -237,6 +237,10 @@ work-precision plot shows is that neither solver is buying accuracy at a better 
 The figures and the numbers on this page can be regenerated with
 "Benchmarks/scipy_implicit_comparison.py".
 
+To time the methods yourself, "Benchmarks/CyRK - SciPy Comparison.ipynb" takes both a problem and an
+integration method. Set `diffeq_to_use = 'robertson'` for a stiff problem and `integration_method` to
+whichever method you want to compare across CyRK's entry points and SciPy.
+
 ## Attribution
 
 CyRK's BDF and Radau implementations are C++ ports of SciPy's `scipy/integrate/_ivp/bdf.py` and

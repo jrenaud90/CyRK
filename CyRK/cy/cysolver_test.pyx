@@ -384,6 +384,30 @@ large_numy_simple_events.emplace_back(pendulum_diffeq_event2_check)
 large_numy_simple_events.emplace_back(pendulum_diffeq_event3_check)
 
 
+# Event functions for the Robertson diffeq. The three species always sum to one, so the checks are
+# placed at different points along the reaction to make sure they trigger at different times.
+cdef double robertson_diffeq_event1_check(double t, double* y, char* args) noexcept nogil:
+    if y[0] < 0.9:
+        return 0.0
+    return 1.0
+
+cdef double robertson_diffeq_event2_check(double t, double* y, char* args) noexcept nogil:
+    if y[2] > 0.2:
+        return 0.0
+    return 1.0
+
+cdef double robertson_diffeq_event3_check(double t, double* y, char* args) noexcept nogil:
+    if t > 20.0:
+        return 0.0
+    else:
+        return 1.0
+
+cdef vector[Event] robertson_diffeq_events = vector[Event]()
+robertson_diffeq_events.emplace_back(robertson_diffeq_event1_check)
+robertson_diffeq_events.emplace_back(robertson_diffeq_event2_check)
+robertson_diffeq_events.emplace_back(robertson_diffeq_event3_check)
+
+
 def cytester(
         int diffeq_number,
         tuple t_span = None,
@@ -484,6 +508,8 @@ def cytester(
             events_vec = large_numy_events
         elif diffeq_number == 10:
             events_vec = large_numy_simple_events
+        elif diffeq_number == 11:
+            events_vec = robertson_diffeq_events
         else:
             raise NotImplementedError
 
