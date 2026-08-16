@@ -86,11 +86,13 @@ cdef class PySolver(WrapCySolverResult):
             integration_method = ODEMethod.BDF
         elif method == 'lsoda':
             integration_method = ODEMethod.LSODA
+        elif method == 'radau':
+            integration_method = ODEMethod.RADAU
         else:
             raise NotImplementedError(
                 "ERROR: `PySolver::set_problem_parameters` - "
                 f"Unknown or unsupported integration method provided: {method}.\n"
-                f"Supported methods are: RK23, RK45, DOP853, BDF, LSODA."
+                f"Supported methods are: RK23, RK45, DOP853, BDF, LSODA, RADAU."
                 )
 
         cdef CySolverResult* cyresult_ptr = self.cyresult_uptr.get()

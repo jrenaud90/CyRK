@@ -11,6 +11,7 @@ _RK45_INT   = int(ODEMethod.RK45)
 _DOP853_INT = int(ODEMethod.DOP853)
 _BDF_INT    = int(ODEMethod.BDF)
 _LSODA_INT  = int(ODEMethod.LSODA)
+_RADAU_INT  = int(ODEMethod.RADAU)
 
 def find_ode_method_int(ode_method_name: str):
 
@@ -24,6 +25,8 @@ def find_ode_method_int(ode_method_name: str):
         return _BDF_INT
     elif ode_method_name.lower() == 'lsoda':
         return _LSODA_INT
+    elif ode_method_name.lower() == 'radau':
+        return _RADAU_INT
     else:
         # Unknown method.
         raise Exception("Unknown/Unsupported Integration Method Provided.")

@@ -41,7 +41,8 @@ enum class ODEMethod : int {
     RK45,
     DOP853,
     BDF,
-    LSODA
+    LSODA,
+    RADAU
 };
 
 // Root finding parameters
@@ -72,7 +73,10 @@ inline const std::map<ODEMethod, std::string> CyrkODEMethods = {
       "Implicit multi-step method based on backward differentiation formulas of order 1 to 5." },
 
     { ODEMethod::LSODA,
-      "Adams / BDF method with automatic stiffness detection and switching." }
+      "Adams / BDF method with automatic stiffness detection and switching." },
+
+    { ODEMethod::RADAU,
+      "Implicit Runge-Kutta method of the Radau IIA family of order 5." }
 };
 
 struct ProblemConfig {

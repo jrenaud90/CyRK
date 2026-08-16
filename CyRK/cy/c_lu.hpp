@@ -1,5 +1,6 @@
 #pragma once
 
+#include <complex>
 #include <cstddef>
 
 /* Dense and banded LU factorizations used by CyRK's implicit integrators.
@@ -33,6 +34,19 @@ void c_dense_lu_solve(
     const double* lu_ptr,
     const int* pivot_ptr,
     double* rhs_ptr) noexcept;
+
+// Complex versions of the two routines above (equivalent to LAPACK's zgetrf and zgetrs). The
+// Radau integrator needs these because it factorizes a complex iteration matrix.
+size_t c_complex_dense_lu_factor(
+    const size_t num_rows,
+    std::complex<double>* matrix_ptr,
+    int* pivot_ptr) noexcept;
+
+void c_complex_dense_lu_solve(
+    const size_t num_rows,
+    const std::complex<double>* lu_ptr,
+    const int* pivot_ptr,
+    std::complex<double>* rhs_ptr) noexcept;
 
 // Factor a banded square matrix in place using partial pivoting (equivalent to LAPACK's dgbtrf).
 // Returns 0 on success or the one-based index of the first exactly-zero pivot.

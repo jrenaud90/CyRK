@@ -119,7 +119,8 @@ cdef extern from "cysolver.cpp" nogil:
         RK45,
         DOP853,
         BDF,
-        LSODA
+        LSODA,
+        RADAU
     const cpp_map[ODEMethod, cpp_string] CyrkODEMethods
 
     cdef cppclass ProblemConfig:
@@ -291,6 +292,15 @@ cdef extern from "bdf.cpp" nogil:
     cdef cppclass BDF(CySolverBase):
         BDF()
         BDF(CySolverResult* storage_ptr_)
+        void set_Q_order(size_t* Q_order_ptr)
+        void set_Q_array(double* Q_ptr)
+
+
+cdef extern from "radau.cpp" nogil:
+
+    cdef cppclass RADAU(CySolverBase):
+        RADAU()
+        RADAU(CySolverResult* storage_ptr_)
         void set_Q_order(size_t* Q_order_ptr)
         void set_Q_array(double* Q_ptr)
 

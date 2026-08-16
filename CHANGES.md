@@ -6,6 +6,23 @@
 
 #### v0.18.0 (Unreleased)
 
+##### New Integration Method: Radau
+* Added "Radau", an implicit Runge-Kutta method of the Radau IIA family of order 5. It is a C++ port
+  of SciPy's `scipy/integrate/_ivp/radau.py` and reproduces it step for step.
+  * Unlike BDF and LSODA this is a single-step method, so it carries no solution history and changes
+    its step size without having to rescale anything. That makes it the strongest of the three when
+    a stiff problem changes character sharply: on the new Robertson benchmark it reaches the end in
+    165 steps where BDF needs 215 and LSODA needs 250.
+  * It is L-stable and its error is controlled by an embedded third order formula. Dense output uses
+    the cubic collocation polynomial, which is also reused to warm start the next step's Newton
+    iteration.
+  * Each step solves a three stage collocation system. Rather than factorizing the full `3 * num_y`
+    system, the eigendecomposition of the Butcher matrix reduces every iteration to one real and one
+    complex solve of size `num_y`.
+* Added complex dense LU factorization to "c_lu.hpp(cpp)" (the equivalents of LAPACK's zgetrf and
+  zgetrs) for Radau's complex iteration matrix. The real and complex routines now share one
+  implementation rather than duplicating the algorithm.
+
 ##### New Integration Method: LSODA
 * Added "LSODA", an Adams / BDF method that monitors the problem as it integrates and switches between the non-stiff Adams formulas and the stiff BDF formulas on its own.
   * It is built on a lightly modified copy of the C translation of ODEPACK's LSODA that ships with SciPy, driven one step at a time so that CyRK keeps control of the solution storage, the events, and the `t_eval` interpolation. See the new `Third-Party Code` section of "LICENSE.md" for the notices, and please cite ODEPACK if you use this method.
