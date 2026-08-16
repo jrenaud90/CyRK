@@ -5,7 +5,7 @@ from libcpp.string cimport string as cpp_string
 from libcpp.map cimport map as cpp_map
 
 cimport cpython.ref as cpy_ref
-from CyRK.cy.common cimport CyrkErrorCodes, CyrkErrorMessages, INF, EPS_100, BUFFER_SIZE, MAX_STEP, PreEvalFunc, DiffeqFuncType, JacobianFuncType, round_to_2, find_expected_size
+from CyRK.cy.common cimport CyrkErrorCodes, CyrkErrorMessages, INF, EPS_100, BUFFER_SIZE, MAX_STEP, MAX_SIZET_SIZE, PreEvalFunc, DiffeqFuncType, JacobianFuncType, round_to_2, find_expected_size
 
 from CyRK.cy.pysolver_cyhook cimport DiffeqMethod
 from CyRK.cy.events cimport Event
@@ -23,6 +23,9 @@ cdef extern from "cy_array.cpp" nogil:
     size_t binary_search_with_guess(double key, const double* array, size_t length, size_t guess)
 
 cdef extern from "c_lu.cpp" nogil:
+    pass
+
+cdef extern from "c_lsoda.cpp" nogil:
     pass
 
 
@@ -115,7 +118,8 @@ cdef extern from "cysolver.cpp" nogil:
         RK23,
         RK45,
         DOP853,
-        BDF
+        BDF,
+        LSODA
     const cpp_map[ODEMethod, cpp_string] CyrkODEMethods
 
     cdef cppclass ProblemConfig:
@@ -290,6 +294,27 @@ cdef extern from "bdf.cpp" nogil:
         void set_Q_order(size_t* Q_order_ptr)
         void set_Q_array(double* Q_ptr)
 
+
+cdef extern from "lsoda.cpp" nogil:
+
+    cdef cppclass LSODAConfig(ProblemConfig):
+        LSODAConfig()
+
+        double min_step_size
+        size_t max_order_nonstiff
+        size_t max_order_stiff
+        size_t num_lower
+        size_t num_upper
+
+        cpp_bool banded_jacobian()
+        void initialize()
+        void update_properties_from_config(ProblemConfig* new_config_ptr)
+
+    cdef cppclass LSODA(CySolverBase):
+        LSODA()
+        LSODA(CySolverResult* storage_ptr_)
+        void set_Q_order(size_t* Q_order_ptr)
+        void set_Q_array(double* Q_ptr)
 
 # =====================================================================================================================
 # Import the C++ cysolve_ivp helper function

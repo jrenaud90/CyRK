@@ -409,11 +409,13 @@ def cytester(
         integration_method = ODEMethod.DOP853
     elif method == 'bdf':
         integration_method = ODEMethod.BDF
+    elif method == 'lsoda':
+        integration_method = ODEMethod.LSODA
     else:
         raise NotImplementedError(
             "ERROR: `cytester` - "
             f"Unknown or unsupported integration method provided: {method}.\n"
-            f"Supported methods are: RK23, RK45, DOP853, BDF."
+            f"Supported methods are: RK23, RK45, DOP853, BDF, LSODA."
             )
 
     cdef size_t num_extra = 0

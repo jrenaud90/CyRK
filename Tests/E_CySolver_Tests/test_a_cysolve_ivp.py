@@ -127,7 +127,7 @@ def test_cysolve_ivp(use_args,
 
 
 @pytest.mark.filterwarnings("error")  # Some exceptions get propagated via cython as warnings; we want to make sure the lead to crashes.
-@pytest.mark.parametrize('integration_method', ('rk23', 'rk45', 'dop853', 'bdf'))
+@pytest.mark.parametrize('integration_method', ('rk23', 'rk45', 'dop853', 'bdf', 'lsoda'))
 @pytest.mark.parametrize('t_eval_end', (None, 0.5, 1.0))
 @pytest.mark.parametrize('test_dense_output', (False, True))
 def test_cysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output):
@@ -171,7 +171,7 @@ def test_cysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output)
     elif integration_method == 'dop853':
         check_rtol = 1.0e-5
         check_atol = 1.0e-8
-    elif integration_method == 'bdf':
+    elif integration_method in ('bdf', 'lsoda'):
         # The multi-step methods accumulate more global error than the RK methods do at the same
         # requested tolerance. SciPy's versions of these methods behave the same way.
         check_rtol = 1.0e-4

@@ -56,10 +56,11 @@ Currently, CyRK supports the following integration methods:
 * "RK45" - Explicit Runge-Kutta method of order 5(4)
 * "DOP853" - Explicit Runge-Kutta method of order 8. Error is controlled using a combination of 5th and 3rd order interpolators.
 * "BDF" - Implicit multi-step method based on backward differentiation formulas of order 1 to 5.
+* "LSODA" - Adams / BDF method with automatic stiffness detection and switching.
 
-"BDF" is an implicit ODE method used for stiff problems. See the
+"BDF" and "LSODA" are implicit ODE methods used for stiff problems. See the
 [implicit methods documentation](https://cyrk.readthedocs.io/en/latest/Implicit_Methods.html) for
-guidance on when to use it.
+guidance on choosing between them and for the options that only they support.
 
 More methods will be added as the need arises. We are always looking for contributors if you'd like to see your favorite method added to CyRK!
 
@@ -72,7 +73,7 @@ In additional to improved performance, CyRK offers a few additional features tha
 
 ### Limitations
 There are some features that SciPy has that CyRK currently does not. A non-exhaustive list is:
-* A number of integrator methods are missing, such as `Radau` and `LSODA`.
+* A number of integrator methods are missing, such as `Radau`.
 * An analytic Jacobian can only be provided to the implicit methods at the C++ / Cython level; `pysolve_ivp` always estimates it with finite differences.
 * `cysolve_ivp` and `pysolve_ivp` can only work with ODEs of double-precision floating point numbers. So complex numbers are not directly supported but systems of ODEs of complex numbers can be converted to systems of doubles for use with CyRK.
 
@@ -171,7 +172,30 @@ It is great to see CyRK used in other software or in scientific studies. We ask 
 
 It would also be great to hear about the work being done with CyRK and add your project to the list below, so get in touch!
 
-In addition to citing CyRK, please strongly consider citing SciPy and its references for the specific Runge-Kutta model that was used in your work. CyRK is largely an adaptation of SciPy's functionality. Find more details [here](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html).
+In addition to citing CyRK, please strongly consider citing SciPy and its references for the specific integration method that was used in your work. CyRK is largely an adaptation of SciPy's functionality. Find more details [here](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html).
+
+If you used the "LSODA" method then please also cite ODEPACK, which CyRK bundles a modified copy of (see the `Third-Party Code` section of [LICENSE.md](LICENSE.md)):
+
+```bibtex
+@article{hindmarsh1983odepack,
+  author  = {Hindmarsh, Alan C.},
+  title   = {{ODEPACK, A Systematized Collection of ODE Solvers}},
+  journal = {IMACS Transactions on Scientific Computation},
+  year    = {1983},
+  volume  = {1},
+  pages   = {55--64}
+}
+
+@article{petzold1983automatic,
+  author  = {Petzold, Linda},
+  title   = {{Automatic Selection of Methods for Solving Stiff and Nonstiff Systems of Ordinary Differential Equations}},
+  journal = {SIAM Journal on Scientific and Statistical Computing},
+  year    = {1983},
+  volume  = {4},
+  number  = {1},
+  pages   = {136--148}
+}
+```
 
 ```bibtex
 @article{virtanen2020scipy,

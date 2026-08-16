@@ -1,4 +1,4 @@
-"""Tests for CyRK's implicit integrators.
+"""Tests for CyRK's implicit integrators, BDF and LSODA.
 
 The problems used here are stiff on purpose: they are cheap for an implicit method but force an
 explicit method to take very small steps, which is what makes the comparisons meaningful.
@@ -12,7 +12,7 @@ from CyRK import pysolve_ivp, ODEMethod
 from CyRK.cy.cysolver_test import cytester
 from CyRK.cy.pyhelpers import find_ode_method_int
 
-IMPLICIT_METHODS = ("BDF",)
+IMPLICIT_METHODS = ("BDF", "LSODA")
 
 # Stiffness of the test problem below. Large enough that RK45 struggles, small enough to stay fast.
 STIFF_ALPHA = 1.0e4
@@ -54,6 +54,16 @@ def oscillator_answer(t):
 
 
 @njit
+def diffusion_diffeq(dy, t, y):
+    """Discretized diffusion on a line; the Jacobian is tridiagonal."""
+    num_y = y.size
+    for i in range(num_y):
+        left = 0.0 if i == 0 else y[i - 1]
+        right = 0.0 if i == (num_y - 1) else y[i + 1]
+        dy[i] = 50.0 * (left - 2.0 * y[i] + right)
+
+
+@njit
 def stiff_extra_diffeq(dy, t, y):
     """Same as `stiff_diffeq` but also reports two intermediate values as extra output."""
     extra_0 = np.cos(t)
@@ -67,12 +77,14 @@ def stiff_extra_diffeq(dy, t, y):
 def test_implicit_methods_are_registered():
     """The new methods must be reachable by name and hold stable enum values."""
     assert int(ODEMethod.BDF) == 6
+    assert int(ODEMethod.LSODA) == 7
     assert find_ode_method_int('bdf') == int(ODEMethod.BDF)
+    assert find_ode_method_int('LSODA') == int(ODEMethod.LSODA)
 
 
 @pytest.mark.parametrize('integration_method', IMPLICIT_METHODS)
 def test_implicit_accuracy(integration_method):
-    """Implicit methods should reproduce the exact solution of a stiff problem."""
+    """Both implicit methods should reproduce the exact solution of a stiff problem."""
     result = pysolve_ivp(stiff_diffeq, STIFF_TIME_SPAN, STIFF_Y0, method=integration_method,
                          rtol=1.0e-9, atol=1.0e-11, pass_dy_as_arg=True)
 
@@ -216,9 +228,50 @@ def test_implicit_cysolve_ivp(integration_method):
 
     assert result.success
     assert result.size > 1
+    # y0 = -sin(t) + cos(t) / 2 - cos(t) / 2 ... compare against a tight RK45 run instead.
     reference = cytester(1, (0.0, 10.0), np.asarray((0.0, 1.0), dtype=np.float64, order='C'),
                          method='rk45', rtol=1.0e-12, atol=1.0e-13)
     assert np.allclose(result.y[:, -1], reference.y[:, -1], rtol=1.0e-6, atol=1.0e-8)
+
+
+def test_lsoda_banded_jacobian():
+    """A banded Jacobian should give the same answer as the dense one, with less work per step."""
+    num_y = 30
+    y0 = np.zeros(num_y, dtype=np.float64, order='C')
+    y0[num_y // 2] = 100.0
+
+    dense_result = pysolve_ivp(diffusion_diffeq, (0.0, 1.0), y0, method='LSODA',
+                               rtol=1.0e-9, atol=1.0e-11, pass_dy_as_arg=True)
+    banded_result = pysolve_ivp(diffusion_diffeq, (0.0, 1.0), y0, method='LSODA',
+                                rtol=1.0e-9, atol=1.0e-11, lband=1, uband=1, pass_dy_as_arg=True)
+
+    assert dense_result.success
+    assert banded_result.success
+    assert np.allclose(banded_result.y[:, -1], dense_result.y[:, -1], rtol=1.0e-6, atol=1.0e-8)
+
+
+def test_lsoda_min_step():
+    """A minimum step size should keep LSODA from refining the step below it."""
+    unbounded_result = pysolve_ivp(stiff_diffeq, STIFF_TIME_SPAN, STIFF_Y0, method='LSODA',
+                                   rtol=1.0e-12, atol=1.0e-14, pass_dy_as_arg=True)
+    bounded_result = pysolve_ivp(stiff_diffeq, STIFF_TIME_SPAN, STIFF_Y0, method='LSODA',
+                                 rtol=1.0e-12, atol=1.0e-14, min_step=0.05, pass_dy_as_arg=True)
+
+    assert unbounded_result.success
+    # With a floor under the step size the solver cannot resolve the initial transient, so it
+    # needs far fewer steps and gives up accuracy in return.
+    assert bounded_result.steps_taken < unbounded_result.steps_taken
+
+
+@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853", "BDF"))
+def test_lsoda_only_options_are_rejected_elsewhere(integration_method):
+    """`min_step`, `lband`, and `uband` are LSODA-only and must not be silently ignored."""
+    with pytest.raises(AttributeError):
+        pysolve_ivp(stiff_diffeq, STIFF_TIME_SPAN, STIFF_Y0, method=integration_method,
+                    min_step=1.0e-6, pass_dy_as_arg=True)
+    with pytest.raises(AttributeError):
+        pysolve_ivp(stiff_diffeq, STIFF_TIME_SPAN, STIFF_Y0, method=integration_method,
+                    lband=1, pass_dy_as_arg=True)
 
 
 @pytest.mark.parametrize('integration_method', IMPLICIT_METHODS)

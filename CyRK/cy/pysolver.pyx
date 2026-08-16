@@ -5,7 +5,7 @@ from libcpp.cmath cimport fmin, fabs
 from libcpp.vector cimport vector
 
 from CyRK.cy.common cimport INF, EPS_100, CyrkErrorCodes, CyrkErrorMessages, find_expected_size, dbl_NAN, MAX_SIZET_SIZE
-from CyRK.cy.cysolver_api cimport ProblemConfig
+from CyRK.cy.cysolver_api cimport ProblemConfig, LSODAConfig
 from CyRK.cy.events cimport Event, EventFunc
 
 import numpy as np
@@ -68,7 +68,10 @@ cdef class PySolver(WrapCySolverResult):
             size_t max_num_steps = 0,
             size_t max_ram_MB = 2000,
             bint pass_dy_as_arg = False,
-            bint force_retain_solver = True  # This is defaulted to False in cysolver, but true for pysolver just to help avoid making Python mad by deallocating memory it might be using.
+            bint force_retain_solver = True,  # This is defaulted to False in cysolver, but true for pysolver just to help avoid making Python mad by deallocating memory it might be using.
+            double min_step = 0.0,
+            object lband = None,
+            object uband = None
             ):
         # Parse method
         method = method.lower()
@@ -81,11 +84,13 @@ cdef class PySolver(WrapCySolverResult):
             integration_method = ODEMethod.DOP853
         elif method == 'bdf':
             integration_method = ODEMethod.BDF
+        elif method == 'lsoda':
+            integration_method = ODEMethod.LSODA
         else:
             raise NotImplementedError(
                 "ERROR: `PySolver::set_problem_parameters` - "
                 f"Unknown or unsupported integration method provided: {method}.\n"
-                f"Supported methods are: RK23, RK45, DOP853, BDF."
+                f"Supported methods are: RK23, RK45, DOP853, BDF, LSODA."
                 )
 
         cdef CySolverResult* cyresult_ptr = self.cyresult_uptr.get()
@@ -279,6 +284,22 @@ cdef class PySolver(WrapCySolverResult):
             raise AttributeError("ERROR: `PySolver::set_problem_parameters` - Maximum step size must be a postive float.")
         problem_config_ptr.max_step_size = max_step
 
+        # Parse the options that only apply to LSODA.
+        cdef LSODAConfig* lsoda_config_ptr = NULL
+        if integration_method == ODEMethod.LSODA:
+            lsoda_config_ptr = <LSODAConfig*>problem_config_ptr
+            if min_step < 0.0:
+                raise AttributeError("ERROR: `PySolver::set_problem_parameters` - Minimum step size must not be negative.")
+            lsoda_config_ptr.min_step_size = min_step
+            # A Jacobian bandwidth of `None` leaves the Jacobian dense.
+            lsoda_config_ptr.num_lower = MAX_SIZET_SIZE if lband is None else <size_t>lband
+            lsoda_config_ptr.num_upper = MAX_SIZET_SIZE if uband is None else <size_t>uband
+        elif (min_step != 0.0) or (lband is not None) or (uband is not None):
+            raise AttributeError(
+                "ERROR: `PySolver::set_problem_parameters` - "
+                f"`min_step`, `lband`, and `uband` are only supported by the LSODA method (got {method})."
+                )
+
         # Parse other flags
         problem_config_ptr.capture_dense_output = dense_output
         problem_config_ptr.force_retain_solver  = force_retain_solver
@@ -380,8 +401,11 @@ def pysolve_ivp(
         size_t max_num_steps = 0,
         size_t max_ram_MB = 2000,
         bint pass_dy_as_arg = False,
-        PySolver solution_reuse = None, 
-        bint force_retain_solver = True
+        PySolver solution_reuse = None,
+        bint force_retain_solver = True,
+        double min_step = 0.0,
+        object lband = None,
+        object uband = None
         ):
 
     # Build PySolver solution storage.
@@ -409,7 +433,10 @@ def pysolve_ivp(
             max_num_steps,
             max_ram_MB,
             pass_dy_as_arg,
-            force_retain_solver)
+            force_retain_solver,
+            min_step,
+            lband,
+            uband)
     
     ##
     # Run the integrator!

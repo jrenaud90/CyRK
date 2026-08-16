@@ -201,6 +201,8 @@ struct OptimizeInfo {
 // Integration Constants
 // Highest order backward differentiation formula used by the BDF integrator.
 static constexpr size_t BDF_MAX_ORDER   = 5;
+// Highest order Nordsieck history that LSODA can build (the Adams formulas reach order 12).
+static constexpr size_t LSODA_MAX_ORDER = 12;
 // Multiply steps computed from asymptotic behaviour of errors by this.
 static const double SAFETY              = 0.9;   // Error coefficient factor (1 == use calculated error; < 1 means be conservative).
 static const double MIN_FACTOR          = 0.2;   // Minimum allowed decrease in a step size.

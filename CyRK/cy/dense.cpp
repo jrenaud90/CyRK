@@ -204,6 +204,33 @@ void CySolverDense::call(double t_interp, double* y_interp_ptr)
         }
         break;
 
+    case ODEMethod::LSODA:
+        /* SciPy's `LsodaDenseOutput`: the Nordsieck history array is a Taylor series about the
+           end of the step, y = sum_j yh[:, j] * ((t_interp - t_now) / step) ** j.
+           Q holds columns 1 through `Q_order` and y_stored holds column 0. */
+        if (this->step == 0.0) [[unlikely]]
+        {
+            std::memcpy(y_interp_ptr, y_stored_ptr, sizeof(double) * this->num_y);
+            break;
+        }
+        else
+        {
+            const double step_factor = (t_interp - this->t_now) / this->step;
+
+            for (size_t y_i = 0; y_i < this->num_y; y_i++)
+            {
+                const size_t Q_stride = this->Q_order * y_i;
+                // Horner's method over the Taylor coefficients.
+                double temp_double = Q_ptr[Q_stride + this->Q_order - 1];
+                for (size_t P_i = this->Q_order - 1; P_i-- > 0; )
+                {
+                    temp_double = temp_double * step_factor + Q_ptr[Q_stride + P_i];
+                }
+                y_interp_ptr[y_i] = y_stored_ptr[y_i] + temp_double * step_factor;
+            }
+        }
+        break;
+
     [[unlikely]] default:
         // Don't know the model. Just return the input.
         std::memcpy(y_interp_ptr, y_stored_ptr, sizeof(double) * this->num_y);

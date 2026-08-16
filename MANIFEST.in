@@ -25,6 +25,10 @@ include CyRK/cy/rk.cpp
 include CyRK/cy/rk.hpp
 include CyRK/cy/bdf.cpp
 include CyRK/cy/bdf.hpp
+include CyRK/cy/lsoda.cpp
+include CyRK/cy/lsoda.hpp
+include CyRK/cy/c_lsoda.cpp
+include CyRK/cy/c_lsoda.hpp
 include CyRK/cy/c_lu.cpp
 include CyRK/cy/c_lu.hpp
 include CyRK/cy/cysolve.cpp

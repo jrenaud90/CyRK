@@ -100,10 +100,21 @@ Currently available functions and associated integration method integer:
     - Explicit Runge-Kutta method of order 8 (error control of combination of order 5 and 3)
 - BDF : ODEMethod.BDF
     - Implicit multi-step method based on backward differentiation formulas of order 1 to 5
+- LSODA : ODEMethod.LSODA
+    - Adams / BDF method with automatic stiffness detection and switching
 
 ## "bdf.hpp(cpp)"
 Provides the `BDF` class, an implicit multi-step integrator built on the backward differentiation formulas. It needs no
 configuration beyond what `ProblemConfig` already carries.
+
+## "lsoda.hpp(cpp)" and "c_lsoda.hpp(cpp)"
+`lsoda.hpp` provides the `LSODA` class along with `LSODAConfig`, which adds the options that only LSODA understands
+(`min_step_size`, `max_order_nonstiff`, `max_order_stiff`, `num_lower`, and `num_upper`). `CySolverResult` builds an
+`LSODAConfig` automatically when `ODEMethod::LSODA` is selected, so retrieve it with a `dynamic_cast` before setting
+those options.
+
+`c_lsoda.hpp(cpp)` holds the vendored ODEPACK implementation that the `LSODA` class drives one step at a time. It is
+third-party code; see the `Third-Party Code` section of the license for its notices.
 
 ## "c_lu.hpp(cpp)"
 Dense and banded LU factorization routines (the equivalents of LAPACK's dgetrf, dgetrs, dgbtrf, and dgbtrs) that the
@@ -126,6 +137,12 @@ $$8S(N+1)+144N+1,528$$
 $$8S(N+1)+232N+1,528$$
 ### BDF
 $$8S(N+1)+16N^2+240N+1,528$$
-The $N^2$ term is the Jacobian plus its LU factorization, both stored as dense matrices. CyRK checks that footprint
-against `max_ram_MB` during setup and refuses to start rather than attempting a solve that could not finish in
-reasonable time.
+The $N^2$ term is the Jacobian plus its LU factorization, both stored as dense matrices.
+### LSODA (dense Jacobian)
+$$8S(N+1)+8N^2+140N+3,600$$
+### LSODA (banded Jacobian)
+$$8S(N+1)+8N(2 \cdot lband + uband + 10)+68N+3,600$$
+
+Note the $N^2$ term for the implicit methods. CyRK checks that footprint against `max_ram_MB` during setup and
+refuses to start rather than attempting a solve that could not finish in reasonable time. Narrowing LSODA's Jacobian
+to a band brings the cost back down to linear in $N$.

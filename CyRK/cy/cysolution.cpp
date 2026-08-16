@@ -51,8 +51,9 @@ CyrkErrorCodes CySolverResult::p_build_solver()
     }
 
     // The result constructor's only job is to build the solver object and allocate its memory.
-    // Every method currently shares the default `RKConfig`; methods that carry extra options get
-    // their configuration swapped in here.
+    // Most methods are happy with the default `RKConfig`; the ones that carry extra options get
+    // their configuration swapped in here, but only if it is not already the right kind so that
+    // settings the user made before a solver rebuild are not thrown away.
     try
     {
         switch (this->integrator_method)
@@ -72,6 +73,14 @@ CyrkErrorCodes CySolverResult::p_build_solver()
         case ODEMethod::BDF:
             // BDF
             this->solver_uptr = std::make_unique<BDF>(this);
+            break;
+        case ODEMethod::LSODA:
+            // LSODA
+            if (not dynamic_cast<LSODAConfig*>(this->config_uptr.get()))
+            {
+                this->config_uptr = std::make_unique<LSODAConfig>();
+            }
+            this->solver_uptr = std::make_unique<LSODA>(this);
             break;
         [[unlikely]] default:
             this->solver_uptr = nullptr;

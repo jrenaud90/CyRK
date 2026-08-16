@@ -6,6 +6,15 @@
 
 #### v0.18.0 (Unreleased)
 
+##### New Integration Method: LSODA
+* Added "LSODA", an Adams / BDF method that monitors the problem as it integrates and switches between the non-stiff Adams formulas and the stiff BDF formulas on its own.
+  * It is built on a lightly modified copy of the C translation of ODEPACK's LSODA that ships with SciPy, driven one step at a time so that CyRK keeps control of the solution storage, the events, and the `t_eval` interpolation. See the new `Third-Party Code` section of "LICENSE.md" for the notices, and please cite ODEPACK if you use this method.
+  * Like BDF, it is available from `cysolve_ivp`, `pysolve_ivp`, and `nbsolve2_ivp`, and supports dense output, `t_eval`, events, extra output, solution reuse, backward integration, and per-variable tolerance arrays.
+* Added three options that only LSODA understands. Passing them to any other method now raises an `AttributeError` rather than being ignored.
+  * `min_step` - the smallest step size LSODA is allowed to take.
+  * `lband` and `uband` - the bandwidth of the Jacobian. Declaring a bandwidth on a large system whose variables only couple to their neighbors is a substantial speed up: on a 500 variable diffusion problem it takes the same number of steps but runs roughly 16 times faster, because LSODA then needs only `lband + uband + 1` differential equation calls per Jacobian and a banded factorization instead of a dense one.
+* Two bugs in the upstream C translation of LSODA were corrected in CyRK's copy (both are noted at the top of "c_lsoda.hpp"): the user's minimum step size was stored in a local variable rather than in the common block, so the option was silently discarded, and `bnorm` was handed the banded Jacobian without the row offset that it was written to.
+
 ##### New Integration Method: BDF
 * Added "BDF", an implicit multi-step method based on the backward differentiation formulas, with the order varying automatically between 1 and 5. It is a C++ port of SciPy's `scipy/integrate/_ivp/bdf.py` and includes the accuracy enhancement from the modified (NDF) formulas. This method is ideal for stiff ODEs (an example shows a decrease from 46,451 to 348 steps when compared to RK45).
   * It is available everywhere the existing methods are (`cysolve_ivp`, `pysolve_ivp`, and `nbsolve2_ivp`) and supports everything they do: dense output, `t_eval`, events, extra output, solution reuse, backward integration, and per-variable tolerance arrays.
@@ -43,18 +52,20 @@
   match the `ODEMethod` enum.
 
 ##### Documentation
-* Added a new "Implicit Methods" documentation page covering when to reach for an implicit method,
-  the Jacobian, and the cost of these methods.
-* Updated "C++_API.md" with the new `cysolve_ivp` argument list and the new "c_lu" and "bdf" modules.
+* Added a new "Implicit Methods" documentation page covering how to choose between BDF and LSODA,
+  the Jacobian, the cost of these methods, and the LSODA-only options.
+* Updated "C++_API.md" with the new `cysolve_ivp` argument list and the new "c_lu", "bdf", "lsoda",
+  and "c_lsoda" modules.
 * Documented the new error codes in "Status_and_Error_Codes.md".
-* Added a `Third-Party Code` section to "LICENSE.md" recording which parts of CyRK are ported from
-  SciPy, along with SciPy's license.
+* Added a `Third-Party Code` section to "LICENSE.md" with the notices for the vendored LSODA code
+  and for the algorithms that are ported from SciPy, along with SciPy's license. Added the ODEPACK
+  citations to the README.
 
 ##### Tests
 * Added "Tests/H_Implicit_Tests" covering accuracy against analytic solutions, stiff performance,
   dense output, `t_eval`, events, extra output, backward integration, tolerance arrays, solution
-  reuse, and step size limits.
-* Added the new method to the existing accuracy test suites.
+  reuse, step size limits, and the LSODA banded Jacobian.
+* Added the new methods to the existing accuracy test suites.
 
 ### v0.17.X
 

@@ -185,6 +185,23 @@ CyRK bundles or is derived from a small amount of third-party code. Those portio
 their original licenses, which are reproduced below. Everything else in CyRK is under the Apache
 License, Version 2.0, given above.
 
+## LSODA (`CyRK/cy/c_lsoda.cpp`, `CyRK/cy/c_lsoda.hpp`)
+
+CyRK's `LSODA` integration method is built on a lightly modified copy of the C translation of
+ODEPACK's LSODA that ships with SciPy as `scipy/integrate/src/lsoda.c`. The modifications made for
+CyRK are listed at the top of `CyRK/cy/c_lsoda.hpp`.
+
+The original algorithm is LSODA from ODEPACK, written by Alan C. Hindmarsh and Linda R. Petzold at Lawrence Livermore National Laboratory:
+
+* Hindmarsh, A. C., "ODEPACK, A Systematized Collection of ODE Solvers", *IMACS Transactions on
+  Scientific Computation*, Vol. 1, pp. 55-64, 1983.
+* Petzold, L., "Automatic selection of methods for solving stiff and nonstiff systems of ordinary
+  differential equations", *SIAM Journal on Scientific and Statistical Computing*, Vol. 4, No. 1,
+  pp. 136-148, 1983.
+
+The copy that CyRK derives from is distributed as part of SciPy, under the BSD 3-Clause license
+reproduced below.
+
 ## Algorithms ported from SciPy
 
 The following parts of CyRK are original C++ code that was written by following the algorithms in

@@ -12,6 +12,7 @@
 #include "cysolver.hpp"
 #include "rk.hpp"
 #include "bdf.hpp"
+#include "lsoda.hpp"
 
 
 class CySolverResult {
