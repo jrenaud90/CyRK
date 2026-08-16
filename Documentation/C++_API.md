@@ -45,11 +45,16 @@ void baseline_cysolve_ivp_noreturn(
         bool> capture_dense_output,
         std::vector<double> t_eval_vec,
         PreEvalFunc> pre_eval_func,
-        // rk optional arguments
+        std::vector<Event> events_vec,
+        // Error control arguments
         std::vector<double> rtols,
         std::vector<double> atols,
         double max_step_size,
-        double first_step_size
+        double first_step_size,
+        // Memory management
+        bool force_retain_solver,
+        // Only used by the implicit methods; null means estimate the Jacobian by finite differences
+        JacobianFuncType jac_ptr
     )
 
 std::unique_ptr<CySolverResult> baseline_cysolve_ivp(
@@ -67,11 +72,16 @@ std::unique_ptr<CySolverResult> baseline_cysolve_ivp(
     bool> capture_dense_output,
     std::vector<double> t_eval_vec,
     PreEvalFunc> pre_eval_func,
-    // rk optional arguments
+    std::vector<Event> events_vec,
+    // Error control arguments
     std::vector<double> rtols,
     std::vector<double> atols,
     double max_step_size,
-    double first_step_size
+    double first_step_size,
+    // Memory management
+    bool force_retain_solver,
+    // Only used by the implicit methods; null means estimate the Jacobian by finite differences
+    JacobianFuncType jac_ptr
 )
 ```
 
@@ -79,6 +89,7 @@ std::unique_ptr<CySolverResult> baseline_cysolve_ivp(
 Provides classes that wrap `CySolverBase` and provide Runge-Kutta integration methods and constants. Each integrator has
 a unique integer used to select it via `integration_method` in various function calls. These integers are defined in 
 an enum class `ODEMethod` which can be python imported or cython cimported `from CyRK import ODEMethod; ODEMethod.RK45`.
+New methods are always appended to the end of that enum so that the existing integer values stay stable.
 
 Currently available functions and associated integration method integer:
 - RK23 : ODEMethod.RK23
@@ -87,6 +98,11 @@ Currently available functions and associated integration method integer:
     - Explicit Runge-Kutta method of order 5 (error control of order 4)
 - DOP853 : ODEMethod.DOP853
     - Explicit Runge-Kutta method of order 8 (error control of combination of order 5 and 3)
+
+## "c_lu.hpp(cpp)"
+Dense and banded LU factorization routines (the equivalents of LAPACK's dgetrf, dgetrs, dgbtrf, and dgbtrs) that the
+implicit methods use to factorize their iteration matrices. They are implemented here so that CyRK does not have to
+link against an external BLAS or LAPACK library. All matrices use LAPACK's column-major storage.
 
 ## Memory Usage
 The following formulas approximate the total memory footprint in bytes of the underlying C++ structures. Only think of these as estimates. All values are in kB. 

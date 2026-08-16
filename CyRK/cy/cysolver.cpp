@@ -62,7 +62,12 @@ ProblemConfig::ProblemConfig(
         PreEvalFunc pre_eval_func_,
         bool capture_dense_output_,
         bool force_retain_solver_,
-        std::vector<Event>& events_vec_): 
+        std::vector<Event>& events_vec_,
+        std::vector<double>& rtols_,
+        std::vector<double>& atols_,
+        double max_step_size_,
+        double first_step_size_,
+        JacobianFuncType jac_ptr_):
             diffeq_ptr(diffeq_ptr_),
             t_start(t_start_),
             t_end(t_end_),
@@ -76,6 +81,11 @@ ProblemConfig::ProblemConfig(
             pre_eval_func(pre_eval_func_),
             capture_dense_output(capture_dense_output_),
             force_retain_solver(force_retain_solver_),
+            rtols(rtols_),
+            atols(atols_),
+            max_step_size(max_step_size_),
+            first_step_size(first_step_size_),
+            jac_ptr(jac_ptr_),
             events_vec(events_vec_)
 {
     this->initialize();
@@ -109,7 +119,12 @@ void ProblemConfig::update_properties(
         PreEvalFunc pre_eval_func_,
         bool capture_dense_output_,
         bool force_retain_solver_,
-        std::vector<Event>& events_vec_)
+        std::vector<Event>& events_vec_,
+        std::vector<double>& rtols_,
+        std::vector<double>& atols_,
+        double max_step_size_,
+        double first_step_size_,
+        JacobianFuncType jac_ptr_)
 {
     this->diffeq_ptr    = diffeq_ptr_;
     this->t_start       = t_start_;
@@ -124,7 +139,12 @@ void ProblemConfig::update_properties(
     this->pre_eval_func = pre_eval_func_;
     this->capture_dense_output = capture_dense_output_;
     this->force_retain_solver  = force_retain_solver_;
-    this->events_vec = events_vec_;
+    this->events_vec      = events_vec_;
+    this->rtols           = rtols_;
+    this->atols           = atols_;
+    this->max_step_size   = max_step_size_;
+    this->first_step_size = first_step_size_;
+    this->jac_ptr         = jac_ptr_;
 
     this->initialize();
 }
@@ -146,7 +166,17 @@ void ProblemConfig::initialize()
     this->num_y_sqrt      = std::sqrt(this->num_y_dbl);
     this->num_dy_dbl      = (double)this->num_dy;
     this->check_events    = this->events_vec.size() > 0;
-    this->initialized     = true;
+
+    if ((this->rtols.size() != 1) and (this->rtols.size() != this->num_y))
+    {
+        throw std::length_error("Unexpected size of rtols; must be the same as y_vec or 1.");
+    }
+    if ((this->atols.size() != 1) and (this->atols.size() != this->num_y))
+    {
+        throw std::length_error("Unexpected size of atols; must be the same as y_vec or 1.");
+    }
+
+    this->initialized = true;
 }
 
 void ProblemConfig::update_properties_from_config(ProblemConfig* new_config_ptr)
@@ -165,7 +195,12 @@ void ProblemConfig::update_properties_from_config(ProblemConfig* new_config_ptr)
         new_config_ptr->pre_eval_func,
         new_config_ptr->capture_dense_output,
         new_config_ptr->force_retain_solver,
-        new_config_ptr->events_vec
+        new_config_ptr->events_vec,
+        new_config_ptr->rtols,
+        new_config_ptr->atols,
+        new_config_ptr->max_step_size,
+        new_config_ptr->first_step_size,
+        new_config_ptr->jac_ptr
     );
 }
 
@@ -208,6 +243,12 @@ CyrkErrorCodes CySolverBase::p_additional_setup() noexcept
     return CyrkErrorCodes::NO_ERROR;
 }
 
+CyrkErrorCodes CySolverBase::p_finalize_setup() noexcept
+{
+    // Overwritten by subclasses.
+    return CyrkErrorCodes::NO_ERROR;
+}
+
 double CySolverBase::p_estimate_error() noexcept
 {
     // Overwritten by subclasses.
@@ -230,9 +271,302 @@ inline void CySolverBase::p_cy_diffeq() noexcept
         this->pre_eval_func);
 }
 
+CyrkErrorCodes CySolverBase::p_setup_error_control() noexcept
+{
+    /* Pull the user's tolerances and step size limits out of the configuration and sanity check
+       them. Every adaptive method shares these so this runs during the base class setup. */
+    ProblemConfig* const config_ptr = this->storage_ptr->config_uptr.get();
+
+    this->user_provided_first_step_size = config_ptr->first_step_size;
+    this->max_step_size                 = config_ptr->max_step_size;
+
+    if (this->max_step_size <= 0.0) [[unlikely]]
+    {
+        // A non-positive maximum step size would leave the step size clamp with no valid range.
+        return CyrkErrorCodes::BAD_CONFIG_DATA;
+    }
+
+    if (this->user_provided_first_step_size != 0.0) [[unlikely]]
+    {
+        if (this->user_provided_first_step_size < 0.0) [[unlikely]]
+        {
+            // Negative first step size. Even in reverse integration the step size should be positive.
+            return CyrkErrorCodes::BAD_INITIAL_STEP_SIZE;
+        }
+        else if (this->user_provided_first_step_size > (this->t_delta_abs * 0.5)) [[unlikely]]
+        {
+            // First step size is greater than 50% of the solution domain.
+            return CyrkErrorCodes::BAD_INITIAL_STEP_SIZE;
+        }
+    }
+
+    // The user can provide an array of relative tolerances, one for each y value.
+    // The length of that array must either be 1 or the same as y0.
+    const size_t num_rtols = config_ptr->rtols.size();
+    const size_t num_atols = config_ptr->atols.size();
+    if (
+        (num_rtols == 0) or
+        ((num_rtols > 1) and (num_rtols != this->num_y)) or
+        (num_atols == 0) or
+        ((num_atols > 1) and (num_atols != this->num_y))
+        )
+    {
+        // No rtols or atols provided, or the size of the array is not correct.
+        return CyrkErrorCodes::BAD_CONFIG_DATA;
+    }
+    this->use_array_rtols = num_rtols > 1;
+    this->use_array_atols = num_atols > 1;
+    this->rtols_ptr       = config_ptr->rtols.data();
+    this->atols_ptr       = config_ptr->atols.data();
+
+    // Check for too small of rtols.
+    for (size_t rtol_i = 0; rtol_i < num_rtols; rtol_i++)
+    {
+        if (this->rtols_ptr[rtol_i] < EPS_100) [[unlikely]]
+        {
+            this->rtols_ptr[rtol_i] = EPS_100;
+        }
+    }
+
+    return CyrkErrorCodes::NO_ERROR;
+}
+
 void CySolverBase::p_calc_first_step_size() noexcept
 {
-    // Overwritten by subclasses.
+    /*
+        Select an initial step size based on the differential equation.
+        .. [1] E. Hairer, S. P. Norsett G. Wanner, "Solving Ordinary Differential
+            Equations I: Nonstiff Problems", Sec. II.4.
+    */
+
+    // Cache local variables
+    double* const CYRK_RESTRICT l_y_old_ptr        = this->y_old_ptr;
+    double* const CYRK_RESTRICT l_y_now_ptr        = this->y_now_ptr;
+    double* const CYRK_RESTRICT l_dy_old_ptr       = this->dy_old_ptr;
+    double* const CYRK_RESTRICT l_dy_now_ptr       = this->dy_now_ptr;
+    const double* const CYRK_RESTRICT l_rtols_ptr  = this->rtols_ptr;
+    const double* const CYRK_RESTRICT l_atols_ptr  = this->atols_ptr;
+    const bool l_use_array_rtols                   = this->use_array_rtols;
+    const bool l_use_array_atols                   = this->use_array_atols;
+
+    if (this->num_y == 0) [[unlikely]]
+    {
+        this->step_size = INF;
+    }
+    else {
+        // Initialize tolerances to the 0 place. If `use_array_rtols` (or atols) is set then this will change in the loop.
+        double rtol = l_rtols_ptr[0];
+        double atol = l_atols_ptr[0];
+
+        // Find the norm for d0 and d1
+        double d0 = 0.0;
+        double d1 = 0.0;
+        for (size_t y_i = 0; y_i < this->num_y; y_i++)
+        {
+            rtol = l_use_array_rtols ? l_rtols_ptr[y_i] : rtol;
+            atol = l_use_array_atols ? l_atols_ptr[y_i] : atol;
+
+            const double y_old_tmp = l_y_old_ptr[y_i];
+            const double scale = atol + std::abs(y_old_tmp) * rtol;
+
+            // NOTE: We are removing the fabs because they are about to be squared anyways. But if we ever use complex numbers then we need to revisit this.
+            const double d0_abs = y_old_tmp / scale;
+            const double d1_abs = l_dy_old_ptr[y_i] / scale;
+            d0 += (d0_abs * d0_abs);
+            d1 += (d1_abs * d1_abs);
+        }
+
+        d0 = std::sqrt(d0) / this->num_y_sqrt;
+        d1 = std::sqrt(d1) / this->num_y_sqrt;
+
+        double h0 = 1.0e-6;
+        if (not ((d0 < 1.0e-5) || (d1 < 1.0e-5)))
+        {
+            h0 = 0.01 * d0 / d1;
+        }
+
+        const double h0_direction = this->direction_flag ? h0 : -h0;
+
+        this->t_now = this->t_old + h0_direction;
+        for (size_t y_i = 0; y_i < this->num_y; y_i++)
+        {
+            l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + h0_direction * l_dy_old_ptr[y_i];
+        }
+
+        // Update dy
+        this->diffeq(this);
+
+        // Find the norm for d2
+        double d2 = 0.0;
+        for (size_t y_i = 0; y_i < this->num_y; y_i++)
+        {
+            rtol = l_use_array_rtols ? l_rtols_ptr[y_i] : rtol;
+            atol = l_use_array_atols ? l_atols_ptr[y_i] : atol;
+
+            const double scale = atol + std::abs(l_y_old_ptr[y_i]) * rtol;
+            // NOTE: We are removing the fabs because they are about to be squared anyways. But if we ever use complex numbers then we need to revisit this.
+            const double d2_abs = (l_dy_now_ptr[y_i] - l_dy_old_ptr[y_i]) / scale;
+            d2 += (d2_abs * d2_abs);
+        }
+
+        d2 = std::sqrt(d2) / (h0 * this->num_y_sqrt);
+
+        double h1;
+        if ((d1 <= 1.0e-15) && (d2 <= 1.0e-15))
+        {
+            h1 = std::max(1.0e-6, h0 * 1.0e-3);
+        }
+        else {
+            h1 = std::pow((0.01 / std::max(d1, d2)), this->error_exponent);
+        }
+        this->step_size = std::max(10. * std::abs(std::nextafter(this->t_old, this->direction_inf) - this->t_old), std::min(100.0 * h0, h1));
+    }
+}
+
+void CySolverBase::p_call_jacobian(double* jacobian_ptr) noexcept
+{
+    /* Evaluate the user-provided analytic Jacobian at the solver's current state. */
+    this->jac_ptr(
+        jacobian_ptr,
+        this->t_now,
+        this->y_now_ptr,
+        this->args_ptr,
+        this->pre_eval_func);
+}
+
+void CySolverBase::p_estimate_jacobian(double* jacobian_ptr) noexcept
+{
+    /* Build a forward-difference approximation of the Jacobian at the solver's current state.
+
+       This follows SciPy's `num_jac`: the perturbation applied to each column is remembered
+       between calls and grown or shrunk so that the finite difference stays well separated from
+       its own round-off error. `jacobian_ptr` is filled in column-major order, so the column for
+       dependent variable `y_j` is contiguous.
+
+       The solver's "now" state is used as the evaluation point and is restored before returning.
+       `dy_now_ptr` must already hold the derivative at that state. */
+    constexpr double NUM_JAC_DIFF_REJECT = 2.0097183471152322e-14;  // EPS ** 0.875
+    constexpr double NUM_JAC_DIFF_SMALL  = 1.8189894035458565e-12;  // EPS ** 0.75
+    constexpr double NUM_JAC_DIFF_BIG    = 1.220703125e-4;          // EPS ** 0.25
+    constexpr double NUM_JAC_MIN_FACTOR  = 1.0e3 * EPS;
+    constexpr double NUM_JAC_INCREASE    = 10.0;
+    constexpr double NUM_JAC_DECREASE    = 0.1;
+
+    const size_t l_num_y = this->num_y;
+    double* const CYRK_RESTRICT l_y_now_ptr  = this->y_now_ptr;
+    double* const CYRK_RESTRICT l_dy_now_ptr = this->dy_now_ptr;
+    double* const CYRK_RESTRICT l_factor_ptr = this->jac_factor_vec.data();
+    // Copy of the unperturbed derivative; `dy_now_ptr` is overwritten by each diffeq call.
+    double* const CYRK_RESTRICT l_dy_ref_ptr = this->jac_work_vec.data();
+
+    std::memcpy(l_dy_ref_ptr, l_dy_now_ptr, this->sizeof_dbl_Ndy);
+
+    // The threshold below which |y| no longer controls the perturbation size.
+    const double atol_0 = this->atols_ptr[0];
+
+    for (size_t y_j = 0; y_j < l_num_y; y_j++)
+    {
+        const double threshold = this->use_array_atols ? this->atols_ptr[y_j] : atol_0;
+        const double y_j_value = l_y_now_ptr[y_j];
+
+        // Step in the direction that the differential equation is already heading.
+        const double y_scale = (l_dy_ref_ptr[y_j] >= 0.0 ? 1.0 : -1.0) * std::max(threshold, std::abs(y_j_value));
+
+        double factor = l_factor_ptr[y_j];
+        // Guard against a perturbation that is lost to round-off.
+        double h_step = (y_j_value + factor * y_scale) - y_j_value;
+        while (h_step == 0.0) [[unlikely]]
+        {
+            factor *= NUM_JAC_INCREASE;
+            h_step = (y_j_value + factor * y_scale) - y_j_value;
+            if (factor > 1.0)
+            {
+                // `y_scale` must be zero (both y and the threshold are zero); fall back to a
+                // small absolute step so that the column is still populated.
+                h_step = std::sqrt(EPS);
+                break;
+            }
+        }
+
+        // Evaluate the perturbed column.
+        l_y_now_ptr[y_j] = y_j_value + h_step;
+        this->diffeq(this);
+        l_y_now_ptr[y_j] = y_j_value;
+
+        double* const column_ptr = &jacobian_ptr[y_j * l_num_y];
+        double max_diff    = 0.0;
+        double diff_scale  = 0.0;
+        for (size_t y_i = 0; y_i < l_num_y; y_i++)
+        {
+            const double diff = l_dy_now_ptr[y_i] - l_dy_ref_ptr[y_i];
+            column_ptr[y_i]   = diff;
+            const double diff_abs = std::abs(diff);
+            if (diff_abs > max_diff)
+            {
+                max_diff   = diff_abs;
+                diff_scale = std::max(std::abs(l_dy_ref_ptr[y_i]), std::abs(l_dy_now_ptr[y_i]));
+            }
+        }
+
+        if (max_diff < NUM_JAC_DIFF_REJECT * diff_scale)
+        {
+            // The difference is buried in round-off. Retry this column with a larger step and
+            // keep whichever attempt separated the difference from the noise better.
+            const double new_factor = NUM_JAC_INCREASE * factor;
+            const double new_h_step = (y_j_value + new_factor * y_scale) - y_j_value;
+            if (new_h_step != 0.0)
+            {
+                l_y_now_ptr[y_j] = y_j_value + new_h_step;
+                this->diffeq(this);
+                l_y_now_ptr[y_j] = y_j_value;
+
+                double new_max_diff   = 0.0;
+                double new_diff_scale = 0.0;
+                for (size_t y_i = 0; y_i < l_num_y; y_i++)
+                {
+                    const double diff = std::abs(l_dy_now_ptr[y_i] - l_dy_ref_ptr[y_i]);
+                    if (diff > new_max_diff)
+                    {
+                        new_max_diff   = diff;
+                        new_diff_scale = std::max(std::abs(l_dy_ref_ptr[y_i]), std::abs(l_dy_now_ptr[y_i]));
+                    }
+                }
+
+                if ((max_diff * new_diff_scale) < (new_max_diff * diff_scale))
+                {
+                    factor     = new_factor;
+                    h_step     = new_h_step;
+                    max_diff   = new_max_diff;
+                    diff_scale = new_diff_scale;
+                    for (size_t y_i = 0; y_i < l_num_y; y_i++)
+                    {
+                        column_ptr[y_i] = l_dy_now_ptr[y_i] - l_dy_ref_ptr[y_i];
+                    }
+                }
+            }
+        }
+
+        // Finish the forward difference.
+        const double h_inverse = 1.0 / h_step;
+        for (size_t y_i = 0; y_i < l_num_y; y_i++)
+        {
+            column_ptr[y_i] *= h_inverse;
+        }
+
+        // Suggest a perturbation size for the next Jacobian estimate.
+        if (max_diff < NUM_JAC_DIFF_SMALL * diff_scale)
+        {
+            factor *= NUM_JAC_INCREASE;
+        }
+        else if (max_diff > NUM_JAC_DIFF_BIG * diff_scale)
+        {
+            factor *= NUM_JAC_DECREASE;
+        }
+        l_factor_ptr[y_j] = std::max(factor, NUM_JAC_MIN_FACTOR);
+    }
+
+    // Restore the derivative at the unperturbed state.
+    std::memcpy(l_dy_now_ptr, l_dy_ref_ptr, this->sizeof_dbl_Ndy);
 }
 
 /* ========================================================================= */
@@ -243,9 +577,25 @@ void CySolverBase::set_Q_order(size_t* Q_order_ptr)
     // Overwritten by subclasses.
 }
 
+void CySolverBase::set_Q_order_max(size_t* Q_order_max_ptr)
+{
+    // Most methods have a fixed interpolator size, so the maximum is the same as the current one.
+    this->set_Q_order(Q_order_max_ptr);
+}
+
 void CySolverBase::set_Q_array(double* Q_ptr) noexcept
 {
     // Overwritten by subclasses.
+}
+
+double CySolverBase::get_dense_step() const noexcept
+{
+    return this->t_now - this->t_old;
+}
+
+double* CySolverBase::get_dense_base_y_ptr() noexcept
+{
+    return this->y_old_ptr;
 }
 
 void CySolverBase::clear_python_refs()
@@ -310,6 +660,8 @@ CyrkErrorCodes CySolverBase::setup()
     this->error_flag        = false;
     this->check_events_flag = false;
     this->num_events        = 0;
+    this->use_array_rtols   = false;
+    this->use_array_atols   = false;
     this->user_provided_max_num_steps = false;
     this->clear_python_refs();
     this->event_data_vec.resize(0);
@@ -364,6 +716,7 @@ CyrkErrorCodes CySolverBase::setup()
 
         // Pull out pointers to other data storage.
         this->diffeq_ptr    = this->storage_ptr->config_uptr->diffeq_ptr;
+        this->jac_ptr       = this->storage_ptr->config_uptr->jac_ptr;
         this->pre_eval_func = this->storage_ptr->config_uptr->pre_eval_func;
         this->size_of_args  = this->storage_ptr->config_uptr->args_vec.size();
         this->args_ptr      = this->storage_ptr->config_uptr->args_vec.data();
@@ -448,6 +801,13 @@ CyrkErrorCodes CySolverBase::setup()
             }
         }
 
+        // Parse the tolerances and step size limits that every adaptive method shares.
+        setup_status = this->p_setup_error_control();
+        if (setup_status != CyrkErrorCodes::NO_ERROR)
+        {
+            break;
+        }
+
         // Some methods require additional setup before the current state is set.
         setup_status = this->p_additional_setup();
         if (setup_status != CyrkErrorCodes::NO_ERROR)
@@ -524,6 +884,23 @@ CyrkErrorCodes CySolverBase::setup()
         else
         {
             this->t_eval_index_old = this->len_t_eval;
+        }
+
+        // Determine the size of the first step.
+        if (this->user_provided_first_step_size == 0.0) [[likely]]
+        {
+            // User did not provide a step size. Try to find a good guess.
+            this->p_calc_first_step_size();
+        }
+        else {
+            this->step_size = this->user_provided_first_step_size;
+        }
+
+        // Methods that carry a solution history need the first step size before they can build it.
+        setup_status = this->p_finalize_setup();
+        if (setup_status != CyrkErrorCodes::NO_ERROR)
+        {
+            break;
         }
 
         // Construct interpolator using t0 and y0 as its data point

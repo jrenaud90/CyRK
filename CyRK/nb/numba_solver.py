@@ -153,18 +153,19 @@ def get_method_str(method_int: int):
     Parameters
     ----------
     method_int : int
-        Integer identifier for the ODE method.
+        Integer identifier for the ODE method. These must match the values of the C++ `ODEMethod`
+        enum defined in "cysolver.hpp".
 
     Returns
     -------
     str
         String name of the integration method.
     """
-    if method_int == 1:
-        return "RK45"
-    if method_int == 2:
-        return "RK23"
     if method_int == 3:
+        return "RK23"
+    if method_int == 4:
+        return "RK45"
+    if method_int == 5:
         return "DOP853"
     return "UNKNOWN_METHOD"
 

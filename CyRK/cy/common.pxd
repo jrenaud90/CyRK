@@ -41,6 +41,9 @@ cdef extern from "c_common.cpp" nogil:
         EVENT_SETUP_FAILED,
         ERROR_IMPORTING_PYTHON_MODULE,
         BAD_INITIAL_STEP_SIZE,
+        JACOBIAN_IS_SINGULAR,
+        NEWTON_CONVERGENCE_ERROR,
+        LSODA_INTERNAL_ERROR,
         OTHER_ERROR,
         UNSET_ERROR_CODE
     
@@ -62,6 +65,8 @@ cdef extern from "c_common.cpp" nogil:
 
     ctypedef void (*PreEvalFunc)(char*, double, double*, char*)
     ctypedef void (*DiffeqFuncType)(double*, double, double*, char*, PreEvalFunc)
+    ctypedef void (*JacobianFuncType)(double*, double, double*, char*, PreEvalFunc)
+
 
     cdef void round_to_2(size_t& initial_value) noexcept
 

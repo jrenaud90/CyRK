@@ -31,6 +31,8 @@ class CySolverDense;
 struct _object;
 typedef _object PyObject;
 
+// New methods must be appended to the end of this enum: their integer values are part of CyRK's
+// public API (they are used by, for example, the numba wrapper).
 enum class ODEMethod : int {
     NO_METHOD_SET,
     BASE_METHOD,
@@ -83,6 +85,16 @@ struct ProblemConfig {
     bool capture_dense_output      = false;                   // Whether to capture dense output
     bool force_retain_solver       = true;                    // Whether to retain the solver after solving
 
+    // Error control; shared by every adaptive integration method.
+    std::vector<double> rtols = std::vector<double>(1); // Relative tolerances for each dependent variable; if only 1 is provided then it will be used for every dependent variable.
+    std::vector<double> atols = std::vector<double>(1); // Absolute tolerances for each dependent variable; if only 1 is provided then it will be used for every dependent variable.
+    double max_step_size      = MAX_STEP;               // Default maximum step size (infinity means no limit)
+    double first_step_size    = 0.0;                    // Default first step size (0 means auto-calculate)
+
+    // Analytic Jacobian of the differential equation. Only used by the implicit methods (BDF and
+    // LSODA); a null pointer tells those solvers to estimate the Jacobian with finite differences.
+    JacobianFuncType jac_ptr = nullptr;
+
     // Parameters that will be updated during setup.
     bool capture_extra   = false; // Whether to capture extra outputs
     bool t_eval_provided = false; // Whether t_eval was provided by the user
@@ -127,7 +139,12 @@ struct ProblemConfig {
         PreEvalFunc pre_eval_func_,
         bool capture_dense_output_,
         bool force_retain_solver_,
-        std::vector<Event>& events_vec_);
+        std::vector<Event>& events_vec_,
+        std::vector<double>& rtols_,
+        std::vector<double>& atols_,
+        double max_step_size_,
+        double first_step_size_,
+        JacobianFuncType jac_ptr_);
 
     // Helper functions
     void update_properties(
@@ -150,7 +167,12 @@ struct ProblemConfig {
         PreEvalFunc pre_eval_func_,
         bool capture_dense_output_,
         bool force_retain_solver_,
-        std::vector<Event>& events_vec_
+        std::vector<Event>& events_vec_,
+        std::vector<double>& rtols_,
+        std::vector<double>& atols_,
+        double max_step_size_,
+        double first_step_size_,
+        JacobianFuncType jac_ptr_
     );
     virtual void initialize();
     virtual void update_properties_from_config(ProblemConfig* new_config_ptr);
@@ -178,11 +200,16 @@ class CySolverBase {
 // Methods
 protected:
     virtual CyrkErrorCodes p_additional_setup() noexcept;
+    // Called at the very end of setup, once the first step size is known.
+    virtual CyrkErrorCodes p_finalize_setup() noexcept;
     virtual double p_estimate_error() noexcept;
     virtual void p_step_implementation() noexcept;
     inline void p_cy_diffeq() noexcept;
     virtual void p_calc_first_step_size() noexcept;
+    CyrkErrorCodes p_setup_error_control() noexcept;
     CyrkErrorCodes p_check_events() noexcept;
+    void p_call_jacobian(double* jacobian_ptr) noexcept;
+    void p_estimate_jacobian(double* jacobian_ptr) noexcept;
 
 public:
     CySolverBase();
@@ -190,7 +217,17 @@ public:
     CySolverBase(CySolverResult* storage_ptr_);
 
     virtual void set_Q_order(size_t* Q_order_ptr);
+    // Largest value that `set_Q_order` can report. Dense output objects use this to size their
+    // storage once, up front, for methods (like BDF and LSODA) whose order changes each step.
+    virtual void set_Q_order_max(size_t* Q_order_max_ptr);
     virtual void set_Q_array(double* Q_ptr) noexcept;
+    // Step size that the dense output's Q array is scaled against. The multi-step methods scale
+    // their history arrays to the step they intend to take next, which is not `t_now - t_old`.
+    virtual double get_dense_step() const noexcept;
+    // Dependent variables that the dense output's polynomial is an offset from. The single-step
+    // methods interpolate forward from the start of the step; the multi-step methods interpolate
+    // from the end of it.
+    virtual double* get_dense_base_y_ptr() noexcept;
     void clear_python_refs();
     void offload_to_temp() noexcept;
     void load_back_from_temp() noexcept;
@@ -216,6 +253,9 @@ protected:
 
     // Diffeq
     DiffeqFuncType diffeq_ptr = nullptr;
+
+    // Analytic Jacobian of the diffeq; null if the solver should use finite differences instead.
+    JacobianFuncType jac_ptr = nullptr;
 
     // Function to send to diffeq which is called before dy is calculated
     PreEvalFunc pre_eval_func = nullptr;
@@ -278,6 +318,25 @@ protected:
     std::vector<double> event_data_vec = std::vector<double>();  // Equivalent to SciPy's "g" array.
     double* event_checks_old_ptr       = nullptr;
     double termination_root            = 0.0;
+
+    // Error control.
+    // For the same reason num_y is limited, the total number of tolerances are limited.
+    bool use_array_rtols = false;
+    bool use_array_atols = false;
+    double* rtols_ptr    = nullptr;
+    double* atols_ptr    = nullptr;
+
+    // Step size parameters
+    double user_provided_first_step_size = 0.0;
+    double step           = 0.0;   // Signed step size for the step being taken.
+    double step_size      = 0.0;   // Magnitude of the step being taken.
+    double max_step_size  = MAX_STEP;
+    double error_exponent = 0.0;   // Defined as 1 / (error estimator order + 1).
+
+    // Finite-difference Jacobian workspace. `jac_factor_vec` holds the per-column step scaling
+    // that is carried between Jacobian estimates (SciPy's `num_jac` "factor").
+    std::vector<double> jac_factor_vec = std::vector<double>(0);
+    std::vector<double> jac_work_vec   = std::vector<double>(0);
 
     // Integration step information
     size_t max_num_steps = 0;

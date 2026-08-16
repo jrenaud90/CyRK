@@ -5,7 +5,7 @@ from libcpp.string cimport string as cpp_string
 from libcpp.map cimport map as cpp_map
 
 cimport cpython.ref as cpy_ref
-from CyRK.cy.common cimport CyrkErrorCodes, CyrkErrorMessages, INF, EPS_100, BUFFER_SIZE, MAX_STEP, PreEvalFunc, DiffeqFuncType, round_to_2, find_expected_size
+from CyRK.cy.common cimport CyrkErrorCodes, CyrkErrorMessages, INF, EPS_100, BUFFER_SIZE, MAX_STEP, PreEvalFunc, DiffeqFuncType, JacobianFuncType, round_to_2, find_expected_size
 
 from CyRK.cy.pysolver_cyhook cimport DiffeqMethod
 from CyRK.cy.events cimport Event
@@ -21,6 +21,9 @@ cdef extern from "c_events.cpp" nogil:
 
 cdef extern from "cy_array.cpp" nogil:
     size_t binary_search_with_guess(double key, const double* array, size_t length, size_t guess)
+
+cdef extern from "c_lu.cpp" nogil:
+    pass
 
 
 # =====================================================================================================================
@@ -135,8 +138,13 @@ cdef extern from "cysolver.cpp" nogil:
             PreEvalFunc pre_eval_func_,
             cpp_bool capture_dense_output_,
             cpp_bool force_retain_solver_,
-            vector[Event]& events_vec_)
-        
+            vector[Event]& events_vec_,
+            vector[double]& rtols_,
+            vector[double]& atols_,
+            double max_step_size_,
+            double first_step_size_,
+            JacobianFuncType jac_ptr_)
+
         DiffeqFuncType diffeq_ptr
         double t_start
         double t_end
@@ -150,6 +158,11 @@ cdef extern from "cysolver.cpp" nogil:
         PreEvalFunc pre_eval_func
         cpp_bool capture_dense_output
         cpp_bool force_retain_solver
+        vector[double] rtols
+        vector[double] atols
+        double max_step_size
+        double first_step_size
+        JacobianFuncType jac_ptr
         cpp_bool capture_extra
         cpp_bool t_eval_provided
         size_t num_y
@@ -183,7 +196,12 @@ cdef extern from "cysolver.cpp" nogil:
             PreEvalFunc pre_eval_func_,
             cpp_bool capture_dense_output_,
             cpp_bool force_retain_solver_,
-            vector[Event]& events_vec_
+            vector[Event]& events_vec_,
+            vector[double]& rtols_,
+            vector[double]& atols_,
+            double max_step_size_,
+            double first_step_size_,
+            JacobianFuncType jac_ptr_
         )
         void initialize()
         void update_properties_from_config(ProblemConfig* new_config_ptr)
@@ -236,66 +254,21 @@ cdef extern from "cysolver.cpp" nogil:
 # =====================================================================================================================
 cdef extern from "rk.cpp" nogil:
 
+    # The Runge-Kutta methods do not add any configuration of their own; everything they need now
+    # lives on `ProblemConfig`. `RKConfig` is kept because it is part of CyRK's C++ API.
     cdef cppclass RKConfig(ProblemConfig):
-        RKConfig(
-            DiffeqFuncType diffeq_ptr_,
-            double t_start_,
-            double t_end_,
-            vector[double]& y0_vec_,
-            vector[char]& args_vec_,
-            vector[double]& t_eval_vec_,
-            size_t num_extra_,
-            size_t expected_size_,
-            size_t max_num_steps_,
-            size_t max_ram_MB_,
-            PreEvalFunc pre_eval_func_,
-            cpp_bool capture_dense_output_,
-            cpp_bool force_retain_solver_,
-            vector[Event]& events_vec_,
-            vector[double]& rtols_,
-            vector[double]& atols_,
-            double max_step_size_,
-            double first_step_size_)
-        
-        vector[double] rtols
-        vector[double] atols
-        double max_step_size
-        double first_step_size
-
-        void update_properties(
-            DiffeqFuncType diffeq_ptr_,
-            double t_start_,
-            double t_end_,
-            vector[double]& y0_vec_,
-            vector[char]& args_vec_,
-            vector[double]& t_eval_vec_,
-            size_t num_extra_,
-            size_t expected_size_,
-            size_t max_num_steps_,
-            size_t max_ram_MB_,
-            PreEvalFunc pre_eval_func_,
-            cpp_bool capture_dense_output_,
-            cpp_bool force_retain_solver_,
-            vector[Event]& events_vec_,
-            vector[double]& rtols_,
-            vector[double]& atols_,
-            double max_step_size_,
-            double first_step_size_)
-        void initialize()
-        void update_properties_from_config(RKConfig* new_config_ptr)
-
+        RKConfig()
 
     cdef cppclass RKSolver(CySolverBase):
         RKSolver()
         RKSolver(CySolverResult* storage_ptr_)
         void set_Q_order(size_t* Q_order_ptr)
         void set_Q_array(double* Q_ptr)
-        CyrkErrorCodes setup()
 
     cdef cppclass RK23(RKSolver):
         RK23()
         RK23(CySolverResult* storage_ptr_)
-    
+
     cdef cppclass RK45(RKSolver):
         RK45()
         RK45(CySolverResult* storage_ptr_)
@@ -303,6 +276,7 @@ cdef extern from "rk.cpp" nogil:
     cdef cppclass DOP853(RKSolver):
         DOP853()
         DOP853(CySolverResult* storage_ptr_)
+
 
 # =====================================================================================================================
 # Import the C++ cysolve_ivp helper function
@@ -329,7 +303,8 @@ cdef extern from "cysolve.cpp" nogil:
         vector[double]& atols,
         double max_step_size,
         double first_step_size,
-        cpp_bool force_retain_solver
+        cpp_bool force_retain_solver,
+        JacobianFuncType jac_ptr
         )
 
     cdef unique_ptr[CySolverResult] baseline_cysolve_ivp(
@@ -351,7 +326,8 @@ cdef extern from "cysolve.cpp" nogil:
         vector[double]& atols,
         double max_step_size,
         double first_step_size,
-        cpp_bool force_retain_solver
+        cpp_bool force_retain_solver,
+        JacobianFuncType jac_ptr
         )
 
 
@@ -379,7 +355,8 @@ cdef void cysolve_ivp_noreturn(
     double max_step = *,
     double first_step = *,
     size_t expected_size = *,
-    cpp_bool force_retain_solver = *
+    cpp_bool force_retain_solver = *,
+    JacobianFuncType jac_ptr = *
     ) noexcept nogil
 
 cdef CySolveOutput cysolve_ivp(
@@ -403,7 +380,8 @@ cdef CySolveOutput cysolve_ivp(
     double max_step = *,
     double first_step = *,
     size_t expected_size = *,
-    cpp_bool force_retain_solver = *
+    cpp_bool force_retain_solver = *,
+    JacobianFuncType jac_ptr = *
     ) noexcept nogil
 
 cdef CySolveOutput cysolve_ivp_gil(
@@ -427,5 +405,6 @@ cdef CySolveOutput cysolve_ivp_gil(
     double max_step = *,
     double first_step = *,
     size_t expected_size = *,
-    cpp_bool force_retain_solver = *
+    cpp_bool force_retain_solver = *,
+    JacobianFuncType jac_ptr = *
     ) noexcept

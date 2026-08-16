@@ -381,7 +381,8 @@ cdef void cysolve_ivp_noreturn(
             double max_step = MAX_STEP,
             double first_step = 0.0,
             size_t expected_size = 0,
-            cpp_bool force_retain_solver = True
+            cpp_bool force_retain_solver = True,
+            JacobianFuncType jac_ptr = NULL
             ) noexcept nogil:
     
     if rtols_vec.size() == 0:
@@ -410,7 +411,8 @@ cdef void cysolve_ivp_noreturn(
         atols_vec,
         max_step,
         first_step,
-        force_retain_solver
+        force_retain_solver,
+        jac_ptr
         )
 
 cdef CySolveOutput cysolve_ivp(
@@ -434,7 +436,8 @@ cdef CySolveOutput cysolve_ivp(
             double max_step = MAX_STEP,
             double first_step = 0.0,
             size_t expected_size = 0,
-            cpp_bool force_retain_solver = True
+            cpp_bool force_retain_solver = True,
+            JacobianFuncType jac_ptr = NULL
             ) noexcept nogil:
 
     if rtols_vec.size() == 0:
@@ -463,7 +466,8 @@ cdef CySolveOutput cysolve_ivp(
         atols_vec,
         max_step,
         first_step,
-        force_retain_solver
+        force_retain_solver,
+        jac_ptr
         )
 
     return move(result)
@@ -489,7 +493,8 @@ cdef CySolveOutput cysolve_ivp_gil(
             double max_step = MAX_STEP,
             double first_step = 0.0,
             size_t expected_size = 0,
-            cpp_bool force_retain_solver = True
+            cpp_bool force_retain_solver = True,
+            JacobianFuncType jac_ptr = NULL
             ) noexcept:
     
     if rtols_vec.size() == 0:
@@ -518,7 +523,8 @@ cdef CySolveOutput cysolve_ivp_gil(
         atols_vec,
         max_step,
         first_step,
-        force_retain_solver
+        force_retain_solver,
+        jac_ptr
         )
 
     return move(result)

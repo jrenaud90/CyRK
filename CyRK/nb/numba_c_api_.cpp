@@ -57,7 +57,8 @@ void* numba_cysolve_ivp(
         atols,
         max_step_size,
         first_step_size,
-        force_retain_solver
+        force_retain_solver,
+        nullptr  // The numba bridge does not expose an analytic Jacobian.
     );
 
     // .release() removes ownership from the unique_ptr and yields the raw pointer

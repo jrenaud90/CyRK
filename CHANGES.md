@@ -2,6 +2,44 @@
 
 ## 2026
 
+### v0.18.X
+
+#### v0.18.0 (Unreleased)
+
+##### C++ Backend
+* Prepared the solver base classes for integration methods that are not Runge-Kutta.
+  * Moved the tolerances (`rtols`, `atols`) and the step size limits (`max_step_size`,
+    `first_step_size`) from `RKConfig` up to `ProblemConfig`, since every adaptive method needs
+    them. `RKConfig` is retained as an alias so existing code keeps working, and its long
+    constructor and `update_properties` overload now live on `ProblemConfig`.
+  * Moved the tolerance parsing (`p_setup_error_control`) and the first step size estimator
+    (`p_calc_first_step_size`) from `RKSolver` to `CySolverBase` for the same reason.
+  * Added `CySolverBase::p_finalize_setup`, called at the end of setup once the first step size is
+    known. Multi-step methods need it to build their solution history.
+  * `CySolverDense` now refreshes its interpolation order and its step size from the solver every
+    time its state is set, instead of only when it is constructed. Two new virtuals,
+    `set_Q_order_max` and `get_dense_base_y_ptr`, cover the differences between an interpolant that
+    works forward from the start of a step and one that works backward from the end of it.
+  * A non-positive `max_step` is now rejected during setup instead of producing an invalid step
+    size clamp.
+* Added an optional analytic Jacobian, `JacobianFuncType`. `cysolve_ivp` and `baseline_cysolve_ivp`
+  take a new `jac_ptr` argument at the end of their argument lists; it is unused until an implicit
+  method is selected. When it is null, `CySolverBase::p_estimate_jacobian` builds the Jacobian with
+  adaptive finite differences, following SciPy's `num_jac`.
+* Added "c_lu.hpp(cpp)": dense and banded LU factorization (the equivalents of LAPACK's dgetrf,
+  dgetrs, dgbtrf, and dgbtrs). These are implemented in CyRK so that it still does not need to link
+  against an external BLAS or LAPACK library.
+* Added the `JACOBIAN_IS_SINGULAR`, `NEWTON_CONVERGENCE_ERROR`, and `LSODA_INTERNAL_ERROR` error
+  codes. They are all added together so that the error code values stay stable.
+
+##### Fixes
+* Fixed `get_method_str` in "numba_solver.py" reporting the wrong method name; its integers did not
+  match the `ODEMethod` enum.
+
+##### Documentation
+* Updated "C++_API.md" with the new `cysolve_ivp` argument list and the new "c_lu" module.
+* Documented the new error codes in "Status_and_Error_Codes.md".
+
 ### v0.17.X
 
 #### v0.17.2 (2026-08-15)

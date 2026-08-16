@@ -23,6 +23,8 @@ include CyRK/cy/cysolver.cpp
 include CyRK/cy/cysolver.hpp
 include CyRK/cy/rk.cpp
 include CyRK/cy/rk.hpp
+include CyRK/cy/c_lu.cpp
+include CyRK/cy/c_lu.hpp
 include CyRK/cy/cysolve.cpp
 include CyRK/cy/cysolve.hpp
 include CyRK/cy/cy_array.cpp

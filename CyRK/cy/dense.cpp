@@ -23,6 +23,7 @@ void CySolverDense::setup(bool set_state)
     {
         // Allocate memory for state vectors (memory allocation should not change since num_y does not change)
         solver_ptr->set_Q_order(&this->Q_order);
+        solver_ptr->set_Q_order_max(&this->Q_order_max);
 
         // Resize state vector based on dimensions. The state vector is a combination of the current y-values and Q
         // Q is a matrix of solver-specific parameters at the current time.
@@ -33,7 +34,7 @@ void CySolverDense::setup(bool set_state)
         // state vector is laid out as [y_vector, Q_matrix]
         this->num_y  = solver_ptr->num_y;
         this->num_dy = solver_ptr->num_dy;
-        this->state_data_vec.resize(this->num_y * (this->Q_order + 1));  // +1 is so we can store y_values in the first spot.
+        this->state_data_vec.resize(this->num_y * (this->Q_order_max + 1));  // +1 is so we can store y_values in the first spot.
         this->initialized = true;
 
         // Populate values with current state
@@ -49,16 +50,21 @@ void CySolverDense::set_state()
     if (this->initialized) [[likely]]
     {
         CySolverBase* solver_ptr = this->solution_ptr->solver_uptr.get();
-    
+
         // Store time information
         this->t_old = solver_ptr->t_old;
         this->t_now = solver_ptr->t_now;
-        
-        // Calculate step
-        this->step = this->t_now - this->t_old;
+
+        // Step that the interpolant's Q array is scaled against. For the single-step methods this
+        // is just the step that was taken; the multi-step methods scale their history to the step
+        // that they intend to take next.
+        this->step = solver_ptr->get_dense_step();
+
+        // The order can change between steps for the multi-step methods, so refresh it here.
+        solver_ptr->set_Q_order(&this->Q_order);
 
         // Make a copy of the y_in pointer in the state vector storage
-        std::memcpy(this->state_data_vec.data(), solver_ptr->y_old_ptr, sizeof(double) * this->num_y);
+        std::memcpy(this->state_data_vec.data(), solver_ptr->get_dense_base_y_ptr(), sizeof(double) * this->num_y);
 
         // Tell the solver to populate the values of the Q matrix. 
         // Q starts at the num_y location of the state vector

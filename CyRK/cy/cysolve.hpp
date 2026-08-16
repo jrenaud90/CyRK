@@ -26,7 +26,8 @@ void baseline_cysolve_ivp_noreturn(
     std::vector<double>& atols,
     double max_step_size,
     double first_step_size,
-    bool force_retain_solver
+    bool force_retain_solver,
+    JacobianFuncType jac_ptr
 );
 
 std::unique_ptr<CySolverResult> baseline_cysolve_ivp(
@@ -49,5 +50,6 @@ std::unique_ptr<CySolverResult> baseline_cysolve_ivp(
     std::vector<double>& atols,
     double max_step_size,
     double first_step_size,
-    bool force_retain_solver
+    bool force_retain_solver,
+    JacobianFuncType jac_ptr
 );

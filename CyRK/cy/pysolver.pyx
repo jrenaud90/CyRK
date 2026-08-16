@@ -5,7 +5,7 @@ from libcpp.cmath cimport fmin, fabs
 from libcpp.vector cimport vector
 
 from CyRK.cy.common cimport INF, EPS_100, CyrkErrorCodes, CyrkErrorMessages, find_expected_size, dbl_NAN, MAX_SIZET_SIZE
-from CyRK.cy.cysolver_api cimport ProblemConfig, RKConfig
+from CyRK.cy.cysolver_api cimport ProblemConfig
 from CyRK.cy.events cimport Event, EventFunc
 
 import numpy as np
@@ -151,8 +151,8 @@ cdef class PySolver(WrapCySolverResult):
         cdef double t_start = time_span[0]
         cdef double t_end   = time_span[1]
 
-        # Update configurations
-        cdef RKConfig* problem_config_ptr = <RKConfig*>base_config_ptr
+        # Update configurations. Every method now shares the base configuration class.
+        cdef ProblemConfig* problem_config_ptr = base_config_ptr
 
         # Pass python pointers to C++ classes.
         problem_config_ptr.cython_extension_class_instance = <cpy_ref.PyObject*>self

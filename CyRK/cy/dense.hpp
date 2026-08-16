@@ -21,7 +21,11 @@ protected:
     // Dense state variables
     bool initialized = false;
     bool state_set = false;
+    // Number of Q columns that the currently stored state uses. The multi-step methods change
+    // their order from step to step so this is refreshed every time the state is set.
     size_t Q_order = 0;
+    // Largest number of Q columns the owning solver can ever produce; sets the storage size.
+    size_t Q_order_max = 0;
 
     // Pointer to the CySolverResult class
     CySolverResult* solution_ptr = nullptr;
