@@ -158,6 +158,85 @@ Runge-Kutta methods do. This is inherent to the methods and SciPy's versions beh
 you are comparing against an analytic solution, expect roughly an order of magnitude more error from
 BDF than from RK45 at the same requested tolerance, and tighten the tolerance if that matters.
 
+## Agreement with SciPy
+
+For the same problem and the same tolerances they do the same amount of work and
+reach the same accuracy, but they will not always take exactly the same number of steps. This
+section explains why, since the step count is an initial comparison point.
+
+The plot below sweeps the tolerance from `rtol=1e-4` down to `1e-10` on three problems and plots the
+error reached against the number of differential equation calls spent getting there. This is the
+measurement that matters: it is a curve of "accuracy bought per unit of work". CyRK and SciPy lie on
+top of each other on every method and every problem.
+
+```{image} ./_static/imgs/CyRK_SciPy_Implicit_WorkPrecision_v0-18-0.png
+:alt: Work-precision comparison of CyRK and SciPy implicit methods
+:width: 900px
+:align: center
+```
+
+Over a wider sweep of 6 problems and 28 combinations of `rtol` and `atol` (504 integrations per
+solver), the accepted step counts come out **identical in 89% of cases**:
+
+| Method | Identical step count | CyRK took more | CyRK took fewer | Total differential equation calls |
+| --- | --- | --- | --- | --- |
+| BDF | 154 / 168 | 9 | 5 | 0.03% fewer than SciPy |
+| LSODA | 149 / 168 | 8 | 11 | 0.33% fewer than SciPy |
+| Radau | 144 / 168 | 10 | 14 | 0.03% more than SciPy |
+
+Two things are worth reading off that table. The direction of the disagreements is balanced: CyRK
+takes more steps about as often as it takes fewer, and the total work over hundreds of
+integrations agrees to within a third of a percent. There is no systematic penalty in either
+direction.
+
+### Why the step counts are not always identical
+
+An adaptive solver is a feedback loop. Each step's size is chosen from the error the previous step
+measured, roughly as `h_new = h * safety * error_norm ** (-1 / (order + 1))`, and layered on top of
+that are genuinely discrete decisions: accept or reject this step, raise or lower the order, rebuild
+the Jacobian or reuse it. BDF's order selection, for example, picks the largest of three closely
+spaced candidate step sizes.
+
+That makes the step sequence sensitive to the last bit of the arithmetic. CyRK sums its matrix
+products in explicit loops where SciPy calls out to BLAS, and a compiled `std::pow` need not round
+identically to numpy's. Those differences are at the level of one part in 10^16. They stay there
+until a discrete decision lands on a knife edge, at which point the two solvers make different
+choices and their step sequences part company.
+
+The plot below shows this happening. It is the one BDF case in the sweep above where the step counts
+differ (the oscillator at `rtol=1e-8`, `atol=1e-9`, where CyRK takes 230 steps and SciPy takes 220).
+
+```{image} ./_static/imgs/CyRK_SciPy_Implicit_Divergence_v0-18-0.png
+:alt: Step sizes chosen by CyRK and SciPy, and how a rounding difference grows
+:width: 800px
+:align: center
+```
+
+On the left the two step size sequences are visually indistinguishable. On the right is the relative
+difference between them. For the first four steps it is effectively zero: the two solvers are running
+nearly bit-for-bit identically, same Jacobian, same Newton iterations, same error estimates. The first
+difference to appear is 2.8 parts in 10^15, about 13 machine epsilon. From there the feedback loop
+amplifies it in visible jumps, each one a step where a decision flipped, until the two are choosing
+step sizes that differ by a few percent.
+
+Smaller steps buy lower error; that is the trade the tolerance is supposed to control, and both
+solvers ended up at a legitimate point on the same curve. In this particular case CyRK spent 4% more
+steps to get 21% less error (5.0e-7 against 6.3e-7). On the next problem the roles reverse. What the
+work-precision plot shows is that neither solver is buying accuracy at a better rate than the other.
+
+### What this means in practice
+
+* **Do** expect the same accuracy for the same tolerance, and the same amount of work to get it.
+* **Do not** expect step counts, or the exact time points in `result.t`, to match SciPy's. Nothing
+  is wrong if they differ by a few percent.
+* If you need a specific set of output times, ask for them with `t_eval` rather than relying on
+  where the solver happens to step.
+* If you are comparing solvers, compare error against work as above. Comparing step counts alone, or
+  error alone, will tell you very little.
+
+The figures and the numbers on this page can be regenerated with
+"Benchmarks/scipy_implicit_comparison.py".
+
 ## Attribution
 
 CyRK's BDF and Radau implementations are C++ ports of SciPy's `scipy/integrate/_ivp/bdf.py` and
