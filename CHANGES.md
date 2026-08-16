@@ -69,6 +69,10 @@
   match the `ODEMethod` enum.
 
 ##### Documentation
+* Added an "Agreement with SciPy" section to the implicit methods page, with two new figures. The
+  first is a work-precision diagram showing that CyRK and SciPy buy accuracy at the same rate for
+  every implicit method and problem tested.
+* Added "Benchmarks/scipy_implicit_comparison.py", which regenerates those figures and statistics.
 * Added a new "Implicit Methods" documentation page covering how to choose between BDF and LSODA,
   the Jacobian, the cost of these methods, and the LSODA-only options.
 * Updated "C++_API.md" with the new `cysolve_ivp` argument list and the new "c_lu", "bdf", "lsoda",
