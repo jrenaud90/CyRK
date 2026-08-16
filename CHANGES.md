@@ -107,6 +107,20 @@
 * Noted in "Performance.md" that a stiff problem's step count is set by stability rather than by the
   error tolerances, which is the case where an implicit method wins despite its higher per step cost.
 
+##### Benchmarks
+* Made the integration method selectable in "Benchmarks/CyRK - SciPy Comparison.ipynb" through a new
+  `integration_method` setting. It was hard coded to RK45; it now accepts any of the six methods and
+  drops `nbsolve_ivp` from the comparison when an implicit one is chosen, since that solver only
+  implements the explicit Runge-Kutta methods. Figures for a method other than RK45 are saved with
+  the method in their file name so they do not overwrite the existing ones.
+* Added the Robertson problem to "Benchmarks/diffeq_builder.py" as `'robertson'` so that the
+  notebook has a stiff problem to compare the implicit methods on. Its middle species sits around
+  1e-5 for the whole integration, so the plot scales it up by 1e4 to keep it visible.
+* Added event functions for the Robertson problem to `cytester`, which previously raised
+  `NotImplementedError` when asked for events on differential equation number 11.
+* Fixed the notebook plotting the `nbsolve_ivp` result a second time in place of the `nbsolve2_ivp`
+  result.
+
 ### v0.17.X
 
 #### v0.17.2 (2026-08-15)
