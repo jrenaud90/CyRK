@@ -242,7 +242,7 @@ def nbsolve2_ivp(
     y0 : numpy.ndarray
         Initial state vector.
     method : str, optional
-        Integration method ('RK45', 'RK23', 'DOP853'). Default is 'RK45'.
+        Integration method ('RK45', 'RK23', 'DOP853', 'BDF', 'LSODA'). Default is 'RK45'.
     t_eval : numpy.ndarray, optional
         Times at which to store the computed solution.
     dense_output : bool, optional

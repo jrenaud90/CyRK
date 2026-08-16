@@ -55,7 +55,7 @@ using [events](Events.md) to cause an early termination based on user-defined cr
 their own performance overhead so it is better to pick a smaller domain if you can guess it ahead of time.
 
 The last two factors affecting the number of steps, and which are more adjustable, are integration tolerances
-(`rtol` and `atol`) and the integration method ("RK23", "RK45", "DOP853"). The integration tolerances directly affect
+(`rtol` and `atol`) and the integration method ("RK23", "RK45", "DOP853", "BDF", "LSODA"). The integration tolerances directly affect
 the number of steps because the solver must decrease step size to fit within smaller tolerances. It is important to
 keep in mind that CyRK allows `atol` and `rtol` to be provided as an array, one for each $y$. This can be helpful if
 one parameter changes much slower than others (looser `rtol`) or is generally much larger than the
@@ -72,6 +72,13 @@ not able to loosen tolerances then you are better off using a simpler method. Th
 DOP853 > RK45 > RK23. The benefit of DOP853 over RK45 (and RK45 over RK23) is better accuracy with looser tolerances and
 less steps. Less steps means less computing power. Benchmarking can tell you if that savings outweighs the increased
 per step cost.
+
+The above assumes that the number of steps is being set by your error tolerances. For a
+[stiff problem](Implicit_Methods.md) it is not: the step size is capped by stability instead, and no amount of
+loosening the tolerances will help. An explicit method may report a very large number of steps and still
+succeed. In that situation an implicit method ("BDF" or "LSODA") can be orders of magnitude faster despite its much
+higher per step cost, because it is not subject to that stability cap. The reverse is also true: on a problem that is
+not stiff the implicit methods only cost you the Jacobian work, so an analysis of a problem's stiffness will always inform choosing the most performant method.
 
 ### Fewer Steps, Dense Output, and `t_eval`
 
