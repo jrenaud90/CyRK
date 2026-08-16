@@ -167,6 +167,8 @@ def get_method_str(method_int: int):
         return "RK45"
     if method_int == 5:
         return "DOP853"
+    if method_int == 6:
+        return "BDF"
     return "UNKNOWN_METHOD"
 
 # ---------------------------------------------------------
@@ -531,7 +533,7 @@ def nbsolve2_ivp(
     y0 : numpy.ndarray
         Initial state vector.
     method : str, optional
-        Integration method ('RK45', 'RK23', 'DOP853'). Default is 'RK45'.
+        Integration method ('RK45', 'RK23', 'DOP853', 'BDF'). Default is 'RK45'.
     t_eval : numpy.ndarray, optional
         Times at which to store the computed solution.
     dense_output : bool, optional

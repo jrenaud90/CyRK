@@ -67,6 +67,8 @@ cdef extern from "c_common.cpp" nogil:
     ctypedef void (*DiffeqFuncType)(double*, double, double*, char*, PreEvalFunc)
     ctypedef void (*JacobianFuncType)(double*, double, double*, char*, PreEvalFunc)
 
+    const size_t BDF_MAX_ORDER
+
 
     cdef void round_to_2(size_t& initial_value) noexcept
 

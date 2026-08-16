@@ -39,7 +39,8 @@ enum class ODEMethod : int {
     RK_BASE_METHOD,
     RK23,
     RK45,
-    DOP853
+    DOP853,
+    BDF
 };
 
 // Root finding parameters
@@ -64,7 +65,10 @@ inline const std::map<ODEMethod, std::string> CyrkODEMethods = {
       "Explicit Runge-Kutta method of order 5(4)" },
 
     { ODEMethod::DOP853,
-      "Explicit Runge-Kutta method of order 8. Error is controlled using a combination of 5th and 3rd order interpolators." }
+      "Explicit Runge-Kutta method of order 8. Error is controlled using a combination of 5th and 3rd order interpolators." },
+
+    { ODEMethod::BDF,
+      "Implicit multi-step method based on backward differentiation formulas of order 1 to 5." }
 };
 
 struct ProblemConfig {

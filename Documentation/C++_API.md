@@ -98,6 +98,12 @@ Currently available functions and associated integration method integer:
     - Explicit Runge-Kutta method of order 5 (error control of order 4)
 - DOP853 : ODEMethod.DOP853
     - Explicit Runge-Kutta method of order 8 (error control of combination of order 5 and 3)
+- BDF : ODEMethod.BDF
+    - Implicit multi-step method based on backward differentiation formulas of order 1 to 5
+
+## "bdf.hpp(cpp)"
+Provides the `BDF` class, an implicit multi-step integrator built on the backward differentiation formulas. It needs no
+configuration beyond what `ProblemConfig` already carries.
 
 ## "c_lu.hpp(cpp)"
 Dense and banded LU factorization routines (the equivalents of LAPACK's dgetrf, dgetrs, dgbtrf, and dgbtrs) that the
@@ -118,3 +124,8 @@ $$8S(N+1)+120N+1,528$$
 $$8S(N+1)+144N+1,528$$
 ### DOP853
 $$8S(N+1)+232N+1,528$$
+### BDF
+$$8S(N+1)+16N^2+240N+1,528$$
+The $N^2$ term is the Jacobian plus its LU factorization, both stored as dense matrices. CyRK checks that footprint
+against `max_ram_MB` during setup and refuses to start rather than attempting a solve that could not finish in
+reasonable time.

@@ -169,6 +169,41 @@ void CySolverDense::call(double t_interp, double* y_interp_ptr)
         }
         break;
 
+    case ODEMethod::BDF:
+        /* SciPy's `BdfDenseOutput`: the backward differences are evaluated at
+           x_j = (t_interp - (t_now - step * j)) / (step * (j + 1)) for j = 0 to order - 1, with
+           the products accumulated so that p_j = x_0 * x_1 * ... * x_j.
+           Q holds D[1] through D[order] and y_stored holds D[0]. */
+        if (this->step == 0.0) [[unlikely]]
+        {
+            std::memcpy(y_interp_ptr, y_stored_ptr, sizeof(double) * this->num_y);
+            break;
+        }
+        else
+        {
+            // The polynomial coefficients do not depend on y so build them once.
+            double p_products[BDF_MAX_ORDER];
+            double cumulative_prod = 1.0;
+            for (size_t P_i = 0; P_i < this->Q_order; P_i++)
+            {
+                const double P_i_dbl = (double)P_i;
+                cumulative_prod *= (t_interp - (this->t_now - this->step * P_i_dbl)) / (this->step * (P_i_dbl + 1.0));
+                p_products[P_i] = cumulative_prod;
+            }
+
+            for (size_t y_i = 0; y_i < this->num_y; y_i++)
+            {
+                const size_t Q_stride = this->Q_order * y_i;
+                double temp_double = 0.0;
+                for (size_t P_i = 0; P_i < this->Q_order; P_i++)
+                {
+                    temp_double += Q_ptr[Q_stride + P_i] * p_products[P_i];
+                }
+                y_interp_ptr[y_i] = y_stored_ptr[y_i] + temp_double;
+            }
+        }
+        break;
+
     [[unlikely]] default:
         // Don't know the model. Just return the input.
         std::memcpy(y_interp_ptr, y_stored_ptr, sizeof(double) * this->num_y);

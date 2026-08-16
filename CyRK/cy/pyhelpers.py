@@ -9,6 +9,7 @@ def get_error_message(error_code: int):
 _RK23_INT   = int(ODEMethod.RK23)
 _RK45_INT   = int(ODEMethod.RK45)
 _DOP853_INT = int(ODEMethod.DOP853)
+_BDF_INT    = int(ODEMethod.BDF)
 
 def find_ode_method_int(ode_method_name: str):
 
@@ -18,6 +19,8 @@ def find_ode_method_int(ode_method_name: str):
         return _RK45_INT
     elif ode_method_name.lower() == 'dop853':
         return _DOP853_INT
+    elif ode_method_name.lower() == 'bdf':
+        return _BDF_INT
     else:
         # Unknown method.
         raise Exception("Unknown/Unsupported Integration Method Provided.")

@@ -114,7 +114,8 @@ cdef extern from "cysolver.cpp" nogil:
         RK_BASE_METHOD,
         RK23,
         RK45,
-        DOP853
+        DOP853,
+        BDF
     const cpp_map[ODEMethod, cpp_string] CyrkODEMethods
 
     cdef cppclass ProblemConfig:
@@ -276,6 +277,18 @@ cdef extern from "rk.cpp" nogil:
     cdef cppclass DOP853(RKSolver):
         DOP853()
         DOP853(CySolverResult* storage_ptr_)
+
+
+# =====================================================================================================================
+# Import CySolver Implicit Integrators
+# =====================================================================================================================
+cdef extern from "bdf.cpp" nogil:
+
+    cdef cppclass BDF(CySolverBase):
+        BDF()
+        BDF(CySolverResult* storage_ptr_)
+        void set_Q_order(size_t* Q_order_ptr)
+        void set_Q_array(double* Q_ptr)
 
 
 # =====================================================================================================================

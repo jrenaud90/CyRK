@@ -177,3 +177,58 @@ defend, and hold each Contributor harmless for any liability
 incurred by, or claims asserted against, such Contributor by reason
 of your accepting any such warranty or additional liability.
 
+---
+
+# Third-Party Code
+
+CyRK bundles or is derived from a small amount of third-party code. Those portions remain under
+their original licenses, which are reproduced below. Everything else in CyRK is under the Apache
+License, Version 2.0, given above.
+
+## Algorithms ported from SciPy
+
+The following parts of CyRK are original C++ code that was written by following the algorithms in
+SciPy's `scipy.integrate` package. No SciPy source is copied into these files, but the numerical
+methods, coefficients, and control heuristics they implement come from SciPy and are covered by the
+BSD 3-Clause license reproduced below:
+
+* `CyRK/cy/bdf.cpp` - the `BDF` integrator, from `scipy/integrate/_ivp/bdf.py`.
+* `CyRK/cy/rk.cpp` - the `RK23`, `RK45`, and `DOP853` integrators, from `scipy/integrate/_ivp/rk.py`.
+* `CySolverBase::p_estimate_jacobian` in `CyRK/cy/cysolver.cpp` - the adaptive finite-difference
+  Jacobian, from `num_jac` in `scipy/integrate/_ivp/common.py`.
+* `CySolverBase::p_calc_first_step_size` in `CyRK/cy/cysolver.cpp` - from `select_initial_step` in
+  `scipy/integrate/_ivp/common.py`, which in turn follows Hairer, Norsett, and Wanner, *Solving
+  Ordinary Differential Equations I: Nonstiff Problems*, Sec. II.4.
+
+```
+Copyright (c) 2001-2002 Enthought, Inc. 2003, SciPy Developers.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above
+   copyright notice, this list of conditions and the following
+   disclaimer in the documentation and/or other materials provided
+   with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived
+   from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```

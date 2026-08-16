@@ -51,6 +51,8 @@ CyrkErrorCodes CySolverResult::p_build_solver()
     }
 
     // The result constructor's only job is to build the solver object and allocate its memory.
+    // Every method currently shares the default `RKConfig`; methods that carry extra options get
+    // their configuration swapped in here.
     try
     {
         switch (this->integrator_method)
@@ -58,17 +60,18 @@ CyrkErrorCodes CySolverResult::p_build_solver()
         case ODEMethod::RK23:
             // RK23
             this->solver_uptr = std::make_unique<RK23>(this);
-            // this->config_uptr = std::make_unique<RKConfig>(); // We do not currently need to do this since by default we initialize to a RKConfig.
             break;
         case ODEMethod::RK45:
             // RK45
             this->solver_uptr = std::make_unique<RK45>(this);
-            // this->config_uptr = std::make_unique<RKConfig>(); // We do not currently need to do this since by default we initialize to a RKConfig.
             break;
         case ODEMethod::DOP853:
             // DOP853
             this->solver_uptr = std::make_unique<DOP853>(this);
-            // this->config_uptr = std::make_unique<RKConfig>(); // We do not currently need to do this since by default we initialize to a RKConfig.
+            break;
+        case ODEMethod::BDF:
+            // BDF
+            this->solver_uptr = std::make_unique<BDF>(this);
             break;
         [[unlikely]] default:
             this->solver_uptr = nullptr;

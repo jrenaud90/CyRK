@@ -15,6 +15,7 @@
 !CyRK/cy/rk.cpp
 !CyRK/cy/c_events.cpp
 !CyRK/cy/c_lu.cpp
+!CyRK/cy/bdf.cpp
 
 !CyRK/optimize/c_brentq.cpp
 

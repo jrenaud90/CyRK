@@ -24,6 +24,7 @@ Overview <Overview/index.md>
 Performance <Performance.md>
 Parallelization.md
 Numba.md
+Implicit Methods <Implicit_Methods.md>
 Events.md
 Dense Output and `t_eval` <Dense_Output_and_t_eval.md>
 Extra Data During Integration <Extra_Output.md>

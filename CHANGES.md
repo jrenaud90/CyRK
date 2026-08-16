@@ -6,6 +6,12 @@
 
 #### v0.18.0 (Unreleased)
 
+##### New Integration Method: BDF
+* Added "BDF", an implicit multi-step method based on the backward differentiation formulas, with the order varying automatically between 1 and 5. It is a C++ port of SciPy's `scipy/integrate/_ivp/bdf.py` and includes the accuracy enhancement from the modified (NDF) formulas. This method is ideal for stiff ODEs (an example shows a decrease from 46,451 to 348 steps when compared to RK45).
+  * It is available everywhere the existing methods are (`cysolve_ivp`, `pysolve_ivp`, and `nbsolve2_ivp`) and supports everything they do: dense output, `t_eval`, events, extra output, solution reuse, backward integration, and per-variable tolerance arrays.
+  * Each step solves its algebraic system with a simplified Newton iteration. The iteration matrix is factorized with CyRK's own LU routines and reused across steps until the step size, the order, or a convergence failure forces a refactorization.
+  * BDF holds the Jacobian and its factorization as dense matrices, so its memory grows with the square of the number of dependent variables. That footprint is checked against `max_ram_MB` during setup, which reports a memory allocation error rather than starting a solve that could not finish in reasonable time.
+
 ##### C++ Backend
 * Prepared the solver base classes for integration methods that are not Runge-Kutta.
   * Moved the tolerances (`rtols`, `atols`) and the step size limits (`max_step_size`,
@@ -37,8 +43,18 @@
   match the `ODEMethod` enum.
 
 ##### Documentation
-* Updated "C++_API.md" with the new `cysolve_ivp` argument list and the new "c_lu" module.
+* Added a new "Implicit Methods" documentation page covering when to reach for an implicit method,
+  the Jacobian, and the cost of these methods.
+* Updated "C++_API.md" with the new `cysolve_ivp` argument list and the new "c_lu" and "bdf" modules.
 * Documented the new error codes in "Status_and_Error_Codes.md".
+* Added a `Third-Party Code` section to "LICENSE.md" recording which parts of CyRK are ported from
+  SciPy, along with SciPy's license.
+
+##### Tests
+* Added "Tests/H_Implicit_Tests" covering accuracy against analytic solutions, stiff performance,
+  dense output, `t_eval`, events, extra output, backward integration, tolerance arrays, solution
+  reuse, and step size limits.
+* Added the new method to the existing accuracy test suites.
 
 ### v0.17.X
 

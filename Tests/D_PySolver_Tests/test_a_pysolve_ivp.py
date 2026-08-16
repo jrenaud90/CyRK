@@ -379,7 +379,7 @@ def test_pysolve_ivp_errors():
     assert result.error_code == CyrkErrorCodes.STEP_SIZE_ERROR_SPACING
     assert result.message == "Error in step size calculation: Required step size is less than spacing between numbers."
 
-@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853"))
+@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853", "BDF"))
 @pytest.mark.parametrize('t_eval_end', (None, 0.5, 1.0))
 @pytest.mark.parametrize('test_dense_output', (False, True))
 @pytest.mark.parametrize('backward_integrate', (False, True))
@@ -445,6 +445,11 @@ def test_pysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output,
     elif integration_method == "DOP853":
         check_rtol = 1.0e-5
         check_atol = 1.0e-8
+    elif integration_method == "BDF":
+        # The multi-step methods accumulate more global error than the RK methods do at the same
+        # requested tolerance. SciPy's versions of these methods behave the same way.
+        check_rtol = 1.0e-4
+        check_atol = 1.0e-6
     else:
         check_rtol = 1.0e-4
         check_atol = 1.0e-7
@@ -487,7 +492,7 @@ def test_pysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output,
     # ax.plot(result.t, real_answer[1], 'b:')
     # plt.show()
 
-@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853"))
+@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853", "BDF"))
 def test_pysolve_ivp_readonly(integration_method):
     #Check that the cython function solver is able to reproduce a known functions integral with reasonable accuracy
 
