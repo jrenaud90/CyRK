@@ -169,6 +169,26 @@ void CySolverDense::call(double t_interp, double* y_interp_ptr)
         }
         break;
 
+    case ODEMethod::RADAU:
+        /* The collocation polynomial is evaluated directly, without the extra factor of the step
+           size that the explicit Runge-Kutta interpolants carry. */
+        for (size_t y_i = 0; y_i < this->num_y; y_i++)
+        {
+            const size_t Q_stride = this->Q_order * y_i;
+            // P=0
+            double cumulative_prod = step_factor;
+            double temp_double = Q_ptr[Q_stride] * cumulative_prod;
+            // P=1
+            cumulative_prod *= step_factor;
+            temp_double += Q_ptr[Q_stride + 1] * cumulative_prod;
+            // P=2
+            cumulative_prod *= step_factor;
+            temp_double += Q_ptr[Q_stride + 2] * cumulative_prod;
+
+            y_interp_ptr[y_i] = y_stored_ptr[y_i] + temp_double;
+        }
+        break;
+
     case ODEMethod::BDF:
         /* SciPy's `BdfDenseOutput`: the backward differences are evaluated at
            x_j = (t_interp - (t_now - step * j)) / (step * (j + 1)) for j = 0 to order - 1, with

@@ -78,12 +78,13 @@ integration_methods = {
     'RK45'  : 1,
     'DOP853': 2,
     'BDF'   : None,
-    'LSODA' : None
+    'LSODA' : None,
+    'Radau' : None
     }
 
 # The implicit methods build a Jacobian matrix, which for these problems means a dense 10,000 by
 # 10,000 factorization on every step. Those problems are left blank for them.
-implicit_methods = ('BDF', 'LSODA')
+implicit_methods = ('BDF', 'LSODA', 'Radau')
 implicit_skip_diffeqs = ('Large-NumY-Exp', 'Large-NumY-Simp')
 
 # Number of statistics recorded for each diffeq and time span combination.

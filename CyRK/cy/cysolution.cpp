@@ -74,6 +74,10 @@ CyrkErrorCodes CySolverResult::p_build_solver()
             // BDF
             this->solver_uptr = std::make_unique<BDF>(this);
             break;
+        case ODEMethod::RADAU:
+            // Radau
+            this->solver_uptr = std::make_unique<RADAU>(this);
+            break;
         case ODEMethod::LSODA:
             // LSODA
             if (not dynamic_cast<LSODAConfig*>(this->config_uptr.get()))

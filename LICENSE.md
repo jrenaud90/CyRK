@@ -210,6 +210,7 @@ methods, coefficients, and control heuristics they implement come from SciPy and
 BSD 3-Clause license reproduced below:
 
 * `CyRK/cy/bdf.cpp` - the `BDF` integrator, from `scipy/integrate/_ivp/bdf.py`.
+* `CyRK/cy/radau.cpp` - the `RADAU` integrator, from `scipy/integrate/_ivp/radau.py`.
 * `CyRK/cy/rk.cpp` - the `RK23`, `RK45`, and `DOP853` integrators, from `scipy/integrate/_ivp/rk.py`.
 * `CySolverBase::p_estimate_jacobian` in `CyRK/cy/cysolver.cpp` - the adaptive finite-difference
   Jacobian, from `num_jac` in `scipy/integrate/_ivp/common.py`.

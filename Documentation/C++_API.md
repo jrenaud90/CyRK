@@ -102,10 +102,17 @@ Currently available functions and associated integration method integer:
     - Implicit multi-step method based on backward differentiation formulas of order 1 to 5
 - LSODA : ODEMethod.LSODA
     - Adams / BDF method with automatic stiffness detection and switching
+- RADAU : ODEMethod.RADAU
+    - Implicit Runge-Kutta method of the Radau IIA family of order 5
 
 ## "bdf.hpp(cpp)"
 Provides the `BDF` class, an implicit multi-step integrator built on the backward differentiation formulas. It needs no
 configuration beyond what `ProblemConfig` already carries.
+
+## "radau.hpp(cpp)"
+Provides the `RADAU` class, a single-step implicit Runge-Kutta integrator. Like `BDF` it needs no configuration beyond
+what `ProblemConfig` already carries. It is the one method that uses the complex routines in "c_lu", since it
+factorizes a complex iteration matrix alongside a real one.
 
 ## "lsoda.hpp(cpp)" and "c_lsoda.hpp(cpp)"
 `lsoda.hpp` provides the `LSODA` class along with `LSODAConfig`, which adds the options that only LSODA understands
@@ -118,7 +125,8 @@ third-party code; see the `Third-Party Code` section of the license for its noti
 
 ## "c_lu.hpp(cpp)"
 Dense and banded LU factorization routines (the equivalents of LAPACK's dgetrf, dgetrs, dgbtrf, and dgbtrs) that the
-implicit methods use to factorize their iteration matrices. They are implemented here so that CyRK does not have to
+implicit methods use to factorize their iteration matrices, along with complex versions of the dense pair (zgetrf and
+zgetrs) that Radau needs. They are implemented here so that CyRK does not have to
 link against an external BLAS or LAPACK library. All matrices use LAPACK's column-major storage.
 
 ## Memory Usage
@@ -138,6 +146,9 @@ $$8S(N+1)+232N+1,528$$
 ### BDF
 $$8S(N+1)+16N^2+240N+1,528$$
 The $N^2$ term is the Jacobian plus its LU factorization, both stored as dense matrices.
+### Radau
+$$8S(N+1)+32N^2+264N+1,528$$
+Radau holds the Jacobian plus both a real and a complex factorization, so its $N^2$ term is twice BDF's.
 ### LSODA (dense Jacobian)
 $$8S(N+1)+8N^2+140N+3,600$$
 ### LSODA (banded Jacobian)

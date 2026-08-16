@@ -3,9 +3,11 @@
 
 #include "c_lu.hpp"
 
-size_t c_dense_lu_factor(
+namespace {
+template <typename ScalarType>
+size_t dense_lu_factor(
         const size_t num_rows,
-        double* matrix_ptr,
+        ScalarType* matrix_ptr,
         int* pivot_ptr) noexcept
 {
     /* Right-looking unblocked LU with partial pivoting. This mirrors LAPACK's dgetf2; blocking
@@ -15,7 +17,7 @@ size_t c_dense_lu_factor(
 
     for (size_t k = 0; k < num_rows; k++)
     {
-        double* const column_k_ptr = &matrix_ptr[k * num_rows];
+        ScalarType* const column_k_ptr = &matrix_ptr[k * num_rows];
 
         // Find the pivot row (largest magnitude entry at or below the diagonal).
         size_t pivot_row  = k;
@@ -31,8 +33,8 @@ size_t c_dense_lu_factor(
         }
         pivot_ptr[k] = (int)pivot_row;
 
-        const double pivot_value = column_k_ptr[pivot_row];
-        if (pivot_value == 0.0) [[unlikely]]
+        const ScalarType pivot_value = column_k_ptr[pivot_row];
+        if (pivot_value == ScalarType(0.0)) [[unlikely]]
         {
             // Matrix is singular. Record the first occurrence but keep going so that the
             // remaining columns are still in a well-defined state.
@@ -48,13 +50,13 @@ size_t c_dense_lu_factor(
         {
             for (size_t col_j = 0; col_j < num_rows; col_j++)
             {
-                double* const column_j_ptr = &matrix_ptr[col_j * num_rows];
+                ScalarType* const column_j_ptr = &matrix_ptr[col_j * num_rows];
                 std::swap(column_j_ptr[k], column_j_ptr[pivot_row]);
             }
         }
 
         // Scale the column below the diagonal to build L.
-        const double pivot_inverse = 1.0 / pivot_value;
+        const ScalarType pivot_inverse = ScalarType(1.0) / pivot_value;
         for (size_t row_i = k + 1; row_i < num_rows; row_i++)
         {
             column_k_ptr[row_i] *= pivot_inverse;
@@ -63,9 +65,9 @@ size_t c_dense_lu_factor(
         // Rank-1 update of the trailing submatrix.
         for (size_t col_j = k + 1; col_j < num_rows; col_j++)
         {
-            double* const column_j_ptr = &matrix_ptr[col_j * num_rows];
-            const double row_k_value   = column_j_ptr[k];
-            if (row_k_value != 0.0)
+            ScalarType* const column_j_ptr = &matrix_ptr[col_j * num_rows];
+            const ScalarType row_k_value   = column_j_ptr[k];
+            if (row_k_value != ScalarType(0.0))
             {
                 for (size_t row_i = k + 1; row_i < num_rows; row_i++)
                 {
@@ -78,11 +80,12 @@ size_t c_dense_lu_factor(
     return singular_row;
 }
 
-void c_dense_lu_solve(
+template <typename ScalarType>
+void dense_lu_solve(
         const size_t num_rows,
-        const double* lu_ptr,
+        const ScalarType* lu_ptr,
         const int* pivot_ptr,
-        double* rhs_ptr) noexcept
+        ScalarType* rhs_ptr) noexcept
 {
     // Forward substitution with the row interchanges applied on the fly (solve L z = P b).
     for (size_t k = 0; k < num_rows; k++)
@@ -93,9 +96,9 @@ void c_dense_lu_solve(
             std::swap(rhs_ptr[k], rhs_ptr[pivot_row]);
         }
 
-        const double* const column_k_ptr = &lu_ptr[k * num_rows];
-        const double z_k = rhs_ptr[k];
-        if (z_k != 0.0)
+        const ScalarType* const column_k_ptr = &lu_ptr[k * num_rows];
+        const ScalarType z_k = rhs_ptr[k];
+        if (z_k != ScalarType(0.0))
         {
             for (size_t row_i = k + 1; row_i < num_rows; row_i++)
             {
@@ -107,11 +110,11 @@ void c_dense_lu_solve(
     // Back substitution (solve U x = z).
     for (size_t k = num_rows; k-- > 0; )
     {
-        const double* const column_k_ptr = &lu_ptr[k * num_rows];
+        const ScalarType* const column_k_ptr = &lu_ptr[k * num_rows];
         rhs_ptr[k] /= column_k_ptr[k];
 
-        const double x_k = rhs_ptr[k];
-        if (x_k != 0.0)
+        const ScalarType x_k = rhs_ptr[k];
+        if (x_k != ScalarType(0.0))
         {
             for (size_t row_i = 0; row_i < k; row_i++)
             {
@@ -120,6 +123,43 @@ void c_dense_lu_solve(
         }
     }
 }
+}  // namespace
+
+
+size_t c_dense_lu_factor(
+        const size_t num_rows,
+        double* matrix_ptr,
+        int* pivot_ptr) noexcept
+{
+    return dense_lu_factor<double>(num_rows, matrix_ptr, pivot_ptr);
+}
+
+void c_dense_lu_solve(
+        const size_t num_rows,
+        const double* lu_ptr,
+        const int* pivot_ptr,
+        double* rhs_ptr) noexcept
+{
+    dense_lu_solve<double>(num_rows, lu_ptr, pivot_ptr, rhs_ptr);
+}
+
+size_t c_complex_dense_lu_factor(
+        const size_t num_rows,
+        std::complex<double>* matrix_ptr,
+        int* pivot_ptr) noexcept
+{
+    return dense_lu_factor<std::complex<double>>(num_rows, matrix_ptr, pivot_ptr);
+}
+
+void c_complex_dense_lu_solve(
+        const size_t num_rows,
+        const std::complex<double>* lu_ptr,
+        const int* pivot_ptr,
+        std::complex<double>* rhs_ptr) noexcept
+{
+    dense_lu_solve<std::complex<double>>(num_rows, lu_ptr, pivot_ptr, rhs_ptr);
+}
+
 
 size_t c_banded_lu_factor(
         const size_t num_rows,

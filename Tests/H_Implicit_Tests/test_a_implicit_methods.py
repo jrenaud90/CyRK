@@ -1,4 +1,4 @@
-"""Tests for CyRK's implicit integrators, BDF and LSODA.
+"""Tests for CyRK's implicit integrators: BDF, LSODA, and Radau.
 
 The problems used here are stiff on purpose: they are cheap for an implicit method but force an
 explicit method to take very small steps, which is what makes the comparisons meaningful.
@@ -12,7 +12,7 @@ from CyRK import pysolve_ivp, ODEMethod
 from CyRK.cy.cysolver_test import cytester
 from CyRK.cy.pyhelpers import find_ode_method_int
 
-IMPLICIT_METHODS = ("BDF", "LSODA")
+IMPLICIT_METHODS = ("BDF", "LSODA", "RADAU")
 
 # Stiffness of the test problem below. Large enough that RK45 struggles, small enough to stay fast.
 STIFF_ALPHA = 1.0e4
@@ -78,13 +78,15 @@ def test_implicit_methods_are_registered():
     """The new methods must be reachable by name and hold stable enum values."""
     assert int(ODEMethod.BDF) == 6
     assert int(ODEMethod.LSODA) == 7
+    assert int(ODEMethod.RADAU) == 8
     assert find_ode_method_int('bdf') == int(ODEMethod.BDF)
     assert find_ode_method_int('LSODA') == int(ODEMethod.LSODA)
+    assert find_ode_method_int('Radau') == int(ODEMethod.RADAU)
 
 
 @pytest.mark.parametrize('integration_method', IMPLICIT_METHODS)
 def test_implicit_accuracy(integration_method):
-    """Both implicit methods should reproduce the exact solution of a stiff problem."""
+    """Every implicit method should reproduce the exact solution of a stiff problem."""
     result = pysolve_ivp(stiff_diffeq, STIFF_TIME_SPAN, STIFF_Y0, method=integration_method,
                          rtol=1.0e-9, atol=1.0e-11, pass_dy_as_arg=True)
 
@@ -263,7 +265,7 @@ def test_lsoda_min_step():
     assert bounded_result.steps_taken < unbounded_result.steps_taken
 
 
-@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853", "BDF"))
+@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853", "BDF", "RADAU"))
 def test_lsoda_only_options_are_rejected_elsewhere(integration_method):
     """`min_step`, `lband`, and `uband` are LSODA-only and must not be silently ignored."""
     with pytest.raises(AttributeError):

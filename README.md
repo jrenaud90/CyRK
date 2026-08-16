@@ -57,8 +57,9 @@ Currently, CyRK supports the following integration methods:
 * "DOP853" - Explicit Runge-Kutta method of order 8. Error is controlled using a combination of 5th and 3rd order interpolators.
 * "BDF" - Implicit multi-step method based on backward differentiation formulas of order 1 to 5.
 * "LSODA" - Adams / BDF method with automatic stiffness detection and switching.
+* "Radau" - Implicit Runge-Kutta method of the Radau IIA family of order 5.
 
-"BDF" and "LSODA" are implicit ODE methods used for stiff problems. See the
+"BDF", "LSODA", and "Radau" are implicit ODE methods used for stiff problems. See the
 [implicit methods documentation](https://cyrk.readthedocs.io/en/latest/Implicit_Methods.html) for
 guidance on choosing between them and for the options that only they support.
 
@@ -73,7 +74,6 @@ In additional to improved performance, CyRK offers a few additional features tha
 
 ### Limitations
 There are some features that SciPy has that CyRK currently does not. A non-exhaustive list is:
-* A number of integrator methods are missing, such as `Radau`.
 * An analytic Jacobian can only be provided to the implicit methods at the C++ / Cython level; `pysolve_ivp` always estimates it with finite differences.
 * `cysolve_ivp` and `pysolve_ivp` can only work with ODEs of double-precision floating point numbers. So complex numbers are not directly supported but systems of ODEs of complex numbers can be converted to systems of doubles for use with CyRK.
 

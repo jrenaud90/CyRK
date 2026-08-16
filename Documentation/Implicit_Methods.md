@@ -1,4 +1,4 @@
-# Implicit Methods (BDF and LSODA)
+# Implicit Methods (BDF, LSODA, and Radau)
 
 A problem is "stiff" when the fastest process in it is much faster than the timescale you actually
 care about. The classic symptom is an explicit solver like `RK45` grinding through an enormous
@@ -9,7 +9,7 @@ Implicit methods are not subject to that limit, so they can take steps sized by 
 price is that every step has to solve a non-linear algebraic system, which means building a
 Jacobian matrix and factorizing it.
 
-CyRK provides two implicit methods, both of which follow the implementations in
+CyRK provides three implicit methods, all of which follow the implementations in
 [SciPy's `solve_ivp`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html):
 
 * **"BDF"** - Implicit multi-step method built on the backward differentiation formulas, with the
@@ -17,6 +17,9 @@ CyRK provides two implicit methods, both of which follow the implementations in
   (NDF) formulas for extra accuracy.
 * **"LSODA"** - A wrapper around ODEPACK's LSODA, which monitors the problem as it integrates and
   switches between the non-stiff Adams formulas and the stiff BDF formulas on its own.
+* **"Radau"** - Implicit Runge-Kutta method of the Radau IIA family of order 5. Unlike the other
+  two it is a single-step method, so it carries no solution history and changes its step size
+  freely. It is L-stable, and its error is controlled by an embedded third order formula.
 
 They are used exactly like the explicit methods:
 
@@ -33,7 +36,7 @@ def stiff_diffeq(dy, t, y):
 
 y0 = np.asarray((1.0, 0.0), dtype=np.float64)
 
-for method in ("RK45", "BDF", "LSODA"):
+for method in ("RK45", "BDF", "LSODA", "Radau"):
     result = pysolve_ivp(stiff_diffeq, (0.0, 10.0), y0, method=method,
                          rtol=1.0e-8, atol=1.0e-10, pass_dy_as_arg=True)
     print(f"{method}: {result.steps_taken} steps")
@@ -41,6 +44,7 @@ for method in ("RK45", "BDF", "LSODA"):
 # RK45: 34368 steps
 # BDF: 233 steps
 # LSODA: 389 steps
+# Radau: 290 steps
 ```
 
 Everything else in CyRK works with them unchanged: dense output, `t_eval`, events, extra output,
@@ -53,12 +57,17 @@ solution reuse, backward integration, and per-variable tolerance arrays.
   an explicit method on non-stiff problems and close to BDF on stiff ones.
 * If you know the problem is stiff for its whole domain, **BDF** avoids LSODA's stiffness
   monitoring overhead and tends to be a little more predictable.
+* If the problem is stiff *and* the solution changes character sharply, **Radau** is often the best
+  of the three. Carrying no history means a step size change costs it nothing, where the multi-step
+  methods have to rescale and rebuild. It also holds its order through a sharp transition, so on the
+  Robertson benchmark it reaches the end in fewer steps than either of them. The price is that each
+  step solves a three stage system, so it does more work per step.
 * If the problem is not stiff, the explicit methods are still the right answer. `DOP853` in
   particular reaches tight tolerances with far fewer steps than any implicit method.
 
 ## The Jacobian
 
-Both methods need the Jacobian matrix of the differential equation, $J_{ij} = \partial \dot{y}_i /
+All three methods need the Jacobian matrix of the differential equation, $J_{ij} = \partial \dot{y}_i /
 \partial y_j$. By default CyRK estimates it with forward differences, adapting the perturbation
 applied to each column so that the difference stays well clear of its own round-off error (this
 follows SciPy's `num_jac`).
@@ -151,7 +160,8 @@ BDF than from RK45 at the same requested tolerance, and tighten the tolerance if
 
 ## Attribution
 
-CyRK's BDF implementation is a C++ port of SciPy's `scipy/integrate/_ivp/bdf.py`. The LSODA method
+CyRK's BDF and Radau implementations are C++ ports of SciPy's `scipy/integrate/_ivp/bdf.py` and
+`scipy/integrate/_ivp/radau.py`. The LSODA method
 is built on a modified copy of the C translation of ODEPACK's LSODA that ships with SciPy. See the
 `Third-Party Code` section of the [license](License.md) for the full notices, and please cite
 ODEPACK if you use the LSODA method.
@@ -165,6 +175,8 @@ ODEPACK if you use the LSODA method.
   Computing*, Vol. 18, No. 1, pp. 1-22, 1997.
 * Hairer, E., and Wanner, G., *Solving Ordinary Differential Equations I: Nonstiff Problems*,
   Sec. III.2.
+* Hairer, E., and Wanner, G., *Solving Ordinary Differential Equations II: Stiff and
+  Differential-Algebraic Problems*, Sec. IV.8.
 * Hindmarsh, A. C., "ODEPACK, A Systematized Collection of ODE Solvers", *IMACS Transactions on
   Scientific Computation*, Vol. 1, pp. 55-64, 1983.
 * Petzold, L., "Automatic selection of methods for solving stiff and nonstiff systems of ordinary
