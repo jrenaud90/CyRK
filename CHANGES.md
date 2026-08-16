@@ -67,6 +67,25 @@
   reuse, step size limits, and the LSODA banded Jacobian.
 * Added the new methods to the existing accuracy test suites.
 
+##### Performance
+* Added a stiff problem to the performance stack: "Performance/robertson.py" holds the Robertson
+  chemical kinetics problem, the standard benchmark for stiff solvers. None of the existing
+  benchmark problems are stiff, so none of them showed what the implicit methods are for. On this
+  one the explicit methods are held to tiny steps by stability: over the larger time span RK45 needs
+  about 34,600 steps where BDF needs 109 and LSODA needs 140. It is also available to `cysolve_ivp`
+  through `cytester` as differential equation number 11.
+* Added the new integration methods to "Performance/performance.py".
+  * The legacy `nbsolve_ivp` does not implement the implicit methods, so its column is left blank
+    for them.
+  * The two problems with 10,000 dependent variables are skipped for the implicit methods, since a
+    dense Jacobian of that size would need a 10,000 by 10,000 factorization on every step.
+* Added a check that an existing performance CSV was written for the current set of problems. The
+  headers are only written when a file is first created, so adding a problem previously caused
+  every row after it to silently misalign with them (which had already happened to the RK45 file).
+  A mismatch now raises rather than appending a bad row.
+* Noted in "Performance.md" that a stiff problem's step count is set by stability rather than by the
+  error tolerances, which is the case where an implicit method wins despite its higher per step cost.
+
 ### v0.17.X
 
 #### v0.17.2 (2026-08-15)
