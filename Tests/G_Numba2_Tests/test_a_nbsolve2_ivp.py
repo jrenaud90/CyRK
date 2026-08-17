@@ -6,9 +6,19 @@ from CyRK import nbsolve2_ivp as nbsolve_ivp
 from CyRK import CyrkErrorCodes, NbCySolverResult, nb_diffeq_addr
 
 
-# To reduce number of tests, only test RK23 once since RK45 should capture all its functionality
+# To reduce number of tests, only test RK23 once since RK45 should capture all its functionality.
+# The one combination that does get run has to be named up front
 SKIP_SOME_RK23_TESTS = True
-RK23_TESTED = False
+REPRESENTATIVE_CASE = dict(
+    use_args           = False,
+    use_large_timespan = False,
+    use_atol_array     = False,
+    use_rtol_array     = False,
+    use_different_tols = False,
+    first_step         = 0.0,
+    max_step           = 100_000.0,
+    capture_extra      = False
+    )
 
 def diffeq(dy, t, y, args):
     dy[0] = (1. - 0.01 * y[1]) * y[0]
@@ -53,11 +63,6 @@ def test_nbsolve2_ivp_test():
     from CyRK import test_nbsolver
     test_nbsolver()
 
-# njit is slow during testing so only do it once for each diffeq
-njit_rk23_tested = False
-njit_rk45_tested = False
-njit_DOP853_tested = False
-
 @pytest.mark.filterwarnings("error")  # Some exceptions get propagated via cython as warnings; we want to make sure the lead to crashes.
 # @pytest.mark.parametrize('event_flag', (0, 1, 2, 3))
 @pytest.mark.parametrize('capture_extra', (True, False))
@@ -73,16 +78,21 @@ def test_pysolve_ivp(use_args,
                      use_large_timespan, use_atol_array, use_rtol_array, use_different_tols, integration_method,
                      first_step, max_step, capture_extra):
     """Check that the pysolve_ivp function is able to run with various changes to its arguments. """
-    global RK23_TESTED
-    global njit_rk23_tested
-    global njit_rk45_tested
-    global njit_DOP853_tested
 
-    # To reduce number of tests, only test RK23 once. 
-    if RK23_TESTED and SKIP_SOME_RK23_TESTS and (integration_method=="RK23"):
+    is_representative_case = dict(
+        use_args           = use_args,
+        use_large_timespan = use_large_timespan,
+        use_atol_array     = use_atol_array,
+        use_rtol_array     = use_rtol_array,
+        use_different_tols = use_different_tols,
+        first_step         = first_step,
+        max_step           = max_step,
+        capture_extra      = capture_extra
+        ) == REPRESENTATIVE_CASE
+
+    # To reduce number of tests, only test RK23 once.
+    if SKIP_SOME_RK23_TESTS and (integration_method=="RK23") and (not is_representative_case):
         pytest.skip("Skipping Some RK23 Tests (just to reduce number of tests).")
-    else:
-        RK23_TESTED = True
 
     if use_args:
         if capture_extra:
@@ -94,16 +104,6 @@ def test_pysolve_ivp(use_args,
             diffeq_to_use = diffeq_extra
         else:
             diffeq_to_use = diffeq
-    
-    if (not njit_rk23_tested) and (integration_method=="RK23"):
-        diffeq_to_use = diffeq_to_use
-        njit_rk23_tested = True
-    elif (not njit_rk45_tested) and (integration_method=="RK45"):
-        diffeq_to_use = diffeq_to_use
-        njit_rk45_tested = True
-    elif (not njit_DOP853_tested) and (integration_method=="DOP853"):
-        diffeq_to_use = diffeq_to_use
-        njit_DOP853_tested = True
 
     rtol = 1.0e-3
     atol = 1.0e-6

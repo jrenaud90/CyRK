@@ -247,7 +247,7 @@ def run_cysolver_with_events(
             tests_passed = False
             break
         
-        printf("INFO: `run_cysolver_with_events` - solution_ptr.event_states[%zd].size() = %d\n", event_i, solution_ptr.event_states[event_i].size())
+        printf("INFO: `run_cysolver_with_events` - solution_ptr.event_states[%zd].size() = %zd\n", event_i, solution_ptr.event_states[event_i].size())
         if solution_ptr.event_states[event_i].size() == 0:
             printf("TEST FAILED: `run_cysolver_with_events` - solution_ptr.event_states[%zd].size() == 0.\n", event_i)
             tests_passed = False
