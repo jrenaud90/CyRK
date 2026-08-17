@@ -501,24 +501,24 @@ void CySolverResult::build_dense(bool save_dense) noexcept
 
 CyrkErrorCodes CySolverResult::solve()
 {
-    CyrkErrorCodes solve_status = CyrkErrorCodes::NO_ERROR;
-    if (not this->solver_uptr or (this->status != CyrkErrorCodes::NO_ERROR))
-    {
-        // Solver is not initialized or the status is not NO_ERROR.
-        solve_status = CyrkErrorCodes::UNINITIALIZED_CLASS;
-    }
-
     if (not this->setup_called)
     {
         // Setup has not been called; we need to reset the integrator to a base state so try calling setup.
+        // This is what builds the solver, so it has to happen before the solver is checked below.
         this->setup(nullptr);
     }
 
-    if (this->solver_uptr and (this->status == CyrkErrorCodes::NO_ERROR))
-    {    
+    if (not this->solver_uptr)
+    {
+        // There is no solver to run. Record that; otherwise this returns a status that still says
+        // everything is fine for a solve that never happened.
+        this->update_status(CyrkErrorCodes::UNINITIALIZED_CLASS);
+    }
+    else if (this->status == CyrkErrorCodes::NO_ERROR)
+    {
         // Tell the solver to starting solving the problem!
         this->solver_uptr->solve();
-        
+
         // Call the finalizer on the storage class instance.
         // This performs some housekeeping so it should be called even if integration failed.
         this->p_finalize();
