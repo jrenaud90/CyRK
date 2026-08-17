@@ -9,7 +9,10 @@ DEBUG_MODE = False
 install_platform = platform.system()
 
 if install_platform.lower() == 'windows':
-    extra_compile_args = ['/openmp', "/arch:AVX2", "/O2i", "/GL"]
+    # 4551 (function call missing argument list) and 4018 (signed/unsigned mismatch) are only ever
+    # raised inside the C++ that Cython generates. Silencing them keeps the build log readable so
+    # that a warning in CyRK's own sources is actually visible.
+    extra_compile_args = ['/openmp', "/arch:AVX2", "/O2i", "/GL", "/wd4551", "/wd4018"]
     extra_link_args = ["/LTCG"]
     if DEBUG_MODE:
         # Note: Debug usually disables optimizations (/Od)

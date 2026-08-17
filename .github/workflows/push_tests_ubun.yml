@@ -46,4 +46,4 @@ jobs:
           cd ../..
 
       - name: Run pytest
-        run: pytest -n auto -v Tests/
+        run: pytest -n auto --capture=sys --durations=25 -v Tests/
