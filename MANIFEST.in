@@ -2,10 +2,10 @@
 
 # Exclude all c++ and c files; we will manually add back in some custom ones.
 # This avoids shipping already cythonized c files that need to be cythonized locally.
-exclude **/*.c
-exclude **/*.cpp
-exclude **/*.h
-exclude **/*.hpp
+global-exclude *.c
+global-exclude *.cpp
+global-exclude *.h
+global-exclude *.hpp
 
 # Include Cython pyx and pxd files
 global-include *.pxd
@@ -49,9 +49,9 @@ include CyRK/optimize/c_brentq.hpp
 
 include CyRK/nb/numba_c_api_.cpp
 
-# Exclude the whole Tests folder
-exclude Tests/*
-exclude Demos/*
-exclude Benchmarks/*
-exclude Documentation/*
-exclude Performance/*
+# Exclude the whole Tests folder (and the other developer-only directories).
+prune Tests
+prune Demos
+prune Benchmarks
+prune Documentation
+prune Performance
