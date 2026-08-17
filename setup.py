@@ -8,9 +8,19 @@ DEBUG_MODE = False
 
 install_platform = platform.system()
 
+# CyRK's x86-64 builds target AVX2. Set CYRK_NO_AVX2 to build for a CPU that does not have it; the
+# run time check in "CyRK/_cpu_check.py" reads the same variable, so leaving it set keeps that check
+# out of the way as well.
+USE_AVX2 = not os.environ.get('CYRK_NO_AVX2')
+
 if install_platform.lower() == 'windows':
-    extra_compile_args = ['/openmp', "/arch:AVX2", "/O2i", "/GL"]
+    # 4551 (function call missing argument list) and 4018 (signed/unsigned mismatch) are only ever
+    # raised inside the C++ that Cython generates. Silencing them keeps the build log readable so
+    # that a warning in CyRK's own sources is actually visible.
+    extra_compile_args = ['/openmp', "/O2i", "/GL", "/wd4551", "/wd4018"]
     extra_link_args = ["/LTCG"]
+    if USE_AVX2:
+        extra_compile_args.append("/arch:AVX2")
     if DEBUG_MODE:
         # Note: Debug usually disables optimizations (/Od)
         extra_compile_args = ['/openmp', '/Zi', '/Od']
@@ -20,13 +30,17 @@ else:
     # Common flags for Linux/Mac
     extra_compile_args = ['-O3', '-flto']
     extra_link_args = ['-flto']
-    
+
     if install_platform.lower() == 'darwin':
+        # Apple silicon; AVX2 does not apply and NEON is already part of the baseline.
         extra_link_args.append('-lomp')
     else:
         extra_link_args.append('-fopenmp')
-        extra_link_args.append('-mavx2')
-        extra_link_args.append('-mfma')
+        if USE_AVX2:
+            # These have to be compile args. They were previously passed to the linker, where they
+            # do nothing at all, so the Linux build was never actually getting AVX2 or FMA.
+            extra_compile_args.append('-mavx2')
+            extra_compile_args.append('-mfma')
 
 macro_list = [("NPY_NO_DEPRECATED_API", "NPY_1_9_API_VERSION")]
 

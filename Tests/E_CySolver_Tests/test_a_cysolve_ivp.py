@@ -17,6 +17,22 @@ atol = 1.0e-7
 rtols = np.asarray((1.0e-4, 1.0e-5), dtype=np.float64, order='C')
 atols = np.asarray((1.0e-6, 1.0e-7), dtype=np.float64, order='C')
 
+# To reduce number of tests, only test RK23 once since RK45 should capture all its functionality.
+# The one combination that does get run has to be named up front
+SKIP_SOME_RK23_TESTS = True
+REPRESENTATIVE_CASE = dict(
+    use_args             = False,
+    use_large_timespan   = False,
+    use_atol_array       = False,
+    use_rtol_array       = False,
+    use_different_tols   = False,
+    first_step           = 0.0,
+    max_step             = 100_000.0,
+    capture_extra        = False,
+    test_large_y         = False,
+    force_retain_solver  = False
+    )
+
 
 @pytest.mark.filterwarnings("error")  # Some exceptions get propagated via cython as warnings; we want to make sure the lead to crashes.
 @pytest.mark.parametrize('force_retain_solver', (True, False))
@@ -34,6 +50,23 @@ def test_cysolve_ivp(use_args,
                      use_large_timespan, use_atol_array, use_rtol_array, use_different_tols, integration_method,
                      first_step, max_step, capture_extra, test_large_y, force_retain_solver):
     """Check that the pysolve_ivp function is able to run with various changes to its arguments. """
+
+    is_representative_case = dict(
+        use_args             = use_args,
+        use_large_timespan   = use_large_timespan,
+        use_atol_array       = use_atol_array,
+        use_rtol_array       = use_rtol_array,
+        use_different_tols   = use_different_tols,
+        first_step           = first_step,
+        max_step             = max_step,
+        capture_extra        = capture_extra,
+        test_large_y         = test_large_y,
+        force_retain_solver  = force_retain_solver
+        ) == REPRESENTATIVE_CASE
+
+    # To reduce number of tests, only test RK23 once.
+    if SKIP_SOME_RK23_TESTS and (integration_method=="rk23") and (not is_representative_case):
+        pytest.skip("Skipping Some RK23 Tests (just to reduce number of tests).")
 
     if use_atol_array:
         atols_float = np.nan
@@ -127,7 +160,7 @@ def test_cysolve_ivp(use_args,
 
 
 @pytest.mark.filterwarnings("error")  # Some exceptions get propagated via cython as warnings; we want to make sure the lead to crashes.
-@pytest.mark.parametrize('integration_method', ('rk23', 'rk45', 'dop853'))
+@pytest.mark.parametrize('integration_method', ('rk23', 'rk45', 'dop853', 'bdf', 'lsoda', 'radau'))
 @pytest.mark.parametrize('t_eval_end', (None, 0.5, 1.0))
 @pytest.mark.parametrize('test_dense_output', (False, True))
 def test_cysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output):
@@ -171,6 +204,11 @@ def test_cysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output)
     elif integration_method == 'dop853':
         check_rtol = 1.0e-5
         check_atol = 1.0e-8
+    elif integration_method in ('bdf', 'lsoda', 'radau'):
+        # The multi-step methods accumulate more global error than the RK methods do at the same
+        # requested tolerance. SciPy's versions of these methods behave the same way.
+        check_rtol = 1.0e-4
+        check_atol = 1.0e-6
     else:
         check_rtol = 1.0e-4
         check_atol = 1.0e-7

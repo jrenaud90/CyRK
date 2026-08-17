@@ -77,6 +77,11 @@ enum class CyrkErrorCodes : int {
     // RK-specific issues start at -80
     BAD_INITIAL_STEP_SIZE = -80,
 
+    // Implicit-solver issues start at -90
+    JACOBIAN_IS_SINGULAR = -90,
+    NEWTON_CONVERGENCE_ERROR = -91,
+    LSODA_INTERNAL_ERROR = -92,
+
     OTHER_ERROR = -99,
     UNSET_ERROR_CODE = -100
 };
@@ -169,6 +174,15 @@ inline const std::map<CyrkErrorCodes, std::string> CyrkErrorMessages = {
     { CyrkErrorCodes::BAD_INITIAL_STEP_SIZE,
       "User-provided initial step size must be a positive number." },
 
+    { CyrkErrorCodes::JACOBIAN_IS_SINGULAR,
+      "The iteration matrix built from the Jacobian is singular and could not be factorized." },
+
+    { CyrkErrorCodes::NEWTON_CONVERGENCE_ERROR,
+      "The Newton iteration of an implicit method failed to converge at the smallest allowed step size." },
+
+    { CyrkErrorCodes::LSODA_INTERNAL_ERROR,
+      "LSODA's internal integrator reported an error; see the solution's message for details." },
+
     { CyrkErrorCodes::OTHER_ERROR,
       "An unknown error occurred." },
 
@@ -185,6 +199,10 @@ struct OptimizeInfo {
 };
 
 // Integration Constants
+// Highest order backward differentiation formula used by the BDF integrator.
+static constexpr size_t BDF_MAX_ORDER   = 5;
+// Highest order Nordsieck history that LSODA can build (the Adams formulas reach order 12).
+static constexpr size_t LSODA_MAX_ORDER = 12;
 // Multiply steps computed from asymptotic behaviour of errors by this.
 static const double SAFETY              = 0.9;   // Error coefficient factor (1 == use calculated error; < 1 means be conservative).
 static const double MIN_FACTOR          = 0.2;   // Minimum allowed decrease in a step size.
@@ -218,6 +236,14 @@ static constexpr double SIZE_MAX_DBL = 0.99 * SIZE_MAX;
 typedef void (*PreEvalFunc)(char*, double, double*, char*);
 
 typedef void (*DiffeqFuncType)(double*, double, double*, char*, PreEvalFunc);
+
+/* Analytic Jacobian of the differential equation, only used by the implicit integrators.
+   Signature: (jacobian_ptr, t, y_ptr, args_ptr, pre_eval_func).
+   `jacobian_ptr` must be filled with the (num_y by num_y) matrix d(dy_i)/d(y_j) using LAPACK's
+   column-major layout, so entry (i, j) is written to `jacobian_ptr[i + j * num_y]`.
+   If a banded Jacobian was requested then the matrix uses LAPACK's band storage instead: entry
+   (i, j) is written to `jacobian_ptr[(num_upper + i - j) + j * (2 * num_lower + num_upper + 1)]`. */
+typedef void (*JacobianFuncType)(double*, double, double*, char*, PreEvalFunc);
 
 struct MaxNumStepsOutput
 {

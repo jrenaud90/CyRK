@@ -51,6 +51,9 @@ CyrkErrorCodes CySolverResult::p_build_solver()
     }
 
     // The result constructor's only job is to build the solver object and allocate its memory.
+    // Most methods are happy with the default `RKConfig`; the ones that carry extra options get
+    // their configuration swapped in here, but only if it is not already the right kind so that
+    // settings the user made before a solver rebuild are not thrown away.
     try
     {
         switch (this->integrator_method)
@@ -58,17 +61,30 @@ CyrkErrorCodes CySolverResult::p_build_solver()
         case ODEMethod::RK23:
             // RK23
             this->solver_uptr = std::make_unique<RK23>(this);
-            // this->config_uptr = std::make_unique<RKConfig>(); // We do not currently need to do this since by default we initialize to a RKConfig.
             break;
         case ODEMethod::RK45:
             // RK45
             this->solver_uptr = std::make_unique<RK45>(this);
-            // this->config_uptr = std::make_unique<RKConfig>(); // We do not currently need to do this since by default we initialize to a RKConfig.
             break;
         case ODEMethod::DOP853:
             // DOP853
             this->solver_uptr = std::make_unique<DOP853>(this);
-            // this->config_uptr = std::make_unique<RKConfig>(); // We do not currently need to do this since by default we initialize to a RKConfig.
+            break;
+        case ODEMethod::BDF:
+            // BDF
+            this->solver_uptr = std::make_unique<BDF>(this);
+            break;
+        case ODEMethod::RADAU:
+            // Radau
+            this->solver_uptr = std::make_unique<RADAU>(this);
+            break;
+        case ODEMethod::LSODA:
+            // LSODA
+            if (not dynamic_cast<LSODAConfig*>(this->config_uptr.get()))
+            {
+                this->config_uptr = std::make_unique<LSODAConfig>();
+            }
+            this->solver_uptr = std::make_unique<LSODA>(this);
             break;
         [[unlikely]] default:
             this->solver_uptr = nullptr;
@@ -485,24 +501,24 @@ void CySolverResult::build_dense(bool save_dense) noexcept
 
 CyrkErrorCodes CySolverResult::solve()
 {
-    CyrkErrorCodes solve_status = CyrkErrorCodes::NO_ERROR;
-    if (not this->solver_uptr or (this->status != CyrkErrorCodes::NO_ERROR))
-    {
-        // Solver is not initialized or the status is not NO_ERROR.
-        solve_status = CyrkErrorCodes::UNINITIALIZED_CLASS;
-    }
-
     if (not this->setup_called)
     {
         // Setup has not been called; we need to reset the integrator to a base state so try calling setup.
+        // This is what builds the solver, so it has to happen before the solver is checked below.
         this->setup(nullptr);
     }
 
-    if (this->solver_uptr and (this->status == CyrkErrorCodes::NO_ERROR))
-    {    
+    if (not this->solver_uptr)
+    {
+        // There is no solver to run. Record that; otherwise this returns a status that still says
+        // everything is fine for a solve that never happened.
+        this->update_status(CyrkErrorCodes::UNINITIALIZED_CLASS);
+    }
+    else if (this->status == CyrkErrorCodes::NO_ERROR)
+    {
         // Tell the solver to starting solving the problem!
         this->solver_uptr->solve();
-        
+
         // Call the finalizer on the storage class instance.
         // This performs some housekeeping so it should be called even if integration failed.
         this->p_finalize();

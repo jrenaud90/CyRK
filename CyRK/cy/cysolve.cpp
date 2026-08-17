@@ -24,13 +24,15 @@ void baseline_cysolve_ivp_noreturn(
         double max_step_size,
         double first_step_size,
         // Parameters that deal with CyRK's memory management strategy
-        bool force_retain_solver
+        bool force_retain_solver,
+        // Optional analytic Jacobian; only used by the implicit methods.
+        JacobianFuncType jac_ptr
         )
 {
-    // For now we are only ever using RK methods so it is safe to assume RK Config.
-    RKConfig* rk_config_ptr = static_cast<RKConfig*>(solution_ptr->config_uptr.get());
-    // Change the configurations of the solver.
-    rk_config_ptr->update_properties(
+    // Every configuration class shares this set of properties; the method-specific options (if the
+    // chosen method has any) keep whatever the caller set on the configuration beforehand.
+    ProblemConfig* config_ptr = solution_ptr->config_uptr.get();
+    config_ptr->update_properties(
         diffeq_ptr,
         t_start,
         t_end,
@@ -48,7 +50,8 @@ void baseline_cysolve_ivp_noreturn(
         rtols,
         atols,
         max_step_size,
-        first_step_size
+        first_step_size,
+        jac_ptr
     );
 
     // Initialize the solution and solver given the new configurations
@@ -79,7 +82,9 @@ std::unique_ptr<CySolverResult> baseline_cysolve_ivp(
         double max_step_size,
         double first_step_size,
         // Parameters that deal with CyRK's memory management strategy
-        bool force_retain_solver
+        bool force_retain_solver,
+        // Optional analytic Jacobian; only used by the implicit methods.
+        JacobianFuncType jac_ptr
         )
 {
     // Build storage class
@@ -106,7 +111,8 @@ std::unique_ptr<CySolverResult> baseline_cysolve_ivp(
         atols,
         max_step_size,
         first_step_size,
-        force_retain_solver
+        force_retain_solver,
+        jac_ptr
     );
 
     // Return the results

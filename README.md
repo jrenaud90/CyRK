@@ -18,18 +18,18 @@
 ---
 [Documentation](https://cyrk.readthedocs.io/en/latest/) | [GitHub](https://github.com/jrenaud90/cyrk)
 
-<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.17.0 Alpha-orange" alt="CyRK Version 0.17.0 Alpha" /></a>
+<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.18.0 Alpha-orange" alt="CyRK Version 0.18.0 Alpha" /></a>
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
 
-<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_predprey_v0-17-0.png" alt="CyRK Performance Graphic" />
+<img style="text-align: center" src="https://github.com/jrenaud90/CyRK/blob/main/Benchmarks/CyRK_SciPy_Compare_predprey_v0-18-0.png" alt="CyRK Performance Graphic" />
 
 CyRK provides fast integration tools to solve systems of ODEs using an adaptive time stepping scheme. CyRK can accept differential equations that are written in pure Python, njited numba, or cython-based cdef. Implementing these types of functions is generally easier than doing so in pure C. Calling CyRK's functions and utilizing its results is also much easier to integrate into existing Python or Cython software. Using CyRK can speed up development time while avoiding the slow performance that comes with using pure Python-based solvers like SciPy's `solve_ivp`.
 
 The purpose of this package is to provide some 
 functionality of [scipy's solve_ivp](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html) with greatly improved performance.
 
-Currently, CyRK's [numba-based](https://numba.discourse.group/) (njit-safe) implementation is **8--60x faster** than scipy's solve_ivp function.
+Currently, CyRK's [numba-based](https://numba.discourse.group/) (njit-safe) implementation is **8--500x faster** than scipy's solve_ivp function.
 The [cython-based](https://cython.org/) `pysolve_ivp` function that works with python (or njit'd) functions is **10-40x faster** than scipy.
 The [cython-based](https://cython.org/) `cysolver_ivp` function that works with cython-based cdef functions is **100-500x faster** than scipy.
 
@@ -55,6 +55,13 @@ Currently, CyRK supports the following integration methods:
 * "RK23" - Explicit Runge-Kutta method of order 3(2).
 * "RK45" - Explicit Runge-Kutta method of order 5(4)
 * "DOP853" - Explicit Runge-Kutta method of order 8. Error is controlled using a combination of 5th and 3rd order interpolators.
+* "BDF" - Implicit multi-step method based on backward differentiation formulas of order 1 to 5.
+* "LSODA" - Adams / BDF method with automatic stiffness detection and switching.
+* "Radau" - Implicit Runge-Kutta method of the Radau IIA family of order 5.
+
+"BDF", "LSODA", and "Radau" are implicit ODE methods used for stiff problems. See the
+[implicit methods documentation](https://cyrk.readthedocs.io/en/latest/Implicit_Methods.html) for
+guidance on choosing between them and for the options that only they support.
 
 More methods will be added as the need arises. We are always looking for contributors if you'd like to see your favorite method added to CyRK!
 
@@ -67,7 +74,7 @@ In additional to improved performance, CyRK offers a few additional features tha
 
 ### Limitations
 There are some features that SciPy has that CyRK currently does not. A non-exhaustive list is:
-* A number of integrator methods are missing, particularly implicit approaches.
+* An analytic Jacobian can only be provided to the implicit methods at the C++ / Cython level; `pysolve_ivp` always estimates it with finite differences.
 * `cysolve_ivp` and `pysolve_ivp` can only work with ODEs of double-precision floating point numbers. So complex numbers are not directly supported but systems of ODEs of complex numbers can be converted to systems of doubles for use with CyRK.
 
 ## Installation
@@ -165,7 +172,30 @@ It is great to see CyRK used in other software or in scientific studies. We ask 
 
 It would also be great to hear about the work being done with CyRK and add your project to the list below, so get in touch!
 
-In addition to citing CyRK, please strongly consider citing SciPy and its references for the specific Runge-Kutta model that was used in your work. CyRK is largely an adaptation of SciPy's functionality. Find more details [here](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html).
+In addition to citing CyRK, please strongly consider citing SciPy and its references for the specific integration method that was used in your work. CyRK is largely an adaptation of SciPy's functionality. Find more details [here](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html).
+
+If you used the "LSODA" method then please also cite ODEPACK, which CyRK bundles a modified copy of (see the `Third-Party Code` section of [LICENSE.md](LICENSE.md)):
+
+```bibtex
+@article{hindmarsh1983odepack,
+  author  = {Hindmarsh, Alan C.},
+  title   = {{ODEPACK, A Systematized Collection of ODE Solvers}},
+  journal = {IMACS Transactions on Scientific Computation},
+  year    = {1983},
+  volume  = {1},
+  pages   = {55--64}
+}
+
+@article{petzold1983automatic,
+  author  = {Petzold, Linda},
+  title   = {{Automatic Selection of Methods for Solving Stiff and Nonstiff Systems of Ordinary Differential Equations}},
+  journal = {SIAM Journal on Scientific and Statistical Computing},
+  year    = {1983},
+  volume  = {4},
+  number  = {1},
+  pages   = {136--148}
+}
+```
 
 ```bibtex
 @article{virtanen2020scipy,

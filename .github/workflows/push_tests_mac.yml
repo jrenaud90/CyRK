@@ -39,7 +39,7 @@ jobs:
           activate-environment: cyrk_test
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
-          auto-activate-base: false
+          auto-activate: false
         
       - name: Conda info
         shell: bash -el {0}
@@ -72,4 +72,4 @@ jobs:
         
       - name: Run pytest
         shell: bash -el {0}
-        run: pytest -n auto --capture=sys -v Tests/
+        run: pytest -n auto --capture=sys --durations=25 -v Tests/

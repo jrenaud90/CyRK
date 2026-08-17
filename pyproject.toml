@@ -1,6 +1,6 @@
 [project]
 name='CyRK'
-version = '0.17.2'
+version = '0.18.0'
 description='Runge-Kutta ODE Integrator Implemented in Cython and Numba.'
 authors= [
     {name = 'Joe P. Renaud', email = 'joe.p.renaud@gmail.com'}
@@ -95,7 +95,10 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-exclude = ["Tests", "Demos", "Benchmarks", "Documentation", "Performance"]
+# The trailing "*" matters. Setuptools treats directories without an __init__.py as namespace
+# packages here, so "Tests" on its own leaves "Tests.A_Package_Tests" and friends in the wheel,
+# which then installs a top level "Tests" into the user's site-packages.
+exclude = ["Tests*", "Demos*", "Benchmarks*", "Documentation*", "Performance*"]
 
 [tool.setuptools.cmdclass]
 build_py = "_build_cyrk.build_cyrk"

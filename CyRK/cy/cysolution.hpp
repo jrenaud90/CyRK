@@ -11,6 +11,9 @@
 #include "dense.hpp"
 #include "cysolver.hpp"
 #include "rk.hpp"
+#include "bdf.hpp"
+#include "lsoda.hpp"
+#include "radau.hpp"
 
 
 class CySolverResult {

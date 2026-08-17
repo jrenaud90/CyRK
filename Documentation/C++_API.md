@@ -45,11 +45,16 @@ void baseline_cysolve_ivp_noreturn(
         bool> capture_dense_output,
         std::vector<double> t_eval_vec,
         PreEvalFunc> pre_eval_func,
-        // rk optional arguments
+        std::vector<Event> events_vec,
+        // Error control arguments
         std::vector<double> rtols,
         std::vector<double> atols,
         double max_step_size,
-        double first_step_size
+        double first_step_size,
+        // Memory management
+        bool force_retain_solver,
+        // Only used by the implicit methods; null means estimate the Jacobian by finite differences
+        JacobianFuncType jac_ptr
     )
 
 std::unique_ptr<CySolverResult> baseline_cysolve_ivp(
@@ -67,11 +72,16 @@ std::unique_ptr<CySolverResult> baseline_cysolve_ivp(
     bool> capture_dense_output,
     std::vector<double> t_eval_vec,
     PreEvalFunc> pre_eval_func,
-    // rk optional arguments
+    std::vector<Event> events_vec,
+    // Error control arguments
     std::vector<double> rtols,
     std::vector<double> atols,
     double max_step_size,
-    double first_step_size
+    double first_step_size,
+    // Memory management
+    bool force_retain_solver,
+    // Only used by the implicit methods; null means estimate the Jacobian by finite differences
+    JacobianFuncType jac_ptr
 )
 ```
 
@@ -79,6 +89,7 @@ std::unique_ptr<CySolverResult> baseline_cysolve_ivp(
 Provides classes that wrap `CySolverBase` and provide Runge-Kutta integration methods and constants. Each integrator has
 a unique integer used to select it via `integration_method` in various function calls. These integers are defined in 
 an enum class `ODEMethod` which can be python imported or cython cimported `from CyRK import ODEMethod; ODEMethod.RK45`.
+New methods are always appended to the end of that enum so that the existing integer values stay stable.
 
 Currently available functions and associated integration method integer:
 - RK23 : ODEMethod.RK23
@@ -87,6 +98,36 @@ Currently available functions and associated integration method integer:
     - Explicit Runge-Kutta method of order 5 (error control of order 4)
 - DOP853 : ODEMethod.DOP853
     - Explicit Runge-Kutta method of order 8 (error control of combination of order 5 and 3)
+- BDF : ODEMethod.BDF
+    - Implicit multi-step method based on backward differentiation formulas of order 1 to 5
+- LSODA : ODEMethod.LSODA
+    - Adams / BDF method with automatic stiffness detection and switching
+- RADAU : ODEMethod.RADAU
+    - Implicit Runge-Kutta method of the Radau IIA family of order 5
+
+## "bdf.hpp(cpp)"
+Provides the `BDF` class, an implicit multi-step integrator built on the backward differentiation formulas. It needs no
+configuration beyond what `ProblemConfig` already carries.
+
+## "radau.hpp(cpp)"
+Provides the `RADAU` class, a single-step implicit Runge-Kutta integrator. Like `BDF` it needs no configuration beyond
+what `ProblemConfig` already carries. It is the one method that uses the complex routines in "c_lu", since it
+factorizes a complex iteration matrix alongside a real one.
+
+## "lsoda.hpp(cpp)" and "c_lsoda.hpp(cpp)"
+`lsoda.hpp` provides the `LSODA` class along with `LSODAConfig`, which adds the options that only LSODA understands
+(`min_step_size`, `max_order_nonstiff`, `max_order_stiff`, `num_lower`, and `num_upper`). `CySolverResult` builds an
+`LSODAConfig` automatically when `ODEMethod::LSODA` is selected, so retrieve it with a `dynamic_cast` before setting
+those options.
+
+`c_lsoda.hpp(cpp)` holds the vendored ODEPACK implementation that the `LSODA` class drives one step at a time. It is
+third-party code; see the `Third-Party Code` section of the license for its notices.
+
+## "c_lu.hpp(cpp)"
+Dense and banded LU factorization routines (the equivalents of LAPACK's dgetrf, dgetrs, dgbtrf, and dgbtrs) that the
+implicit methods use to factorize their iteration matrices, along with complex versions of the dense pair (zgetrf and
+zgetrs) that Radau needs. They are implemented here so that CyRK does not have to
+link against an external BLAS or LAPACK library. All matrices use LAPACK's column-major storage.
 
 ## Memory Usage
 The following formulas approximate the total memory footprint in bytes of the underlying C++ structures. Only think of these as estimates. All values are in kB. 
@@ -102,3 +143,17 @@ $$8S(N+1)+120N+1,528$$
 $$8S(N+1)+144N+1,528$$
 ### DOP853
 $$8S(N+1)+232N+1,528$$
+### BDF
+$$8S(N+1)+16N^2+240N+1,528$$
+The $N^2$ term is the Jacobian plus its LU factorization, both stored as dense matrices.
+### Radau
+$$8S(N+1)+32N^2+264N+1,528$$
+Radau holds the Jacobian plus both a real and a complex factorization, so its $N^2$ term is twice BDF's.
+### LSODA (dense Jacobian)
+$$8S(N+1)+8N^2+140N+3,600$$
+### LSODA (banded Jacobian)
+$$8S(N+1)+8N(2 \cdot lband + uband + 10)+68N+3,600$$
+
+Note the $N^2$ term for the implicit methods. CyRK checks that footprint against `max_ram_MB` during setup and
+refuses to start rather than attempting a solve that could not finish in reasonable time. Narrowing LSODA's Jacobian
+to a band brings the cost back down to linear in $N$.

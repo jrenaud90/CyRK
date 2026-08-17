@@ -7,132 +7,6 @@
 #include "cysolution.hpp"
 
 // ########################################################################################################################
-// RKConfig
-// ########################################################################################################################
-RKConfig::RKConfig(
-    DiffeqFuncType diffeq_ptr_,
-    double t_start_,
-    double t_end_,
-    std::vector<double>& y0_vec_,
-    std::vector<char>& args_vec_,
-    std::vector<double>& t_eval_vec_,
-    size_t num_extra_,
-    size_t expected_size_,
-    size_t max_num_steps_,
-    size_t max_ram_MB_,
-    PreEvalFunc pre_eval_func_,
-    bool capture_dense_output_,
-    bool force_retain_solver_,
-    std::vector<Event>& events_vec_,
-    std::vector<double>& rtols_,
-    std::vector<double>& atols_,
-    double max_step_size_,
-    double first_step_size_) :
-    rtols(rtols_),
-    atols(atols_),
-    max_step_size(max_step_size_),
-    first_step_size(first_step_size_),
-    ProblemConfig(
-        diffeq_ptr_,
-        t_start_,
-        t_end_,
-        y0_vec_,
-        args_vec_,
-        t_eval_vec_,
-        num_extra_,
-        expected_size_,
-        max_num_steps_,
-        max_ram_MB_,
-        pre_eval_func_,
-        capture_dense_output_,
-        force_retain_solver_,
-        events_vec_)
-{
-}
-
-void RKConfig::update_properties(
-    DiffeqFuncType diffeq_ptr_,
-    double t_start_,
-    double t_end_,
-    std::vector<double>& y0_vec_,
-    std::vector<char>& args_vec_,
-    std::vector<double>& t_eval_vec_,
-    size_t num_extra_,
-    size_t expected_size_,
-    size_t max_num_steps_,
-    size_t max_ram_MB_,
-    PreEvalFunc pre_eval_func_,
-    bool capture_dense_output_,
-    bool force_retain_solver_,
-    std::vector<Event>& events_vec_,
-    std::vector<double>& rtols_,
-    std::vector<double>& atols_,
-    double max_step_size_,
-    double first_step_size_)
-{
-    this->rtols = rtols_;
-    this->atols = atols_;
-    this->max_step_size = max_step_size_;
-    this->first_step_size = first_step_size_;
-
-    ProblemConfig::update_properties(
-        diffeq_ptr_,
-        t_start_,
-        t_end_,
-        y0_vec_,
-        args_vec_,
-        t_eval_vec_,
-        num_extra_,
-        expected_size_,
-        max_num_steps_,
-        max_ram_MB_,
-        pre_eval_func_,
-        capture_dense_output_,
-        force_retain_solver_,
-        events_vec_
-    );
-}
-
-void RKConfig::initialize()
-{
-    ProblemConfig::initialize();
-    this->initialized = false;
-    if ((this->rtols.size() != 1) and (this->rtols.size() != this->num_y))
-    {
-        throw std::length_error("Unexpected size of rtols; must be the same as y_vec or 1.");
-    }
-    if ((this->atols.size() != 1) and (this->atols.size() != this->num_y))
-    {
-        throw std::length_error("Unexpected size of rtols; must be the same as y_vec or 1.");
-    }
-    this->initialized = true;
-}
-
-void RKConfig::update_properties_from_config(RKConfig* new_config_ptr)
-{
-    this->update_properties(
-        new_config_ptr->diffeq_ptr,
-        new_config_ptr->t_start,
-        new_config_ptr->t_end,
-        new_config_ptr->y0_vec,
-        new_config_ptr->args_vec,
-        new_config_ptr->t_eval_vec,
-        new_config_ptr->num_extra,
-        new_config_ptr->expected_size,
-        new_config_ptr->max_num_steps,
-        new_config_ptr->max_ram_MB,
-        new_config_ptr->pre_eval_func,
-        new_config_ptr->capture_dense_output,
-        new_config_ptr->force_retain_solver,
-        new_config_ptr->events_vec,
-        new_config_ptr->rtols,
-        new_config_ptr->atols,
-        new_config_ptr->max_step_size,
-        new_config_ptr->first_step_size
-    );
-}
-
-// ########################################################################################################################
 // RKSolver (Base)
 // ########################################################################################################################
 /* ========================================================================= */
@@ -180,107 +54,6 @@ CyrkErrorCodes RKSolver::p_additional_setup() noexcept
     return CyrkErrorCodes::NO_ERROR;
 }
 
-void RKSolver::p_calc_first_step_size() noexcept
-{
-    /*
-        Select an initial step size based on the differential equation.
-        .. [1] E. Hairer, S. P. Norsett G. Wanner, "Solving Ordinary Differential
-            Equations I: Nonstiff Problems", Sec. II.4.
-    */
-
-    // Cache local vairables
-    double* const CYRK_RESTRICT l_y_old_ptr        = this->y_old_ptr;
-    double* const CYRK_RESTRICT l_y_now_ptr        = this->y_now_ptr;
-    double* const CYRK_RESTRICT l_dy_old_ptr       = this->dy_old_ptr;
-    double* const CYRK_RESTRICT l_dy_now_ptr       = this->dy_now_ptr;
-    const double* const CYRK_RESTRICT l_rtols_ptr  = this->rtols_ptr;
-    const double* const CYRK_RESTRICT l_atols_ptr  = this->atols_ptr;
-    const bool l_use_array_rtols                   = this->use_array_rtols;
-    const bool l_use_array_atols                   = this->use_array_atols;
-
-    if (this->num_y == 0) [[unlikely]]
-    {
-        this->step_size = INF;
-    }
-    else {
-        // Initialize tolerances to the 0 place. If `use_array_rtols` (or atols) is set then this will change in the loop.
-        double rtol = l_rtols_ptr[0];
-        double atol = l_atols_ptr[0];
-
-        // Find the norm for d0 and d1
-        double d0 = 0.0;
-        double d1 = 0.0;
-        for (size_t y_i = 0; y_i < this->num_y; y_i++)
-        {
-            rtol = l_use_array_rtols ? l_rtols_ptr[y_i] : rtol;
-            atol = l_use_array_atols ? l_atols_ptr[y_i] : atol;
-
-            const double y_old_tmp = l_y_old_ptr[y_i];
-            const double scale = atol + std::abs(y_old_tmp) * rtol;
-
-            // NOTE: We are removing the fabs because they are about to be squared anyways. But if we ever use complex numbers then we need to revisit this.
-            // d0_abs = std::abs(y_old_tmp / scale);
-            // d1_abs = std::abs(this->dy_old_ptr[y_i] / scale);
-            const double d0_abs = y_old_tmp / scale;
-            const double d1_abs = this->dy_old_ptr[y_i] / scale;
-            d0 += (d0_abs * d0_abs);
-            d1 += (d1_abs * d1_abs);
-        }
-
-        d0 = std::sqrt(d0) / this->num_y_sqrt;
-        d1 = std::sqrt(d1) / this->num_y_sqrt;
-
-        double h0 = 1.0e-6;
-        if (not ((d0 < 1.0e-5) || (d1 < 1.0e-5)))
-        {
-            h0 = 0.01 * d0 / d1;
-        }
-
-        const double h0_direction = this->direction_flag ? h0 : -h0;
-
-        this->t_now = this->t_old + h0_direction;
-        for (size_t y_i = 0; y_i < this->num_y; y_i++)
-        {
-            l_y_now_ptr[y_i] = l_y_old_ptr[y_i] + h0_direction * l_dy_old_ptr[y_i];
-        }
-
-        // Update dy
-        this->diffeq(this);
-
-        // Find the norm for d2
-        double d2 = 0.0;
-        for (size_t y_i = 0; y_i < this->num_y; y_i++)
-        {
-            if (this->use_array_rtols)
-            {
-                rtol = this->rtols_ptr[y_i];
-            }
-            if (this->use_array_atols)
-            {
-                atol = this->atols_ptr[y_i];
-            }
-
-            const double scale = atol + std::abs(l_y_old_ptr[y_i]) * rtol;
-            // NOTE: We are removing the fabs because they are about to be squared anyways. But if we ever use complex numbers then we need to revisit this.
-            //d2_abs = std::abs((this->dy_now_ptr[y_i] - this->dy_old_ptr[y_i]) / scale);
-            const double d2_abs = (l_dy_now_ptr[y_i] - l_dy_old_ptr[y_i]) / scale;
-            d2 += (d2_abs * d2_abs);
-        }
-
-        d2 = std::sqrt(d2) / (h0 * this->num_y_sqrt);
-
-        double h1;
-        if ((d1 <= 1.0e-15) && (d2 <= 1.0e-15))
-        {
-            h1 = std::max(1.0e-6, h0 * 1.0e-3);
-        }
-        else {
-            h1 = std::pow((0.01 / std::max(d1, d2)), this->error_exponent);
-        }
-        this->step_size = std::max(10. * std::abs(std::nextafter(this->t_old, this->direction_inf) - this->t_old), std::min(100.0 * h0, h1));
-    }
-}
-
 void RKSolver::p_compute_stages() noexcept
 {
     // Create local variables instead of calling class attributes for pointer objects.
@@ -288,7 +61,6 @@ void RKSolver::p_compute_stages() noexcept
     const size_t l_len_C                      = this->len_C;
     const size_t l_num_y                      = this->num_y;
     const size_t l_n_stages                   = this->n_stages;
-    double* const CYRK_RESTRICT l_K_ptr       = this->K_ptr;
     const double* const CYRK_RESTRICT l_A_ptr = this->A_ptr;
     const double* const CYRK_RESTRICT l_B_ptr = this->B_ptr;
     const double* const CYRK_RESTRICT l_C_ptr = this->C_ptr;
@@ -385,7 +157,6 @@ double RKSolver::p_estimate_error() noexcept
     double* const CYRK_RESTRICT l_y_old_ptr        = this->y_old_ptr;
     double* const CYRK_RESTRICT l_y_now_ptr        = this->y_now_ptr;
     const double* const CYRK_RESTRICT l_E_ptr      = this->E_ptr;
-    double* const CYRK_RESTRICT l_K_ptr            = this->K_ptr;
     const double* const CYRK_RESTRICT l_rtols_ptr  = this->rtols_ptr;
     const double* const CYRK_RESTRICT l_atols_ptr  = this->atols_ptr;
     const bool l_use_array_rtols                   = this->use_array_rtols;
@@ -540,88 +311,6 @@ void RKSolver::p_step_implementation() noexcept
 /* ========================================================================= */
 /* =========================  Public Methods  ============================== */
 /* ========================================================================= */
-CyrkErrorCodes RKSolver::setup()
-{
-    CyrkErrorCodes setup_status = CyrkErrorCodes::NO_ERROR;
-    // Reset some parameters
-    this->use_array_rtols = false;
-    this->use_array_atols = false;
-
-    // Call base class setup first
-    setup_status = CySolverBase::setup();
-
-    while (setup_status == CyrkErrorCodes::NO_ERROR)
-    {
-        // Reinterpret the config pointer for RKConfigs
-        RKConfig* config_ptr = static_cast<RKConfig*>(this->storage_ptr->config_uptr.get());
-
-        // Proceed with RK-specific setup tasks.
-        // Check for errors
-        this->user_provided_first_step_size = config_ptr->first_step_size;
-        this->max_step_size = config_ptr->max_step_size;
-        if (this->user_provided_first_step_size != 0.0) [[unlikely]]
-        {
-            if (this->user_provided_first_step_size < 0.0) [[unlikely]]
-            {
-                // Negative first step size. Even in reverse integration the step size should be positive.
-                this->storage_ptr->update_status(CyrkErrorCodes::BAD_INITIAL_STEP_SIZE);
-                break;
-            }
-            else if (this->user_provided_first_step_size > (this->t_delta_abs * 0.5)) [[unlikely]]
-            {
-                // First step size is greater than 50% of the solution domain.
-                this->storage_ptr->update_status(CyrkErrorCodes::BAD_INITIAL_STEP_SIZE);
-                break;
-            }
-        }
-
-        // Setup tolerances
-        // User can provide an array of relative tolerances, one for each y value.
-        // The length of the pointer array must be the same as y0 (and <= 25).
-        size_t num_rtols = config_ptr->rtols.size();
-        size_t num_atols = config_ptr->atols.size();
-        if (
-            (num_rtols == 0) or
-            ((num_rtols > 1) and (num_rtols != this->num_y)) or
-            (num_atols == 0) or
-            ((num_atols > 1) and (num_atols != this->num_y))
-            )
-        {
-            // No rtols or atols provided, or the size of the array is not correct.
-            setup_status = CyrkErrorCodes::BAD_CONFIG_DATA;
-            break;
-        }
-        this->use_array_rtols = num_rtols > 1;
-        this->use_array_atols = num_atols > 1;
-        this->rtols_ptr = config_ptr->rtols.data();
-        this->atols_ptr = config_ptr->atols.data();
-
-        // Check for too small of rtols.
-        for (size_t rtol_i = 0; rtol_i < num_rtols; rtol_i++)
-        {
-            double temp_double = this->rtols_ptr[rtol_i];
-            if (temp_double < EPS_100) [[unlikely]]
-            {
-                temp_double = EPS_100;
-            }
-            this->rtols_ptr[rtol_i] = temp_double;
-        }
-
-        // Update initial step size
-        if (this->user_provided_first_step_size == 0.0) [[likely]]
-        {
-            // User did not provide a step size. Try to find a good guess.
-            this->p_calc_first_step_size();
-        }
-        else {
-            this->step_size = this->user_provided_first_step_size;
-        }
-        break;
-    }
-
-    return setup_status;
-}
-
 /* Dense Output Methods */
 void RKSolver::set_Q_order(size_t* Q_order_ptr)
 {
@@ -636,7 +325,6 @@ void RKSolver::set_Q_order(size_t* Q_order_ptr)
 void RKSolver::set_Q_array(double* Q_ptr) noexcept
 {
     // Create local cache of variables that will be used.
-    double** const CYRK_RESTRICT l_K_ptr_index_ptr = this->K_ptr_index_ptr;
     const double* const CYRK_RESTRICT l_P_ptr      = this->P_ptr;
     const size_t l_num_y       = this->num_y;
     const size_t l_n_stages_p1 = this->n_stages_p1;

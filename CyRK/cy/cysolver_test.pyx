@@ -243,6 +243,26 @@ cdef void large_numy_simple_diffeq(double* dy_ptr, double t, double* y_ptr, char
 
     memset(&dy_ptr[1], 0, num_y - 1)
 
+cdef void robertson_diffeq(double* dy_ptr, double t, double* y_ptr, char* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
+    """ Robertson chemical kinetics; a standard stiff benchmark problem. """
+    # Unpack args
+    cdef double* args_dbl_ptr = <double*>args_ptr
+    cdef double a = args_dbl_ptr[0]
+    cdef double b = args_dbl_ptr[1]
+    cdef double c = args_dbl_ptr[2]
+
+    # Unpack y
+    cdef double y0, y1, y2
+    y0 = y_ptr[0]
+    y1 = y_ptr[1]
+    y2 = y_ptr[2]
+
+    # The rate constants differ by many orders of magnitude which makes this system very stiff.
+    dy_ptr[0] = -a * y0 + b * y1 * y2
+    dy_ptr[1] = a * y0 - b * y1 * y2 - c * y1 * y1
+    dy_ptr[2] = c * y1 * y1
+
+
 def cy_extra_output_tester():
 
     cdef double t_start = 0.0
@@ -364,6 +384,30 @@ large_numy_simple_events.emplace_back(pendulum_diffeq_event2_check)
 large_numy_simple_events.emplace_back(pendulum_diffeq_event3_check)
 
 
+# Event functions for the Robertson diffeq. The three species always sum to one, so the checks are
+# placed at different points along the reaction to make sure they trigger at different times.
+cdef double robertson_diffeq_event1_check(double t, double* y, char* args) noexcept nogil:
+    if y[0] < 0.9:
+        return 0.0
+    return 1.0
+
+cdef double robertson_diffeq_event2_check(double t, double* y, char* args) noexcept nogil:
+    if y[2] > 0.2:
+        return 0.0
+    return 1.0
+
+cdef double robertson_diffeq_event3_check(double t, double* y, char* args) noexcept nogil:
+    if t > 20.0:
+        return 0.0
+    else:
+        return 1.0
+
+cdef vector[Event] robertson_diffeq_events = vector[Event]()
+robertson_diffeq_events.emplace_back(robertson_diffeq_event1_check)
+robertson_diffeq_events.emplace_back(robertson_diffeq_event2_check)
+robertson_diffeq_events.emplace_back(robertson_diffeq_event3_check)
+
+
 def cytester(
         int diffeq_number,
         tuple t_span = None,
@@ -407,11 +451,17 @@ def cytester(
         integration_method = ODEMethod.RK45
     elif method == 'dop853':
         integration_method = ODEMethod.DOP853
+    elif method == 'bdf':
+        integration_method = ODEMethod.BDF
+    elif method == 'lsoda':
+        integration_method = ODEMethod.LSODA
+    elif method == 'radau':
+        integration_method = ODEMethod.RADAU
     else:
         raise NotImplementedError(
-            "ERROR: `PySolver::set_problem_parameters` - "
+            "ERROR: `cytester` - "
             f"Unknown or unsupported integration method provided: {method}.\n"
-            f"Supported methods are: RK23, RK45, DOP853."
+            f"Supported methods are: RK23, RK45, DOP853, BDF, LSODA, RADAU."
             )
 
     cdef size_t num_extra = 0
@@ -442,6 +492,8 @@ def cytester(
         diffeq = large_numy_diffeq
     elif diffeq_number == 10:
         diffeq = large_numy_simple_diffeq
+    elif diffeq_number == 11:
+        diffeq = robertson_diffeq
 
     else:
         raise NotImplementedError
@@ -456,6 +508,8 @@ def cytester(
             events_vec = large_numy_events
         elif diffeq_number == 10:
             events_vec = large_numy_simple_events
+        elif diffeq_number == 11:
+            events_vec = robertson_diffeq_events
         else:
             raise NotImplementedError
 
@@ -607,6 +661,21 @@ def cytester(
             else:
                 t_start = 0.0
                 t_end = 50.0
+
+        elif diffeq_number == 11:
+            # Stiff chemical kinetics problem.
+            num_y = 3
+            y0_vec.resize(num_y)
+            y0_vec[0] = 1.0
+            y0_vec[1] = 0.0
+            y0_vec[2] = 0.0
+            t_start = 0.0
+            t_end = 40.0
+            args_vec.resize(3 * sizeof(double))
+            args_dbl_ptr = <double*>args_vec.data()
+            args_dbl_ptr[0] = 0.04
+            args_dbl_ptr[1] = 1.0e4
+            args_dbl_ptr[2] = 3.0e7
         else:
             raise NotImplementedError
     else:
@@ -666,6 +735,12 @@ def cytester(
                 args_dbl_ptr[0] = -0.5
             elif diffeq_number == 10:
                 args_vec.resize(0)
+            elif diffeq_number == 11:
+                args_vec.resize(3 * sizeof(double))
+                args_dbl_ptr = <double*>args_vec.data()
+                args_dbl_ptr[0] = 0.04
+                args_dbl_ptr[1] = 1.0e4
+                args_dbl_ptr[2] = 3.0e7
             else:
                 args_vec.resize(0)
 

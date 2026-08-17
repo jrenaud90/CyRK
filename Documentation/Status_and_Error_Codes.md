@@ -65,6 +65,11 @@ enum class CyrkErrorCodes : int {
     // RK-specific issues start at -80
     BAD_INITIAL_STEP_SIZE = -80,
 
+    // Implicit-solver issues start at -90
+    JACOBIAN_IS_SINGULAR = -90,
+    NEWTON_CONVERGENCE_ERROR = -91,
+    LSODA_INTERNAL_ERROR = -92,
+
     OTHER_ERROR = -99,
     UNSET_ERROR_CODE = -100
 };
@@ -156,6 +161,15 @@ inline const std::map<CyrkErrorCodes, std::string> CyrkErrorMessages = {
 
     { CyrkErrorCodes::BAD_INITIAL_STEP_SIZE,
       "User-provided initial step size must be a positive number." },
+
+    { CyrkErrorCodes::JACOBIAN_IS_SINGULAR,
+      "The iteration matrix built from the Jacobian is singular and could not be factorized." },
+
+    { CyrkErrorCodes::NEWTON_CONVERGENCE_ERROR,
+      "The Newton iteration of an implicit method failed to converge at the smallest allowed step size." },
+
+    { CyrkErrorCodes::LSODA_INTERNAL_ERROR,
+      "LSODA's internal integrator reported an error; see the solution's message for details." },
 
     { CyrkErrorCodes::OTHER_ERROR,
       "An unknown error occurred." },

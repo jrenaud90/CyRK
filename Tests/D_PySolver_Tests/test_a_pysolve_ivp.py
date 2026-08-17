@@ -5,20 +5,54 @@ from numba import njit
 from CyRK import pysolve_ivp, WrapCySolverResult, CyrkErrorCodes, MAX_SIZE
 
 
-# To reduce number of tests, only test RK23 once since RK45 should capture all its functionality
+# To reduce number of tests, only test RK23 once since RK45 should capture all its functionality.
+# The one combination that does get run has to be named up front
 SKIP_SOME_RK23_TESTS = True
-RK23_TESTED = False
+REPRESENTATIVE_CASE = dict(
+    use_scipy_style    = False,
+    use_args           = False,
+    use_njit_always    = False,
+    use_large_timespan = False,
+    use_atol_array     = False,
+    use_rtol_array     = False,
+    use_different_tols = False,
+    first_step         = 0.0,
+    max_step           = 100_000.0,
+    capture_extra      = False,
+    event_flag         = 0
+    )
 
 def diffeq(dy, t, y):
     dy[0] = (1. - 0.01 * y[1]) * y[0]
     dy[1] = (0.02 * y[0] - 1.) * y[1]
 
 
-def diffeq_stiff(t, y):
-    # TODO: Replace with function that is actually stiff
+# Robertson chemical kinetics, the standard stiff benchmark. Its three rate constants differ by many
+# orders of magnitude, so an explicit method is held to tiny steps by stability rather than by the
+# error tolerance. It needs its own initial conditions and time span since it has three variables.
+robertson_y0 = np.asarray((1., 0., 0.), dtype=np.float64, order='C')
+robertson_args = (0.04, 1.0e4, 3.0e7)
+robertson_time_span = (0., 40.)
+
+def diffeq_stiff(t, y, a, b, c):
+    y0 = y[0]
+    y1 = y[1]
+    y2 = y[2]
+    dy = np.empty_like(y)
+    dy[0] = -a * y0 + b * y1 * y2
+    dy[1] = a * y0 - b * y1 * y2 - c * y1 * y1
+    dy[2] = c * y1 * y1
+    return dy
+
+
+def diffeq_divergent(t, y):
+    # This one runs away to infinity, which is what drives the solver down to a step size smaller
+    # than the spacing between floating point numbers. It overflows on purpose, so numpy's warnings
+    # about that are expected and are silenced here rather than left to bury a warning that is not.
     dy = np.empty(y.size, dtype=np.float64)
-    dy[0] = (1. - 0.01 * y[1]) * np.exp(y[0])
-    dy[1] = (0.02 * y[0] - 1.) * np.exp(y[1])
+    with np.errstate(over='ignore', invalid='ignore'):
+        dy[0] = (1. - 0.01 * y[1]) * np.exp(y[0])
+        dy[1] = (0.02 * y[0] - 1.) * np.exp(y[1])
     return dy
 
 def diffeq_args(dy, t, y, a, b):
@@ -111,11 +145,6 @@ def test_pysolve_ivp_test():
     from CyRK import test_pysolver
     test_pysolver()
 
-# njit is slow during testing so only do it once for each diffeq
-njit_rk23_tested = False
-njit_rk45_tested = False
-njit_DOP853_tested = False
-
 @pytest.mark.filterwarnings("error")  # Some exceptions get propagated via cython as warnings; we want to make sure the lead to crashes.
 @pytest.mark.parametrize('event_flag', (0, 1, 2, 3))
 @pytest.mark.parametrize('capture_extra', (True, False))
@@ -133,10 +162,20 @@ def test_pysolve_ivp(use_scipy_style, use_args, use_njit_always,
                      use_large_timespan, use_atol_array, use_rtol_array, use_different_tols, integration_method,
                      first_step, max_step, capture_extra, event_flag):
     """Check that the pysolve_ivp function is able to run with various changes to its arguments. """
-    global RK23_TESTED
-    global njit_rk23_tested
-    global njit_rk45_tested
-    global njit_DOP853_tested
+
+    is_representative_case = dict(
+        use_scipy_style    = use_scipy_style,
+        use_args           = use_args,
+        use_njit_always    = use_njit_always,
+        use_large_timespan = use_large_timespan,
+        use_atol_array     = use_atol_array,
+        use_rtol_array     = use_rtol_array,
+        use_different_tols = use_different_tols,
+        first_step         = first_step,
+        max_step           = max_step,
+        capture_extra      = capture_extra,
+        event_flag         = event_flag
+        ) == REPRESENTATIVE_CASE
 
     # Parse event tests
     check_events = False
@@ -152,11 +191,9 @@ def test_pysolve_ivp(use_scipy_style, use_args, use_njit_always,
         event_terminate = True
         event_direction_test = True
 
-    # To reduce number of tests, only test RK23 once. 
-    if RK23_TESTED and SKIP_SOME_RK23_TESTS and (integration_method=="RK23"):
+    # To reduce number of tests, only test RK23 once.
+    if SKIP_SOME_RK23_TESTS and (integration_method=="RK23") and (not is_representative_case):
         pytest.skip("Skipping Some RK23 Tests (just to reduce number of tests).")
-    else:
-        RK23_TESTED = True
 
     # if use_large_timespan and check_events:
     #     pytest.skip("Skipping large timespan when checking events (the examples just are not designed for it).")
@@ -201,18 +238,11 @@ def test_pysolve_ivp(use_scipy_style, use_args, use_njit_always,
     if events is not None:
         events = tuple(events)
 
-    if use_njit_always:
+    # njit is slow during testing so only do it once for each method, on the same representative
+    # case used above. Tying it to a fixed combination rather than to a running flag keeps which
+    # tests get the njit treatment the same no matter how many pytest-xdist workers are running.
+    if use_njit_always or is_representative_case:
         diffeq_to_use = njit(diffeq_to_use)
-    else:
-        if (not njit_rk23_tested) and (integration_method=="RK23"):
-            diffeq_to_use = njit(diffeq_to_use)
-            njit_rk23_tested = True
-        elif (not njit_rk45_tested) and (integration_method=="RK45"):
-            diffeq_to_use = njit(diffeq_to_use)
-            njit_rk45_tested = True
-        elif (not njit_DOP853_tested) and (integration_method=="DOP853"):
-            diffeq_to_use = njit(diffeq_to_use)
-            njit_DOP853_tested = True
 
     if use_atol_array:
         atols_use = atols
@@ -358,6 +388,26 @@ def test_pysolve_ivp_errors():
     assert result.error_code == CyrkErrorCodes.MAX_STEPS_USER_EXCEEDED
     assert result.message == "Maximum number of steps (set by user) exceeded during integration."
 
+    # An explicit method on a stiff problem runs out of a realistic step budget, where an implicit
+    # method finishes well inside it.
+    result = pysolve_ivp(diffeq_stiff, robertson_time_span, robertson_y0,
+                        method="RK45",
+                        args=robertson_args, rtol=rtol, atol=atol,
+                        max_num_steps=1000,
+                        pass_dy_as_arg=False)
+
+    assert not result.success
+    assert result.error_code == CyrkErrorCodes.MAX_STEPS_USER_EXCEEDED
+
+    result = pysolve_ivp(diffeq_stiff, robertson_time_span, robertson_y0,
+                        method="LSODA",
+                        args=robertson_args, rtol=rtol, atol=atol,
+                        max_num_steps=1000,
+                        pass_dy_as_arg=False)
+
+    assert result.success
+    assert result.error_code == CyrkErrorCodes.SUCCESSFUL_INTEGRATION
+
     # Do the same thing but now for max ram
     result = pysolve_ivp(diffeq_scipy_style, time_span, initial_conds,
                         method="RK23",
@@ -369,8 +419,10 @@ def test_pysolve_ivp_errors():
     assert result.error_code == CyrkErrorCodes.MAX_STEPS_SYSARCH_EXCEEDED
     assert result.message == "Maximum number of steps (set by system architecture) exceeded during integration."
 
-    # Do an integration with tolerances that are just way too small for the method
-    result = pysolve_ivp(diffeq_stiff, time_span, initial_conds,
+    # Do an integration of a solution that runs away, which drives the required step size below the
+    # spacing between floating point numbers. (Note that the tolerances below do not do this on
+    # their own; `rtol` is clamped up to 100 * machine epsilon during setup.)
+    result = pysolve_ivp(diffeq_divergent, time_span, initial_conds,
                         method="RK45",
                         args=None, rtol=1.0e-20, atol=1.0e-22,
                         pass_dy_as_arg=False)
@@ -379,7 +431,7 @@ def test_pysolve_ivp_errors():
     assert result.error_code == CyrkErrorCodes.STEP_SIZE_ERROR_SPACING
     assert result.message == "Error in step size calculation: Required step size is less than spacing between numbers."
 
-@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853"))
+@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853", "BDF", "LSODA", "RADAU"))
 @pytest.mark.parametrize('t_eval_end', (None, 0.5, 1.0))
 @pytest.mark.parametrize('test_dense_output', (False, True))
 @pytest.mark.parametrize('backward_integrate', (False, True))
@@ -445,6 +497,11 @@ def test_pysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output,
     elif integration_method == "DOP853":
         check_rtol = 1.0e-5
         check_atol = 1.0e-8
+    elif integration_method in ("BDF", "LSODA", "RADAU"):
+        # The multi-step methods accumulate more global error than the RK methods do at the same
+        # requested tolerance. SciPy's versions of these methods behave the same way.
+        check_rtol = 1.0e-4
+        check_atol = 1.0e-6
     else:
         check_rtol = 1.0e-4
         check_atol = 1.0e-7
@@ -487,7 +544,7 @@ def test_pysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output,
     # ax.plot(result.t, real_answer[1], 'b:')
     # plt.show()
 
-@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853"))
+@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853", "BDF", "LSODA", "RADAU"))
 def test_pysolve_ivp_readonly(integration_method):
     #Check that the cython function solver is able to reproduce a known functions integral with reasonable accuracy
 

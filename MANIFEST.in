@@ -2,10 +2,10 @@
 
 # Exclude all c++ and c files; we will manually add back in some custom ones.
 # This avoids shipping already cythonized c files that need to be cythonized locally.
-exclude **/*.c
-exclude **/*.cpp
-exclude **/*.h
-exclude **/*.hpp
+global-exclude *.c
+global-exclude *.cpp
+global-exclude *.h
+global-exclude *.hpp
 
 # Include Cython pyx and pxd files
 global-include *.pxd
@@ -23,6 +23,16 @@ include CyRK/cy/cysolver.cpp
 include CyRK/cy/cysolver.hpp
 include CyRK/cy/rk.cpp
 include CyRK/cy/rk.hpp
+include CyRK/cy/bdf.cpp
+include CyRK/cy/bdf.hpp
+include CyRK/cy/lsoda.cpp
+include CyRK/cy/lsoda.hpp
+include CyRK/cy/c_lsoda.cpp
+include CyRK/cy/c_lsoda.hpp
+include CyRK/cy/radau.cpp
+include CyRK/cy/radau.hpp
+include CyRK/cy/c_lu.cpp
+include CyRK/cy/c_lu.hpp
 include CyRK/cy/cysolve.cpp
 include CyRK/cy/cysolve.hpp
 include CyRK/cy/cy_array.cpp
@@ -39,9 +49,9 @@ include CyRK/optimize/c_brentq.hpp
 
 include CyRK/nb/numba_c_api_.cpp
 
-# Exclude the whole Tests folder
-exclude Tests/*
-exclude Demos/*
-exclude Benchmarks/*
-exclude Documentation/*
-exclude Performance/*
+# Exclude the whole Tests folder (and the other developer-only directories).
+prune Tests
+prune Demos
+prune Benchmarks
+prune Documentation
+prune Performance

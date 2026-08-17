@@ -153,19 +153,26 @@ def get_method_str(method_int: int):
     Parameters
     ----------
     method_int : int
-        Integer identifier for the ODE method.
+        Integer identifier for the ODE method. These must match the values of the C++ `ODEMethod`
+        enum defined in "cysolver.hpp".
 
     Returns
     -------
     str
         String name of the integration method.
     """
-    if method_int == 1:
-        return "RK45"
-    if method_int == 2:
-        return "RK23"
     if method_int == 3:
+        return "RK23"
+    if method_int == 4:
+        return "RK45"
+    if method_int == 5:
         return "DOP853"
+    if method_int == 6:
+        return "BDF"
+    if method_int == 7:
+        return "LSODA"
+    if method_int == 8:
+        return "RADAU"
     return "UNKNOWN_METHOD"
 
 # ---------------------------------------------------------
@@ -530,7 +537,7 @@ def nbsolve2_ivp(
     y0 : numpy.ndarray
         Initial state vector.
     method : str, optional
-        Integration method ('RK45', 'RK23', 'DOP853'). Default is 'RK45'.
+        Integration method ('RK45', 'RK23', 'DOP853', 'BDF', 'LSODA', 'RADAU'). Default is 'RK45'.
     t_eval : numpy.ndarray, optional
         Times at which to store the computed solution.
     dense_output : bool, optional
