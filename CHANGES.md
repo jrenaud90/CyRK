@@ -58,6 +58,7 @@
 * Added "Tests/H_Implicit_Tests" covering accuracy against analytic solutions, stiff performance, dense output, `t_eval`, events, extra output, backward integration, tolerance arrays, solution reuse, step size limits, and the LSODA banded Jacobian.
 * Added the new methods to the existing accuracy test suites.
 * Made the trimmed RK23 tests deterministic.
+* Extended the RK23 trimming to "test_a_cysolve_ivp.py".
 * Replaced `diffeq_stiff` in "test_a_pysolve_ivp.py" with the Robertson problem, which is actually stiff, and used it to check that an explicit method exhausts a step budget that an implicit method finishes comfortably inside.
 
 ##### Performance
