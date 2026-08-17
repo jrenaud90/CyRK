@@ -61,7 +61,6 @@ void RKSolver::p_compute_stages() noexcept
     const size_t l_len_C                      = this->len_C;
     const size_t l_num_y                      = this->num_y;
     const size_t l_n_stages                   = this->n_stages;
-    double* const CYRK_RESTRICT l_K_ptr       = this->K_ptr;
     const double* const CYRK_RESTRICT l_A_ptr = this->A_ptr;
     const double* const CYRK_RESTRICT l_B_ptr = this->B_ptr;
     const double* const CYRK_RESTRICT l_C_ptr = this->C_ptr;
@@ -158,7 +157,6 @@ double RKSolver::p_estimate_error() noexcept
     double* const CYRK_RESTRICT l_y_old_ptr        = this->y_old_ptr;
     double* const CYRK_RESTRICT l_y_now_ptr        = this->y_now_ptr;
     const double* const CYRK_RESTRICT l_E_ptr      = this->E_ptr;
-    double* const CYRK_RESTRICT l_K_ptr            = this->K_ptr;
     const double* const CYRK_RESTRICT l_rtols_ptr  = this->rtols_ptr;
     const double* const CYRK_RESTRICT l_atols_ptr  = this->atols_ptr;
     const bool l_use_array_rtols                   = this->use_array_rtols;
@@ -327,7 +325,6 @@ void RKSolver::set_Q_order(size_t* Q_order_ptr)
 void RKSolver::set_Q_array(double* Q_ptr) noexcept
 {
     // Create local cache of variables that will be used.
-    double** const CYRK_RESTRICT l_K_ptr_index_ptr = this->K_ptr_index_ptr;
     const double* const CYRK_RESTRICT l_P_ptr      = this->P_ptr;
     const size_t l_num_y       = this->num_y;
     const size_t l_n_stages_p1 = this->n_stages_p1;
