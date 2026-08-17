@@ -27,11 +27,32 @@ def diffeq(dy, t, y):
     dy[1] = (0.02 * y[0] - 1.) * y[1]
 
 
-def diffeq_stiff(t, y):
-    # TODO: Replace with function that is actually stiff
+# Robertson chemical kinetics, the standard stiff benchmark. Its three rate constants differ by many
+# orders of magnitude, so an explicit method is held to tiny steps by stability rather than by the
+# error tolerance. It needs its own initial conditions and time span since it has three variables.
+robertson_y0 = np.asarray((1., 0., 0.), dtype=np.float64, order='C')
+robertson_args = (0.04, 1.0e4, 3.0e7)
+robertson_time_span = (0., 40.)
+
+def diffeq_stiff(t, y, a, b, c):
+    y0 = y[0]
+    y1 = y[1]
+    y2 = y[2]
+    dy = np.empty_like(y)
+    dy[0] = -a * y0 + b * y1 * y2
+    dy[1] = a * y0 - b * y1 * y2 - c * y1 * y1
+    dy[2] = c * y1 * y1
+    return dy
+
+
+def diffeq_divergent(t, y):
+    # This one runs away to infinity, which is what drives the solver down to a step size smaller
+    # than the spacing between floating point numbers. It overflows on purpose, so numpy's warnings
+    # about that are expected and are silenced here rather than left to bury a warning that is not.
     dy = np.empty(y.size, dtype=np.float64)
-    dy[0] = (1. - 0.01 * y[1]) * np.exp(y[0])
-    dy[1] = (0.02 * y[0] - 1.) * np.exp(y[1])
+    with np.errstate(over='ignore', invalid='ignore'):
+        dy[0] = (1. - 0.01 * y[1]) * np.exp(y[0])
+        dy[1] = (0.02 * y[0] - 1.) * np.exp(y[1])
     return dy
 
 def diffeq_args(dy, t, y, a, b):
@@ -367,6 +388,26 @@ def test_pysolve_ivp_errors():
     assert result.error_code == CyrkErrorCodes.MAX_STEPS_USER_EXCEEDED
     assert result.message == "Maximum number of steps (set by user) exceeded during integration."
 
+    # An explicit method on a stiff problem runs out of a realistic step budget, where an implicit
+    # method finishes well inside it.
+    result = pysolve_ivp(diffeq_stiff, robertson_time_span, robertson_y0,
+                        method="RK45",
+                        args=robertson_args, rtol=rtol, atol=atol,
+                        max_num_steps=1000,
+                        pass_dy_as_arg=False)
+
+    assert not result.success
+    assert result.error_code == CyrkErrorCodes.MAX_STEPS_USER_EXCEEDED
+
+    result = pysolve_ivp(diffeq_stiff, robertson_time_span, robertson_y0,
+                        method="LSODA",
+                        args=robertson_args, rtol=rtol, atol=atol,
+                        max_num_steps=1000,
+                        pass_dy_as_arg=False)
+
+    assert result.success
+    assert result.error_code == CyrkErrorCodes.SUCCESSFUL_INTEGRATION
+
     # Do the same thing but now for max ram
     result = pysolve_ivp(diffeq_scipy_style, time_span, initial_conds,
                         method="RK23",
@@ -378,8 +419,10 @@ def test_pysolve_ivp_errors():
     assert result.error_code == CyrkErrorCodes.MAX_STEPS_SYSARCH_EXCEEDED
     assert result.message == "Maximum number of steps (set by system architecture) exceeded during integration."
 
-    # Do an integration with tolerances that are just way too small for the method
-    result = pysolve_ivp(diffeq_stiff, time_span, initial_conds,
+    # Do an integration of a solution that runs away, which drives the required step size below the
+    # spacing between floating point numbers. (Note that the tolerances below do not do this on
+    # their own; `rtol` is clamped up to 100 * machine epsilon during setup.)
+    result = pysolve_ivp(diffeq_divergent, time_span, initial_conds,
                         method="RK45",
                         args=None, rtol=1.0e-20, atol=1.0e-22,
                         pass_dy_as_arg=False)
