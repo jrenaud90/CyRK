@@ -3,6 +3,11 @@ import importlib.metadata
 __version__ = importlib.metadata.version("CyRK")
 version = __version__
 
+# CyRK's x86-64 extensions are compiled for AVX2. Check for it before the first one is imported so
+# that a CPU without it gets an explanation rather than an illegal instruction fault.
+from CyRK._cpu_check import check_cpu
+check_cpu()
+
 # Import python solver
 from CyRK.cy.common import CyrkErrorCodes, MAX_SIZE
 from CyRK.cy.cysolver_api import WrapCySolverResult, ODEMethod

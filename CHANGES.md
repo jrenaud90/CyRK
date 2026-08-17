@@ -36,6 +36,15 @@
 
 ##### Fixes
 * Fixed `get_method_str` in "numba_solver.py" reporting the wrong method name; its integers did not match the `ODEMethod` enum.
+* Fixed `CySolverResult::solve` reporting success for a solve that never ran.
+* Fixed the wheel installing a top level `Tests` package into the user's site-packages.
+* Fixed every `exclude` in "MANIFEST.in" silently matching nothing.
+* Fixed a `%d` format specifier being handed a `size_t` in "events_test.pyx".
+* Removed three cached pointers in "rk.cpp" that were never read (`l_K_ptr` in `p_compute_stages` and `p_estimate_error`, `l_K_ptr_index_ptr` in `set_Q_array`).
+* CyRK's x86-64 builds target AVX2 deliberately, but a CPU without it used to fault with an illegal instruction somewhere inside a compiled extension. Importing CyRK now checks for AVX2 first and raises an `ImportError` that says what happened and how to get a build that runs. The check is fail-open: if the CPU's capabilities cannot be determined the import proceeds.
+* Added `CYRK_NO_AVX2`. Setting it builds without AVX2, and leaving it set at run time turns the check above off, so a CPU without AVX2 has a supported route to a working install.
+* Fixed `-mavx2` and `-mfma` being passed to the linker rather than the compiler on Linux, where they had no effect on code generation at all.
+* Silenced MSVC's C4551 and C4018 on Windows builds.
 
 ##### Documentation
 * Added an "Agreement with SciPy" section to the implicit methods page, with two new figures. The first is a work-precision diagram showing that CyRK and SciPy buy accuracy at the same rate for every implicit method and problem tested.
@@ -48,6 +57,8 @@
 ##### Tests
 * Added "Tests/H_Implicit_Tests" covering accuracy against analytic solutions, stiff performance, dense output, `t_eval`, events, extra output, backward integration, tolerance arrays, solution reuse, step size limits, and the LSODA banded Jacobian.
 * Added the new methods to the existing accuracy test suites.
+* Made the trimmed RK23 tests deterministic.
+* Replaced `diffeq_stiff` in "test_a_pysolve_ivp.py" with the Robertson problem, which is actually stiff, and used it to check that an explicit method exhausts a step budget that an implicit method finishes comfortably inside.
 
 ##### Performance
 * Added a stiff problem to the performance stack: "Performance/robertson.py" holds the Robertson chemical kinetics problem, the standard benchmark for stiff solvers. None of the existing benchmark problems are stiff, so none of them showed what the implicit methods are for. On this one the explicit methods are held to tiny steps by stability: over the larger time span RK45 needs about 34,600 steps where BDF needs 109 and LSODA needs 140. It is also available to `cysolve_ivp` through `cytester` as differential equation number 11.
