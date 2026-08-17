@@ -4,122 +4,63 @@
 
 ### v0.18.X
 
-#### v0.18.0 (Unreleased)
+#### v0.18.0 (2026-08-17)
 
-##### New Integration Method: Radau
-* Added "Radau", an implicit Runge-Kutta method of the Radau IIA family of order 5. It is a C++ port
-  of SciPy's `scipy/integrate/_ivp/radau.py` and reproduces it step for step.
-  * Unlike BDF and LSODA this is a single-step method, so it carries no solution history and changes
-    its step size without having to rescale anything. That makes it the strongest of the three when
-    a stiff problem changes character sharply: on the new Robertson benchmark it reaches the end in
-    165 steps where BDF needs 215 and LSODA needs 250.
-  * It is L-stable and its error is controlled by an embedded third order formula. Dense output uses
-    the cubic collocation polynomial, which is also reused to warm start the next step's Newton
-    iteration.
-  * Each step solves a three stage collocation system. Rather than factorizing the full `3 * num_y`
-    system, the eigendecomposition of the Butcher matrix reduces every iteration to one real and one
-    complex solve of size `num_y`.
-* Added complex dense LU factorization to "c_lu.hpp(cpp)" (the equivalents of LAPACK's zgetrf and
-  zgetrs) for Radau's complex iteration matrix. The real and complex routines now share one
-  implementation rather than duplicating the algorithm.
-
-##### New Integration Method: LSODA
-* Added "LSODA", an Adams / BDF method that monitors the problem as it integrates and switches between the non-stiff Adams formulas and the stiff BDF formulas on its own.
+##### New Implicit Integration Methods:
+* **Radau**: an implicit Runge-Kutta method of the Radau IIA family of order 5. It is a C++ port of SciPy's `scipy/integrate/_ivp/radau.py`.
+  * Like BDF, it is available from `cysolve_ivp`, `pysolve_ivp`, and `nbsolve2_ivp`, and supports dense output, `t_eval`, events, extra output, solution reuse, backward integration, and per-variable tolerance arrays.
+  * Unlike BDF and LSODA this is a single-step method, so it carries no solution history and changes its step size without having to rescale anything. That makes it the strongest of the three when a stiff problem changes character sharply: on the new Robertson benchmark it reaches the end in 165 steps where BDF needs 215 and LSODA needs 250.
+  * Added complex dense LU factorization to "c_lu.hpp(cpp)" (the equivalents of LAPACK's zgetrf and zgetrs) for Radau's complex iteration matrix. The real and complex routines now share one implementation rather than duplicating the algorithm.
+* **LSODA**: an Adams / BDF method that monitors the problem as it integrates and switches between the non-stiff Adams formulas and the stiff BDF formulas on its own.
   * It is built on a lightly modified copy of the C translation of ODEPACK's LSODA that ships with SciPy, driven one step at a time so that CyRK keeps control of the solution storage, the events, and the `t_eval` interpolation. See the new `Third-Party Code` section of "LICENSE.md" for the notices, and please cite ODEPACK if you use this method.
   * Like BDF, it is available from `cysolve_ivp`, `pysolve_ivp`, and `nbsolve2_ivp`, and supports dense output, `t_eval`, events, extra output, solution reuse, backward integration, and per-variable tolerance arrays.
-* Added three options that only LSODA understands. Passing them to any other method now raises an `AttributeError` rather than being ignored.
-  * `min_step` - the smallest step size LSODA is allowed to take.
-  * `lband` and `uband` - the bandwidth of the Jacobian. Declaring a bandwidth on a large system whose variables only couple to their neighbors is a substantial speed up: on a 500 variable diffusion problem it takes the same number of steps but runs roughly 16 times faster, because LSODA then needs only `lband + uband + 1` differential equation calls per Jacobian and a banded factorization instead of a dense one.
-* Two bugs in the upstream C translation of LSODA were corrected in CyRK's copy (both are noted at the top of "c_lsoda.hpp"): the user's minimum step size was stored in a local variable rather than in the common block, so the option was silently discarded, and `bnorm` was handed the banded Jacobian without the row offset that it was written to.
-
-##### New Integration Method: BDF
-* Added "BDF", an implicit multi-step method based on the backward differentiation formulas, with the order varying automatically between 1 and 5. It is a C++ port of SciPy's `scipy/integrate/_ivp/bdf.py` and includes the accuracy enhancement from the modified (NDF) formulas. This method is ideal for stiff ODEs (an example shows a decrease from 46,451 to 348 steps when compared to RK45).
+  * Added three options that only LSODA understands. Passing them to any other method now raises an `AttributeError` rather than being ignored.
+    * `min_step` - the smallest step size LSODA is allowed to take.
+    * `lband` and `uband`: the bandwidth of the Jacobian. Declaring a bandwidth on a large system whose variables only couple to their neighbors is a substantial speed up.
+  * Two bugs in the upstream C translation of LSODA were corrected in CyRK's copy (both are noted at the top of "c_lsoda.hpp"): the user's minimum step size was stored in a local variable rather than in the common block, so the option was silently discarded, and `bnorm` was handed the banded Jacobian without the row offset that it was written to.
+* **BDF**: an implicit multi-step method based on the backward differentiation formulas, with the order varying automatically between 1 and 5. It is a C++ port of SciPy's `scipy/integrate/_ivp/bdf.py` and includes the accuracy enhancement from the modified (NDF) formulas. This method is ideal for stiff ODEs (an example shows a decrease from 46,451 to 348 steps when compared to RK45).
   * It is available everywhere the existing methods are (`cysolve_ivp`, `pysolve_ivp`, and `nbsolve2_ivp`) and supports everything they do: dense output, `t_eval`, events, extra output, solution reuse, backward integration, and per-variable tolerance arrays.
   * Each step solves its algebraic system with a simplified Newton iteration. The iteration matrix is factorized with CyRK's own LU routines and reused across steps until the step size, the order, or a convergence failure forces a refactorization.
-  * BDF holds the Jacobian and its factorization as dense matrices, so its memory grows with the square of the number of dependent variables. That footprint is checked against `max_ram_MB` during setup, which reports a memory allocation error rather than starting a solve that could not finish in reasonable time.
+  * BDF holds the Jacobian and its factorization as dense matrices, so its memory grows with the square of the number of dependent variables. That footprint is checked against `max_ram_MB` during setup, which reports a memory allocation error rather than starting a solve  that could not finish in reasonable time.
 
 ##### C++ Backend
-* Prepared the solver base classes for integration methods that are not Runge-Kutta.
-  * Moved the tolerances (`rtols`, `atols`) and the step size limits (`max_step_size`,
-    `first_step_size`) from `RKConfig` up to `ProblemConfig`, since every adaptive method needs
-    them. `RKConfig` is retained as an alias so existing code keeps working, and its long
-    constructor and `update_properties` overload now live on `ProblemConfig`.
-  * Moved the tolerance parsing (`p_setup_error_control`) and the first step size estimator
-    (`p_calc_first_step_size`) from `RKSolver` to `CySolverBase` for the same reason.
-  * Added `CySolverBase::p_finalize_setup`, called at the end of setup once the first step size is
-    known. Multi-step methods need it to build their solution history.
-  * `CySolverDense` now refreshes its interpolation order and its step size from the solver every
-    time its state is set, instead of only when it is constructed. Two new virtuals,
-    `set_Q_order_max` and `get_dense_base_y_ptr`, cover the differences between an interpolant that
-    works forward from the start of a step and one that works backward from the end of it.
-  * A non-positive `max_step` is now rejected during setup instead of producing an invalid step
-    size clamp.
-* Added an optional analytic Jacobian, `JacobianFuncType`. `cysolve_ivp` and `baseline_cysolve_ivp`
-  take a new `jac_ptr` argument at the end of their argument lists; it is unused until an implicit
-  method is selected. When it is null, `CySolverBase::p_estimate_jacobian` builds the Jacobian with
-  adaptive finite differences, following SciPy's `num_jac`.
-* Added "c_lu.hpp(cpp)": dense and banded LU factorization (the equivalents of LAPACK's dgetrf,
-  dgetrs, dgbtrf, and dgbtrs). These are implemented in CyRK so that it still does not need to link
-  against an external BLAS or LAPACK library.
-* Added the `JACOBIAN_IS_SINGULAR`, `NEWTON_CONVERGENCE_ERROR`, and `LSODA_INTERNAL_ERROR` error
-  codes. They are all added together so that the error code values stay stable.
+* Prepared the solver base classes for implicit integration methods.
+  * Moved the tolerances (`rtols`, `atols`) and the step size limits (`max_step_size`, `first_step_size`) from `RKConfig` up to `ProblemConfig`, since every adaptive method needs them. `RKConfig` is retained as an alias so existing code keeps working, and its long constructor and `update_properties` overload now live on `ProblemConfig`.
+  * Moved the tolerance parsing (`p_setup_error_control`) and the first step size estimator (`p_calc_first_step_size`) from `RKSolver` to `CySolverBase` for the same reason.
+  * Added `CySolverBase::p_finalize_setup`, called at the end of setup once the first step size is known. Multi-step methods need it to build their solution history.
+  * `CySolverDense` now refreshes its interpolation order and its step size from the solver every time its state is set, instead of only when it is constructed. Two new virtuals, `set_Q_order_max` and `get_dense_base_y_ptr`, cover the differences between an interpolant that works forward from the start of a step and one that works backward from the end of it.
+  * A non-positive `max_step` is now rejected during setup instead of producing an invalid step size clamp.
+* Added an optional analytic Jacobian, `JacobianFuncType`. `cysolve_ivp` and `baseline_cysolve_ivp` take a new `jac_ptr` argument at the end of their argument lists; it is unused until an implicit method is selected. When it is null, `CySolverBase::p_estimate_jacobian` builds the Jacobian with adaptive finite differences, following SciPy's `num_jac`.
+* Added "c_lu.hpp(cpp)": dense and banded LU factorization (the equivalents of LAPACK's dgetrf, dgetrs, dgbtrf, and dgbtrs). These are implemented in CyRK so that it still does not need to link against an external BLAS or LAPACK library.
+* Added the `JACOBIAN_IS_SINGULAR`, `NEWTON_CONVERGENCE_ERROR`, and `LSODA_INTERNAL_ERROR` error codes. They are all added together so that the error code values stay stable.
 
 ##### Fixes
-* Fixed `get_method_str` in "numba_solver.py" reporting the wrong method name; its integers did not
-  match the `ODEMethod` enum.
+* Fixed `get_method_str` in "numba_solver.py" reporting the wrong method name; its integers did not match the `ODEMethod` enum.
 
 ##### Documentation
-* Added an "Agreement with SciPy" section to the implicit methods page, with two new figures. The
-  first is a work-precision diagram showing that CyRK and SciPy buy accuracy at the same rate for
-  every implicit method and problem tested.
+* Added an "Agreement with SciPy" section to the implicit methods page, with two new figures. The first is a work-precision diagram showing that CyRK and SciPy buy accuracy at the same rate for every implicit method and problem tested.
 * Added "Benchmarks/scipy_implicit_comparison.py", which regenerates those figures and statistics.
-* Added a new "Implicit Methods" documentation page covering how to choose between BDF and LSODA,
-  the Jacobian, the cost of these methods, and the LSODA-only options.
-* Updated "C++_API.md" with the new `cysolve_ivp` argument list and the new "c_lu", "bdf", "lsoda",
-  and "c_lsoda" modules.
+* Added a new "Implicit Methods" documentation page covering how to choose between BDF and LSODA, the Jacobian, the cost of these methods, and the LSODA-only options.
+* Updated "C++_API.md" with the new `cysolve_ivp` argument list and the new "c_lu", "bdf", "lsoda", and "c_lsoda" modules.
 * Documented the new error codes in "Status_and_Error_Codes.md".
-* Added a `Third-Party Code` section to "LICENSE.md" with the notices for the vendored LSODA code
-  and for the algorithms that are ported from SciPy, along with SciPy's license. Added the ODEPACK
-  citations to the README.
+* Added a `Third-Party Code` section to "LICENSE.md" with the notices for the vendored LSODA code and for the algorithms that are ported from SciPy, along with SciPy's license. Added the ODEPACK citations to the README.
 
 ##### Tests
-* Added "Tests/H_Implicit_Tests" covering accuracy against analytic solutions, stiff performance,
-  dense output, `t_eval`, events, extra output, backward integration, tolerance arrays, solution
-  reuse, step size limits, and the LSODA banded Jacobian.
+* Added "Tests/H_Implicit_Tests" covering accuracy against analytic solutions, stiff performance, dense output, `t_eval`, events, extra output, backward integration, tolerance arrays, solution reuse, step size limits, and the LSODA banded Jacobian.
 * Added the new methods to the existing accuracy test suites.
 
 ##### Performance
-* Added a stiff problem to the performance stack: "Performance/robertson.py" holds the Robertson
-  chemical kinetics problem, the standard benchmark for stiff solvers. None of the existing
-  benchmark problems are stiff, so none of them showed what the implicit methods are for. On this
-  one the explicit methods are held to tiny steps by stability: over the larger time span RK45 needs
-  about 34,600 steps where BDF needs 109 and LSODA needs 140. It is also available to `cysolve_ivp`
-  through `cytester` as differential equation number 11.
+* Added a stiff problem to the performance stack: "Performance/robertson.py" holds the Robertson chemical kinetics problem, the standard benchmark for stiff solvers. None of the existing benchmark problems are stiff, so none of them showed what the implicit methods are for. On this one the explicit methods are held to tiny steps by stability: over the larger time span RK45 needs about 34,600 steps where BDF needs 109 and LSODA needs 140. It is also available to `cysolve_ivp` through `cytester` as differential equation number 11.
 * Added the new integration methods to "Performance/performance.py".
-  * The legacy `nbsolve_ivp` does not implement the implicit methods, so its column is left blank
-    for them.
-  * The two problems with 10,000 dependent variables are skipped for the implicit methods, since a
-    dense Jacobian of that size would need a 10,000 by 10,000 factorization on every step.
-* Added a check that an existing performance CSV was written for the current set of problems. The
-  headers are only written when a file is first created, so adding a problem previously caused
-  every row after it to silently misalign with them (which had already happened to the RK45 file).
-  A mismatch now raises rather than appending a bad row.
-* Noted in "Performance.md" that a stiff problem's step count is set by stability rather than by the
-  error tolerances, which is the case where an implicit method wins despite its higher per step cost.
+  * The legacy `nbsolve_ivp` does not implement the implicit methods, so its column is left blank for them.
+  * The two problems with 10,000 dependent variables are skipped for the implicit methods, since a dense Jacobian of that size would need a 10,000 by 10,000 factorization on every step.
+* Noted in "Performance.md" that a stiff problem's step count is set by stability rather than by the error tolerances, which is the case where an implicit method wins despite its higher per step cost.
 
 ##### Benchmarks
-* Made the integration method selectable in "Benchmarks/CyRK - SciPy Comparison.ipynb" through a new
-  `integration_method` setting. It was hard coded to RK45; it now accepts any of the six methods and
-  drops `nbsolve_ivp` from the comparison when an implicit one is chosen, since that solver only
-  implements the explicit Runge-Kutta methods. Figures for a method other than RK45 are saved with
-  the method in their file name so they do not overwrite the existing ones.
-* Added the Robertson problem to "Benchmarks/diffeq_builder.py" as `'robertson'` so that the
-  notebook has a stiff problem to compare the implicit methods on. Its middle species sits around
-  1e-5 for the whole integration, so the plot scales it up by 1e4 to keep it visible.
-* Added event functions for the Robertson problem to `cytester`, which previously raised
-  `NotImplementedError` when asked for events on differential equation number 11.
-* Fixed the notebook plotting the `nbsolve_ivp` result a second time in place of the `nbsolve2_ivp`
-  result.
+* Made the integration method selectable in "Benchmarks/CyRK - SciPy Comparison.ipynb" through a new `integration_method` setting. It was hard coded to RK45; it now accepts any of the six methods and drops `nbsolve_ivp` from the comparison when an implicit one is chosen, since that solver only implements the explicit Runge-Kutta methods. Figures for a method other than RK45 are saved with the method in their file name so they do not overwrite the existing ones.
+* Added the Robertson problem to "Benchmarks/diffeq_builder.py" as `'robertson'` so that the notebook has a stiff problem to compare the implicit methods on. Its middle species sits around 1e-5 for the whole integration, so the plot scales it up by 1e4 to keep it visible.
+* Added event functions for the Robertson problem to `cytester`, which previously raised `NotImplementedError` when asked for events on differential equation number 11.
+* Fixed the notebook plotting the `nbsolve_ivp` result a second time in place of the `nbsolve2_ivp` result.
 
 ### v0.17.X
 
@@ -127,26 +68,16 @@
 
 ##### Fixes
 * Fixed reused solutions silently keeping the previous run's problem shape.
-  * `CySolverResult::setup` only rebuilt the configuration's derived properties (`num_y`, `num_dy`,
-    `capture_extra`, ...) the first time it ran. Callers are allowed to set the source properties
-    directly, which `pysolve_ivp` does, so on a reuse those derived properties went stale and the
-    second run silently solved the wrong problem. They are now rebuilt on every setup.
-  * The most visible symptom was that changing `num_extra` on a reused `pysolve_ivp` solution
-    dropped the extra output entirely. That now works.
-  * `cysolve_ivp` was never affected; it builds its configuration through `update_properties`,
-    which has always re-initialized.
-* `pysolve_ivp` now raises an `AttributeError` when a reused solution is given a `y0` with a
-  different number of dependent variables, instead of silently returning garbage. The solver's
-  dependent variable storage is shared with numpy arrays that were built for the previous run, so
-  changing that size is not supported; build a new solver instead. `cysolve_ivp` shares no storage
-  with Python objects and keeps its ability to be reused across problems of different sizes.
+  * `CySolverResult::setup` only rebuilt the configuration's derived properties (`num_y`, `num_dy`, `capture_extra`, ...) the first time it ran. Callers are allowed to set the source properties directly, which `pysolve_ivp` does, so on a reuse those derived properties went stale and the second run silently solved the wrong problem. They are now rebuilt on every setup.
+  * The most visible symptom was that changing `num_extra` on a reused `pysolve_ivp` solution dropped the extra output entirely. That now works.
+  * `cysolve_ivp` was never affected; it builds its configuration through `update_properties`, which has always re-initialized.
+* `pysolve_ivp` now raises an `AttributeError` when a reused solution is given a `y0` with a different number of dependent variables, instead of silently returning garbage. The solver's dependent variable storage is shared with numpy arrays that were built for the previous run, so changing that size is not supported; build a new solver instead. `cysolve_ivp` shares no storage with Python objects and keeps its ability to be reused across problems of different sizes.
 
 ##### Documentation
 * Documented in "CySolverResult_Reuses.md" what can and can not change between reuses.
 
 ##### Tests
-* Added "Tests/D_PySolver_Tests/test_e_pysolve_reuse_shape.py" covering reuse with a changed
-  `num_y`, `num_extra`, and `t_eval`, for both `pysolve_ivp` and `cysolve_ivp`.
+* Added "Tests/D_PySolver_Tests/test_e_pysolve_reuse_shape.py" covering reuse with a changed `num_y`, `num_extra`, and `t_eval`, for both `pysolve_ivp` and `cysolve_ivp`.
 
 #### v0.17.1 (2026-02-23)
 
