@@ -4,6 +4,12 @@
 
 ### v0.18.X
 
+#### v0.18.1 (2026-08-18)
+
+##### Dependencies
+
+- Bumped NumPy upper version pin from <2.4 to <2.6 for both runtime and build.
+
 #### v0.18.0 (2026-08-17)
 
 ##### New Implicit Integration Methods:
