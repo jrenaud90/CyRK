@@ -50,6 +50,10 @@ else:
         # the linker they do nothing.
         extra_compile_args.append('-mavx2')
         extra_compile_args.append('-mfma')
+    if install_platform == 'linux':
+        # GCC needs this for std::thread (used by "c_parallel.cpp"); Apple's clang links pthreads by default.
+        extra_compile_args.append('-pthread')
+        extra_link_args.append('-pthread')
     cpp_standard_flag = '-std=c++20'
 
 macro_list = [('NPY_NO_DEPRECATED_API', 'NPY_1_9_API_VERSION')]

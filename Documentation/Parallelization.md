@@ -41,5 +41,41 @@ the code still runs, just serially.
 Examples on how this is done can be found in the
 [Advanced CySolver Examples notebook](https://cyrk.readthedocs.io/en/latest/Demos/2_-_Advanced_CySolver_Examples.html#Parallelizing-cysolve_ivp)
 (its `%%cython` cells get the flags above from `Demos/jupyter_cyhack.py`, which only adds them where the compiler
-supports OpenMP) or in `CyRK.cy.prange_test`. Note that the copy of `prange_test` shipped in CyRK's wheels is built
-without OpenMP, so its loop runs serially.
+supports OpenMP).
+
+### C++ threads: `c_cysolve_batch`
+CyRK ships a small C++ helper to assist with parallelization. `c_cysolve_batch` takes a vector of `c_CySolveJob`
+structs (one `CySolverResult` per job plus the diffeq, time span, initial conditions, and any optional inputs) and
+spreads them over `std::thread` workers. Each thread solves a contiguous block of jobs, so no locking is needed.
+cimport it from `CyRK.cy.parallel`:
+
+```cython
+from libcpp.vector cimport vector
+from libcpp.memory cimport make_unique
+from libcpp.utility cimport move
+from CyRK.cy.cysolver_api cimport CySolverResult, CySolveOutput, ODEMethod
+from CyRK.cy.parallel cimport c_CySolveJob, c_cysolve_batch
+
+cdef vector[CySolveOutput] results = vector[CySolveOutput](num_jobs)
+cdef vector[c_CySolveJob] jobs
+cdef c_CySolveJob job
+for i in range(num_jobs):
+    results[i] = move(make_unique[CySolverResult](ODEMethod.RK45))
+    job = c_CySolveJob()
+    job.solution_ptr = results[i].get()
+    job.diffeq_ptr   = my_diffeq
+    job.t_start      = 0.0
+    job.t_end        = 100.0
+    job.y0_vec_ptr   = &y0_vecs[i]
+    job.args_vec_ptr = &args_vec      # May be shared: the solver copies the vectors it is given.
+    jobs.push_back(job)
+
+with nogil:
+    c_cysolve_batch(jobs, num_threads)
+```
+
+The job struct's optional fields (`rtol`, `atol`, per-variable tolerance vectors, `t_eval_vec_ptr`, `events_vec_ptr`,
+`pre_eval_func`, `max_num_steps`, and so on) default to the same values as `cysolve_ivp_noreturn`. A failure inside a
+job is recorded on that job's `CySolverResult` (`success`, `status`, `message`) rather than raised. The complete,
+runnable version of this example is `CyRK.cy.parallel_test`, which is what the test suite uses to check that the
+solver is safe to run from several threads.
