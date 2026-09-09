@@ -36,9 +36,9 @@ keywords:
 - Python
 - C++
 license: Apache-2.0
-commit: 72de91e
-version: 0.18.1
-date-released: '2026-08-18'
+commit: '3570101'
+version: 0.19.0
+date-released: '2026-09-09'
 preferred-citation:
   type: article
   authors:

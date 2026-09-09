@@ -99,9 +99,9 @@
     "link_args": [],
     "is_cpp": true
   },
-  "prange_test": {
-    "name": "CyRK.cy.prange_test",
-    "sources": [["CyRK", "cy", "prange_test.pyx"]],
+  "parallel_test": {
+    "name": "CyRK.cy.parallel_test",
+    "sources": [["CyRK", "cy", "parallel_test.pyx"]],
     "include_dirs": [],
     "compile_args": [],
     "link_args": [],

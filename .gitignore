@@ -19,6 +19,7 @@
 !CyRK/cy/lsoda.cpp
 !CyRK/cy/radau.cpp
 !CyRK/cy/c_lsoda.cpp
+!CyRK/cy/c_parallel.cpp
 
 !CyRK/optimize/c_brentq.cpp
 

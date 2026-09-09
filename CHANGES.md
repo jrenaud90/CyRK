@@ -2,6 +2,35 @@
 
 ## 2026
 
+### v0.19.X
+
+#### v0.19.0 (2026-09-08)
+
+##### New
+* `c_cysolve_batch` (C++, "CyRK/cy/c_parallel.hpp"; cimport from `CyRK.cy.parallel`): solves a vector of `c_CySolveJob`s, each with its own `CySolverResult`, across `std::thread` workers. The "Parallelization" documentation page provides more information.
+  * `CyRK.cy.parallel_test.run_parallel_benchmark(num_threads, num_runs, t_end)` times a batch of Lotka-Volterra solves so the threading crossover can be measured on any machine. The "Parallelization" page reports the measurements from one machine and the rules of thumb drawn from them (threading pays once time per job times number of jobs reaches a few milliseconds; scaling to many threads needs jobs of roughly 100 us or longer).
+
+##### Fixes
+* Fixed the macOS wheels on PyPI, which could not be imported unless an OpenMP run time happened to exist at the path used on the build machine (`Library not loaded: @rpath/libomp.dylib`). The wheels were built outside of `cibuildwheel`, so nothing bundled the library they linked to. Every earlier macOS wheel back to at least v0.10.1 was affected.
+
+##### Build
+* Dropped the OpenMP compile and link flags. CyRK never used it. The solvers are `nogil` and thread safe so it can be parallized externally without the OpenMP support. The wheels no longer link to (or have to bundle) `libomp`, `libgomp`, or `vcomp140`, and a source build on macOS no longer needs brew's `llvm` and `libomp`.
+  * `CyRK.cy.prange_test` was replaced by `CyRK.cy.parallel_test`, which drives a batch of solves through the new C++ thread helper described under "New".
+* Merged `_build_cyrk.py` into `setup.py`. The cmdclass hook was a leftover from the 2022 move to `pyproject.toml`; `setup.py` has declared the extensions since v0.2.4 (the only way setuptools can mark a wheel as platform specific), so the hook was redundant and, through `py-modules`, was installing `_build_cyrk` as a top-level module in users' site-packages.
+* The macOS arm64 wheels are now built by `cibuildwheel` alongside the Linux and Windows wheels. Every wheel is installed into a fresh environment and CyRK's built-in solver checks are run before the upload job can start. Free-threaded CPython wheels are skipped because numba does not ship them currently.
+* The wheel workflow only uploads to PyPI for a published release, or when its manual `upload` input is set, so it can be run against a branch first.
+
+##### Tests
+* The macOS test workflow now installs CyRK with clang through `setup-python`, same as linux and windows workflows do (and the same toolchain the wheels are built with). The conda environment and the brew `llvm`/`libomp` steps have been removed.
+
+##### Conda-Forge
+* The recipe no longer lists `vcomp14`, `llvm-openmp`, or `libgomp` in its host or run requirements.
+
+##### Documentation
+* README: the macOS install section no longer asks for Homebrew's `llvm` and `libomp`; each platform's default compiler works.
+* "Parallelization" page: explains that it is the module containing the `prange` loop, not CyRK, that has to be compiled with OpenMP, and lists the flags for MSVC, GCC, and Apple clang.
+* `Demos/jupyter_cyhack.py` adds OpenMP flags to `%%cython` cells only where the compiler supports them (Homebrew `libomp` on macOS; MSVC and GCC out of the box) and honors `CYRK_DEMO_NO_OPENMP`; without OpenMP the cells still compile with serial `prange` loops.
+
 ### v0.18.X
 
 #### v0.18.1 (2026-08-18)

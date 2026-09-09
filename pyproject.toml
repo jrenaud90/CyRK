@@ -1,6 +1,6 @@
 [project]
 name='CyRK'
-version = '0.18.1'
+version = '0.19.0'
 description='Runge-Kutta ODE Integrator Implemented in Cython and Numba.'
 authors= [
     {name = 'Joe P. Renaud', email = 'joe.p.renaud@gmail.com'}
@@ -80,6 +80,7 @@ docs = [
     "matplotlib>=3.4.2",
 ]
 
+# The extension modules are declared in setup.py (setuptools has no pyproject.toml equivalent for them).
 [build-system]
 requires = [
     'setuptools>=64.0.0',
@@ -90,7 +91,6 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["_build_cyrk"]
 include-package-data = true
 
 [tool.setuptools.packages.find]
@@ -100,10 +100,6 @@ where = ["."]
 # which then installs a top level "Tests" into the user's site-packages.
 exclude = ["Tests*", "Demos*", "Benchmarks*", "Documentation*", "Performance*"]
 
-[tool.setuptools.cmdclass]
-build_py = "_build_cyrk.build_cyrk"
-build_ext = "_build_cyrk.build_ext"
-
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "-ra -v"
@@ -111,10 +107,18 @@ testpaths = [
     "Tests"
 ]
 
+# Binary wheel builds (see .github/workflows/build_wheels_main_pypi.yml). Each wheel is built, repaired (auditwheel,
+# delvewheel, or delocate bundle any non-system libraries it links to), and then tested in a fresh environment.
 [tool.cibuildwheel]
 build = "*"
-# Disable building PyPy wheels on all platforms. Also having issue with musllinux.
-skip = ["pp*", "*musl*"]
+# No PyPy or musl wheels. Free-threaded CPython (the "t" builds) is skipped because numba, a hard dependency, does
+# not ship free-threaded wheels.
+skip = ["pp*", "*musl*", "cp3??t-*"]
 # Having issues with SciPy install during wheel build on 32-bit systems.
 archs = ["auto64"]
+# Import the installed wheel and run CyRK's built-in solver checks (numba, PySolver, CySolver, nbsolve2).
+test-command = 'python -c "import CyRK; CyRK.test_nbrk(); CyRK.test_cysolver(); CyRK.test_pysolver(); CyRK.test_nbsolver()"'
 
+[tool.cibuildwheel.macos]
+# The oldest macOS supported by numba's and scipy's arm64 wheels; also what the previous CyRK wheels targeted.
+environment = { MACOSX_DEPLOYMENT_TARGET = "12.0" }
