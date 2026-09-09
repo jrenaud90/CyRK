@@ -1,5 +1,5 @@
 {% set name = "CyRK" %}
-{% set version = "0.18.1" %}
+{% set version = "0.18.2" %}
 
 package:
   name: {{ name|lower }}
@@ -7,34 +7,30 @@ package:
 
 source:
   url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/cyrk-{{ version }}.tar.gz
+  # Replace with the sha256 of the version's sdist on PyPI (see "conda-forge upload.md").
   sha256: 3c8e224a32aaca22466b28f170d762eb8ec9e72a0bcc02761476dc97dd40e114
 
 build:
   script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
-  number: 1
+  number: 0
   skip: true  # [py<39]
 
+# CyRK does not use OpenMP, so no OpenMP run time (vcomp14, llvm-openmp, libgomp) is needed in host or run.
 requirements:
   build:
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
     - {{ stdlib('c') }}
-    - numpy
-    # - numpy <2.0  # [py<313]
-    # - numpy >=2.0  # [py>=313]
   host:
     - python
     - setuptools
     - numpy
-    # - numpy <2.0  # [py<313]
-    # - numpy >=2.0  # [py>=313]
     - cython
     - wheel
     - pip
   run:
     - python
     - numpy
-    - cython
     - scipy
     - numba
 
@@ -43,7 +39,7 @@ test:
     - CyRK
   commands:
     - pip check
-    - python -c "import CyRK; CyRK.test_nbrk(); CyRK.test_cysolver(); CyRK.test_pysolver()"
+    - python -c "import CyRK; CyRK.test_nbrk(); CyRK.test_cysolver(); CyRK.test_pysolver(); CyRK.test_nbsolver()"
   requires:
     - pip
 

@@ -50,7 +50,7 @@ jobs:
       # wheel, repairs it (auditwheel, delvewheel, or delocate bundle any non-system libraries), and runs the
       # test command against the installed wheel.
       - name: Build wheels
-        uses: pypa/cibuildwheel@v4.2.1
+        uses: pypa/cibuildwheel@v4
 
       - uses: actions/upload-artifact@v4
         with:
@@ -80,7 +80,7 @@ jobs:
           merge-multiple: true
           path: dist
 
-      - uses: pypa/gh-action-pypi-publish@v1.13.0
+      - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}

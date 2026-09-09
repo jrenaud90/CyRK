@@ -95,7 +95,7 @@ mamba:
 
 If not installing from a wheel, CyRK will attempt to install `Cython` and `Numpy` in order to compile the source code. A "C++ 20" compatible compiler is required.
 Compiling CyRK has been tested on the latest versions of Windows, Ubuntu, and MacOS. Your milage may vary if you are using an older or different operating system.
-If on MacOS you will likely need a non-default compiler in order to compile the required [OpenMP](https://www.openmp.org/) package. See the "Installation Troubleshooting" section below. 
+Most platform's default compiler will work to build CyRK: MSVC on Windows, GCC on Linux, and Apple's clang on MacOS (`xcode-select --install`).
 After everything has been compiled, cython will be uninstalled and CyRK's runtime dependencies (see the pyproject.toml file for the latest list) will be installed instead.
 
 A new installation of CyRK can be tested quickly by running the following from a python console.
@@ -106,7 +106,7 @@ test_pysolver()
 test_cysolver()
 # Should see "CyRK's CySolver was tested successfully."
 test_nbrk()
-# Should see "CyRK's nbrk_ode was tested successfully."
+# Should see "CyRK's nbsolve_ivp was tested successfully."
 ```
 
 ### Installation Troubleshooting
@@ -116,29 +116,7 @@ test_nbrk()
 - If you see a "Can not load module: CyRK.cy" or similar error then the cython extensions likely did not compile during installation. Try running `pip install CyRK --no-binary="CyRK"` 
 to force python to recompile the cython extensions locally (rather than via a prebuilt wheel).
 
-- On MacOS: If you run into problems installing CyRK then reinstall using the verbose flag (`pip install -v .`) to look at the installation log. If you see an error that looks like "clang: error: unsupported option '-fopenmp'" then you are likely using the default compiler or other compiler that does not support OpenMP. Read more about this issue [here](https://github.com/facebookresearch/xformers/issues/157) and the steps taken [here](https://github.com/jrenaud90/CyRK/blob/main/.github/workflows/push_tests_mac.yml). A fix for this issue is to use `llvm`'s clang compiler. This can be done by doing the following in your terminal before installing CyRK.
-```
-brew install llvm
-brew install libomp
-
-# If on a newer computer that uses ARM64 (Apple Silicon) then:
-export LDFLAGS="-L/opt/homebrew/opt/llvm/lib"
-export CPPFLAGS="-I/opt/homebrew/opt/llvm/include"
-export LDFLAGS="-L/opt/homebrew/opt/libomp/lib"
-export CPPFLAGS="-I/opt/homebrew/opt/libomp/include"
-export CC=/opt/homebrew/opt/llvm/bin/clang
-export CXX=/opt/homebrew/opt/llvm/bin/clang++
-
-# Otherwise change these directories to:
-export LDFLAGS="-L/usr/local/opt/llvm/lib"
-export CPPFLAGS="-I/usr/local/opt/llvm/include"
-export LDFLAGS="-L/usr/local/opt/libomp/lib"
-export CPPFLAGS="-I/usr/local/opt/libomp/include"
-export CC=/usr/local/opt/llvm/bin/clang
-export CXX=/usr/local/opt/llvm/bin/clang++
-
-pip install CyRK --no-binary="CyRK"
-```
+- On MacOS: CyRK v0.18.2 and later compile with Apple's default clang, so the Homebrew `llvm` and `libomp` steps that older versions needed are no longer required (remove any `CC`/`CXX`/`LDFLAGS`/`CPPFLAGS` exports left over from them if a different compiler is being picked up). If you are writing your own Cython module that uses `prange` over CyRK's solvers, see the [Parallelization](https://cyrk.readthedocs.io/en/latest/Parallelization.html) documentation for the OpenMP flags that module needs.
 
 - CyRK has a number of runtime status codes which can be used to help determine what failed during integration. Learn more about these codes [https://cyrk.readthedocs.io/en/latest/Status_and_Error_Codes.html](here).
 
