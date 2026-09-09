@@ -116,7 +116,7 @@ test_nbrk()
 - If you see a "Can not load module: CyRK.cy" or similar error then the cython extensions likely did not compile during installation. Try running `pip install CyRK --no-binary="CyRK"` 
 to force python to recompile the cython extensions locally (rather than via a prebuilt wheel).
 
-- On MacOS: CyRK v0.18.2 and later compile with Apple's default clang, so the Homebrew `llvm` and `libomp` steps that older versions needed are no longer required (remove any `CC`/`CXX`/`LDFLAGS`/`CPPFLAGS` exports left over from them if a different compiler is being picked up). If you are writing your own Cython module that uses `prange` over CyRK's solvers, see the [Parallelization](https://cyrk.readthedocs.io/en/latest/Parallelization.html) documentation for the OpenMP flags that module needs.
+- On MacOS: CyRK v0.19.0 and later compile with Apple's default clang, so the Homebrew `llvm` and `libomp` steps that older versions needed are no longer required (remove any `CC`/`CXX`/`LDFLAGS`/`CPPFLAGS` exports left over from them if a different compiler is being picked up). If you are writing your own Cython module that uses `prange` over CyRK's solvers, see the [Parallelization](https://cyrk.readthedocs.io/en/latest/Parallelization.html) documentation for the OpenMP flags that module needs.
 
 - CyRK has a number of runtime status codes which can be used to help determine what failed during integration. Learn more about these codes [https://cyrk.readthedocs.io/en/latest/Status_and_Error_Codes.html](here).
 
