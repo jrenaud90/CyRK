@@ -34,32 +34,34 @@ cdef void set_lotkavolterra_args(vector[char]& args_vec) noexcept nogil:
     args_dbl_ptr[3] = 1.0
 
 
-def _run_batch(size_t num_threads, bint share_args):
-    """ Solve NUM_RUNS identical problems over `num_threads` threads, check the results, and return the time in ms.
+def _run_batch(size_t num_threads, bint share_args, size_t num_runs = NUM_RUNS, double t_end = T_END):
+    """ Solve `num_runs` identical problems over `num_threads` threads, check the results, and return the time in ms.
 
     With `share_args` every job reads one shared argument vector; otherwise each job gets its own copy.
     """
+    if num_runs == 0:
+        raise ValueError("num_runs must be at least 1.")
     cdef size_t i
     cdef vector[double] y0_vec = vector[double](2)
     y0_vec[0] = 10.0
     y0_vec[1] = 5.0
 
-    cdef vector[vector[char]] args_vecs = vector[vector[char]](1 if share_args else NUM_RUNS)
+    cdef vector[vector[char]] args_vecs = vector[vector[char]](1 if share_args else num_runs)
     for i in range(args_vecs.size()):
         set_lotkavolterra_args(args_vecs[i])
 
     # Each job owns its result; everything else is read only during the solve and may be shared.
-    cdef vector[CySolveOutput] results = vector[CySolveOutput](NUM_RUNS)
+    cdef vector[CySolveOutput] results = vector[CySolveOutput](num_runs)
     cdef vector[c_CySolveJob] jobs = vector[c_CySolveJob]()
-    jobs.reserve(NUM_RUNS)
+    jobs.reserve(num_runs)
     cdef c_CySolveJob job
-    for i in range(NUM_RUNS):
+    for i in range(num_runs):
         results[i] = move(make_unique[CySolverResult](ODEMethod.RK45))
         job = c_CySolveJob()
         job.solution_ptr = results[i].get()
         job.diffeq_ptr   = lotkavolterra_diffeq
         job.t_start      = T_START
-        job.t_end        = T_END
+        job.t_end        = t_end
         job.y0_vec_ptr   = &y0_vec
         job.args_vec_ptr = &args_vecs[0 if share_args else i]
         job.rtol         = RTOL
@@ -80,7 +82,7 @@ def _run_batch(size_t num_threads, bint share_args):
 
     cdef CySolverResult* check_ptr
     cdef size_t j
-    for i in range(1, NUM_RUNS):
+    for i in range(1, num_runs):
         check_ptr = results[i].get()
         if not check_ptr.success:
             raise AssertionError(f"Job {i} failed: {check_ptr.message.decode()}")
@@ -111,3 +113,12 @@ def run_parallel_common_args_test(size_t num_threads = 2):
           "thread(s) (if you are seeing this then the checks passed too).")
     print(f"\tAvg time: {loop_time_ms / NUM_RUNS:0.1f} ms/job.")
     return loop_time_ms
+
+
+def run_parallel_benchmark(size_t num_threads, size_t num_runs, double t_end):
+    """ Time `num_runs` identical Lotka-Volterra solves to `t_end` on `num_threads` threads; returns the ms taken.
+
+    Use it to find where threading starts to pay off on your machine. The per-job time grows with `t_end` (the
+    solution is periodic, so the step count is proportional to it) on top of the solver's fixed setup cost.
+    """
+    return _run_batch(num_threads, True, num_runs, t_end)

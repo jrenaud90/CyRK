@@ -8,6 +8,7 @@
 
 ##### New
 * `c_cysolve_batch` (C++, "CyRK/cy/c_parallel.hpp"; cimport from `CyRK.cy.parallel`): solves a vector of `c_CySolveJob`s, each with its own `CySolverResult`, across `std::thread` workers. The "Parallelization" documentation page provides more information.
+  * `CyRK.cy.parallel_test.run_parallel_benchmark(num_threads, num_runs, t_end)` times a batch of Lotka-Volterra solves so the threading crossover can be measured on any machine. The "Parallelization" page reports the measurements from one machine and the rules of thumb drawn from them (threading pays once time per job times number of jobs reaches a few milliseconds; scaling to many threads needs jobs of roughly 100 us or longer).
 
 ##### Fixes
 * Fixed the macOS wheels on PyPI, which could not be imported unless an OpenMP run time happened to exist at the path used on the build machine (`Library not loaded: @rpath/libomp.dylib`). The wheels were built outside of `cibuildwheel`, so nothing bundled the library they linked to. Every earlier macOS wheel back to at least v0.10.1 was affected.
