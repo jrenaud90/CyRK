@@ -4,6 +4,18 @@
 
 ### v0.18.X
 
+#### v0.18.2 (2026-09-08)
+
+##### Fixes
+* Fixed the macOS wheels on PyPI, which could not be imported unless an OpenMP run time happened to exist at the path used on the build machine (`Library not loaded: @rpath/libomp.dylib`). The wheels were built outside of `cibuildwheel`, so nothing bundled the library they linked to. Every earlier macOS wheel back to at least v0.10.1 was affected.
+
+##### Build
+* Dropped the OpenMP compile and link flags. CyRK never used it. The solvers are `nogil` and thread safe so it can be parallized externally without the OpenMP support. The wheels no longer link to (or have to bundle) `libomp`, `libgomp`, or `vcomp140`, and a source build on macOS no longer needs brew's `llvm` and `libomp`.
+  * `CyRK.cy.prange_test` still compiles, but its `prange` loop now runs serially (that is what Cython emits without OpenMP). It will be replaced by a C++ thread based check.
+* Merged `_build_cyrk.py` into `setup.py`. The cmdclass hook was a leftover from the 2022 move to `pyproject.toml`; `setup.py` has declared the extensions since v0.2.4 (the only way setuptools can mark a wheel as platform specific), so the hook was redundant and, through `py-modules`, was installing `_build_cyrk` as a top-level module in users' site-packages.
+* The macOS arm64 wheels are now built by `cibuildwheel` (pinned to v4.2.1) alongside the Linux and Windows wheels. Every wheel is installed into a fresh environment and CyRK's built-in solver checks are run before the upload job can start. Free-threaded CPython wheels are skipped because numba does not ship them currently.
+* The wheel workflow only uploads to PyPI for a published release, or when its manual `upload` input is set, so it can be run against a branch first.
+
 #### v0.18.1 (2026-08-18)
 
 ##### Dependencies
