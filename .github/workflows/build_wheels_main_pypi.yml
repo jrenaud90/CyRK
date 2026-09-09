@@ -48,9 +48,10 @@ jobs:
 
       # cibuildwheel is configured in pyproject.toml ([tool.cibuildwheel]). For each CPython version it builds the
       # wheel, repairs it (auditwheel, delvewheel, or delocate bundle any non-system libraries), and runs the
-      # test command against the installed wheel.
+      # test command against the installed wheel. It is run from PyPI rather than through the pypa/cibuildwheel
+      # action because the action only has exact-version tags; "~=4.0" picks up every 4.x release automatically.
       - name: Build wheels
-        uses: pypa/cibuildwheel@v4
+        run: pipx run "cibuildwheel~=4.0"
 
       - uses: actions/upload-artifact@v4
         with:
