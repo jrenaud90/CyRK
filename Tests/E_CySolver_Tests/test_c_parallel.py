@@ -2,7 +2,7 @@
 import os
 import warnings
 
-from CyRK.cy.parallel_test import run_parallel_common_args_test, run_parallel_test
+from CyRK.cy.parallel_test import run_dense_output_threads_test, run_parallel_common_args_test, run_parallel_test
 
 cpu_count = os.cpu_count() or 1
 
@@ -36,3 +36,13 @@ def test_cysolver_parallel():
 def test_cysolver_parallel_common_args():
     """ Every job reads the same argument vector, which the solver must treat as read only. """
     _check_threads(run_parallel_common_args_test, "test_cysolver_parallel_common_args")
+
+
+def test_dense_output_read_from_several_threads():
+    """ Several threads read one solution's dense output, extra outputs included, at the same time.
+
+    Before v0.19.1 each read of an extra output borrowed the solver's current-state arrays, so concurrent reads
+    overwrote each other's inputs and returned wrong extra outputs.
+    """
+    num_threads = max(2, min(8, cpu_count))
+    assert run_dense_output_threads_test(num_threads, 200) == 0

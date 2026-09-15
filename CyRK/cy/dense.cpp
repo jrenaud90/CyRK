@@ -1,6 +1,10 @@
 #include "dense.hpp"
 #include "cysolver.hpp"
 
+// Extra outputs of up to this many total dy values are evaluated on stack scratch arrays; larger problems use heap
+// scratch arrays owned by the call.
+static constexpr size_t DENSE_EXTRA_STACK_SIZE = 64;
+
 // Constructors
 CySolverDense::CySolverDense(
             CySolverResult* solution_ptr_,
@@ -271,25 +275,55 @@ void CySolverDense::call(double t_interp, double* y_interp_ptr)
             
             size_t num_dy = solver_ptr->num_dy;
 
-            // We will be overwriting the solver's now variables so tell it to store a copy that it can be restored back to.
-            solver_ptr->offload_to_temp();
-
-            // Load new values into t and y
-            std::memcpy(solver_ptr->y_now_ptr, y_interp_ptr, sizeof(double) * this->num_y);
-            solver_ptr->t_now = t_interp;
-            
-            // Call diffeq to update dy_now pointer
-            solver_ptr->diffeq(solver_ptr);
-
-            // Capture extra output and add to the y_interp_ptr array
-            // We already have y interpolated from above so start at num_y
-            for (size_t i = this->num_y; i < num_dy; i++)
+            // A C diffeq is evaluated on scratch arrays owned by this call, so the solution's shared state is only
+            // read and several threads may read the same dense output at once. The y values are copied because the
+            // diffeq receives a non-const pointer, and the caller's interpolated values must not change.
+            double y_stack[DENSE_EXTRA_STACK_SIZE];
+            double dy_stack[DENSE_EXTRA_STACK_SIZE];
+            std::vector<double> y_heap;
+            std::vector<double> dy_heap;
+            double* y_scratch_ptr  = y_stack;
+            double* dy_scratch_ptr = dy_stack;
+            if (num_dy > DENSE_EXTRA_STACK_SIZE) [[unlikely]]
             {
-                y_interp_ptr[i] = solver_ptr->dy_now_ptr[i];
+                y_heap.resize(this->num_y);
+                dy_heap.resize(num_dy);
+                y_scratch_ptr  = y_heap.data();
+                dy_scratch_ptr = dy_heap.data();
             }
+            std::memcpy(y_scratch_ptr, y_interp_ptr, sizeof(double) * this->num_y);
 
-            // Reset CySolver state to what it was before
-            solver_ptr->load_back_from_temp();
+            if (solver_ptr->diffeq_into(t_interp, y_scratch_ptr, dy_scratch_ptr)) [[likely]]
+            {
+                // Capture extra output and add to the y_interp_ptr array
+                // We already have y interpolated from above so start at num_y
+                for (size_t i = this->num_y; i < num_dy; i++)
+                {
+                    y_interp_ptr[i] = dy_scratch_ptr[i];
+                }
+            }
+            else
+            {
+                // A Python diffeq reads and writes the solver's own arrays, so it still borrows them. These reads
+                // are not safe to make from several threads at once (they need the GIL regardless).
+                solver_ptr->offload_to_temp();
+
+                // Load new values into t and y
+                std::memcpy(solver_ptr->y_now_ptr, y_interp_ptr, sizeof(double) * this->num_y);
+                solver_ptr->t_now = t_interp;
+
+                // Call diffeq to update dy_now pointer
+                solver_ptr->diffeq(solver_ptr);
+
+                // Capture extra output and add to the y_interp_ptr array
+                for (size_t i = this->num_y; i < num_dy; i++)
+                {
+                    y_interp_ptr[i] = solver_ptr->dy_now_ptr[i];
+                }
+
+                // Reset CySolver state to what it was before
+                solver_ptr->load_back_from_temp();
+            }
         }
     }
 }

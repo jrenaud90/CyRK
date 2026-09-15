@@ -623,6 +623,17 @@ void CySolverBase::load_back_from_temp() noexcept
     this->t_now = this->t_tmp;
 }
 
+bool CySolverBase::diffeq_into(double t, double* y_ptr, double* dy_ptr) const noexcept
+{
+    // Evaluate the C diffeq on caller-owned arrays. The solver's own arrays are neither read nor written.
+    if (this->use_pysolver or (not this->diffeq_ptr))
+    {
+        return false;
+    }
+    this->diffeq_ptr(dy_ptr, t, y_ptr, this->args_ptr, this->pre_eval_func);
+    return true;
+}
+
 CyrkErrorCodes CySolverBase::resize_num_y(size_t num_y_, size_t num_dy_)
 {    
     // Setup y-vectors and pointers

@@ -25,6 +25,12 @@ crashing. Examples on how this is done can be found in the
 [prange](https://cython.readthedocs.io/en/latest/src/userguide/parallelism.html) loop, C++ threads (`std::thread`)
 inside your own extension, or Python threads calling a `nogil` wrapper.
 
+Reading a finished solution is thread safe as well: several threads may call one `CySolverResult`'s dense output (`call`
+and `call_vectorize`) at the same time, because each read only reads the shared solution. Since v0.19.1 this includes
+problems with extra outputs, which each read recomputes from the diffeq on scratch arrays of its own, as long as the
+diffeq and its pre-eval function only read their arguments. Dense output from `pysolve_ivp` with extra outputs still
+goes through the solver's own arrays, so read it from one thread at a time.
+
 CyRK's own binaries are built without OpenMP and do not need it. It is the module that contains the `prange` loop that
 must be compiled with OpenMP, using the flags for its compiler:
 
