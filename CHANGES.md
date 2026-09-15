@@ -4,6 +4,14 @@
 
 ### v0.19.X
 
+#### v0.19.1 (2026-09-15)
+
+##### Fixes
+* Reading a solution's dense output is now safe from several threads at once when the problem has extra outputs. The interpolant does not carry extra outputs, so each read (`CySolverResult::call` and `call_vectorize`) evaluates the diffeq once more at the interpolated state, and it did so by borrowing the retained solver's current-state arrays (`offload_to_temp`, write `y_now` and `t_now`, run the diffeq, read `dy_now`, `load_back_from_temp`). Reads stay thread safe only if the diffeq and its pre-eval function also only read their arguments. Solutions of Python diffeqs (`pysolve_ivp`) still go through the solver's arrays and must not be read from several threads.
+
+##### Tests
+* `CyRK.cy.parallel_test.run_dense_output_threads_test(num_threads, num_repeats)` solves a Lorenz problem with extra outputs once and reads its dense output from several C++ threads at once, counting reads that differ from a serial read. `test_dense_output_read_from_several_threads` requires zero.
+
 #### v0.19.0 (2026-09-08)
 
 ##### New

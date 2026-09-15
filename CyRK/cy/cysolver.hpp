@@ -243,6 +243,10 @@ public:
     void clear_python_refs();
     void offload_to_temp() noexcept;
     void load_back_from_temp() noexcept;
+    // Evaluates the C diffeq at (t, y) into dy (room for `num_dy` values) without reading or writing the solver's
+    // state, so several threads may call it at once as long as the diffeq and pre-eval function only read their
+    // arguments. Returns false, and writes nothing, for a Python diffeq, which works through the solver's arrays.
+    bool diffeq_into(double t, double* y_ptr, double* dy_ptr) const noexcept;
     CyrkErrorCodes resize_num_y(size_t num_y_, size_t num_dy_);
     virtual CyrkErrorCodes setup();
     inline bool check_status() const;
