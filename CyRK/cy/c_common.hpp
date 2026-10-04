@@ -73,6 +73,7 @@ enum class CyrkErrorCodes : int {
 
     // Python related problems start at -70
     ERROR_IMPORTING_PYTHON_MODULE = -70,
+    PYTHON_FUNCTION_ERROR = -71,
 
     // RK-specific issues start at -80
     BAD_INITIAL_STEP_SIZE = -80,
@@ -170,6 +171,9 @@ inline const std::map<CyrkErrorCodes, std::string> CyrkErrorMessages = {
 
     { CyrkErrorCodes::ERROR_IMPORTING_PYTHON_MODULE,
       "There was an error in the C++ backend when trying to import the required Python module." },
+
+    { CyrkErrorCodes::PYTHON_FUNCTION_ERROR,
+      "A Python function (the diffeq or an event) raised an exception, so the integration stopped." },
 
     { CyrkErrorCodes::BAD_INITIAL_STEP_SIZE,
       "User-provided initial step size must be a positive number." },

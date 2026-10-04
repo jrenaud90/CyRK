@@ -253,6 +253,7 @@ cdef extern from "cysolver.cpp" nogil:
             DiffeqMethod py_diffeq_method
             )
         void py_diffeq()
+        void set_external_error(CyrkErrorCodes error_code) noexcept
 
 
 # =====================================================================================================================

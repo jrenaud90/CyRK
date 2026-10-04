@@ -37,6 +37,9 @@ cdef class PySolver(WrapCySolverResult):
     # Event data
     cdef list events_list
 
+    # An exception raised by the Python diffeq or an event, held until the C++ solver returns (see `diffeq`).
+    cdef object p_stored_exception
+
     cdef void set_state(
         self,
         CySolverBase* solver_ptr,
@@ -73,9 +76,13 @@ cdef class PySolver(WrapCySolverResult):
         object lband = *,
         object uband = *
         )
+    cpdef solve(self)
     cdef void diffeq(self) noexcept
     cdef double check_pyevent(
         self,
         size_t event_index,
-        double t, 
+        double t,
         double* y_ptr) noexcept
+    cdef void p_store_exception(self, object error) noexcept
+    cdef void p_fill_dy_nan(self) noexcept
+    cdef p_raise_stored_exception(self)

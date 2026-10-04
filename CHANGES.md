@@ -4,6 +4,17 @@
 
 ### v0.19.X
 
+#### v0.19.2 (2026-10-04)
+
+##### Fixes
+* `pysolve_ivp`: an exception raised by the Python diffeq or by an event function is now raised to the caller. The C++ solvers call these functions through a `noexcept` hook, so before this fix Python printed "Exception ignored in: 'CyRK.cy.pysolver.PySolver.diffeq'" and the integration went on with the previous step's derivative, reporting success with a wrong solution (an event that raised was counted as having fired). `PySolver` now stores the exception, stops the solver (status `PYTHON_FUNCTION_ERROR`, the step in progress finishes on NaN rates without saving data), and raises it once the solver returns; the same holds for a `KeyboardInterrupt`, which now stops a long integration, and for the dense-output `call` and `call_vectorize` of a solution with extra outputs, which evaluate the diffeq again. A diffeq that returns fewer than `num_y + num_extra` values raises a `ValueError` instead of being read past its end.
+  * `CySolverBase::set_external_error(error_code)` is the C++ hook behind this: it stops the integration from outside the solver, and the status it sets is not overwritten by the step in progress.
+* LSODA accepted steps taken with NaN rates and reported success with NaN states. Its weighted norms (`vmnorm`, `fnorm`, `bnorm`) used `fmax`, which drops a NaN argument, so a NaN correction measured zero and passed both the corrector's convergence test and the local error test. The norms now propagate NaN, so such a step is rejected as with every other method.
+* LSODA no longer creeps forward without end once its step falls to the spacing between numbers at t (which NaN or inf rates force, and which inf rates already did before the fix above, until the step limit set by the available memory). ODEPACK only counts such a step (`nhnil`) and goes on. CyRK's LSODA now fails with `STEP_SIZE_ERROR_SPACING`, as the other methods do.
+
+##### Tests
+* `Tests/D_PySolver_Tests/test_f_pysolve_failures.py`: exceptions from the diffeq (every method, at the initial state, with `pass_dy_as_arg` and `args`, during a dense call with extra outputs, a `KeyboardInterrupt`, a reused solver afterwards) and from events reach the caller; a short return raises; NaN and inf rates end every method's integration unsuccessfully, and LSODA's saved states stay finite.
+
 #### v0.19.1 (2026-09-15)
 
 ##### Fixes

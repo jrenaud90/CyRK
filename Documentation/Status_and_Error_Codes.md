@@ -6,7 +6,7 @@ These codes and their accompanying messages are defined in `CyRK.cy.c_common.hpp
 
 ## Status Codes and Messages
 
-Below are a list of status code ints followed by their messages. This was last updated for CyRK v0.17.0.
+Below are a list of status code ints followed by their messages. This was last updated for CyRK v0.19.2.
 
 ```C++
 
@@ -61,6 +61,7 @@ enum class CyrkErrorCodes : int {
 
     // Python related problems start at -70
     ERROR_IMPORTING_PYTHON_MODULE = -70,
+    PYTHON_FUNCTION_ERROR = -71,
 
     // RK-specific issues start at -80
     BAD_INITIAL_STEP_SIZE = -80,
@@ -159,6 +160,9 @@ inline const std::map<CyrkErrorCodes, std::string> CyrkErrorMessages = {
     { CyrkErrorCodes::ERROR_IMPORTING_PYTHON_MODULE,
       "There was an error in the C++ backend when trying to import the required Python module." },
 
+    { CyrkErrorCodes::PYTHON_FUNCTION_ERROR,
+      "A Python function (the diffeq or an event) raised an exception, so the integration stopped." },
+
     { CyrkErrorCodes::BAD_INITIAL_STEP_SIZE,
       "User-provided initial step size must be a positive number." },
 
@@ -178,3 +182,7 @@ inline const std::map<CyrkErrorCodes, std::string> CyrkErrorMessages = {
       "The error code was never set." }
 };
 ```
+
+## Exceptions in Python Functions
+
+`pysolve_ivp` raises an exception that the Python diffeq or an event function raises (a `KeyboardInterrupt` included) once the solver returns. The solver stops at the step in which it was raised, and the solution's status is `PYTHON_FUNCTION_ERROR`. A diffeq that returns fewer than `num_y + num_extra` values raises a `ValueError`.
