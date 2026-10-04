@@ -261,6 +261,10 @@ public:
         PyObject* cython_extension_class_instance,
         DiffeqMethod py_diffeq_method);
     void py_diffeq();
+    // Stops the integration from outside the solver, such as from a Python diffeq or event that raised an exception.
+    // The step in progress runs to its end without saving data, and the solution's status is set to `error_code`
+    // once it does (a status the step itself sets cannot overwrite it).
+    void set_external_error(CyrkErrorCodes error_code) noexcept;
 
 // Attributes
 protected:
@@ -309,6 +313,8 @@ protected:
     bool direction_flag    = false;
     bool setup_called      = false;
     bool error_flag        = false;
+    // Set by `set_external_error`; NO_ERROR when nothing outside the solver has stopped it.
+    CyrkErrorCodes external_error_code = CyrkErrorCodes::NO_ERROR;
     bool capture_extra     = false;
     bool check_events_flag = false;
 

@@ -234,6 +234,7 @@ void LSODA::p_step_implementation() noexcept
     double t_used = this->t_old;
     double t_out  = this->t_end;
     this->rwork_ptr[0] = this->t_end;
+    const int tiny_steps_before = this->common_state.nhnil;
 
     c_lsoda(
         &LSODA::p_diffeq_hook,
@@ -260,6 +261,16 @@ void LSODA::p_step_implementation() noexcept
     {
         this->error_flag = true;
         this->storage_ptr->update_status(LSODA::p_convert_istate(this->istate));
+        return;
+    }
+
+    // ODEPACK only counts (nhnil) a step no larger than the spacing between numbers at t and keeps stepping, so after
+    // non-finite rates forced its step down it crept forward one spacing at a time without end. Such a step makes no
+    // progress; fail as the other methods do.
+    if (this->common_state.nhnil > tiny_steps_before) [[unlikely]]
+    {
+        this->error_flag = true;
+        this->storage_ptr->update_status(CyrkErrorCodes::STEP_SIZE_ERROR_SPACING);
         return;
     }
 

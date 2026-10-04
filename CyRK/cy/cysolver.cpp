@@ -669,6 +669,7 @@ CyrkErrorCodes CySolverBase::setup()
     this->t_eval_finished   = false;
     this->setup_called      = false;
     this->error_flag        = false;
+    this->external_error_code = CyrkErrorCodes::NO_ERROR;
     this->check_events_flag = false;
     this->num_events        = 0;
     this->use_array_rtols   = false;
@@ -1368,6 +1369,12 @@ void CySolverBase::take_step()
         }
     }
 
+    // A stop requested from outside the solver during this step wins over any status the step set.
+    if (this->external_error_code != CyrkErrorCodes::NO_ERROR) [[unlikely]]
+    {
+        this->storage_ptr->update_status(this->external_error_code);
+    }
+
     // Check if the integration is finished and successful.
     if (
            (this->storage_ptr->status == CyrkErrorCodes::SUCCESSFUL_INTEGRATION)
@@ -1384,6 +1391,12 @@ void CySolverBase::solve()
     while (this->check_status())
     {
         this->take_step();
+    }
+
+    // A stop requested before the first step (during setup) leaves the loop above without a step to report it.
+    if ((this->external_error_code != CyrkErrorCodes::NO_ERROR) and this->storage_ptr) [[unlikely]]
+    {
+        this->storage_ptr->update_status(this->external_error_code);
     }
 }
 
@@ -1416,6 +1429,12 @@ CyrkErrorCodes CySolverBase::set_cython_extension_instance(
         }
     }
     return this->storage_ptr->status;
+}
+
+void CySolverBase::set_external_error(CyrkErrorCodes error_code) noexcept
+{
+    this->external_error_code = error_code;
+    this->error_flag          = true;
 }
 
 void CySolverBase::py_diffeq()

@@ -73,6 +73,9 @@ cdef class PySolver(WrapCySolverResult):
             object lband = None,
             object uband = None
             ):
+        # An exception held from an earlier problem must not be raised for this one.
+        self.p_stored_exception = None
+
         # Parse method
         method = method.lower()
         cdef ODEMethod integration_method = ODEMethod.RK45
@@ -313,11 +316,50 @@ cdef class PySolver(WrapCySolverResult):
         # Load config into cysolution
         cdef CyrkErrorCodes status_code = cyresult_ptr.setup()
 
+        # The setup evaluates the diffeq at the initial state; an exception there is the user's to see first.
+        self.p_raise_stored_exception()
+
         if status_code != CyrkErrorCodes.NO_ERROR:
             raise Exception(
                 f"ERROR: `PySolver::set_problem_parameters` - Error during config setup. Error Code: {status_code}. "
                 f"Message: {CyrkErrorMessages.at(status_code).decode('utf-8')}")
-    
+
+    cpdef solve(self):
+        WrapCySolverResult.solve(self)
+        self.p_raise_stored_exception()
+
+    def call(self, double t):
+        """ Call the dense output interpolater and return y """
+        # With extra outputs, each call evaluates the Python diffeq once more.
+        result = WrapCySolverResult.call(self, t)
+        self.p_raise_stored_exception()
+        return result
+
+    def call_vectorize(self, double[::1] t_view):
+        """ Call the dense output interpolater and return y """
+        result = WrapCySolverResult.call_vectorize(self, t_view)
+        self.p_raise_stored_exception()
+        return result
+
+    cdef void p_store_exception(self, object error) noexcept:
+        # Keep the first exception and stop the solver; the step in progress finishes on NaN rates without saving data.
+        if self.p_stored_exception is None:
+            self.p_stored_exception = error
+        if self.cysolver_ptr:
+            self.cysolver_ptr.set_external_error(CyrkErrorCodes.PYTHON_FUNCTION_ERROR)
+
+    cdef void p_fill_dy_nan(self) noexcept:
+        cdef size_t dy_i
+        for dy_i in range(self.num_dy):
+            self.dy_now_ptr[dy_i] = dbl_NAN
+
+    cdef p_raise_stored_exception(self):
+        # Raise (once) the exception a Python diffeq or event raised while the C++ solver was running.
+        cdef object error = self.p_stored_exception
+        if error is not None:
+            self.p_stored_exception = None
+            raise error
+
     cdef void set_state(self, CySolverBase* solver_ptr, NowStatePointers* solver_state_ptr) noexcept:
 
         self.cysolver_ptr = solver_ptr
@@ -347,39 +389,61 @@ cdef class PySolver(WrapCySolverResult):
             self.dy_now_arr  = cnp.PyArray_SimpleNewFromData(1, shape_ptr, cnp.NPY_DOUBLE, self.dy_now_ptr)
 
     cdef void diffeq(self) noexcept:
-        # Run python diffeq
-        if self.pass_dy_as_arg:
-            if self.use_args:
-                self.diffeq_func(self.dy_now_arr, self.t_now_ptr[0], self.y_now_arr, *self.args)
+        # The C++ solver calls this through a noexcept hook, so a Python exception can not travel through it. One raised
+        # by the diffeq (or a KeyboardInterrupt) is stored, the solver is told to stop, and `solve` raises it once the
+        # solver returns. NaN rates stand in for dy until then, without calling the diffeq again.
+        if self.p_stored_exception is not None:
+            self.p_fill_dy_nan()
+            return
+        try:
+            if self.pass_dy_as_arg:
+                if self.use_args:
+                    self.diffeq_func(self.dy_now_arr, self.t_now_ptr[0], self.y_now_arr, *self.args)
+                else:
+                    self.diffeq_func(self.dy_now_arr, self.t_now_ptr[0], self.y_now_arr)
             else:
-                self.diffeq_func(self.dy_now_arr, self.t_now_ptr[0], self.y_now_arr)
-        else:
-            if self.use_args:
-                self.dy_now_view = self.diffeq_func(self.t_now_ptr[0], self.y_now_arr, *self.args)
-            else:
-                self.dy_now_view = self.diffeq_func(self.t_now_ptr[0], self.y_now_arr)
-            # Since we do not have a static dy that we can pass to the function and use in the solver we must copy over
-            # the values from the newly created dy memory view
-            # Note that num_dy may be larger than num_y if the user is capturing extra output during integration.
-            memcpy(self.dy_now_ptr, &self.dy_now_view[0], sizeof(double) * self.num_dy)
-    
+                if self.use_args:
+                    self.dy_now_view = self.diffeq_func(self.t_now_ptr[0], self.y_now_arr, *self.args)
+                else:
+                    self.dy_now_view = self.diffeq_func(self.t_now_ptr[0], self.y_now_arr)
+                # num_dy is larger than num_y when extra outputs are captured; a shorter array would be read past its
+                # end below.
+                if <size_t>self.dy_now_view.shape[0] < self.num_dy:
+                    raise ValueError(
+                        f"The diffeq returned {self.dy_now_view.shape[0]} values; {self.num_dy} are expected "
+                        f"({self.num_y} dependent variables and {self.num_dy - self.num_y} extra outputs).")
+                # Since we do not have a static dy that we can pass to the function and use in the solver we must copy
+                # over the values from the newly created dy memory view.
+                memcpy(self.dy_now_ptr, &self.dy_now_view[0], sizeof(double) * self.num_dy)
+        except BaseException as error:
+            self.p_store_exception(error)
+            self.p_fill_dy_nan()
+
     cdef double check_pyevent(
             self,
             size_t event_index,
-            double t, 
+            double t,
             double* y_ptr) noexcept:
+
+        # An exception raised by an event is handled as one raised by the diffeq (see `diffeq`).
+        if self.p_stored_exception is not None:
+            return dbl_NAN
 
         # Convert pointer to python object so it can be passed to the python event function
         # TODO: Explore ways to improve performance of this function.
         cdef size_t y_i
         for y_i in range(self.num_dy):
             self.y_tmp_view[y_i] = y_ptr[y_i]
-        
+
         cdef double result = dbl_NAN
-        if self.use_args:
-            result = self.events_list[event_index](t, self.y_tmp_arr, *self.args)
-        else:
-            result = self.events_list[event_index](t, self.y_tmp_arr)
+        try:
+            if self.use_args:
+                result = self.events_list[event_index](t, self.y_tmp_arr, *self.args)
+            else:
+                result = self.events_list[event_index](t, self.y_tmp_arr)
+        except BaseException as error:
+            self.p_store_exception(error)
+            result = dbl_NAN
         return result
 
 # =====================================================================================================================

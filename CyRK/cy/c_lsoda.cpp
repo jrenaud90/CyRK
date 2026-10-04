@@ -1,8 +1,14 @@
 #include "c_lsoda.hpp"
 #include <cfloat>
+#include <cmath>
 
 static inline int int_min(const int a, const int b) { return a < b ? a : b; }
 static inline int int_max(const int a, const int b) { return a > b ? a : b; }
+
+// The larger of two values, or NaN when either is NaN. `fmax` returns the other argument when one is NaN, so the
+// weighted norms below built on it reported a NaN correction or error estimate as zero: the corrector "converged",
+// the local error test passed, and a step taken with NaN (or inf, through inf - inf) rates was accepted.
+static inline double nan_max(const double a, const double b) { return (std::isnan(a) || (a > b)) ? a : b; }
 
 
 /**
@@ -49,7 +55,7 @@ bnorm(const int n, double* CYRK_RESTRICT a, const int nra, const int ml, const i
         {
             sum = sum + fabs(a[diag - col + col*nra]) / w[col];
         }
-        an = fmax(an, sum * w[row]);
+        an = nan_max(an, sum * w[row]);
     }
     return an;
 }
@@ -81,7 +87,7 @@ fnorm(const int n, double* CYRK_RESTRICT a, double* CYRK_RESTRICT w)
             sum = sum + fabs(a[i + j * n]) / w[j];
         }
         // 10
-        an = fmax(an, sum*w[i]);
+        an = nan_max(an, sum*w[i]);
     }
     // 20
     return an;
@@ -108,7 +114,7 @@ vmnorm(const int n, double* CYRK_RESTRICT v, double* CYRK_RESTRICT w)
     double vm = 0.0;
     for (int i = 0; i < n; i++)
     {
-        vm = fmax(vm, fabs(v[i]) * w[i]);
+        vm = nan_max(vm, fabs(v[i]) * w[i]);
     }
     return vm;
 }
