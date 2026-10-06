@@ -4,6 +4,11 @@
 
 ### v0.19.X
 
+#### v0.19.3 (2026-10-06)
+
+##### Fixes
+* Reading `t` or `y` of a `pysolve_ivp` result whose Python diffeq raised an error would crash Python with an access violation. `WrapCySolverResult.t` and `y` now read the result's current storage on every access, return empty arrays (`(0,)` and `(num_dy, 0)`) when it holds nothing.
+
 #### v0.19.2 (2026-10-04)
 
 ##### Fixes

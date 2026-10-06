@@ -108,6 +108,26 @@ def test_exception_during_a_dense_call_is_raised():
         solution.call_vectorize(np.asarray((0.2, 0.4), dtype=np.float64))
 
 
+@pytest.mark.parametrize('integration_method', METHODS)
+def test_solution_arrays_after_an_exception(integration_method):
+    """A solver whose diffeq raised keeps the steps it stored: at most the initial state when it raised there (the
+    arrays are readable, not unset), the steps before the failure when it raised later."""
+    solver = PySolver()
+    with pytest.raises(DiffeqFailure):
+        pysolve_ivp(raises_at_start, time_span, y0, method=integration_method, solution_reuse=solver)
+    t, y = np.asarray(solver.t), np.asarray(solver.y)
+    assert t.size == solver.size <= 1 and y.shape == (1, t.size)
+    if t.size == 1:
+        assert t[0] == time_span[0] and y[0, 0] == y0[0]
+
+    solver = PySolver()
+    with pytest.raises(DiffeqFailure):
+        pysolve_ivp(raises_late, time_span, y0, method=integration_method, solution_reuse=solver)
+    t, y = np.asarray(solver.t), np.asarray(solver.y)
+    assert t.size > 1 and y.shape == (1, t.size)
+    assert t[0] == time_span[0] and t[-1] <= switch_time + 10.0
+
+
 def test_reused_solver_after_an_exception():
     """A solver whose run raised solves the next problem normally."""
     solver = PySolver()

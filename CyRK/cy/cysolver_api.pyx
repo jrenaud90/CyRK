@@ -268,11 +268,21 @@ cdef class WrapCySolverResult:
 
     @property
     def t(self):
-        return np.copy(np.asarray(self.time_view, dtype=np.float64, order='C'))
-    
+        # Built from the result's current storage: a result whose Python diffeq raised during setup never reached
+        # `finalize`, so it has no views to read, and an earlier solve's views would be stale.
+        cdef CySolverResult* cyresult_ptr = self.cyresult_uptr.get()
+        if (cyresult_ptr == NULL) or (cyresult_ptr.size == 0):
+            return np.empty(0, dtype=np.float64)
+        return np.copy(np.asarray(<double[:cyresult_ptr.size]>&cyresult_ptr.time_domain_vec[0]))
+
     @property
     def y(self):
-        return np.copy(np.asarray(self.y_view, dtype=np.float64, order='C')).reshape((self.size, self.num_dy)).T
+        cdef CySolverResult* cyresult_ptr = self.cyresult_uptr.get()
+        if (cyresult_ptr == NULL) or (cyresult_ptr.size == 0):
+            return np.empty((0 if cyresult_ptr == NULL else cyresult_ptr.num_dy, 0), dtype=np.float64)
+        cdef size_t num_values = cyresult_ptr.size * cyresult_ptr.num_dy
+        return np.copy(np.asarray(<double[:num_values]>&cyresult_ptr.solution[0])).reshape(
+            (cyresult_ptr.size, cyresult_ptr.num_dy)).T
     
     @property
     def size(self):
