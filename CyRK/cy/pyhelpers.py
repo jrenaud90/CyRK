@@ -1,9 +1,5 @@
-from CyRK.cy.common import CyrkErrorCodes
+from CyRK.cy.common import get_error_message
 from CyRK.cy.cysolver_api import ODEMethod
-
-def get_error_message(error_code: int):
-    error_message = CyrkErrorCodes[error_code]
-    return error_message
 
 # Extract the pure integers at the Python level. Have to do this because numba does not like working with the enums
 _RK23_INT   = int(ODEMethod.RK23)

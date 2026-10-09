@@ -6,7 +6,7 @@ These codes and their accompanying messages are defined in `CyRK.cy.c_common.hpp
 
 ## Status Codes and Messages
 
-Below are a list of status code ints followed by their messages. This was last updated for CyRK v0.19.2.
+Below are a list of status code ints followed by their messages. This was last updated for CyRK v0.19.4.
 
 ```C++
 
@@ -118,6 +118,9 @@ inline const std::map<CyrkErrorCodes, std::string> CyrkErrorMessages = {
     { CyrkErrorCodes::ARGUMENT_NOT_SET,
       "A required function or method argument was not set." },
 
+    { CyrkErrorCodes::ARGUMENT_ERROR,
+      "A function or method argument was invalid (e.g., a null pointer or a value outside the allowed domain)." },
+
     { CyrkErrorCodes::SETUP_NOT_CALLED,
       "An object's additional setup function was not called before its methods were used." },
 
@@ -126,6 +129,13 @@ inline const std::map<CyrkErrorCodes, std::string> CyrkErrorMessages = {
 
     { CyrkErrorCodes::BAD_CONFIG_DATA,
       "Error during setup: Provided configuration data does not make sense or is missing required parameters." },
+
+    { CyrkErrorCodes::OPTIMIZE_SIGN_ERROR,
+      "Root finding failed: the function has the same sign at both bounds. For an event, the event function changed "
+      "sign over the step but not between the step's dense-output bounds." },
+
+    { CyrkErrorCodes::OPTIMIZE_CONVERGENCE_ERROR,
+      "Root finding failed: the maximum number of iterations was reached before converging." },
 
     { CyrkErrorCodes::VECTOR_SIZE_EXCEEDS_LIMITS,
       "A C++ vector object's size exceeds limits imposed by user or architecture." },
@@ -157,6 +167,9 @@ inline const std::map<CyrkErrorCodes, std::string> CyrkErrorMessages = {
     { CyrkErrorCodes::INTEGRATION_NOT_SUCCESSFUL,
       "Can't call solution: Integration has not been completed or it was unsuccessful." },
 
+    { CyrkErrorCodes::EVENT_SETUP_FAILED,
+      "Error during the setup of one or more events." },
+
     { CyrkErrorCodes::ERROR_IMPORTING_PYTHON_MODULE,
       "There was an error in the C++ backend when trying to import the required Python module." },
 
@@ -182,6 +195,10 @@ inline const std::map<CyrkErrorCodes, std::string> CyrkErrorMessages = {
       "The error code was never set." }
 };
 ```
+
+## Looking Up a Message
+
+From Python, `CyRK.get_error_message(code)` returns the message for a code (a `CyrkErrorCodes` member or its integer value). From C++ or Cython, use `c_get_error_message(code)` from "c_common.hpp" (cimport it from `CyRK.cy.common`) rather than `CyrkErrorMessages.at(code)`: it never throws, and a code without a message gets a generic "Unknown error code" message. Any new code must be added to the enum, to `CyrkErrorMessages`, and to the enum in "CyRK/cy/common.pxd"; "Tests/B_Other_Tests/test_error_codes.py" fails otherwise.
 
 ## Exceptions in Python Functions
 

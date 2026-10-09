@@ -3,6 +3,8 @@
 from libc.math cimport floor
 from libcpp.utility cimport move
 
+from CyRK.cy.common cimport c_get_error_message
+
 import numpy as np
 cimport numpy as cnp
 cnp.import_array()
@@ -170,7 +172,8 @@ cdef class WrapCySolverResult:
             diagnostic_str += f'\n------------------- Event Data ---------------------\n'
             for i in range(cyresult_ptr.num_events):
                 diagnostic_str += f'Event {i}:\n'
-                diagnostic_str += f'\tStatus:         {CyrkErrorMessages.at(config_ptr.events_vec[i].status).decode("utf-8")}.\n'
+                event_status_message = c_get_error_message(config_ptr.events_vec[i].status).decode("utf-8")
+                diagnostic_str += f'\tStatus:         {event_status_message}.\n'
                 diagnostic_str += f'\tDirection:      {config_ptr.events_vec[i].direction}.\n'
                 diagnostic_str += f'\tMax Allowed:    {config_ptr.events_vec[i].max_allowed}.\n'
                 diagnostic_str += f'\tNum Triggers:   {config_ptr.events_vec[i].current_count}.\n'
@@ -354,7 +357,7 @@ cdef class WrapCySolverResult:
     
     @property
     def status_message(self):
-        return CyrkErrorMessages.at(self.cyresult_uptr.get().status).decode("utf-8")
+        return c_get_error_message(self.cyresult_uptr.get().status).decode("utf-8")
     
     def __call__(self, t):
 
