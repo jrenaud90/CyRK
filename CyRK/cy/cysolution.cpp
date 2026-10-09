@@ -224,7 +224,8 @@ void CySolverResult::update_status(CyrkErrorCodes status_code)
     if (status_code != this->status)
     {
         this->status = status_code;
-        this->message = CyrkErrorMessages.at(status_code);
+        // Non-throwing lookup: this is called from the solvers' noexcept stepping and event code.
+        this->message = c_get_error_message(status_code);
     }
 }
 

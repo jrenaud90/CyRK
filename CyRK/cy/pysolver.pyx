@@ -4,7 +4,8 @@ from libc.string cimport memcpy
 from libcpp.cmath cimport fmin, fabs
 from libcpp.vector cimport vector
 
-from CyRK.cy.common cimport INF, EPS_100, CyrkErrorCodes, CyrkErrorMessages, find_expected_size, dbl_NAN, MAX_SIZET_SIZE
+from CyRK.cy.common cimport (
+    INF, EPS_100, CyrkErrorCodes, c_get_error_message, find_expected_size, dbl_NAN, MAX_SIZET_SIZE)
 from CyRK.cy.cysolver_api cimport ProblemConfig, LSODAConfig
 from CyRK.cy.events cimport Event, EventFunc
 
@@ -322,7 +323,7 @@ cdef class PySolver(WrapCySolverResult):
         if status_code != CyrkErrorCodes.NO_ERROR:
             raise Exception(
                 f"ERROR: `PySolver::set_problem_parameters` - Error during config setup. Error Code: {status_code}. "
-                f"Message: {CyrkErrorMessages.at(status_code).decode('utf-8')}")
+                f"Message: {c_get_error_message(status_code).decode('utf-8')}")
 
     cpdef solve(self):
         WrapCySolverResult.solve(self)

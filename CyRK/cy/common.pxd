@@ -49,6 +49,8 @@ cdef extern from "c_common.cpp" nogil:
         UNSET_ERROR_CODE
     
     const cpp_map[CyrkErrorCodes, cpp_string] CyrkErrorMessages
+    # Non-throwing lookup into `CyrkErrorMessages`; prefer it over `CyrkErrorMessages.at`.
+    const cpp_string& c_get_error_message(CyrkErrorCodes error_code) noexcept
 
     cdef struct OptimizeInfo:
         size_t funcalls

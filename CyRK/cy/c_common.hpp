@@ -130,6 +130,9 @@ inline const std::map<CyrkErrorCodes, std::string> CyrkErrorMessages = {
     { CyrkErrorCodes::ARGUMENT_NOT_SET,
       "A required function or method argument was not set." },
 
+    { CyrkErrorCodes::ARGUMENT_ERROR,
+      "A function or method argument was invalid (e.g., a null pointer or a value outside the allowed domain)." },
+
     { CyrkErrorCodes::SETUP_NOT_CALLED,
       "An object's additional setup function was not called before its methods were used." },
 
@@ -138,6 +141,13 @@ inline const std::map<CyrkErrorCodes, std::string> CyrkErrorMessages = {
 
     { CyrkErrorCodes::BAD_CONFIG_DATA,
       "Error during setup: Provided configuration data does not make sense or is missing required parameters." },
+
+    { CyrkErrorCodes::OPTIMIZE_SIGN_ERROR,
+      "Root finding failed: the function has the same sign at both bounds. For an event, the event function changed "
+      "sign over the step but not between the step's dense-output bounds." },
+
+    { CyrkErrorCodes::OPTIMIZE_CONVERGENCE_ERROR,
+      "Root finding failed: the maximum number of iterations was reached before converging." },
 
     { CyrkErrorCodes::VECTOR_SIZE_EXCEEDS_LIMITS,
       "A C++ vector object's size exceeds limits imposed by user or architecture." },
@@ -169,6 +179,9 @@ inline const std::map<CyrkErrorCodes, std::string> CyrkErrorMessages = {
     { CyrkErrorCodes::INTEGRATION_NOT_SUCCESSFUL,
       "Can't call solution: Integration has not been completed or it was unsuccessful." },
 
+    { CyrkErrorCodes::EVENT_SETUP_FAILED,
+      "Error during the setup of one or more events." },
+
     { CyrkErrorCodes::ERROR_IMPORTING_PYTHON_MODULE,
       "There was an error in the C++ backend when trying to import the required Python module." },
 
@@ -193,6 +206,23 @@ inline const std::map<CyrkErrorCodes, std::string> CyrkErrorMessages = {
     { CyrkErrorCodes::UNSET_ERROR_CODE,
       "The error code was never set." }
 };
+
+// Message for a code that has no entry in `CyrkErrorMessages`.
+inline const std::string CYRK_UNKNOWN_ERROR_MESSAGE = "Unknown error code: CyRK defines no message for it.";
+
+/* Returns the message for `error_code` without throwing.
+   Solvers record their status from noexcept code, so a code missing from `CyrkErrorMessages` must not raise
+   `std::out_of_range` (as `.at` would); it gets `CYRK_UNKNOWN_ERROR_MESSAGE` instead. Every code should still have
+   its own message; "Tests/B_Other_Tests/test_error_codes.py" checks this. */
+inline const std::string& c_get_error_message(CyrkErrorCodes error_code) noexcept
+{
+    auto message_iter = CyrkErrorMessages.find(error_code);
+    if (message_iter == CyrkErrorMessages.end()) [[unlikely]]
+    {
+        return CYRK_UNKNOWN_ERROR_MESSAGE;
+    }
+    return message_iter->second;
+}
 
 struct OptimizeInfo {
     size_t funcalls           = 0;

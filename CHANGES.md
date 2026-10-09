@@ -4,6 +4,13 @@
 
 ### v0.19.X
 
+#### v0.19.4 (2026-10-08)
+
+##### Fixes
+* An event whose root finder failed stopped Python interpreter (or, from C++, threw `std::out_of_range` out of the solver). `CyrkErrorMessages` had no message for `ARGUMENT_ERROR`, `OPTIMIZE_SIGN_ERROR`, `OPTIMIZE_CONVERGENCE_ERROR`, or `EVENT_SETUP_FAILED`, and `CySolverResult::update_status` looked messages up with `.at`. These codes now have messages, and the integration ends unsuccessfully with the root finder's code as its status.
+  * New `c_get_error_message(code)` ("c_common.hpp", cimport from `CyRK.cy.common`) looks a message up without throwing, falling back to a generic "Unknown error code" message. CyRK's own lookups use it; C++ and Cython callers should prefer it over `CyrkErrorMessages.at`.
+* `CyRK.get_error_message(code)` raised a `KeyError` for an integer code and never returned a message. It now returns the code's message.
+
 #### v0.19.3 (2026-10-06)
 
 ##### Fixes
