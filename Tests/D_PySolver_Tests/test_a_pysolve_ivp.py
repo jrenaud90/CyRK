@@ -629,6 +629,37 @@ def test_pysolve_short_span_stays_in_interval(integration_method, t_end):
     assert latest_t[0] <= t_end
     assert np.isclose(result.y[0, -1], np.exp(-t_end), rtol=1.0e-7)
 
+
+@pytest.mark.parametrize('integration_method', ("RK45", "Tsit5", "BDF"))
+@pytest.mark.parametrize('terminal', (None, False, 0, True, 1, 2))
+def test_pysolve_event_terminal_values(integration_method, terminal):
+    """As in SciPy, an unset, False, or zero `terminal` never ends the integration; True or n ends it at the n-th
+    occurrence. sin(t) = 0.5 four times on [0, 13]."""
+
+    def crossing(t, y):
+        return y[0] - 0.5
+
+    if terminal is not None:
+        crossing.terminal = terminal
+    result = pysolve_ivp(lambda t, y: np.array([np.cos(t)]), (0.0, 13.0), np.array([0.0]),
+                         method=integration_method, events=(crossing,), rtol=1.0e-9, atol=1.0e-12)
+    assert result.success
+    expected_count = int(terminal) if terminal else 4
+    assert result.t_events[0].size == expected_count
+    assert result.event_terminated == bool(terminal)
+
+
+def test_pysolve_negative_terminal_is_rejected():
+    """A negative `terminal` is not a count and is rejected."""
+
+    def crossing(t, y):
+        return y[0] - 0.5
+
+    crossing.terminal = -1
+    with pytest.raises(ValueError, match="terminal"):
+        pysolve_ivp(lambda t, y: np.array([np.cos(t)]), (0.0, 13.0), np.array([0.0]), events=(crossing,))
+
+
 if __name__ == "__main__":
     test_pysolve_ivp(False, False, False,
                      False, False, False, False, "RK45",

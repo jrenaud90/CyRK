@@ -82,13 +82,13 @@ inline const std::map<ODEMethod, std::string> CyrkODEMethods = {
       "Implicit Runge-Kutta method of the Radau IIA family of order 5." },
 
     { ODEMethod::TSIT5,
-      "Explicit Runge-Kutta method of order 5(4) due to Tsitouras, with a free 4th order interpolant." },
+      "Explicit Runge-Kutta method of order 5(4) due to Tsitouras, with a free fourth-order interpolant." },
 
     { ODEMethod::VERN7,
-      "Explicit Runge-Kutta method of order 7(6) due to Verner, with a 7th order interpolant." },
+      "Explicit Runge-Kutta method of order 7(6) due to Verner, with a seventh-order interpolant." },
 
     { ODEMethod::VERN8,
-      "Explicit Runge-Kutta method of order 8(7) due to Verner, with an 8th order interpolant." }
+      "Explicit Runge-Kutta method of order 8(7) due to Verner, with an eighth-order interpolant." }
 };
 
 struct ProblemConfig {

@@ -212,9 +212,14 @@ cdef class PySolver(WrapCySolverResult):
                 # Pull out properties the user may have set.
                 event_direction = getattr(self.events_list[i], 'direction', 0)
                 terminal        = getattr(self.events_list[i], 'terminal', None)
-                if terminal is None:
+                if not terminal:
+                    # As in SciPy, an unset, False, or zero `terminal` marks an event that never ends the integration.
                     event_max_allowed = getattr(self.events_list[i], 'max_allowed', MAX_SIZET_SIZE)
+                elif terminal < 0:
+                    raise ValueError(
+                        f"Event {i}: `terminal` must be a bool or a non-negative int (got {terminal}).")
                 else:
+                    # True ends the integration at the first occurrence; an int n ends it at the n-th.
                     event_max_allowed = <size_t>terminal
             
                 # Build events with null pointers - we won't use the cython version of the event checker function

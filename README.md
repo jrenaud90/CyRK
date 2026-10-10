@@ -55,9 +55,9 @@ Currently, CyRK supports the following integration methods:
 * "RK23" - Explicit Runge-Kutta method of order 3(2).
 * "RK45" - Explicit Runge-Kutta method of order 5(4)
 * "DOP853" - Explicit Runge-Kutta method of order 8. Error is controlled using a combination of 5th and 3rd order interpolators.
-* "Tsit5" - Explicit Runge-Kutta method of order 5(4) due to Tsitouras, with a free 4th order interpolant.
-* "Vern7" - Explicit Runge-Kutta method of order 7(6) due to Verner, with a 7th order interpolant.
-* "Vern8" - Explicit Runge-Kutta method of order 8(7) due to Verner, with an 8th order interpolant.
+* "Tsit5" - Explicit Runge-Kutta method of order 5(4) due to Tsitouras, with a free fourth-order interpolant.
+* "Vern7" - Explicit Runge-Kutta method of order 7(6) due to Verner, with a seventh-order interpolant.
+* "Vern8" - Explicit Runge-Kutta method of order 8(7) due to Verner, with an eighth-order interpolant.
 * "BDF" - Implicit multi-step method based on backward differentiation formulas of order 1 to 5.
 * "LSODA" - Adams / BDF method with automatic stiffness detection and switching.
 * "Radau" - Implicit Runge-Kutta method of the Radau IIA family of order 5.

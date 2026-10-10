@@ -31,8 +31,8 @@ Even if it was perfect at predicting step sizes, a 100 step integration would ha
 In addition to these computational considerations, the memory footprint of the solver and the solution structure will
 increase with the number of $y$. For double floating point numbers, the $y$-specific footprint of the solver is (in Bytes):
 $112 N_{y}$ (RK23), $136 N_{y}$ (RK45 and Tsit5), $208 N_{y}$ (Vern7), $224 N_{y}$ (DOP853), and $248 N_{y}$ (Vern8).
-This is just the $y$-dependent memory not other 
-overheads (the other overheads are around 1,500 kB). So for RK45, if $N_{y} = 10,000$, the solver would be over 1 MB.
+This is just the $y$-dependent memory not other overheads (the other overheads are around 1,500 kB). So for RK45, if
+$N_{y} = 10,000$, the solver would be over 1 MB.
 During integration the solution will also be added to at each time step and the data storage grows as $8*(1+N_{y})$
 Bytes/step. If the same 10,000 $N_{y}$ ODE takes 100 steps to complete, the memory usage will approach 10 MB. While
 this is a relatively small amount for modern PCs, it can be significant for both RAM limitations if running many
@@ -58,13 +58,12 @@ and the size of the domain of integration (a smaller time domain means less step
 using [events](Events.md) to cause an early termination based on user-defined criteria. Keep in mind that events carry
 their own performance overhead so it is better to pick a smaller domain if you can guess it ahead of time.
 
-The last two factors affecting the number of steps, and which are more adjustable, are integration tolerances
-(`rtol` and `atol`) and the integration method ("RK23", "RK45", "DOP853", "Tsit5", "Vern7", "Vern8", "BDF", "LSODA", "Radau").
-The integration tolerances directly affect
-the number of steps because the solver must decrease step size to fit within smaller tolerances. It is important to
-keep in mind that CyRK allows `atol` and `rtol` to be provided as an array, one for each $y$. This can be helpful if
-one parameter changes much slower than others (looser `rtol`) or is generally much larger than the
-others (looser `atol`).
+The last two factors affecting the number of steps, and which are more adjustable, are integration tolerances (`rtol`
+and `atol`) and the integration method ("RK23", "RK45", "DOP853", "Tsit5", "Vern7", "Vern8", "BDF", "LSODA", "Radau").
+The integration tolerances directly affect the number of steps because the solver must decrease step size to fit within
+smaller tolerances. It is important to keep in mind that CyRK allows `atol` and `rtol` to be provided as an array, one
+for each $y$. This can be helpful if one parameter changes much slower than others (looser `rtol`) or is generally much
+larger than the others (looser `atol`).
 
 The integration method indirectly affects the number of steps by providing a different level
 of confidence at a given error level. For example, DOP853 will know much more about the overall ODE at the same error
@@ -73,10 +72,10 @@ level compared to RK45 (and the same for RK45 compared to RK23). So you can usua
 for RK23 to achieve your desired error level but only `rtol=1.0e-3` for DOP853 for the same confidence). 
 
 As discussed earlier, the more complex methods are much more computationally expensive all else being equal. If you are
-not able to loosen tolerances then you are better off using a simpler method. The per step cost of the explicit methods
-is ordered Vern8 > DOP853 > Vern7 > RK45 = Tsit5 > RK23. The benefit of the higher order methods is better accuracy
+not able to loosen tolerances then you are better off using a simpler method. The per-step cost of the explicit methods
+is ordered Vern8 > DOP853 > Vern7 > RK45 = Tsit5 > RK23. The benefit of the higher-order methods is better accuracy
 with looser tolerances and less steps. Less steps means less computing power. Benchmarking can tell you if that savings
-outweighs the increased per step cost. The [Integration Methods](Integration_Methods.md) page has work-precision
+outweighs the increased per-step cost. The [Integration Methods](Integration_Methods.md) page has work-precision
 measurements of every explicit method on several standard problems.
 
 The above assumes that the number of steps is being set by your error tolerances. For a

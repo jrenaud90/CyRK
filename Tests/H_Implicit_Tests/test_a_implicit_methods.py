@@ -500,7 +500,7 @@ def test_lsoda_leaves_a_step_held_at_the_adams_stability_bound(diffeq, time_span
     assert np.allclose(result.y[:, -1], expected, rtol=1.0e-3, atol=1.0e-6)
 
 
-@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853", "BDF", "RADAU"))
+@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853", "Tsit5", "Vern7", "Vern8", "BDF", "RADAU"))
 def test_lsoda_only_options_are_rejected_elsewhere(integration_method):
     """`min_step`, `lband`, and `uband` are LSODA-only and must not be silently ignored."""
     with pytest.raises(AttributeError):
