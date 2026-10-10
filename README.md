@@ -4,9 +4,7 @@
 <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.9|3.10|3.11|3.12|3.13-blue" alt="Python Version 3.9-3.14" /></a>
 <!-- <a href="https://codecov.io/gh/jrenaud90/CyRK" ><img src="https://codecov.io/gh/jrenaud90/CyRK/branch/main/graph/badge.svg?token=MK2PqcNGET" alt="Code Coverage"/></a> -->
 <br />
-<a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml/badge.svg?branch=main" alt="Windows Tests" /></a>
-<a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_mac.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_mac.yml/badge.svg?branch=main" alt="MacOS Tests" /></a>
-<a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_ubun.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_ubun.yml/badge.svg?branch=main" alt="Ubuntu Tests" /></a>
+<a href="https://github.com/jrenaud90/CyRK/actions/workflows/tests.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/tests.yml/badge.svg?branch=main" alt="Tests" /></a>
 <a href="https://app.readthedocs.org/projects/cyrk/builds/?version__slug=latest"><img src="https://app.readthedocs.org/projects/cyrk/badge/?version=latest&style=flat" alt="Ubuntu Tests" /></a>
 
 
@@ -18,7 +16,7 @@
 ---
 [Documentation](https://cyrk.readthedocs.io/en/latest/) | [GitHub](https://github.com/jrenaud90/cyrk)
 
-<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.19.4 Alpha-orange" alt="CyRK Version 0.19.4 Alpha" /></a>
+<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.20.0-orange" alt="CyRK Version 0.20.0" /></a>
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
 
