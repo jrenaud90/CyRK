@@ -1,0 +1,310 @@
+# Builds CyRK from source and runs the test suite. Two suite sizes share one matrix:
+#
+#   reduced   the latest two CPythons on all three operating systems (6 legs)
+#   full      every supported CPython on all three operating systems (18 legs)
+#
+# Triggers
+#   pull_request                                    reduced   requires admin approval
+#   push, commit message says "run tests"           reduced   requires admin approval
+#   push, commit message says "run full suite"      full      requires admin approval
+#   PR comment saying "run tests"                   reduced   requires admin approval
+#   PR comment saying "run full suite"              full      requires admin approval
+#   schedule, weekly                                reduced   runs immediately
+#   workflow_dispatch                               your pick admins only, runs immediately
+#
+# A push whose message says neither phrase starts nothing at all. Phrase matching is case insensitive, and
+# "run full suite" is checked first so a message carrying both phrases gets the full suite. Only comments from the
+# repository's owners, members, and collaborators are acted on.
+#
+# Manual runs and PR comments
+# GitHub only reads `workflow_dispatch` and `issue_comment` triggers from the copy of this file on the default
+# branch, so the "Run workflow" button and the comment phrases do nothing until this file is on main. The button is
+# only offered to accounts with write access, and `authorize-dispatch` below narrows that to DISPATCH_ADMINS.
+
+name: Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Which suite to run'
+        type: choice
+        options:
+          - reduced
+          - full
+        default: reduced
+  pull_request:
+  push:
+  issue_comment:
+    types: [created]
+  # Weekly, because numpy, scipy, and numba are range-pinned, so an upstream release can break CyRK with no change
+  # here.
+  schedule:
+    - cron: '17 6 * * 1'
+
+# Queue a superseding run behind the current one instead of cancelling it. GitHub keeps at most one run
+# pending per group, so a rapid series of commits collapses to the one running plus the newest one waiting.
+#
+# A comment run's `github.ref` is always the default branch, so comment runs are grouped by pull request number.
+# Every push and comment starts a run, and most of them are not a request to test (`decide` skips them). The last
+# part of the group gives each of those a group of its own, so it cannot replace a requested run that is waiting.
+# It mirrors the `if` on `decide`.
+concurrency:
+  group: >-
+    tests-${{ github.event_name }}-${{ github.event.issue.number || github.ref }}-${{
+    ((github.event_name != 'push' && github.event_name != 'issue_comment') ||
+     ((github.event_name == 'push' ||
+       contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) &&
+      (contains(github.event.head_commit.message || github.event.comment.body, 'run tests') ||
+       contains(github.event.head_commit.message || github.event.comment.body, 'run full suite'))))
+    && 'requested' || github.run_id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  FULL_PYTHONS: '["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]'
+  REDUCED_PYTHONS: '["3.13", "3.14"]'
+  # Accounts allowed to start a manual run, separated by spaces. See `authorize-dispatch`.
+  DISPATCH_ADMINS: 'jrenaud90'
+
+jobs:
+  # Works out which suite was asked for and which commit to test, so nothing below has to re-derive it. The
+  # `if` keeps a runner from starting for the many events that are not a request to run tests. Only comments by
+  # owners, members, and collaborators count, so nobody else can make `acknowledge-comment` post on their behalf.
+  decide:
+    if: |
+      github.event_name == 'pull_request' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' &&
+       (contains(github.event.head_commit.message, 'run tests') ||
+        contains(github.event.head_commit.message, 'run full suite'))) ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request &&
+       contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association) &&
+       (contains(github.event.comment.body, 'run tests') ||
+        contains(github.event.comment.body, 'run full suite')))
+
+    name: Decide suite
+    runs-on: ubuntu-latest
+    # Reading the pull request's merge commit for a comment run needs pull-requests read access. A job-level block
+    # replaces the workflow-level permissions outright, so contents is restated.
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      suite: ${{ steps.pick.outputs.suite }}
+      pythons: ${{ steps.pick.outputs.pythons }}
+      checkout-ref: ${{ steps.pick.outputs.checkout-ref }}
+    steps:
+      # Commit messages and comment bodies are attacker-controlled text, so they reach the script through the
+      # environment rather than through `${{ }}` interpolation, which would splice them into the shell source.
+      - name: Pick the suite and the commit to test
+        id: pick
+        env:
+          EVENT: ${{ github.event_name }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          DISPATCH_SUITE: ${{ inputs.suite }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # `contains` in the job `if` above is case insensitive, so the matching here is too. Lowercasing
+          # and matching with bash builtins keeps the attacker-controlled text out of any subprocess.
+          asks_for_full() {
+              [[ "${1,,}" == *'run full suite'* ]]
+          }
+
+          case "$EVENT" in
+              workflow_dispatch)
+                  suite="${DISPATCH_SUITE:-reduced}"
+                  ;;
+              push)
+                  if asks_for_full "$COMMIT_MESSAGE"; then suite=full; else suite=reduced; fi
+                  ;;
+              issue_comment)
+                  if asks_for_full "$COMMENT_BODY"; then suite=full; else suite=reduced; fi
+                  ;;
+              *)
+                  # pull_request and schedule.
+                  suite=reduced
+                  ;;
+          esac
+
+          if [ "$suite" = 'full' ]; then pythons="$FULL_PYTHONS"; else pythons="$REDUCED_PYTHONS"; fi
+
+          # An issue_comment run points at the default branch, so the pull request's merge commit is looked up
+          # here. It is pinned as a SHA rather than refs/pull/N/merge, which would follow any commit pushed between
+          # the comment and the approval; the approval job's name shows this SHA. GitHub computes the merge commit
+          # in the background, so `mergeable` can be null for a few seconds after a push.
+          if [ "$EVENT" = 'issue_comment' ]; then
+              mergeable=null
+              for _ in 1 2 3 4 5 6; do
+                  pull_state=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}" --jq '"\(.mergeable) \(.merge_commit_sha)"')
+                  read -r mergeable checkout_ref <<< "$pull_state"
+                  [ "$mergeable" != 'null' ] && break
+                  sleep 5
+              done
+              if [ "$mergeable" != 'true' ]; then
+                  echo "::error::Pull request #${PR_NUMBER} has no test merge commit (mergeable: ${mergeable})." \
+                       "Resolve any conflicts with the base branch and comment again."
+                  exit 1
+              fi
+          else
+              checkout_ref="$GITHUB_SHA"
+          fi
+
+          echo "::notice::Running the ${suite} suite on ${checkout_ref} (Python ${pythons})."
+          {
+              echo "suite=${suite}"
+              echo "pythons=${pythons}"
+              echo "checkout-ref=${checkout_ref}"
+          } >> "$GITHUB_OUTPUT"
+
+  # A run started from a comment is not attached to the pull request in the GitHub interface, so without this
+  # whoever asked for it has no way to find it short of hunting through the Actions tab.
+  acknowledge-comment:
+    needs: decide
+    if: github.event_name == 'issue_comment'
+
+    name: Acknowledge comment
+    runs-on: ubuntu-latest
+    # A job-level block replaces the workflow-level permissions outright rather than adding to them.
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - name: React to the comment and link the run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          SUITE: ${{ needs.decide.outputs.suite }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          # The reaction is a nicety; losing it should not fail the job or hold up the run.
+          gh api --silent -X POST "repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \
+              -f content=rocket || echo "::warning::Could not add a reaction to the comment."
+
+          gh api --silent -X POST "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+              -f body="Queued the **${SUITE}** test suite, pending admin approval: ${RUN_URL}"
+
+  # Restricts the "Run workflow" button to the maintainers named in DISPATCH_ADMINS. This is an explicit list because
+  # the REST endpoint that reports a user's permission level needs administration scope, which `GITHUB_TOKEN` cannot
+  # be granted, so a permission lookup would fail closed for everyone.
+  authorize-dispatch:
+    if: github.event_name == 'workflow_dispatch'
+
+    name: Authorize manual run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the actor is an admin
+        env:
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+
+          for admin in $DISPATCH_ADMINS; do
+              if [ "$admin" = "$ACTOR" ]; then
+                  echo "::notice::${ACTOR} is authorized to start a manual run."
+                  exit 0
+              fi
+          done
+
+          echo "::error::${ACTOR} may not start a manual run. Manual runs are limited to the accounts in" \
+               "DISPATCH_ADMINS in .github/workflows/tests.yml."
+          exit 1
+
+  # Holds the run until a required reviewer of the "ci-approval" environment approves it. Skipped for schedule and
+  # workflow_dispatch, which the test job tells apart from a rejection by inspecting `result`. A manual run is gated
+  # by `authorize-dispatch` instead, so pressing the button does not also require approving it.
+  approve-ci:
+    needs: decide
+    if: github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
+
+    # The SHA in the name is the exact commit that will be tested; check it against the pull request before
+    # approving.
+    name: Approve ${{ needs.decide.outputs.suite }} suite on ${{ needs.decide.outputs.checkout-ref }}
+    runs-on: ubuntu-latest
+    environment: ci-approval
+    steps:
+      - name: Approved
+        run: echo "Approved; running the ${{ needs.decide.outputs.suite }} suite."
+
+  test:
+    needs: [decide, approve-ci, authorize-dispatch]
+    # `!cancelled()` is what lets this job evaluate at all when a dependency was skipped; without a status
+    # function here, a skipped dependency skips the dependent unconditionally. The three arms are the three
+    # ways a run is allowed to proceed: an approved run, the weekly schedule, and an authorized manual run. The
+    # `decide` check keeps a failed `decide` from starting legs with no Python versions.
+    if: |
+      !cancelled() && needs.decide.result == 'success' && (
+        needs.approve-ci.result == 'success' ||
+        (github.event_name == 'schedule' && needs.approve-ci.result == 'skipped') ||
+        (github.event_name == 'workflow_dispatch' &&
+         needs.approve-ci.result == 'skipped' &&
+         needs.authorize-dispatch.result == 'success')
+      )
+
+    name: Test on ${{ matrix.os-name }} (Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    # A leg takes 6 to 15 minutes; one still going at 45 is stuck, not slow, and should not hold a runner for the
+    # six-hour default.
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest  # arm64, Apple clang (the toolchain cibuildwheel uses for the macOS wheels)
+          - windows-latest
+        python-version: ${{ fromJSON(needs.decide.outputs.pythons) }}
+        include:
+          - {os: ubuntu-latest,  os-name: Ubuntu}
+          - {os: macos-latest,   os-name: MacOS}
+          - {os: windows-latest, os-name: Windows}
+    steps:
+      # The tested code may come from a fork, so the token is not left in the checkout's git config.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.decide.outputs.checkout-ref }}
+          persist-credentials: false
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pip pytest pytest-xdist
+
+      - name: Install package
+        run: python -m pip install -v .
+
+      # One representative cysolve_ivp case, so a broken build fails here with a short log before the full suite.
+      - name: Smoke test
+        working-directory: Tests/E_CySolver_Tests
+        run: >-
+          python -c "from test_a_cysolve_ivp import test_cysolve_ivp; print('Import Success!');
+          test_cysolve_ivp(True, False, False, False, False, 'rk45', 0.0, 10_000, True, False, False); print('DONE!')"
+
+      # The pytest console script does not put the working directory on sys.path, and Tests/ has no __init__.py or
+      # conftest.py, so the installed package is what gets imported either way. Running from outside the checkout
+      # is a second guard against importing the uncompiled source tree. pytest still finds its settings in
+      # pyproject.toml through the path it is given.
+      #
+      # --capture=sys leaves file-descriptor output alone, so messages printed by the C++ backend still reach the
+      # log. `-n logical` uses every logical CPU even if psutil is ever installed, which makes `-n auto` count
+      # physical cores only.
+      - name: Run pytest
+        working-directory: ${{ runner.temp }}
+        run: pytest -n logical --capture=sys --durations=25 "${{ github.workspace }}/Tests"

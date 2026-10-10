@@ -1,7 +1,8 @@
 name: Build Wheels for PyPI
 
 # Builds the sdist and a binary wheel for every supported CPython on Linux (x86-64), Windows (x86-64), and
-# macOS (arm64), tests each wheel, and uploads everything to PyPI.
+# macOS (arm64), tests each wheel, checks that the sdist still compiles from source, and uploads everything to
+# PyPI.
 #
 # The upload runs automatically for a published GitHub release. A manual run (workflow_dispatch) only builds and
 # tests unless its "upload" input is set, so a branch can be checked before it is merged and released.
@@ -17,20 +18,55 @@ on:
     types:
       - published
 
+# Supersede an in-progress manual run of the same ref, but never interrupt a release build part way through. The
+# event name keeps a manual run on a release tag out of that release's group, where it would cancel the release.
+concurrency:
+  group: build-wheels-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' }}
+
+# Nothing here writes to the repository. The upload job adds the OIDC permission it needs for PyPI.
+permissions:
+  contents: read
+
 jobs:
   make_sdist:
     name: Make SDist
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build SDist
         run: pipx run build --sdist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           path: dist/*.tar.gz
           name: artifact_sdist
+
+  # A release whose wheels all work can still ship an sdist that will not compile, because MANIFEST.in lists the
+  # hand-written C and C++ sources one by one and a new source file is easy to miss. Compile the sdist and run
+  # CyRK's built-in solver checks against the result. Tests/ is not shipped in the sdist, so these checks are as far
+  # as this job can go.
+  test_sdist:
+    name: Compile the SDist
+    needs: [make_sdist]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: artifact_sdist
+          path: dist
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install from the SDist
+        run: python -m pip install -v dist/*.tar.gz
+
+      # The same checks cibuildwheel runs on each wheel ([tool.cibuildwheel] test-command in pyproject.toml).
+      - name: Run the built-in solver checks
+        run: python -c "import CyRK; CyRK.test_nbrk(); CyRK.test_cysolver(); CyRK.test_pysolver(); CyRK.test_nbsolver()"
 
   build_wheels:
     name: Build ${{ matrix.platform }} wheels
@@ -44,7 +80,7 @@ jobs:
           - windows-latest
           - macos-latest  # arm64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # cibuildwheel is configured in pyproject.toml ([tool.cibuildwheel]). For each CPython version it builds the
       # wheel, repairs it (auditwheel, delvewheel, or delocate bundle any non-system libraries), and runs the
@@ -53,35 +89,43 @@ jobs:
       - name: Build wheels
         run: pipx run "cibuildwheel~=4.0"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           path: ./wheelhouse/*.whl
           name: artifact_${{ matrix.platform }}_whls
 
   check_dist:
     name: Check distributions
-    needs: [make_sdist, build_wheels]
+    needs: [make_sdist, test_sdist, build_wheels]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           merge-multiple: true
           path: dist
 
       - run: pipx run twine check --strict dist/*
 
+  # Uploads with PyPI trusted publishing. The job proves who it is with a short-lived OIDC token instead of a stored
+  # API token, so there is no long-lived credential to leak or rotate. This requires a trusted publisher registered
+  # on PyPI for the CyRK project, naming this repository, the workflow file build_wheels_main_pypi.yml, and the
+  # environment "pypi". Without it PyPI rejects the upload.
   upload_all:
     name: Upload to PyPI
     needs: [check_dist]
     if: ${{ github.event_name == 'release' || inputs.upload }}
     runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/CyRK
+    # A job-level block replaces the workflow-level one outright, so contents has to be restated here.
+    permissions:
+      contents: read
+      id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           merge-multiple: true
           path: dist
 
       - uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}

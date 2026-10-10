@@ -14,6 +14,7 @@
 * All three are available from `cysolve_ivp` (`ODEMethod.TSIT5`, `ODEMethod.VERN7`, `ODEMethod.VERN8`, appended to the enum as 9, 10, and 11), `pysolve_ivp`, and `nbsolve2_ivp` (`method="Tsit5"`, `"Vern7"`, or `"Vern8"`), and support everything the other explicit methods do. The legacy `nbsolve_ivp` does not provide them.
 * The tableaus, error weights, extra stages, and interpolants were checked against the Runge-Kutta order conditions in high-precision arithmetic (every condition holds to better than 1e-33 for the source coefficients, and to about 3e-32 for the values written to "rk.cpp" with about 36 significant digits). The Tsit5 tableau comes from OrdinaryDiffEq.jl (MIT license, noted in "LICENSE.md") and its interpolant weights were derived from it. The Verner coefficients are from Verner's published files.
 * The interpolants are stored as their values at Chebyshev-Lobatto nodes and evaluated with the barycentric formula ("dense.cpp"). Evaluated from its monomial coefficients, which reach 3e5, Vern8's interpolant would lose about two digits at tight tolerances (7e-11 instead of 1e-11 on a Kepler orbit at `rtol=1e-13`). With the barycentric form the dense output is as accurate as the steps.
+- Updates and fixes GitHub actions.
 
 ##### Performance
 * "Performance/performance.py" now tracks Tsit5, Vern7, and Vern8 ("cyrk_performance-Tsit5.csv", "-Vern7.csv", and "-Vern8.csv").
