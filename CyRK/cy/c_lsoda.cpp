@@ -667,7 +667,8 @@ static lsoda_corrector_status_t
 stoda_corrector_loop(
     int* neq, double* y, double* yh, int nyh, double* ewt,
     double* savf, double* acor, double* wm, int* iwm, c_lsoda_func_t f,
-    c_lsoda_jac_t jac, double pnorm, int* m_out, double* del_out, c_lsoda_common_t* S, void* user_data)
+    c_lsoda_jac_t jac, double pnorm, int* m_out, double* del_out, double* rate_out, c_lsoda_common_t* S,
+    void* user_data)
 {
     // Up to maxcor corrector iterations are taken. A convergence test is
     // made on the r.m.s. norm of each correction, weighted by the error
@@ -797,6 +798,8 @@ stoda_corrector_loop(
                 return CORRECTOR_RETRY;
             }
 
+            // CyRK: the convergence rate estimate, which the first step's failure handling uses.
+            *rate_out = rate;
             return CORRECTOR_NO_CONVERGENCE;
         }
         delp = del;
@@ -823,7 +826,8 @@ stoda_corrector_loop(
  * Returns 0 for successful recovery (retry), -1 for fatal error
  */
 static int
-stoda_handle_corrector_failure(double* yh, int nyh, int* ncf, double told, const double* sm1, c_lsoda_common_t* S)
+stoda_handle_corrector_failure(
+    double* yh, int nyh, int* ncf, double told, double rate, const double* sm1, c_lsoda_common_t* S)
 {
     S->icf = 2;
     (*ncf)++;
@@ -851,11 +855,22 @@ stoda_handle_corrector_failure(double* yh, int nyh, int* ncf, double told, const
         S->kflag = -2;  // Step size below minimum
         return -1;
     }
-    if (*ncf == S->mxncf)
+    /* CyRK: the first step size comes from f(t0) alone, which hides the stiffness of a problem started on its slow
+       manifold, and ODEPACK gives up after its mxncf retries have cut h by 4 each, a factor of about 3e5 in all. The
+       first step gets mxncf more retries, which take the Lipschitz constant from the rate of the failed functional
+       iteration (a lower bound once capped at 1024) as a converged iteration's rate gives it, so the Adams stability
+       bound (sm1) cuts h at once. Until ODEPACK would give up, the retries are ODEPACK's. */
+    const bool first_step = (S->nst == 0) && (S->miter == 0);
+    if (*ncf == (first_step ? 2 * S->mxncf : S->mxncf))
     {
         // goto 670
         S->kflag = -2;  // Too many convergence failures
         return -1;
+    }
+    if (first_step && (*ncf >= S->mxncf))
+    {
+        S->pdest = fmax(S->pdest, rate / fabs(S->h * S->el[0]));
+        if (S->pdest != 0.0) { S->pdlast = S->pdest; }
     }
 
     // Reduce step size and prepare for retry
@@ -1001,9 +1016,12 @@ stoda(
         // Corrector loop (220-430)
         int m_corrector = 0;
         double del_corrector = 0.0;
+        double rate_corrector = 0.0;
 
         // Corrector loop 220
-        corrector_status = stoda_corrector_loop(neq, y, yh, nyh, ewt, savf, acor, wm, iwm, f, jac, pnorm, &m_corrector, &del_corrector, S, user_data);
+        corrector_status = stoda_corrector_loop(
+            neq, y, yh, nyh, ewt, savf, acor, wm, iwm, f, jac, pnorm, &m_corrector, &del_corrector, &rate_corrector, S,
+            user_data);
         // 430
 
         // Step 4: Handle corrector results
@@ -1018,7 +1036,7 @@ stoda(
 
             case CORRECTOR_NO_CONVERGENCE:
                 // Goto 430 cases
-                if (stoda_handle_corrector_failure(yh, nyh, &ncf, told, sm1, S) != 0)
+                if (stoda_handle_corrector_failure(yh, nyh, &ncf, told, rate_corrector, sm1, S) != 0)
                 {
                     // 670/680 -> 720
                     S->hold = S->h;
@@ -1377,6 +1395,10 @@ stoda(
                     // 610 -> go to 700 (no rmax reset)
                     S->ialth = 3;
                     should_reset_rmax = 0;
+                    // CyRK: ODEPACK skips its stability test on this hold, so a step held at the Adams stability bound
+                    // left irflag clear. When the corrector then converged at roundoff, leaving no fresh Lipschitz
+                    // estimate, the stiffness test never switched to BDF and LSODA held the step without end.
+                    if (S->meth == 1) { S->irflag = (rhsm * pdh * 1.00001 >= sm1[S->nq - 1]); }
                     break;
                 }
                 // Handle acor scaling for order increase (590-600)

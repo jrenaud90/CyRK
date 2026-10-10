@@ -8,7 +8,7 @@ inf must end the integration unsuccessfully, for every method (LSODA once accept
 import numpy as np
 import pytest
 
-from CyRK import pysolve_ivp
+from CyRK import pysolve_ivp, CyrkErrorCodes
 from CyRK.cy.pysolver import PySolver
 
 METHODS = ("RK23", "RK45", "DOP853", "BDF", "LSODA", "Radau")
@@ -138,22 +138,34 @@ def test_reused_solver_after_an_exception():
     assert np.asarray(result.y)[0, -1] == pytest.approx(np.exp(-1.0), rel=1.0e-6)
 
 
+def never_fires(t, y):
+    return y[0] + 10.0
+
+
 @pytest.mark.parametrize('integration_method', METHODS)
 @pytest.mark.parametrize('bad_value', (np.nan, np.inf))
-def test_non_finite_rates_fail(integration_method, bad_value):
-    """Rates that turn NaN or inf at t = 10 end the integration unsuccessfully near t = 10, with finite states.
+@pytest.mark.parametrize('use_event', (False, True))
+def test_non_finite_rates_fail(integration_method, bad_value, use_event):
+    """Rates that turn NaN or inf at t = 10 end the integration unsuccessfully near t = 10, with finite states and the
+    reason for the failure.
 
     LSODA's weighted norms dropped NaN (a NaN step passed its error test) and its step then shrank to the spacing
-    between numbers without failing.
+    between numbers without failing. With an event, checking it after the failed step replaced the step's error status
+    with `NO_ERROR` ("No errors were encountered"), and the Runge-Kutta methods stepped on until the step limit.
     """
     def turns_bad(t, y):
         if t > switch_time:
             return np.asarray((bad_value,), dtype=np.float64)
         return decay(t, y)
 
-    result = pysolve_ivp(turns_bad, time_span, y0, method=integration_method, rtol=1.0e-6, atol=1.0e-9)
+    events = [never_fires] if use_event else None
+    result = pysolve_ivp(turns_bad, time_span, y0, method=integration_method, rtol=1.0e-6, atol=1.0e-9,
+                         events=events)
     assert not result.success
+    assert result.status == CyrkErrorCodes.STEP_SIZE_ERROR_SPACING
     assert np.asarray(result.t)[-1] <= switch_time + 1.0e-6
+    # A failing solver must stop promptly rather than creep to the step limit.
+    assert result.steps_taken < 1000
     if integration_method == "LSODA":
         # Every step LSODA saved was taken with finite rates.
         assert np.all(np.isfinite(np.asarray(result.y)))

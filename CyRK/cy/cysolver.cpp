@@ -349,9 +349,17 @@ void CySolverBase::p_calc_first_step_size() noexcept
     const bool l_use_array_rtols                   = this->use_array_rtols;
     const bool l_use_array_atols                   = this->use_array_atols;
 
+    // Smallest step that moves t; the step size is never set below it.
+    const double min_step_size = 10.0 * std::abs(std::nextafter(this->t_old, this->direction_inf) - this->t_old);
+
     if (this->num_y == 0) [[unlikely]]
     {
         this->step_size = INF;
+    }
+    else if (this->t_delta_abs == 0.0) [[unlikely]]
+    {
+        // Nothing to integrate; do not probe the differential equation.
+        this->step_size = min_step_size;
     }
     else {
         // Initialize tolerances to the 0 place. If `use_array_rtols` (or atols) is set then this will change in the loop.
@@ -384,6 +392,8 @@ void CySolverBase::p_calc_first_step_size() noexcept
         {
             h0 = 0.01 * d0 / d1;
         }
+        // Keep the probe point inside the integration interval, as SciPy does.
+        h0 = std::min(h0, this->t_delta_abs);
 
         const double h0_direction = this->direction_flag ? h0 : -h0;
 
@@ -419,7 +429,14 @@ void CySolverBase::p_calc_first_step_size() noexcept
         else {
             h1 = std::pow((0.01 / std::max(d1, d2)), this->error_exponent);
         }
-        this->step_size = std::max(10. * std::abs(std::nextafter(this->t_old, this->direction_inf) - this->t_old), std::min(100.0 * h0, h1));
+        this->step_size = std::max(
+            min_step_size, std::min({100.0 * h0, h1, this->t_delta_abs, this->max_step_size}));
+
+        // Move the "now" state back from the probe point to the initial conditions. Left at the probe, a probe that
+        // landed on t_end (a span shorter than the probe step) ended the integration before its first step.
+        this->t_now = this->t_old;
+        std::memcpy(l_y_now_ptr, l_y_old_ptr, this->sizeof_dbl_Ny);
+        std::memcpy(l_dy_now_ptr, l_dy_old_ptr, this->sizeof_dbl_Ndy);
     }
 }
 
@@ -1174,6 +1191,11 @@ void CySolverBase::take_step()
         this->len_t++;
         this->storage_ptr->steps_taken++;
 
+        // A step that failed (the implicit methods also set `error_flag`, the Runge-Kutta methods only the status)
+        // has nothing for the events to check. Checking them anyway replaced the step's error status with the
+        // event checker's `NO_ERROR`, which lost the reason for the failure and let a Runge-Kutta solver step on.
+        const bool step_failed = this->error_flag or (this->storage_ptr->status != CyrkErrorCodes::NO_ERROR);
+
         // Take care of dense output and t_eval
         if (this->use_dense_output)
         {
@@ -1182,7 +1204,7 @@ void CySolverBase::take_step()
             dense_built = true;
         }
 
-        if (this->check_events_flag)
+        if (this->check_events_flag and (not step_failed))
         {
             if (not dense_built)
             {

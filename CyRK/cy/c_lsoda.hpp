@@ -17,6 +17,13 @@
      * The user's minimum step size is stored in the common block rather than in a local variable.
        In the Fortran, `HMIN` is the common block variable, so SciPy's copy silently discards
        the option.
+     * When the first step's corrector fails to converge as many times as ODEPACK allows, it gets as
+       many more retries, which bound the step by the Lipschitz constant that the failed functional
+       iteration measured. ODEPACK can fail to start a stiff problem whose initial state hides its
+       stiffness, such as one started on its slow manifold.
+     * A step held at the Adams stability bound by the order-increase branch of the step selection
+       sets `irflag`, as a step cut to that bound does. Without it the stiffness test could keep the
+       Adams formulas and hold the step without end when the corrector converged at roundoff.
 
    References
    ----------
