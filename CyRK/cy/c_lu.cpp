@@ -87,7 +87,10 @@ void dense_lu_solve(
         const int* pivot_ptr,
         ScalarType* rhs_ptr) noexcept
 {
-    // Forward substitution with the row interchanges applied on the fly (solve L z = P b).
+    /* Apply every row interchange before the forward substitution, as LAPACK's dgetrs does. The
+       factorization swaps whole rows, including the columns of L already formed, so L is stored in
+       the final row order; interleaving the interchanges with the substitution (LINPACK's dgesl)
+       is only valid when the earlier columns of L are left unswapped. */
     for (size_t k = 0; k < num_rows; k++)
     {
         const size_t pivot_row = (size_t)pivot_ptr[k];
@@ -95,7 +98,11 @@ void dense_lu_solve(
         {
             std::swap(rhs_ptr[k], rhs_ptr[pivot_row]);
         }
+    }
 
+    // Forward substitution (solve L z = P b).
+    for (size_t k = 0; k < num_rows; k++)
+    {
         const ScalarType* const column_k_ptr = &lu_ptr[k * num_rows];
         const ScalarType z_k = rhs_ptr[k];
         if (z_k != ScalarType(0.0))
@@ -192,6 +199,15 @@ size_t c_banded_lu_factor(
 
     for (size_t k = 0; k < num_rows; k++)
     {
+        /* Zero the fill-in rows of the first column this stage can reach, as dgbtf2 does. Callers such as LSODA's
+           finite-difference Jacobian only write the band, so these rows still hold the previous factorization's
+           fill-in, which a row interchange would otherwise carry into U. */
+        if ((k + band_offset) < num_rows)
+        {
+            double* const fill_column_ptr = &band_ptr[(k + band_offset) * band_stride];
+            std::fill(fill_column_ptr, fill_column_ptr + num_lower, 0.0);
+        }
+
         double* const column_k_ptr = &band_ptr[k * band_stride];
 
         // Number of sub-diagonal entries available in this column.

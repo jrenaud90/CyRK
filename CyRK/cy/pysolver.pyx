@@ -92,11 +92,17 @@ cdef class PySolver(WrapCySolverResult):
             integration_method = ODEMethod.LSODA
         elif method == 'radau':
             integration_method = ODEMethod.RADAU
+        elif method == 'tsit5':
+            integration_method = ODEMethod.TSIT5
+        elif method == 'vern7':
+            integration_method = ODEMethod.VERN7
+        elif method == 'vern8':
+            integration_method = ODEMethod.VERN8
         else:
             raise NotImplementedError(
                 "ERROR: `PySolver::set_problem_parameters` - "
                 f"Unknown or unsupported integration method provided: {method}.\n"
-                f"Supported methods are: RK23, RK45, DOP853, BDF, LSODA, RADAU."
+                f"Supported methods are: RK23, RK45, DOP853, Tsit5, Vern7, Vern8, BDF, LSODA, RADAU."
                 )
 
         cdef CySolverResult* cyresult_ptr = self.cyresult_uptr.get()
@@ -206,9 +212,14 @@ cdef class PySolver(WrapCySolverResult):
                 # Pull out properties the user may have set.
                 event_direction = getattr(self.events_list[i], 'direction', 0)
                 terminal        = getattr(self.events_list[i], 'terminal', None)
-                if terminal is None:
+                if not terminal:
+                    # As in SciPy, an unset, False, or zero `terminal` marks an event that never ends the integration.
                     event_max_allowed = getattr(self.events_list[i], 'max_allowed', MAX_SIZET_SIZE)
+                elif terminal < 0:
+                    raise ValueError(
+                        f"Event {i}: `terminal` must be a bool or a non-negative int (got {terminal}).")
                 else:
+                    # True ends the integration at the first occurrence; an int n ends it at the n-th.
                     event_max_allowed = <size_t>terminal
             
                 # Build events with null pointers - we won't use the cython version of the event checker function
@@ -239,33 +250,22 @@ cdef class PySolver(WrapCySolverResult):
             for i in range(t_eval_size):
                 problem_config_ptr.t_eval_vec[i] = t_eval[i]
         
-        # Parse rtol
-        cdef size_t rtol_size = 0
-        if type(rtol) == float:
-            problem_config_ptr.rtols.resize(1)
-            problem_config_ptr.rtols[0] = rtol
-        else:
-            rtol_size = rtol.size
-            if rtol_size > 1 and rtol_size != num_y:
-                raise AttributeError("ERROR: `PySolver.set_problem_parameters` - Provided rtol array size must be 1 or the number of dependent variables.")
-            
-            problem_config_ptr.rtols.resize(rtol_size)
-            for y_i in range(rtol_size):
-                problem_config_ptr.rtols[y_i] = rtol[y_i]
-        
-        # Parse atol
-        cdef size_t atol_size = 0
-        if type(atol) == float:
-            problem_config_ptr.atols.resize(1)
-            problem_config_ptr.atols[0] = atol
-        else:
-            atol_size = atol.size
-            if atol_size > 1 and atol_size != num_y:
-                raise AttributeError("ERROR: `PySolver.set_problem_parameters` - Provided atol array size must be 1 or the number of dependent variables.")
+        # Parse rtol and atol. Each may be any real scalar (Python or numpy, float or int) or an array.
+        cdef const double[::1] rtol_view = np.ascontiguousarray(rtol, dtype=np.float64).reshape(-1)
+        cdef size_t rtol_size = rtol_view.size
+        if rtol_size > 1 and rtol_size != num_y:
+            raise AttributeError("ERROR: `PySolver.set_problem_parameters` - Provided rtol array size must be 1 or the number of dependent variables.")
+        problem_config_ptr.rtols.resize(rtol_size)
+        for y_i in range(rtol_size):
+            problem_config_ptr.rtols[y_i] = rtol_view[y_i]
 
-            problem_config_ptr.atols.resize(atol_size)
-            for y_i in range(atol_size):
-                problem_config_ptr.atols[y_i] = atol[y_i]
+        cdef const double[::1] atol_view = np.ascontiguousarray(atol, dtype=np.float64).reshape(-1)
+        cdef size_t atol_size = atol_view.size
+        if atol_size > 1 and atol_size != num_y:
+            raise AttributeError("ERROR: `PySolver.set_problem_parameters` - Provided atol array size must be 1 or the number of dependent variables.")
+        problem_config_ptr.atols.resize(atol_size)
+        for y_i in range(atol_size):
+            problem_config_ptr.atols[y_i] = atol_view[y_i]
         
         # Parse expected size
         cdef size_t expected_size_touse = expected_size

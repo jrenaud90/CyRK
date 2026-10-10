@@ -100,12 +100,6 @@ CyrkErrorCodes BDF::p_finalize_setup() noexcept
     }
     this->newton_tol = std::max(10.0 * EPS / min_rtol, std::min(0.03, std::sqrt(min_rtol)));
 
-    // Selecting the first step size left the "now" state at a probe point. Restore it so that the
-    // initial Jacobian is built at the initial conditions.
-    this->t_now = this->t_start;
-    std::memcpy(this->y_now_ptr, this->y_old_ptr, this->sizeof_dbl_Ny);
-    std::memcpy(this->dy_now_ptr, this->dy_old_ptr, this->sizeof_dbl_Ndy);
-
     this->h_abs = this->step_size;
 
     // Seed the difference array: D[0] is the solution and D[1] is its first backward difference.
@@ -445,10 +439,14 @@ void BDF::p_step_implementation() noexcept
                     // A fresh Jacobian did not help; the step size has to come down instead.
                     break;
                 }
-                // Rebuild the Jacobian at the predicted state and try again.
+                // Rebuild the Jacobian at the predicted state and try again. Only the finite-difference
+                // estimate needs the derivative there.
                 this->t_now = t_new;
                 std::memcpy(this->y_now_ptr, this->y_predict_ptr, this->sizeof_dbl_Ny);
-                this->diffeq(this);
+                if (not this->jac_ptr)
+                {
+                    this->diffeq(this);
+                }
                 this->p_update_jacobian();
             }
         }

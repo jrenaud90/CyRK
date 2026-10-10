@@ -98,12 +98,20 @@ Currently available functions and associated integration method integer:
     - Explicit Runge-Kutta method of order 5 (error control of order 4)
 - DOP853 : ODEMethod.DOP853
     - Explicit Runge-Kutta method of order 8 (error control of combination of order 5 and 3)
+- Tsit5 : ODEMethod.TSIT5
+    - Explicit Runge-Kutta method of order 5 (error control of order 4) due to Tsitouras, with a free fourth-order interpolant
+- Vern7 : ODEMethod.VERN7
+    - Explicit Runge-Kutta method of order 7 (error control of order 6) due to Verner, with a seventh-order interpolant
+- Vern8 : ODEMethod.VERN8
+    - Explicit Runge-Kutta method of order 8 (error control of order 7) due to Verner, with an eighth-order interpolant
 - BDF : ODEMethod.BDF
     - Implicit multi-step method based on backward differentiation formulas of order 1 to 5
 - LSODA : ODEMethod.LSODA
     - Adams / BDF method with automatic stiffness detection and switching
 - RADAU : ODEMethod.RADAU
     - Implicit Runge-Kutta method of the Radau IIA family of order 5
+
+The [Integration Methods](Integration_Methods.md) page compares these methods and suggests which to use when.
 
 ## "bdf.hpp(cpp)"
 Provides the `BDF` class, an implicit multi-step integrator built on the backward differentiation formulas. It needs no
@@ -138,11 +146,17 @@ $S = $ Solution Size.
 $N = $ Number of dependent y's (for this we assume num_dy = num_y).
 
 ### RK23
-$$8S(N+1)+120N+1,528$$
+$$8S(N+1)+112N+1,528$$
 ### RK45
-$$8S(N+1)+144N+1,528$$
+$$8S(N+1)+136N+1,528$$
 ### DOP853
-$$8S(N+1)+232N+1,528$$
+$$8S(N+1)+224N+1,528$$
+### Tsit5
+$$8S(N+1)+136N+1,528$$
+### Vern7
+$$8S(N+1)+208N+1,528$$
+### Vern8
+$$8S(N+1)+248N+1,528$$
 ### BDF
 $$8S(N+1)+16N^2+240N+1,528$$
 The $N^2$ term is the Jacobian plus its LU factorization, both stored as dense matrices.

@@ -43,6 +43,13 @@ struct LSODAConfig : public ProblemConfig {
 // ####################################################################################################################
 // LSODA Integrator
 // ####################################################################################################################
+/* Number of consecutive steps no larger than the spacing between numbers at t that LSODA may take before it fails.
+   ODEPACK takes such steps and goes on, and they can pass. Repeated error test failures can cut the step to the
+   spacing, after which it grows back. After a switch to the Adams formulas, a stale Lipschitz estimate left over from
+   the BDF steps can hold the step at the spacing until the next stiffness test, 20 steps later, switches back to BDF.
+   They do not pass once non-finite rates have forced the step down. The limit sits well above the 20 step interval. */
+const size_t LSODA_MAX_TINY_STEPS = 100;
+
 /* Adams / BDF integrator with automatic stiffness detection and switching.
 
    This class owns the work arrays and the persistent state of the vendored ODEPACK
@@ -68,6 +75,8 @@ protected:
     // ODEPACK control flags.
     int itol          = 1;  // Which of rtol / atol are arrays.
     int istate        = 1;  // 1 on the first call, 2 afterwards, negative on failure.
+    // Steps in a row no larger than the spacing between numbers at t (see `LSODA_MAX_TINY_STEPS`).
+    size_t num_consecutive_tiny_steps = 0;
     int jacobian_type = 2; // ODEPACK "jt": 1/2 for a dense Jacobian, 4/5 for a banded one.
 
     // Band structure of the Jacobian; only meaningful when `use_banded_jacobian` is set.

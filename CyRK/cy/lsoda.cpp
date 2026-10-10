@@ -175,6 +175,7 @@ CyrkErrorCodes LSODA::p_additional_setup() noexcept
     // Clear the common block so that a reused solver does not inherit any previous run's state.
     this->common_state = c_lsoda_common_t();
     this->istate       = 1;
+    this->num_consecutive_tiny_steps = 0;
 
     return CyrkErrorCodes::NO_ERROR;
 }
@@ -264,14 +265,24 @@ void LSODA::p_step_implementation() noexcept
         return;
     }
 
-    // ODEPACK only counts (nhnil) a step no larger than the spacing between numbers at t and keeps stepping, so after
-    // non-finite rates forced its step down it crept forward one spacing at a time without end. Such a step makes no
-    // progress; fail as the other methods do.
-    if (this->common_state.nhnil > tiny_steps_before) [[unlikely]]
+    /* ODEPACK only counts (nhnil) a step no larger than the spacing between numbers at t and keeps stepping. Such
+       steps can be a passing phase that ODEPACK recovers from (see `LSODA_MAX_TINY_STEPS`), but after non-finite rates
+       forced the step down LSODA crept forward one spacing at a time without end. Fail once they run on for longer than
+       any recovery takes. ODEPACK tests the step size before its error test, which can cut the step further, so a
+       step that left t where it was counts as well. */
+    if ((this->common_state.nhnil > tiny_steps_before) or (t_used == this->t_old)) [[unlikely]]
     {
-        this->error_flag = true;
-        this->storage_ptr->update_status(CyrkErrorCodes::STEP_SIZE_ERROR_SPACING);
-        return;
+        this->num_consecutive_tiny_steps++;
+        if (this->num_consecutive_tiny_steps > LSODA_MAX_TINY_STEPS)
+        {
+            this->error_flag = true;
+            this->storage_ptr->update_status(CyrkErrorCodes::STEP_SIZE_ERROR_SPACING);
+            return;
+        }
+    }
+    else
+    {
+        this->num_consecutive_tiny_steps = 0;
     }
 
     this->t_now = t_used;

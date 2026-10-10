@@ -21,10 +21,11 @@ Overview <Overview/index.md>
 :maxdepth: 2
 :caption: Contents
 
+Integration Methods <Integration_Methods.md>
 Performance <Performance.md>
 Parallelization.md
 Numba.md
-Implicit Methods (BDF and LSODA) <Implicit_Methods.md>
+Implicit Methods (BDF, LSODA, and Radau) <Implicit_Methods.md>
 Events.md
 Dense Output and `t_eval` <Dense_Output_and_t_eval.md>
 Extra Data During Integration <Extra_Output.md>

@@ -4,9 +4,7 @@
 <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.9|3.10|3.11|3.12|3.13-blue" alt="Python Version 3.9-3.14" /></a>
 <!-- <a href="https://codecov.io/gh/jrenaud90/CyRK" ><img src="https://codecov.io/gh/jrenaud90/CyRK/branch/main/graph/badge.svg?token=MK2PqcNGET" alt="Code Coverage"/></a> -->
 <br />
-<a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_win.yml/badge.svg?branch=main" alt="Windows Tests" /></a>
-<a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_mac.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_mac.yml/badge.svg?branch=main" alt="MacOS Tests" /></a>
-<a href="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_ubun.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/push_tests_ubun.yml/badge.svg?branch=main" alt="Ubuntu Tests" /></a>
+<a href="https://github.com/jrenaud90/CyRK/actions/workflows/tests.yml"><img src="https://github.com/jrenaud90/CyRK/actions/workflows/tests.yml/badge.svg?branch=main" alt="Tests" /></a>
 <a href="https://app.readthedocs.org/projects/cyrk/builds/?version__slug=latest"><img src="https://app.readthedocs.org/projects/cyrk/badge/?version=latest&style=flat" alt="Ubuntu Tests" /></a>
 
 
@@ -18,7 +16,7 @@
 ---
 [Documentation](https://cyrk.readthedocs.io/en/latest/) | [GitHub](https://github.com/jrenaud90/cyrk)
 
-<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.19.4 Alpha-orange" alt="CyRK Version 0.19.4 Alpha" /></a>
+<a href="https://github.com/jrenaud90/CyRK/releases"><img src="https://img.shields.io/badge/CyRK-0.20.0-orange" alt="CyRK Version 0.20.0" /></a>
 
 **Runge-Kutta ODE Integrator Implemented in Cython and Numba**
 
@@ -55,13 +53,18 @@ Currently, CyRK supports the following integration methods:
 * "RK23" - Explicit Runge-Kutta method of order 3(2).
 * "RK45" - Explicit Runge-Kutta method of order 5(4)
 * "DOP853" - Explicit Runge-Kutta method of order 8. Error is controlled using a combination of 5th and 3rd order interpolators.
+* "Tsit5" - Explicit Runge-Kutta method of order 5(4) due to Tsitouras, with a free fourth-order interpolant.
+* "Vern7" - Explicit Runge-Kutta method of order 7(6) due to Verner, with a seventh-order interpolant.
+* "Vern8" - Explicit Runge-Kutta method of order 8(7) due to Verner, with an eighth-order interpolant.
 * "BDF" - Implicit multi-step method based on backward differentiation formulas of order 1 to 5.
 * "LSODA" - Adams / BDF method with automatic stiffness detection and switching.
 * "Radau" - Implicit Runge-Kutta method of the Radau IIA family of order 5.
 
 "BDF", "LSODA", and "Radau" are implicit ODE methods used for stiff problems. See the
 [implicit methods documentation](https://cyrk.readthedocs.io/en/latest/Implicit_Methods.html) for
-guidance on choosing between them and for the options that only they support.
+guidance on choosing between them and for the options that only they support. The
+[integration methods documentation](https://cyrk.readthedocs.io/en/latest/Integration_Methods.html) compares all
+of the methods and suggests which to use for different kinds of problems.
 
 More methods will be added as the need arises. We are always looking for contributors if you'd like to see your favorite method added to CyRK!
 
@@ -184,6 +187,30 @@ If you used the "LSODA" method then please also cite ODEPACK, which CyRK bundles
   volume  = {17},
   number  = {3},
   pages   = {261--272}
+}
+```
+
+If you used the "Tsit5", "Vern7", or "Vern8" methods then please also cite the paper that introduced them:
+
+```bibtex
+@article{tsitouras2011runge,
+  author  = {Tsitouras, Ch.},
+  title   = {{Runge--Kutta pairs of order 5(4) satisfying only the first column simplifying assumption}},
+  journal = {Computers \& Mathematics with Applications},
+  year    = {2011},
+  volume  = {62},
+  number  = {2},
+  pages   = {770--775}
+}
+
+@article{verner2010numerically,
+  author  = {Verner, J. H.},
+  title   = {{Numerically optimal Runge--Kutta pairs with interpolants}},
+  journal = {Numerical Algorithms},
+  year    = {2010},
+  volume  = {53},
+  number  = {2--3},
+  pages   = {383--396}
 }
 ```
 

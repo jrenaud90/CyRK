@@ -40,7 +40,7 @@ REPRESENTATIVE_CASE = dict(
 @pytest.mark.parametrize('capture_extra', (True, False))
 @pytest.mark.parametrize('max_step', (1.0, 100_000.0))
 @pytest.mark.parametrize('first_step', (0.0, 0.00001))
-@pytest.mark.parametrize('integration_method', ('rk23', 'rk45', 'dop853'))
+@pytest.mark.parametrize('integration_method', ('rk23', 'rk45', 'dop853', 'tsit5', 'vern7', 'vern8'))
 @pytest.mark.parametrize('use_different_tols', (True, False))
 @pytest.mark.parametrize('use_rtol_array', (True, False))
 @pytest.mark.parametrize('use_atol_array', (True, False))
@@ -160,7 +160,8 @@ def test_cysolve_ivp(use_args,
 
 
 @pytest.mark.filterwarnings("error")  # Some exceptions get propagated via cython as warnings; we want to make sure the lead to crashes.
-@pytest.mark.parametrize('integration_method', ('rk23', 'rk45', 'dop853', 'bdf', 'lsoda', 'radau'))
+@pytest.mark.parametrize(
+    'integration_method', ('rk23', 'rk45', 'dop853', 'tsit5', 'vern7', 'vern8', 'bdf', 'lsoda', 'radau'))
 @pytest.mark.parametrize('t_eval_end', (None, 0.5, 1.0))
 @pytest.mark.parametrize('test_dense_output', (False, True))
 def test_cysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output):

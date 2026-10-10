@@ -1,5 +1,6 @@
 #include "dense.hpp"
 #include "cysolver.hpp"
+#include "rk.hpp"
 
 // Extra outputs of up to this many total dy values are evaluated on stack scratch arrays; larger problems use heap
 // scratch arrays owned by the call.
@@ -34,7 +35,7 @@ void CySolverDense::setup(bool set_state)
         // Q is defined by Q = K.T.dot(self.P)  K has shape of (n_stages + 1, num_y) so K.T has shape of (num_y, n_stages + 1)
         // P has shape of (4, 3) for RK23; (7, 4) for RK45.. So (n_stages + 1, Q_order)
         // So Q has shape of (num_y, q_order)
-        // The max size of Q is (7) * num_y for DOP853
+        // The explicit Runge-Kutta methods use up to 8 columns of Q (Vern8); LSODA can use more
         // state vector is laid out as [y_vector, Q_matrix]
         this->num_y  = solver_ptr->num_y;
         this->num_dy = solver_ptr->num_dy;
@@ -170,6 +171,67 @@ void CySolverDense::call(double t_interp, double* y_interp_ptr)
             temp_double *= step_factor;
 
             y_interp_ptr[y_i] = y_stored_ptr[y_i] + temp_double;
+        }
+        break;
+
+    case ODEMethod::TSIT5:
+    case ODEMethod::VERN7:
+    case ODEMethod::VERN8:
+        {
+            /* Q holds the interpolant's increment u(theta_j) = sum_i b_i(theta_j) k_i at the nodes theta_j listed in
+               "rk.hpp" (u(0) = 0), and y = y_old + step * u(theta). The polynomial through these values is evaluated
+               with the first form of the barycentric formula, u = l(theta) sum_j w_j u(theta_j) / (theta - theta_j)
+               with l(theta) = theta prod_j (theta - theta_j). This stays accurate where the monomial coefficients of
+               the interpolant (up to about 3e5 for Vern8) would cancel and lose several digits. */
+            const double* nodes_ptr   = Tsit5_dense_nodes;
+            const double* weights_ptr = Tsit5_dense_weights;
+            if (this->solution_ptr->integrator_method == ODEMethod::VERN7)
+            {
+                nodes_ptr   = Vern7_dense_nodes;
+                weights_ptr = Vern7_dense_weights;
+            }
+            else if (this->solution_ptr->integrator_method == ODEMethod::VERN8)
+            {
+                nodes_ptr   = Vern8_dense_nodes;
+                weights_ptr = Vern8_dense_weights;
+            }
+
+            // The node coefficients do not depend on y so build them once.
+            double node_coeffs[RK_MAX_DENSE_NODES];
+            double node_polynomial = step_factor;
+            size_t exact_node      = this->Q_order;
+            for (size_t node_i = 0; node_i < this->Q_order; node_i++)
+            {
+                const double node_delta = step_factor - nodes_ptr[node_i];
+                if (node_delta == 0.0)
+                {
+                    exact_node = node_i;
+                    break;
+                }
+                node_polynomial *= node_delta;
+            }
+            for (size_t node_i = 0; node_i < this->Q_order; node_i++)
+            {
+                if (exact_node < this->Q_order)
+                {
+                    node_coeffs[node_i] = (node_i == exact_node) ? 1.0 : 0.0;
+                }
+                else
+                {
+                    node_coeffs[node_i] = node_polynomial * weights_ptr[node_i] / (step_factor - nodes_ptr[node_i]);
+                }
+            }
+
+            for (size_t y_i = 0; y_i < this->num_y; y_i++)
+            {
+                const size_t Q_stride = this->Q_order * y_i;
+                double temp_double = 0.0;
+                for (size_t node_i = 0; node_i < this->Q_order; node_i++)
+                {
+                    temp_double += node_coeffs[node_i] * Q_ptr[Q_stride + node_i];
+                }
+                y_interp_ptr[y_i] = y_stored_ptr[y_i] + this->step * temp_double;
+            }
         }
         break;
 

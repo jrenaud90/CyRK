@@ -120,7 +120,10 @@ cdef extern from "cysolver.cpp" nogil:
         DOP853,
         BDF,
         LSODA,
-        RADAU
+        RADAU,
+        TSIT5,
+        VERN7,
+        VERN8
     const cpp_map[ODEMethod, cpp_string] CyrkODEMethods
 
     cdef cppclass ProblemConfig:
@@ -283,6 +286,18 @@ cdef extern from "rk.cpp" nogil:
     cdef cppclass DOP853(RKSolver):
         DOP853()
         DOP853(CySolverResult* storage_ptr_)
+
+    cdef cppclass Tsit5(RKSolver):
+        Tsit5()
+        Tsit5(CySolverResult* storage_ptr_)
+
+    cdef cppclass Vern7(RKSolver):
+        Vern7()
+        Vern7(CySolverResult* storage_ptr_)
+
+    cdef cppclass Vern8(RKSolver):
+        Vern8()
+        Vern8(CySolverResult* storage_ptr_)
 
 
 # =====================================================================================================================

@@ -109,6 +109,93 @@ def test_implicit_beats_explicit_on_stiff_problem(integration_method):
     assert implicit_result.steps_taken < (explicit_result.steps_taken / 10)
 
 
+CHAIN_COUPLING = 2.0e3
+CHAIN_MATRIX = np.array([[-1.0,           0.0,            0.0,            0.0],
+                         [CHAIN_COUPLING, -2.0,           0.0,            0.0],
+                         [0.0,            CHAIN_COUPLING, -3.0,           0.0],
+                         [0.0,            0.0,            CHAIN_COUPLING, -1.0e4]])
+
+
+@njit
+def chain_diffeq(dy, t, y):
+    """Stiff linear chain in which each variable drives the next far harder than it decays, so the
+    factorization of the Newton iteration matrix pivots in three of its four columns."""
+    dy[0] = -y[0]
+    dy[1] = CHAIN_COUPLING * y[0] - 2.0 * y[1]
+    dy[2] = CHAIN_COUPLING * y[1] - 3.0 * y[2]
+    dy[3] = CHAIN_COUPLING * y[2] - 1.0e4 * y[3]
+
+
+@pytest.mark.parametrize('integration_method', IMPLICIT_METHODS)
+def test_implicit_newton_solve_with_pivoting(integration_method):
+    """A Newton iteration matrix that needs row interchanges must still be solved exactly. Before
+    v0.19.5 the dense LU solve applied the interchanges in the wrong order, so BDF and Radau took
+    over 6000 steps on this problem (SciPy takes about 200) with corrections that were wrong."""
+    from scipy.linalg import expm
+
+    y0 = np.asarray((1.0, 0.0, 0.0, 0.0), dtype=np.float64)
+    result = pysolve_ivp(chain_diffeq, (0.0, 10.0), y0, method=integration_method,
+                         rtol=1.0e-6, atol=1.0e-10, pass_dy_as_arg=True)
+    exact = expm(10.0 * CHAIN_MATRIX) @ y0
+
+    assert result.success
+    assert result.steps_taken < 500
+    assert np.allclose(result.y[:, -1], exact, rtol=1.0e-3, atol=1.0e-6 * np.max(np.abs(exact)))
+
+
+@njit
+def constant_diffeq(dy, t, y):
+    """Nothing changes, so every error estimate is exactly zero."""
+    dy[0] = 0.0
+    dy[1] = 0.0
+
+
+def test_radau_step_growth_at_zero_error():
+    """A zero error estimate must grow Radau's step by the full `MAX_FACTOR` (10), as in SciPy. Before v0.19.5 it grew
+    by the safety factor times 10 and took 18 steps here where SciPy takes 17."""
+    from scipy.integrate import solve_ivp
+
+    y0 = np.asarray((1.0, 2.0), dtype=np.float64)
+    result = pysolve_ivp(constant_diffeq, (0.0, 1.0e10), y0, method='Radau', pass_dy_as_arg=True)
+    reference = solve_ivp(lambda t, y: np.zeros(2), (0.0, 1.0e10), y0, method='Radau')
+
+    assert result.success
+    assert result.size == reference.t.size
+
+
+A_ROBERTSON = np.asarray((0.04, 1.0e4, 3.0e7), dtype=np.float64)
+
+
+def robertson_scipy(t, y):
+    a, b, c = A_ROBERTSON
+    return np.asarray((-a * y[0] + b * y[1] * y[2], a * y[0] - b * y[1] * y[2] - c * y[1] * y[1], c * y[1] * y[1]))
+
+
+def robertson_scipy_jacobian(t, y):
+    a, b, c = A_ROBERTSON
+    return np.asarray(((-a, b * y[2], b * y[1]),
+                       (a, -b * y[2] - 2.0 * c * y[1], -b * y[1]),
+                       (0.0, 2.0 * c * y[1], 0.0)))
+
+
+@pytest.mark.parametrize('integration_method', ("BDF", "LSODA", "Radau"))
+def test_implicit_analytic_jacobian_matches_scipy(integration_method):
+    """With the same analytic Jacobian, `cysolve_ivp` (through `jac_ptr`) and SciPy run the same algorithm, so they
+    take the same steps up to round-off and reach the same answer."""
+    from scipy.integrate import solve_ivp
+
+    y0 = np.asarray((1.0, 0.0, 0.0), dtype=np.float64)
+    result = cytester(11, (0.0, 1.0e5), y0, args=A_ROBERTSON, method=integration_method, rtol=1.0e-6, atol=1.0e-10,
+                      use_jacobian=True)
+    reference = solve_ivp(robertson_scipy, (0.0, 1.0e5), y0, method=integration_method, rtol=1.0e-6, atol=1.0e-10,
+                          jac=robertson_scipy_jacobian)
+
+    assert result.success
+    assert reference.success
+    assert abs(result.size - reference.t.size) <= 0.05 * reference.t.size
+    assert np.allclose(result.y[:, -1], reference.y[:, -1], rtol=1.0e-4, atol=1.0e-9)
+
+
 @pytest.mark.parametrize('integration_method', IMPLICIT_METHODS)
 def test_implicit_dense_output(integration_method):
     """The interpolants for the multi-step methods should match the exact solution."""
@@ -252,6 +339,49 @@ def test_lsoda_banded_jacobian():
     assert np.allclose(banded_result.y[:, -1], dense_result.y[:, -1], rtol=1.0e-6, atol=1.0e-8)
 
 
+@njit
+def banded_chain_diffeq(dy, t, y, feedback):
+    """Stiff chain whose variables each drive the next far harder than they decay, plus an optional weak negative
+    feedback from the next variable. Its Jacobian is lower bidiagonal or tridiagonal and its band factorization
+    pivots. The last variable decays fastest."""
+    num_y = y.size
+    dy[0] = -y[0]
+    for i in range(1, num_y):
+        dy[i] = 2.0e3 * y[i - 1] - (i + 1.0) * y[i]
+    for i in range(num_y - 1):
+        dy[i] += feedback * y[i + 1]
+    dy[num_y - 1] -= (1.0e4 - num_y) * y[num_y - 1]
+
+
+@pytest.mark.parametrize('lband, uband, feedback', ((1, 0, 0.0), (1, 1, -0.01), (2, 1, -0.01)))
+def test_lsoda_banded_jacobian_with_pivoting(lband, uband, feedback):
+    """The banded LU factorization must clear the fill-in rows left by the previous factorization, as LAPACK's
+    dgbtf2 does; LSODA's finite-difference Jacobian only rewrites the band. Before v0.19.5 the stale fill-in entered
+    U through the row interchanges, and with `lband=1, uband=0` LSODA failed after 310 steps (dense: 492)."""
+    from scipy.linalg import expm
+
+    num_y = 8
+    matrix = np.diag(-np.arange(1.0, num_y + 1.0)) + np.diag(np.full(num_y - 1, 2.0e3), -1) + \
+        np.diag(np.full(num_y - 1, feedback), 1)
+    matrix[-1, -1] = -1.0e4
+    y0 = np.zeros(num_y, dtype=np.float64)
+    y0[0] = 1.0
+    exact = expm(10.0 * matrix) @ y0
+
+    dense_result = pysolve_ivp(banded_chain_diffeq, (0.0, 10.0), y0, method='LSODA', args=(feedback,),
+                               rtol=1.0e-6, atol=1.0e-10, pass_dy_as_arg=True)
+    banded_result = pysolve_ivp(banded_chain_diffeq, (0.0, 10.0), y0, method='LSODA', args=(feedback,),
+                                rtol=1.0e-6, atol=1.0e-10, lband=lband, uband=uband, pass_dy_as_arg=True)
+
+    assert dense_result.success
+    assert banded_result.success
+    # The two factorizations differ only in round-off, so the steps and the answers stay close.
+    assert abs(banded_result.size - dense_result.size) < 0.1 * dense_result.size
+    assert np.allclose(banded_result.y[:, -1], dense_result.y[:, -1], rtol=1.0e-4, atol=1.0e-6 * np.max(np.abs(exact)))
+    # LSODA's global error on this oscillating chain is a few percent (SciPy's is the same).
+    assert np.allclose(banded_result.y[:, -1], exact, rtol=5.0e-2, atol=1.0e-3 * np.max(np.abs(exact)))
+
+
 def test_lsoda_min_step():
     """A minimum step size should keep LSODA from refining the step below it."""
     unbounded_result = pysolve_ivp(stiff_diffeq, STIFF_TIME_SPAN, STIFF_Y0, method='LSODA',
@@ -265,7 +395,112 @@ def test_lsoda_min_step():
     assert bounded_result.steps_taken < unbounded_result.steps_taken
 
 
-@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853", "BDF", "RADAU"))
+@njit
+def fading_stiffness_diffeq(dy, t, y, t_start, stiffness):
+    """Stiff at first, with a stiffness that fades away; time is measured from `t_start`."""
+    tau = t - t_start
+    rate = stiffness * np.exp(-tau) + 1.0
+    dy[0] = -rate * (y[0] - np.cos(tau))
+    dy[1] = y[0] - 0.1 * y[1]
+
+
+@pytest.mark.parametrize('t_start, stiffness', ((3.0e8, 1.0e4), (3.0e8, 1.0e5), (1.0e8, 1.0e6)))
+def test_lsoda_survives_steps_at_the_spacing_of_t(t_start, stiffness):
+    """LSODA must go on through a few steps no larger than the spacing between numbers at t, as ODEPACK does.
+
+    Far from t = 0 (the spacing is 1.5e-8 at t = 1e8 and 6e-8 at t = 3e8), error test failures where cos(tau) passes
+    zero cut LSODA's step to the spacing for a few steps before it grows back. CyRK v0.19.2 to v0.19.4 failed at the
+    first such step in each of these cases. Which steps land there depends on round-off, so a platform may not reach
+    the spacing at all; the integration must succeed either way.
+    """
+    rtol = 1.0e-8
+    atol = rtol * 1.0e-3
+    y0 = np.asarray((1.0, 0.0), dtype=np.float64, order='C')
+    result = pysolve_ivp(fading_stiffness_diffeq, (t_start, t_start + 20.0), y0, method='LSODA',
+                         args=(t_start, stiffness), rtol=rtol, atol=atol, pass_dy_as_arg=True)
+    # The same problem near t = 0, where the spacing between numbers is no concern.
+    reference = pysolve_ivp(fading_stiffness_diffeq, (0.0, 20.0), y0, method='LSODA',
+                            args=(0.0, stiffness), rtol=1.0e-10, atol=1.0e-13, pass_dy_as_arg=True)
+
+    assert result.success
+    assert result.t[-1] == t_start + 20.0
+    assert reference.success
+    # Agreement is limited by how finely t itself is resolved so far from zero (errors of a few 1e-6 at t = 3e8,
+    # with or without the steps at the spacing).
+    assert np.allclose(result.y[:, -1], reference.y[:, -1], rtol=1.0e-4, atol=1.0e-5)
+
+
+@njit
+def slow_manifold_diffeq(dy, t, y, stiffness):
+    """A fast variable relaxing onto 1e-6 times a slowly decaying one."""
+    dy[0] = -stiffness * (y[0] - 1.0e-6 * y[1])
+    dy[1] = -1.0e-3 * y[1]
+
+
+@pytest.mark.parametrize('stiffness', (1.0e6, 1.0e9, 1.0e12, 1.0e15))
+@pytest.mark.parametrize('rtol', (1.0e-3, 1.0e-6))
+def test_lsoda_starts_on_a_stiff_slow_manifold(stiffness, rtol):
+    """LSODA must start a stiff problem whose initial state sits on its slow manifold.
+
+    There f(t0) has no fast component, so the first step size, taken from f(t0), is many times what the Adams
+    functional iteration can converge at. ODEPACK (and SciPy's LSODA) gave up after cutting it by 4 ten times and
+    failed every case here with automatic first steps but stiffness 1e6 at rtol 1e-6.
+    """
+    y0 = np.asarray((1.0e-6, 1.0), dtype=np.float64, order='C')
+    atol = np.asarray((1.0e-14, 1.0e-10), dtype=np.float64, order='C')
+    result = pysolve_ivp(slow_manifold_diffeq, (0.0, 1000.0), y0, method='LSODA', args=(stiffness,),
+                         rtol=rtol, atol=atol, pass_dy_as_arg=True)
+
+    assert result.success, result.message
+    # The method switches to BDF after its first stiffness test, so the stiffness costs few steps.
+    assert result.steps_taken < 150
+    slow_exact = np.exp(-1.0)
+    assert np.isclose(result.y[1, -1], slow_exact, rtol=20.0 * rtol)
+    assert np.isclose(result.y[0, -1], 1.0e-6 * slow_exact, rtol=20.0 * rtol)
+
+
+@njit
+def gravity_center_diffeq(dy, r, y):
+    """Gravity, pressure, mass, and moment of inertia of a uniform sphere (G = 1 / pi, rho = 1), from its center."""
+    if r == 0.0:
+        # The removable 1/r singularity of the gravity equation, at its limit.
+        dy[0] = 4.0 / 3.0
+        dy[1] = 0.0
+        dy[2] = 0.0
+        dy[3] = 0.0
+    else:
+        dy[0] = 4.0 - 2.0 * y[0] / r
+        dy[1] = -y[0]
+        dy[2] = 4.0 * np.pi * r * r
+        dy[3] = (2.0 / 3.0) * dy[2] * r * r
+
+
+@pytest.mark.parametrize('diffeq, time_span, y0, rtol, atol, args, expected', (
+    # A stiff problem whose first step converged within ODEPACK's retries (see the test above).
+    (slow_manifold_diffeq, (0.0, 1.0e4), (1.0e-6, 1.0), 1.0e-9, (1.0e-14, 1.0e-10), (1.0e6,),
+     (1.0e-6 * np.exp(-10.0), np.exp(-10.0))),
+    # A stiffness of 2 / r near the singular center of a planet's structure integration.
+    (gravity_center_diffeq, (0.0, 1.0), (0.0, 2.0 / 3.0, 0.0, 0.0), 1.0e-4, 1.0e-20, (),
+     (4.0 / 3.0, 0.0, 4.0 * np.pi / 3.0, 8.0 * np.pi / 15.0)),
+))
+def test_lsoda_leaves_a_step_held_at_the_adams_stability_bound(diffeq, time_span, y0, rtol, atol, args, expected):
+    """LSODA must switch to BDF rather than hold the step at the Adams stability bound without end.
+
+    In both problems the Adams corrector converges at roundoff, which leaves no fresh Lipschitz estimate, while the
+    step is held at the stability bound of the one it has. ODEPACK (and SciPy's LSODA) held these steps at 5.3e-7 and
+    7.5e-12 for as long as they were let run.
+    """
+    y0 = np.asarray(y0, dtype=np.float64, order='C')
+    atol = np.asarray(atol, dtype=np.float64, order='C') if isinstance(atol, tuple) else atol
+    result = pysolve_ivp(diffeq, time_span, y0, method='LSODA', args=args, rtol=rtol, atol=atol,
+                         pass_dy_as_arg=True, max_num_steps=5000)
+
+    assert result.success, result.message
+    assert result.steps_taken < 500
+    assert np.allclose(result.y[:, -1], expected, rtol=1.0e-3, atol=1.0e-6)
+
+
+@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853", "Tsit5", "Vern7", "Vern8", "BDF", "RADAU"))
 def test_lsoda_only_options_are_rejected_elsewhere(integration_method):
     """`min_step`, `lband`, and `uband` are LSODA-only and must not be silently ignored."""
     with pytest.raises(AttributeError):

@@ -150,7 +150,7 @@ def test_pysolve_ivp_test():
 @pytest.mark.parametrize('capture_extra', (True, False))
 @pytest.mark.parametrize('max_step', (1.0, 100_000.0))
 @pytest.mark.parametrize('first_step', (0.0, 0.00001))
-@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853"))
+@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853", "Tsit5", "Vern7", "Vern8"))
 @pytest.mark.parametrize('use_different_tols', (True, False))
 @pytest.mark.parametrize('use_rtol_array', (True, False))
 @pytest.mark.parametrize('use_atol_array', (True, False))
@@ -431,7 +431,8 @@ def test_pysolve_ivp_errors():
     assert result.error_code == CyrkErrorCodes.STEP_SIZE_ERROR_SPACING
     assert result.message == "Error in step size calculation: Required step size is less than spacing between numbers."
 
-@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853", "BDF", "LSODA", "RADAU"))
+@pytest.mark.parametrize(
+    'integration_method', ("RK23", "RK45", "DOP853", "Tsit5", "Vern7", "Vern8", "BDF", "LSODA", "RADAU"))
 @pytest.mark.parametrize('t_eval_end', (None, 0.5, 1.0))
 @pytest.mark.parametrize('test_dense_output', (False, True))
 @pytest.mark.parametrize('backward_integrate', (False, True))
@@ -494,8 +495,11 @@ def test_pysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output,
     if integration_method == "RK23":
         check_rtol = 1.0e-3
         check_atol = 1.0e-6
-    elif integration_method == "DOP853":
+    elif integration_method in ("DOP853", "Tsit5"):
         check_rtol = 1.0e-5
+        check_atol = 1.0e-8
+    elif integration_method in ("Vern7", "Vern8"):
+        check_rtol = 1.0e-6
         check_atol = 1.0e-8
     elif integration_method in ("BDF", "LSODA", "RADAU"):
         # The multi-step methods accumulate more global error than the RK methods do at the same
@@ -527,13 +531,7 @@ def test_pysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output,
 
         # Check accuracy
         y_array_real = correct_answer(t_array, c1, c2)
-        try:
-            assert np.allclose(y_array, y_array_real, rtol=check_rtol, atol=check_atol)
-        except Exception as e:
-            if backward_integrate and np.allclose(y_array, y_array_real, rtol=1.0e-3, atol=1.0e-4):
-                pytest.skip("Backward integration for DOP is a bit more inaccurate for some reason.")
-            else:
-                raise e
+        assert np.allclose(y_array, y_array_real, rtol=check_rtol, atol=check_atol)
 
     # Check the accuracy of the results
     # import matplotlib.pyplot as plt
@@ -544,7 +542,8 @@ def test_pysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output,
     # ax.plot(result.t, real_answer[1], 'b:')
     # plt.show()
 
-@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853", "BDF", "LSODA", "RADAU"))
+@pytest.mark.parametrize(
+    'integration_method', ("RK23", "RK45", "DOP853", "Tsit5", "Vern7", "Vern8", "BDF", "LSODA", "RADAU"))
 def test_pysolve_ivp_readonly(integration_method):
     #Check that the cython function solver is able to reproduce a known functions integral with reasonable accuracy
 
@@ -584,6 +583,82 @@ def test_pysolve_ivp_readonly(integration_method):
     assert result.y[0].size == result.size
     assert result.y.shape[0] == 2
     assert type(result.message) is str
+
+
+@pytest.mark.parametrize('tolerance_type', (float, np.float64, np.float32, list, np.asarray))
+def test_pysolve_tolerance_types(tolerance_type):
+    """`rtol` and `atol` may be any real scalar, including numpy scalars, or an array-like. Before v0.19.5 a numpy
+    scalar raised an IndexError and an int raised an AttributeError."""
+    # Powers of two so that every type holds exactly the same value.
+    rtol = 2.0 ** -20
+    atol = 2.0 ** -30
+    expected = pysolve_ivp(diffeq, time_span, initial_conds, method="RK45", rtol=rtol, atol=atol, pass_dy_as_arg=True)
+    wrap = (lambda value: tolerance_type([value])) if tolerance_type is list else tolerance_type
+    result = pysolve_ivp(diffeq, time_span, initial_conds, method="RK45", rtol=wrap(rtol), atol=wrap(atol),
+                         pass_dy_as_arg=True)
+
+    assert result.success
+    assert np.array_equal(result.y, expected.y)
+
+    # Integer tolerances.
+    result = pysolve_ivp(diffeq, time_span, initial_conds, method="RK45", rtol=1, atol=0, pass_dy_as_arg=True)
+    assert result.success
+
+
+@njit
+def tracked_decay_diffeq(dy, t, y, latest_t):
+    """Stiff decay that records the largest time it was called at."""
+    latest_t[0] = max(latest_t[0], t)
+    dy[0] = -y[0]
+    dy[1] = -1.0e3 * (y[1] - y[0])
+
+
+@pytest.mark.parametrize(
+    'integration_method', ("RK23", "RK45", "DOP853", "Tsit5", "Vern7", "Vern8", "BDF", "LSODA", "RADAU"))
+@pytest.mark.parametrize('t_end', (1.0e-9, 1.0e-3))
+def test_pysolve_short_span_stays_in_interval(integration_method, t_end):
+    """The first step size search must not call the differential equation past the end of the span, as SciPy's
+    `select_initial_step` does not. Before v0.19.5 it probed t = 0.014 for both of these spans."""
+    latest_t = np.zeros(1, dtype=np.float64)
+    y0 = np.asarray((1.0, 1.0), dtype=np.float64)
+    result = pysolve_ivp(tracked_decay_diffeq, (0.0, t_end), y0, method=integration_method, args=(latest_t,),
+                         rtol=1.0e-8, atol=1.0e-10, pass_dy_as_arg=True)
+
+    assert result.success
+    assert result.t[-1] == t_end
+    assert latest_t[0] <= t_end
+    assert np.isclose(result.y[0, -1], np.exp(-t_end), rtol=1.0e-7)
+
+
+@pytest.mark.parametrize('integration_method', ("RK45", "Tsit5", "BDF"))
+@pytest.mark.parametrize('terminal', (None, False, 0, True, 1, 2))
+def test_pysolve_event_terminal_values(integration_method, terminal):
+    """As in SciPy, an unset, False, or zero `terminal` never ends the integration; True or n ends it at the n-th
+    occurrence. sin(t) = 0.5 four times on [0, 13]."""
+
+    def crossing(t, y):
+        return y[0] - 0.5
+
+    if terminal is not None:
+        crossing.terminal = terminal
+    result = pysolve_ivp(lambda t, y: np.array([np.cos(t)]), (0.0, 13.0), np.array([0.0]),
+                         method=integration_method, events=(crossing,), rtol=1.0e-9, atol=1.0e-12)
+    assert result.success
+    expected_count = int(terminal) if terminal else 4
+    assert result.t_events[0].size == expected_count
+    assert result.event_terminated == bool(terminal)
+
+
+def test_pysolve_negative_terminal_is_rejected():
+    """A negative `terminal` is not a count and is rejected."""
+
+    def crossing(t, y):
+        return y[0] - 0.5
+
+    crossing.terminal = -1
+    with pytest.raises(ValueError, match="terminal"):
+        pysolve_ivp(lambda t, y: np.array([np.cos(t)]), (0.0, 13.0), np.array([0.0]), events=(crossing,))
+
 
 if __name__ == "__main__":
     test_pysolve_ivp(False, False, False,

@@ -90,6 +90,29 @@ cdef CySolveOutput result = cysolve_ivp(
 
 `pysolve_ivp` does not currently accept a Python-level Jacobian; it always uses finite differences.
 
+### How accurate the Jacobian has to be
+
+The Jacobian only drives the Newton iterations, so an inexact one still gives the right answer, but it
+costs work, and an entry that is too small costs far more than one that is too large. On a test problem
+with one variable relaxing onto a moving, nonlinear equilibrium about 6e6 times faster than the other
+variables change, errors of up to 10% in that variable's diagonal entry cost at most 1.7 times as many
+steps. With the entry 30% too small every method took 2 to 50 times as many steps (BDF and Radau were
+hit hardest and LSODA least), and at 50% too small none finished. With the entry 30% too large the cost
+grew by at most 3 times. If you build the Jacobian by finite differences of an expensive function, check its
+stiff entries against a careful difference before relying on it.
+
+### Per-variable relative tolerances
+
+BDF and Radau stop their Newton iterations once the estimated remaining error falls below a target
+derived from `rtol` (`max(10 eps / rtol, min(0.03, sqrt(rtol)))`, in units of the error weights, as in
+SciPy). With an array of relative tolerances the smallest one sets that target for every variable, so a
+single very tight `rtol` on a slow variable that is coupled to a stiff one can multiply the Newton work.
+Targets set per variable were tried and did not reduce the work. The convergence rate is estimated from
+the change in the weighted correction between iterations, and the tightly weighted variable, whose
+correction follows the stiff variable's one iteration later, then makes the iteration look slower than
+it is. The effect is small with an accurate Jacobian (on the test problem above, Radau took 34 steps with
+`rtol=[1e-9, 1e-6, 1e-4]` against 18 with `rtol=1e-5`) and grows quickly as the Jacobian degrades.
+
 ## Cost and problem size
 
 The implicit methods store the Jacobian and its factorization as dense matrices, so their memory
@@ -233,6 +256,15 @@ work-precision plot shows is that neither solver is buying accuracy at a better 
   where the solver happens to step.
 * If you are comparing solvers, compare error against work as above. Comparing step counts alone, or
   error alone, will tell you very little.
+
+### Deliberate differences from SciPy
+
+* The finite-difference Jacobian leaves a column's perturbation alone when the column is exactly zero. SciPy's `num_jac` retries such a column with a ten times larger perturbation at every estimate and keeps the larger one, which costs one extra call per zero column per Jacobian and lets the perturbation grow without bound.
+* With an array `rtol`, BDF and Radau take their Newton target from the smallest entry (see "Per-variable relative tolerances" above). SciPy only accepts a scalar `rtol`.
+* Radau falls back to its one-step size predictor when the previous step's error estimate was exactly zero. SciPy's two-step predictor then gives a step size factor of zero, which either holds the step size or ends the integration.
+* LSODA is built on SciPy's C translation of ODEPACK with these changes. It uses CyRK's own LU routines in place of LAPACK's (same algorithm, different rounding). Its weighted norms propagate NaN, so a step taken with NaN rates is rejected. `min_step` is honored; SciPy's translation reads it but never passes it on to the step size control. With `lband` and `uband`, the Jacobian norm that drives the switch between the Adams and BDF formulas is read from the band, as in ODEPACK; SciPy's translation reads it from rows offset by `lband`, so its banded LSODA can take several times the steps of its dense one. LSODA fails after more than 100 consecutive steps no larger than the spacing between numbers at t, where ODEPACK goes on.
+* LSODA starts stiff problems that ODEPACK cannot. Its first step size comes from the initial derivative, which hides the stiffness of a problem started on its slow manifold (a fast variable at its quasi-static value), and ODEPACK gives up at the 10th convergence failure, when its retries have cut that step by a factor of about 3e5. CyRK's LSODA gives the first step 10 more retries, which bound the step by the Lipschitz constant the failed Adams iteration measured. A problem that ODEPACK starts takes the same steps in both.
+* LSODA switches to BDF when its step is held at the Adams stability bound and the Adams corrector converges at roundoff. ODEPACK's step selection can hold the step there without telling the stiffness test that it is restricted, and then keeps the Adams formulas at that step without end. This happens near a singular point such as the center of a planet's structure integration and for a fast variable that sits on its slow manifold.
 
 The figures and the numbers on this page can be regenerated with
 "Benchmarks/scipy_implicit_comparison.py".

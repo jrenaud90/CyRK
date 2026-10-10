@@ -140,12 +140,6 @@ CyrkErrorCodes RADAU::p_finalize_setup() noexcept
     }
     this->newton_tol = std::max(10.0 * EPS / min_rtol, std::min(0.03, std::sqrt(min_rtol)));
 
-    // Selecting the first step size left the "now" state at a probe point. Restore it so that the
-    // initial Jacobian is built at the initial conditions.
-    this->t_now = this->t_start;
-    std::memcpy(this->y_now_ptr, this->y_old_ptr, this->sizeof_dbl_Ny);
-    std::memcpy(this->dy_now_ptr, this->dy_old_ptr, this->sizeof_dbl_Ndy);
-
     this->h_abs = this->step_size;
     this->p_update_jacobian();
 
@@ -398,7 +392,8 @@ double RADAU::p_predict_step_factor(const double h_abs_now, const double error_n
        the two-step formula is used, which damps oscillations in the step size. */
     if (error_norm == 0.0) [[unlikely]]
     {
-        return MAX_FACTOR;
+        // Unbounded, as in SciPy; the caller caps the factor at `MAX_FACTOR` after applying the safety factor.
+        return INF;
     }
 
     double multiplier = 1.0;

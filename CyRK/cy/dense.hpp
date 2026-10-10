@@ -37,7 +37,7 @@ protected:
 
     // Vectors for stored data (stored at each step)
     // Q has shape of (num_y, q_order + 1)
-    // The max size of Q is (7) * num_y for DOP853; set default for RK45 of 4
+    // The explicit Runge-Kutta methods use up to 8 columns of Q (Vern8); set default for RK45 of 4
     // +1 is so we can store y_values in the first spot.
     std::vector<double> state_data_vec = std::vector<double>(PRE_ALLOC_NUMY * (4 + 1));
 

@@ -70,6 +70,15 @@ CyrkErrorCodes CySolverResult::p_build_solver()
             // DOP853
             this->solver_uptr = std::make_unique<DOP853>(this);
             break;
+        case ODEMethod::TSIT5:
+            this->solver_uptr = std::make_unique<Tsit5>(this);
+            break;
+        case ODEMethod::VERN7:
+            this->solver_uptr = std::make_unique<Vern7>(this);
+            break;
+        case ODEMethod::VERN8:
+            this->solver_uptr = std::make_unique<Vern8>(this);
+            break;
         case ODEMethod::BDF:
             // BDF
             this->solver_uptr = std::make_unique<BDF>(this);
@@ -590,15 +599,17 @@ CyrkErrorCodes CySolverResult::call(const double t, double* y_interp_ptr)
         }
         else
         {
-            // Backward integration: Sorted array is [0.0, ..., 10.0]. 
-            // Use lower_bound to find the first element >= t. 
-            // We translate this back to the original descending index.
+            // Backward integration: the sorted array is the descending time domain reversed, so sorted index j holds
+            // stored time t_(len - 1 - j). lower_bound finds the first element >= t, which is the start t_(i - 1) of
+            // the step from t_(i - 1) down to t_i that contains t, and dense_vec[i] is that step's interpolant. Index 0
+            // is the placeholder built at t_start, so a t equal to a stored time uses the step that starts there
+            // (the clamp below covers t_end).
             auto lower_i = std::lower_bound(
                 time_domain_sorted_ptr,
                 time_domain_sorted_ptr + interp_time_vec_len_touse,
                 t) - time_domain_sorted_ptr;
-                
-            closest_index = interp_time_vec_len_touse - lower_i - 1;
+
+            closest_index = interp_time_vec_len_touse - lower_i;
         }
     }
 

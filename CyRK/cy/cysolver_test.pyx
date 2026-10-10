@@ -10,7 +10,7 @@ from libcpp.vector cimport vector
 
 cdef double d_NAN = numeric_limits[double].quiet_NaN()
 
-from CyRK.cy.common cimport DiffeqFuncType, MAX_STEP
+from CyRK.cy.common cimport DiffeqFuncType, JacobianFuncType, MAX_STEP
 from CyRK.cy.cysolver_api cimport cysolve_ivp_noreturn, cysolve_ivp, WrapCySolverResult, CySolveOutput, ODEMethod, CySolverResult
 from CyRK.cy.events cimport Event
 
@@ -263,6 +263,24 @@ cdef void robertson_diffeq(double* dy_ptr, double t, double* y_ptr, char* args_p
     dy_ptr[2] = c * y1 * y1
 
 
+cdef void robertson_jacobian(double* jac_ptr, double t, double* y_ptr, char* args_ptr, PreEvalFunc pre_eval_func) noexcept nogil:
+    """ Analytic Jacobian of `robertson_diffeq` in column-major order: entry (i, j) is jac_ptr[i + 3 * j]. """
+    cdef double* args_dbl_ptr = <double*>args_ptr
+    cdef double a = args_dbl_ptr[0]
+    cdef double b = args_dbl_ptr[1]
+    cdef double c = args_dbl_ptr[2]
+
+    jac_ptr[0] = -a
+    jac_ptr[1] = a
+    jac_ptr[2] = 0.0
+    jac_ptr[3] = b * y_ptr[2]
+    jac_ptr[4] = -b * y_ptr[2] - 2.0 * c * y_ptr[1]
+    jac_ptr[5] = 2.0 * c * y_ptr[1]
+    jac_ptr[6] = b * y_ptr[1]
+    jac_ptr[7] = -b * y_ptr[1]
+    jac_ptr[8] = 0.0
+
+
 def cy_extra_output_tester():
 
     cdef double t_start = 0.0
@@ -428,7 +446,8 @@ def cytester(
         double first_step = 0.0,
         WrapCySolverResult solution_reuse = None,
         cpp_bool force_retain_solver = False,
-        size_t repeats = 1
+        size_t repeats = 1,
+        bint use_jacobian = False
         ):
     cdef size_t i
     cdef vector[double] t_eval_vec = vector[double]()
@@ -457,11 +476,17 @@ def cytester(
         integration_method = ODEMethod.LSODA
     elif method == 'radau':
         integration_method = ODEMethod.RADAU
+    elif method == 'tsit5':
+        integration_method = ODEMethod.TSIT5
+    elif method == 'vern7':
+        integration_method = ODEMethod.VERN7
+    elif method == 'vern8':
+        integration_method = ODEMethod.VERN8
     else:
         raise NotImplementedError(
             "ERROR: `cytester` - "
             f"Unknown or unsupported integration method provided: {method}.\n"
-            f"Supported methods are: RK23, RK45, DOP853, BDF, LSODA, RADAU."
+            f"Supported methods are: RK23, RK45, DOP853, Tsit5, Vern7, Vern8, BDF, LSODA, RADAU."
             )
 
     cdef size_t num_extra = 0
@@ -497,7 +522,14 @@ def cytester(
 
     else:
         raise NotImplementedError
-    
+
+    # An analytic Jacobian is only provided for the Robertson problem.
+    cdef JacobianFuncType jac_ptr = NULL
+    if use_jacobian:
+        if diffeq_number != 11:
+            raise NotImplementedError("ERROR: `cytester` - An analytic Jacobian is only available for diffeq 11.")
+        jac_ptr = robertson_jacobian
+
     cdef vector[Event] events_vec = vector[Event]()
     if use_events:
         if diffeq_number == 0:
@@ -795,7 +827,8 @@ def cytester(
         max_step = max_step,
         first_step = first_step,
         expected_size = expected_size,
-        force_retain_solver = force_retain_solver
+        force_retain_solver = force_retain_solver,
+        jac_ptr = jac_ptr
         )
     
     if repeats > 1:
@@ -823,7 +856,8 @@ def cytester(
                 max_step = max_step,
                 first_step = first_step,
                 expected_size = expected_size,
-                force_retain_solver = force_retain_solver
+                force_retain_solver = force_retain_solver,
+                jac_ptr = jac_ptr
                 )
     
     solution_reuse.finalize()
