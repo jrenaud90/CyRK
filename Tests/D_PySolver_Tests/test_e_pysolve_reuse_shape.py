@@ -44,7 +44,7 @@ def decay_answer(decay_rates, t):
     return np.exp(-np.asarray(decay_rates, dtype=np.float64) * t)
 
 
-@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853"))
+@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853", "Tsit5", "Vern7", "Vern8"))
 def test_pysolve_reuse_rejects_changed_num_y(integration_method):
     """Reusing a solution for a problem with a different number of dependent variables must fail.
 
@@ -104,7 +104,7 @@ def test_pysolve_reuse_changed_num_y_allowed_with_new_solver():
     assert np.allclose(result.y[:, -1], decay_answer((1., 2., 3.), time_span[1]))
 
 
-@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853"))
+@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853", "Tsit5", "Vern7", "Vern8"))
 def test_pysolve_reuse_changed_num_extra(integration_method):
     """Changing the number of extra outputs on a reused solution must be picked up."""
     y0 = np.asarray((1., 1.), dtype=np.float64, order='C')

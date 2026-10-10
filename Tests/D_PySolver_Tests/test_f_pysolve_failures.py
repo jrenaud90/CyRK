@@ -11,7 +11,7 @@ import pytest
 from CyRK import pysolve_ivp, CyrkErrorCodes
 from CyRK.cy.pysolver import PySolver
 
-METHODS = ("RK23", "RK45", "DOP853", "BDF", "LSODA", "Radau")
+METHODS = ("RK23", "RK45", "DOP853", "Tsit5", "Vern7", "Vern8", "BDF", "LSODA", "Radau")
 time_span = (0.0, 100.0)
 switch_time = 10.0
 y0 = np.asarray((1.0,), dtype=np.float64, order='C')

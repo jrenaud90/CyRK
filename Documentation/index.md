@@ -21,6 +21,7 @@ Overview <Overview/index.md>
 :maxdepth: 2
 :caption: Contents
 
+Integration Methods <Integration_Methods.md>
 Performance <Performance.md>
 Parallelization.md
 Numba.md

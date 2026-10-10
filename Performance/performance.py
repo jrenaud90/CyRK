@@ -77,6 +77,9 @@ integration_methods = {
     'RK23'  : 0,
     'RK45'  : 1,
     'DOP853': 2,
+    'Tsit5' : None,
+    'Vern7' : None,
+    'Vern8' : None,
     'BDF'   : None,
     'LSODA' : None,
     'Radau' : None

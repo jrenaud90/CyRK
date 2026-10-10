@@ -15,7 +15,7 @@ import CyRK
 from CyRK import pysolve_ivp
 from CyRK.cy.common import CyrkErrorCodes, get_error_message
 
-METHODS = ("RK23", "RK45", "DOP853", "BDF", "LSODA", "Radau")
+METHODS = ("RK23", "RK45", "DOP853", "Tsit5", "Vern7", "Vern8", "BDF", "LSODA", "Radau")
 UNKNOWN_CODE = 12345  # Not a member of `CyrkErrorCodes`.
 UNKNOWN_MESSAGE = get_error_message(UNKNOWN_CODE)
 

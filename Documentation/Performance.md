@@ -22,14 +22,16 @@ The tl;dr of this section: If you want improved performance follow this decision
 ## Number of Dependent Variables
 The size of a ODE system is determined by the number of dependent $y$ variables ($N_{y}$). The more variables, the higher the 
 solver overhead will be as it must loop through all variables several times for each time step. The number of y loops,
-excluding any in the actual differential equation, is: 4 + 5+/step (RK23); 4 + 8+/step (RK45); 4 + 14+/step (DOP853).
+excluding any in the actual differential equation, is: 4 + 5+/step (RK23); 4 + 8+/step (RK45 and Tsit5); 4 + 12+/step
+(Vern7); 4 + 14+/step (DOP853); 4 + 15+/step (Vern8).
 The "N+/step" are the number of loops _per time step_ and the "+" indicates it could be significantly more than the
 value listed, particularly for diffeq's that might be stiff and have difficulty finding a proper step size.
 Even if it was perfect at predicting step sizes, a 100 step integration would have over 800 $y$-loops for the RK45 method.
 
 In addition to these computational considerations, the memory footprint of the solver and the solution structure will
 increase with the number of $y$. For double floating point numbers, the $y$-specific footprint of the solver is (in Bytes):
-$112 N_{y}$ (RK23), $136 N_{y}$ (RK45), and $224 N_{y}$ (DOP853). This is just the $y$-dependent memory not other 
+$112 N_{y}$ (RK23), $136 N_{y}$ (RK45 and Tsit5), $208 N_{y}$ (Vern7), $224 N_{y}$ (DOP853), and $248 N_{y}$ (Vern8).
+This is just the $y$-dependent memory not other 
 overheads (the other overheads are around 1,500 kB). So for RK45, if $N_{y} = 10,000$, the solver would be over 1 MB.
 During integration the solution will also be added to at each time step and the data storage grows as $8*(1+N_{y})$
 Bytes/step. If the same 10,000 $N_{y}$ ODE takes 100 steps to complete, the memory usage will approach 10 MB. While
@@ -39,7 +41,9 @@ solvers in parallel, and cache misses which are a major source of poor performan
 ## Differential Equation Optimization
 A critical part of improving performance of any integration is optimizing the problem's differential equation. The 
 diffeq is called to both determine step error and find the actual derivative at each time step. The diffeq is called
-at minimum: 3+/step (RK23); 6+/step (RK45); 13+/step (DOP853). Similar to the $y$-loops discussed earlier, this number
+at minimum: 3+/step (RK23); 6+/step (RK45 and Tsit5); 10+/step (Vern7); 12+/step (DOP853); 13+/step (Vern8). DOP853,
+Vern7, and Vern8 also make 3, 5, and 7 extra calls on each step that builds an interpolant (see
+[Integration Methods](Integration_Methods.md)). Similar to the $y$-loops discussed earlier, this number
 could be much larger if the error is large (or the integration tolerances are small) during a step.
 
 Expect the diffeq to be called 1000s of times for a typical integration. Slow diffeqs quickly become the bottleneck of
@@ -55,7 +59,8 @@ using [events](Events.md) to cause an early termination based on user-defined cr
 their own performance overhead so it is better to pick a smaller domain if you can guess it ahead of time.
 
 The last two factors affecting the number of steps, and which are more adjustable, are integration tolerances
-(`rtol` and `atol`) and the integration method ("RK23", "RK45", "DOP853", "BDF", "LSODA", "Radau"). The integration tolerances directly affect
+(`rtol` and `atol`) and the integration method ("RK23", "RK45", "DOP853", "Tsit5", "Vern7", "Vern8", "BDF", "LSODA", "Radau").
+The integration tolerances directly affect
 the number of steps because the solver must decrease step size to fit within smaller tolerances. It is important to
 keep in mind that CyRK allows `atol` and `rtol` to be provided as an array, one for each $y$. This can be helpful if
 one parameter changes much slower than others (looser `rtol`) or is generally much larger than the
@@ -68,10 +73,11 @@ level compared to RK45 (and the same for RK45 compared to RK23). So you can usua
 for RK23 to achieve your desired error level but only `rtol=1.0e-3` for DOP853 for the same confidence). 
 
 As discussed earlier, the more complex methods are much more computationally expensive all else being equal. If you are
-not able to loosen tolerances then you are better off using a simpler method. The per step cost is always highest for
-DOP853 > RK45 > RK23. The benefit of DOP853 over RK45 (and RK45 over RK23) is better accuracy with looser tolerances and
-less steps. Less steps means less computing power. Benchmarking can tell you if that savings outweighs the increased
-per step cost.
+not able to loosen tolerances then you are better off using a simpler method. The per step cost of the explicit methods
+is ordered Vern8 > DOP853 > Vern7 > RK45 = Tsit5 > RK23. The benefit of the higher order methods is better accuracy
+with looser tolerances and less steps. Less steps means less computing power. Benchmarking can tell you if that savings
+outweighs the increased per step cost. The [Integration Methods](Integration_Methods.md) page has work-precision
+measurements of every explicit method on several standard problems.
 
 The above assumes that the number of steps is being set by your error tolerances. For a
 [stiff problem](Implicit_Methods.md) it is not: the step size is capped by stability instead, and no amount of

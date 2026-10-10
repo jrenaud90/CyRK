@@ -4,7 +4,22 @@
 
 ### v0.20.X
 
-#### v0.20.0 (2026-10-09)
+#### v0.20.0 (2026-10-10)
+
+##### New Explicit Integration Methods
+* **Tsit5**: the 5(4) pair of Tsitouras (2011). It costs the same six diffeq calls per step as RK45 but needed 10% to 50% fewer calls than RK45 to reach the same error at errors of 1e-6 and below on the benchmark problems. Its fourth order interpolant is built from the step's own stages, so dense output, `t_eval`, and events cost no extra calls.
+* **Vern7** and **Vern8**: Verner's (2010) "most efficient" 7(6) and 8(7) pairs, at 10 and 13 diffeq calls per step. Vern8 needed about 10% to 25% fewer calls than DOP853 for relative errors of 1e-6 to 1e-10 on the benchmark problems. Their interpolants match the order of the method (7 and 8) and need 5 and 7 extra stages, which are only evaluated on steps that build an interpolant.
+  * Vern7 uses the interpolant coefficients that Verner corrected in 2024. The originally posted interpolant (still used by some libraries) misses several seventh order conditions, with residuals of about 1e-4.
+  * Vern8's error stops improving near a relative error of 1e-12 on long integrations, where rounding in its large weights accumulates. DOP853 and Vern7 keep improving to `rtol=1e-13`.
+* All three are available from `cysolve_ivp` (`ODEMethod.TSIT5`, `ODEMethod.VERN7`, `ODEMethod.VERN8`, appended to the enum as 9, 10, and 11), `pysolve_ivp`, and `nbsolve2_ivp` (`method="Tsit5"`, `"Vern7"`, or `"Vern8"`), and support everything the other explicit methods do. The legacy `nbsolve_ivp` does not provide them.
+* The tableaus, error weights, extra stages, and interpolants were checked against the Runge-Kutta order conditions in exact rational arithmetic (every condition holds to better than 1e-33) before being written to "rk.cpp" with at least 36 significant digits. The Tsit5 tableau comes from OrdinaryDiffEq.jl (MIT license, noted in "LICENSE.md") and its interpolant weights were derived from it. The Verner coefficients are from Verner's published files.
+* The interpolants are stored as their values at Chebyshev-Lobatto nodes and evaluated with the barycentric formula ("dense.cpp"). Evaluated from its monomial coefficients, which reach 3e5, Vern8's interpolant would lose about two digits at tight tolerances (7e-11 instead of 1e-11 on a Kepler orbit at `rtol=1e-13`). With the barycentric form the dense output is as accurate as the steps.
+
+##### Performance
+* "Performance/performance.py" now tracks Tsit5, Vern7, and Vern8 ("cyrk_performance-Tsit5.csv", "-Vern7.csv", and "-Vern8.csv").
+
+##### Tests
+* `Tests/D_PySolver_Tests/test_g_pysolve_tsit5_verner.py`: the observed convergence order of each new method and its interpolant, dense output accuracy at loose and tight tolerances, agreement with a tight DOP853 solution, `t_eval` in both directions, events, and step and diffeq-call counts against a reference implementation of the same step control. The new methods were also added to the parameterized pysolve, cysolve, nbsolve2, failure, reuse, and error-code tests.
 
 ##### Fixes
 * LSODA failed with "Required step size is less than spacing between numbers" at the first step no larger than the spacing between numbers at t, a check added in v0.19.2. ODEPACK (and SciPy's LSODA) take such steps and continue, and they can be temporary: far from t = 0 repeated error test failures can cut the step to the spacing before it grows back, and after a switch to the Adams formulas a stale Lipschitz estimate from the BDF steps can hold the step at the spacing until the next stiffness test, 20 steps later. LSODA now fails only after more than `LSODA_MAX_TINY_STEPS` (100, "lsoda.hpp") such steps in a row, which still ends the creep that non-finite rates cause. A step that left t unchanged counts as one too: ODEPACK tests the step size before its error test cuts it further, so its own count misses some of them.
@@ -21,6 +36,8 @@
 ##### Documentation
 * "Implicit Methods" page: how accurate a user Jacobian has to be, and how one tight relative tolerance tightens the BDF and Radau Newton iterations for every variable.
 * "Implicit Methods" page: where CyRK's implicit methods deliberately differ from SciPy's.
+* New "Integration Methods" page: the order, stages, error estimate, interpolant, and memory of every method, guidance on which methods suit which problems, and work-precision measurements (diffeq calls and wall time to reach a given error) on the Lorenz, Arenstorf, Pleiades, Van der Pol, and linear oscillator problems. The script behind the measurements is "Benchmarks/explicit_work_precision.py".
+* README, "C++ API", "Numba", and "Dense Output and `t_eval`" pages list the new methods and their memory use and interpolant costs.
 
 ### v0.19.X
 

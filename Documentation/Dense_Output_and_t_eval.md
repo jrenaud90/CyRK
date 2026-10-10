@@ -27,6 +27,11 @@ to calculate. Leave `dense_output=False` unless required for your use case.
 The performance hit when using _only_ `t_eval` is much less because it only used one interpolator that is updated during
 the solution. No memory allocations or large objects are created. Note that the computation to rebuild the interpolator
 is still present so using `t_eval` will always be slower than not.
+
+The interpolators of "DOP853", "Vern7", and "Vern8" need 3, 5, and 7 extra differential equation calls on each step
+that builds one (every step with `dense_output=True` or events, and only the steps that contain a `t_eval` point
+otherwise). The other methods build theirs from values the step already computed. The
+[Integration Methods](Integration_Methods.md) page lists the interpolant order of each method.
 :::
 
 ## Interpolating Extra Outputs with Dense Output

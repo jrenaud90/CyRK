@@ -150,7 +150,7 @@ def test_pysolve_ivp_test():
 @pytest.mark.parametrize('capture_extra', (True, False))
 @pytest.mark.parametrize('max_step', (1.0, 100_000.0))
 @pytest.mark.parametrize('first_step', (0.0, 0.00001))
-@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853"))
+@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853", "Tsit5", "Vern7", "Vern8"))
 @pytest.mark.parametrize('use_different_tols', (True, False))
 @pytest.mark.parametrize('use_rtol_array', (True, False))
 @pytest.mark.parametrize('use_atol_array', (True, False))
@@ -431,7 +431,8 @@ def test_pysolve_ivp_errors():
     assert result.error_code == CyrkErrorCodes.STEP_SIZE_ERROR_SPACING
     assert result.message == "Error in step size calculation: Required step size is less than spacing between numbers."
 
-@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853", "BDF", "LSODA", "RADAU"))
+@pytest.mark.parametrize(
+    'integration_method', ("RK23", "RK45", "DOP853", "Tsit5", "Vern7", "Vern8", "BDF", "LSODA", "RADAU"))
 @pytest.mark.parametrize('t_eval_end', (None, 0.5, 1.0))
 @pytest.mark.parametrize('test_dense_output', (False, True))
 @pytest.mark.parametrize('backward_integrate', (False, True))
@@ -494,8 +495,11 @@ def test_pysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output,
     if integration_method == "RK23":
         check_rtol = 1.0e-3
         check_atol = 1.0e-6
-    elif integration_method == "DOP853":
+    elif integration_method in ("DOP853", "Tsit5"):
         check_rtol = 1.0e-5
+        check_atol = 1.0e-8
+    elif integration_method in ("Vern7", "Vern8"):
+        check_rtol = 1.0e-6
         check_atol = 1.0e-8
     elif integration_method in ("BDF", "LSODA", "RADAU"):
         # The multi-step methods accumulate more global error than the RK methods do at the same
@@ -527,13 +531,7 @@ def test_pysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output,
 
         # Check accuracy
         y_array_real = correct_answer(t_array, c1, c2)
-        try:
-            assert np.allclose(y_array, y_array_real, rtol=check_rtol, atol=check_atol)
-        except Exception as e:
-            if backward_integrate and np.allclose(y_array, y_array_real, rtol=1.0e-3, atol=1.0e-4):
-                pytest.skip("Backward integration for DOP is a bit more inaccurate for some reason.")
-            else:
-                raise e
+        assert np.allclose(y_array, y_array_real, rtol=check_rtol, atol=check_atol)
 
     # Check the accuracy of the results
     # import matplotlib.pyplot as plt
@@ -544,7 +542,8 @@ def test_pysolve_ivp_accuracy(integration_method, t_eval_end, test_dense_output,
     # ax.plot(result.t, real_answer[1], 'b:')
     # plt.show()
 
-@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853", "BDF", "LSODA", "RADAU"))
+@pytest.mark.parametrize(
+    'integration_method', ("RK23", "RK45", "DOP853", "Tsit5", "Vern7", "Vern8", "BDF", "LSODA", "RADAU"))
 def test_pysolve_ivp_readonly(integration_method):
     #Check that the cython function solver is able to reproduce a known functions integral with reasonable accuracy
 
@@ -614,7 +613,8 @@ def tracked_decay_diffeq(dy, t, y, latest_t):
     dy[1] = -1.0e3 * (y[1] - y[0])
 
 
-@pytest.mark.parametrize('integration_method', ("RK23", "RK45", "DOP853", "BDF", "LSODA", "RADAU"))
+@pytest.mark.parametrize(
+    'integration_method', ("RK23", "RK45", "DOP853", "Tsit5", "Vern7", "Vern8", "BDF", "LSODA", "RADAU"))
 @pytest.mark.parametrize('t_end', (1.0e-9, 1.0e-3))
 def test_pysolve_short_span_stays_in_interval(integration_method, t_end):
     """The first step size search must not call the differential equation past the end of the span, as SciPy's

@@ -19,6 +19,7 @@ Additionally each event function might have the following attributes:"
       event is ever 0.
     If an int > 1, then termination occurs after this number of occurrences of this event.
     If not defined then integrator will not terminate if this event is hit (implicitly False).
+    False or 0 is the same as not defined. A negative value raises a ValueError.
 `event.direction`: float, optional
     Direction of a zero crossing.
     If direction is positive, event will only trigger when going from negative to positive or

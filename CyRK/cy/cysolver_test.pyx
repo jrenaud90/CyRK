@@ -476,11 +476,17 @@ def cytester(
         integration_method = ODEMethod.LSODA
     elif method == 'radau':
         integration_method = ODEMethod.RADAU
+    elif method == 'tsit5':
+        integration_method = ODEMethod.TSIT5
+    elif method == 'vern7':
+        integration_method = ODEMethod.VERN7
+    elif method == 'vern8':
+        integration_method = ODEMethod.VERN8
     else:
         raise NotImplementedError(
             "ERROR: `cytester` - "
             f"Unknown or unsupported integration method provided: {method}.\n"
-            f"Supported methods are: RK23, RK45, DOP853, BDF, LSODA, RADAU."
+            f"Supported methods are: RK23, RK45, DOP853, Tsit5, Vern7, Vern8, BDF, LSODA, RADAU."
             )
 
     cdef size_t num_extra = 0

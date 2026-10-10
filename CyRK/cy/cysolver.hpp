@@ -42,7 +42,10 @@ enum class ODEMethod : int {
     DOP853,
     BDF,
     LSODA,
-    RADAU
+    RADAU,
+    TSIT5,
+    VERN7,
+    VERN8
 };
 
 // Root finding parameters
@@ -76,7 +79,16 @@ inline const std::map<ODEMethod, std::string> CyrkODEMethods = {
       "Adams / BDF method with automatic stiffness detection and switching." },
 
     { ODEMethod::RADAU,
-      "Implicit Runge-Kutta method of the Radau IIA family of order 5." }
+      "Implicit Runge-Kutta method of the Radau IIA family of order 5." },
+
+    { ODEMethod::TSIT5,
+      "Explicit Runge-Kutta method of order 5(4) due to Tsitouras, with a free 4th order interpolant." },
+
+    { ODEMethod::VERN7,
+      "Explicit Runge-Kutta method of order 7(6) due to Verner, with a 7th order interpolant." },
+
+    { ODEMethod::VERN8,
+      "Explicit Runge-Kutta method of order 8(7) due to Verner, with an 8th order interpolant." }
 };
 
 struct ProblemConfig {
